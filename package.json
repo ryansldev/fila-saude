@@ -1,0 +1,32 @@
+{
+  "name": "fila-saude",
+  "version": "1.0.0",
+  "description": "Vamos tornar a espera nos postos de saúde mais tranquila? 💙",
+  "main": "index.js",
+  "packageManager": "npm@11.16.0",
+  "devDependencies": {
+    "turbo": "^2.10.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "check-types": "turbo run check-types",
+    "lint": "turbo run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryansldev/fila-saude.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ryansldev/fila-saude/issues"
+  },
+  "homepage": "https://github.com/ryansldev/fila-saude#readme",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
