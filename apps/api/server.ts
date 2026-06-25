@@ -1,16 +1,19 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import autoload from '@fastify/autoload'
 import Fastify from 'fastify'
 
-const fastify = Fastify({
+const app = Fastify({
   logger: true
 })
 
-fastify.get('/', async function handler () {
-  return { hello: 'world' }
+app.register(autoload, {
+  dir: path.join(path.dirname(fileURLToPath(import.meta.url)), "routes")
 })
 
 try {
-  await fastify.listen({ port: 3333 })
+  await app.listen({ port: 3333 })
 } catch (err) {
-  fastify.log.error(err)
+  app.log.error(err)
   process.exit(1)
 }
