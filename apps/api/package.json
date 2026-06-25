@@ -1,0 +1,21 @@
+{
+  "name": "@fila-saude/api",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Fila Saúde API",
+  "main": "server.ts",
+  "scripts": {
+    "dev": "tsx watch server.ts"
+  },
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "dependencies": {
+    "fastify": "^5.8.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.22.4"
+  }
+}
