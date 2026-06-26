@@ -2,10 +2,12 @@
   "name": "@fila-saude/api",
   "private": true,
   "version": "1.0.0",
-  "description": "Fila Saúde API",
   "main": "server.ts",
   "scripts": {
-    "dev": "tsx watch server.ts"
+    "dev": "tsx watch server.ts",
+    "services:up": "docker compose -f infra/compose.yml up -d",
+    "services:stop": "docker compose -f infra/compose.yaml stop",
+    "services:down": "docker compose -f infra/compose.yaml down"
   },
   "license": "MIT",
   "type": "module",
@@ -14,9 +16,14 @@
   },
   "dependencies": {
     "@fastify/autoload": "^6.3.1",
-    "fastify": "^5.8.5"
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.8.5",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.22.4"
   }
 }
