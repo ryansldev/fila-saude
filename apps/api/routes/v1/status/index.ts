@@ -3,7 +3,9 @@ import type { FastifyInstance } from "fastify";
 import database from "infra/database";
 
 export default async function (fastify: FastifyInstance) {
-  fastify.get('/', async () => {
+  fastify.get('/', async () => {\
+    const updatedAt = new Date().toISOString();
+
     const databaseResult = await database.transaction(async (tx) => {
       const databaseVersionResult = await tx.execute<{ server_version: string }>(sql`SHOW server_version;`)
       const databaseMaxConnectionsResult = await tx.execute<{ max_connections: number }>(sql`SHOW max_connections;`)
@@ -21,6 +23,7 @@ export default async function (fastify: FastifyInstance) {
     const databaseOpenedConnections = databaseResult.openedConnections[0]?.count ?? null;
 
     return {
+      updated_at: updatedAt,
       dependencies: {
         database: {
           version: databaseVersion,
