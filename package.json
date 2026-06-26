@@ -2,7 +2,7 @@
   "name": "fila-saude",
   "version": "1.0.0",
   "description": "Vamos tornar a espera nos postos de saúde mais tranquila? 💙",
-  "packageManager": "npm@11.16.0",
+  "packageManager": "npm@11.x",
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
     "@commitlint/cli": "^21.1.0",
@@ -30,6 +30,9 @@
     "db:migrate": "npm -w @fila-saude/api run db:migrate",
     "prepare": "husky",
     "commit": "cz"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "repository": {
     "type": "git",
