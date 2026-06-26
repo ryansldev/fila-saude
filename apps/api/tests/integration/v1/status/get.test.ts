@@ -1,9 +1,11 @@
+import webserver from "@fila-saude/api/infra/webserver";
 import { statusSchema } from "@fila-saude/schemas/status";
 import { describe, expect, it } from "vitest";
 
 describe("GET /api/v1/status", () => {
   it("should return 200", async () => {
-    const response = await fetch("http://localhost:3333/v1/status");
+    console.log(webserver.origin);
+    const response = await fetch(`${webserver.origin}/v1/status`);
     expect(response.status).toBe(200);
 
     const responseBody = statusSchema.parse(await response.json());
