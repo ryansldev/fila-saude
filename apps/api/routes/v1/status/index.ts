@@ -3,7 +3,7 @@ import type { FastifyInstance } from "fastify";
 import database from "infra/database";
 
 export default async function (fastify: FastifyInstance) {
-  fastify.get('/', async () => {\
+  fastify.get('/', async () => {
     const updatedAt = new Date().toISOString();
 
     const databaseResult = await database.transaction(async (tx) => {
