@@ -15,6 +15,9 @@
     "lint:fix": "turbo run lint:fix",
     "format": "turbo run format",
     "test": "turbo run test",
+    "services:up": "npm -w @fila-saude/api run services:up",
+    "services:stop": "npm -w @fila-saude/api run services:stop",
+    "services:down": "npm -w @fila-saude/api run services:down",
     "db:push": "npm -w @fila-saude/api run db:push",
     "db:generate": "npm -w @fila-saude/api run db:generate",
     "db:migrate": "npm -w @fila-saude/api run db:migrate"

@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "api/*": ["./apps/api/*"],
+      "web/*": ["./apps/web/*"],
+      "mobile/*": ["./apps/mobile/*"],
+      "packages/*": ["./packages/*"]
+    }
+  }
+}
