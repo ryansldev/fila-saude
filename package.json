@@ -5,6 +5,9 @@
   "packageManager": "npm@11.16.0",
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
+    "@commitlint/cli": "^21.1.0",
+    "@commitlint/config-conventional": "^21.1.0",
+    "husky": "^9.1.7",
     "turbo": "^2.10.0"
   },
   "scripts": {
@@ -22,7 +25,8 @@
     "services:down": "npm -w @fila-saude/api run services:down",
     "db:push": "npm -w @fila-saude/api run db:push",
     "db:generate": "npm -w @fila-saude/api run db:generate",
-    "db:migrate": "npm -w @fila-saude/api run db:migrate"
+    "db:migrate": "npm -w @fila-saude/api run db:migrate",
+    "prepare": "husky"
   },
   "repository": {
     "type": "git",
