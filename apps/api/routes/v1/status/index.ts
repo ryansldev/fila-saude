@@ -1,9 +1,7 @@
+import { statusSchema } from "@fila-saude/schemas/status";
 import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import database from "infra/database";
-import { statusSchema } from "./schema";
-
-export { statusSchema, type StatusSchema } from "./schema";
 
 export default async function (fastify: FastifyInstance) {
   fastify.get("/", async () => {

@@ -1,4 +1,4 @@
-import { statusSchema } from "routes/v1/status/schema";
+import { statusSchema } from "@fila-saude/schemas/status";
 import { describe, expect, it } from "vitest";
 
 describe("GET /api/v1/status", () => {
