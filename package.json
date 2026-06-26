@@ -15,9 +15,9 @@
     "lint:fix": "turbo run lint:fix",
     "format": "turbo run format",
     "test": "turbo run test",
-    "db:push": "npx --workspace=@fila-saude/api run db:push",
-    "db:generate": "npm --workspace=@fila-saude/api run db:generate",
-    "db:migrate": "npx --workspace=@fila-saude/api run db:migrate"
+    "db:push": "npm -w @fila-saude/api run db:push",
+    "db:generate": "npm -w @fila-saude/api run db:generate",
+    "db:migrate": "npm -w @fila-saude/api run db:migrate"
   },
   "repository": {
     "type": "git",
