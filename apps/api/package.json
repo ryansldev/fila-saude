@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "tsx watch --env-file=.env.development server.ts",
     "services:up": "docker compose -f infra/compose.yml up -d",
-    "services:stop": "docker compose -f infra/compose.yaml stop",
-    "services:down": "docker compose -f infra/compose.yaml down",
+    "services:stop": "docker compose -f infra/compose.yml stop",
+    "services:down": "docker compose -f infra/compose.yml down",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
