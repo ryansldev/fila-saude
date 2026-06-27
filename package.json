@@ -2,7 +2,7 @@
   "name": "fila-saude",
   "version": "1.0.0",
   "description": "Vamos tornar a espera nos postos de saúde mais tranquila? 💙",
-  "packageManager": "npm@11.x",
+  "packageManager": "npm@11.16.0",
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
     "@commitlint/cli": "^21.1.0",
