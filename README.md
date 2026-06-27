@@ -12,8 +12,7 @@ fila-saude/
 │   ├── api/           # API REST (Fastify + Drizzle + PostgreSQL)
 │   └── web/           # Frontend (Next.js + React + Tailwind CSS)
 └── packages/
-    ├── schemas/       # Schemas Zod compartilhados entre API e clientes
-    └── http-client/   # Cliente HTTP da API
+    └── schemas/       # Schemas Zod compartilhados (@fila-saude/schemas)
 ```
 
 ## Pré-requisitos
@@ -50,7 +49,7 @@ Variáveis obrigatórias:
 | `POSTGRES_HOST`      | Host do PostgreSQL                     |
 | `DATABASE_URL`       | URL de conexão completa                |
 
-Exemplo para desenvolvimento (`apps/api/.env.development`):
+Exemplo (`apps/api/.env.development` e `apps/api/.env.test`):
 
 ```env
 POSTGRES_USER=postgres
@@ -68,6 +67,8 @@ npm run services:up
 ```
 
 Isso inicia um container PostgreSQL 18 via Docker Compose (`apps/api/infra/compose.yml`).
+
+Ao rodar `npm run dev`, `npm run dev -w @fila-saude/api` ou `npm test`, o PostgreSQL é iniciado automaticamente.
 
 ### 4. Aplicar o schema do banco (quando houver migrations)
 
@@ -103,7 +104,7 @@ npm run dev -w @fila-saude/web
 
 #### `GET /v1/status`
 
-Retorna o status da API e das dependências (banco de dados).
+Retorna o status da API e das dependências (banco de dados). A resposta é validada pelo schema compartilhado em `@fila-saude/schemas/status`.
 
 **Resposta de exemplo:**
 
@@ -113,8 +114,12 @@ Retorna o status da API e das dependências (banco de dados).
   "dependencies": {
     "database": {
       "version": "18.4",
-      "max_connections": 100,
-      "opened_connections": 1
+      "connections": {
+        "max": 100,
+        "total": 1,
+        "idle": 0,
+        "waiting": 0
+      }
     }
   }
 }
@@ -124,14 +129,9 @@ As rotas são carregadas automaticamente pelo `@fastify/autoload` a partir de `a
 
 ## Testes
 
-Os testes de integração exigem a API e o PostgreSQL em execução.
+Os testes de integração sobem o PostgreSQL, iniciam a API e executam o Vitest automaticamente:
 
 ```bash
-# Terminal 1 — banco e API
-npm run services:up
-npm run dev -w @fila-saude/api
-
-# Terminal 2 — testes
 npm test
 ```
 
@@ -151,8 +151,9 @@ npm run test:coverage  # cobertura de código
 | `lint`              | Verifica lint em todos os workspaces           |
 | `lint:fix`          | Corrige problemas de lint                      |
 | `format`            | Formata o código (Biome)                       |
-| `check-types`       | Verificação de tipos TypeScript                |
-| `test`              | Executa os testes da API                       |
+| `test`              | Sobe serviços, API e executa testes da API     |
+| `test:watch`        | Testes em modo watch                           |
+| `test:coverage`     | Testes com cobertura de código                 |
 | `services:up`       | Sobe o PostgreSQL via Docker                   |
 | `services:stop`     | Para os containers                             |
 | `services:down`     | Remove os containers                           |
@@ -160,6 +161,13 @@ npm run test:coverage  # cobertura de código
 | `db:generate`       | Gera migrations Drizzle                        |
 | `db:migrate`        | Executa migrations                             |
 | `commit`            | Commit interativo com Commitizen               |
+
+## CI
+
+Em pull requests, o GitHub Actions executa:
+
+- **Linting** — `npm run lint` (Biome) e validação de mensagens de commit (Commitlint)
+- **Testes** — `npm run test` (Vitest com PostgreSQL via Docker)
 
 ## Stack
 
