@@ -3,6 +3,7 @@ on: pull_request
 
 jobs:
   biome:
+    name: Biome
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -12,6 +13,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
   commitling:
+    name: commitling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
