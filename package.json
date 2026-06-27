@@ -15,10 +15,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "check-types": "turbo run check-types",
-    "lint": "turbo run lint",
-    "lint:fix": "turbo run lint:fix",
-    "format": "turbo run format",
+    "lint": "biome check .",
+    "lint:fix": "biome check . --write",
+    "format": "biome format . --write",
     "test": "npm -w @fila-saude/api run test",
     "test:watch": "npm -w @fila-saude/api run test:watch",
     "test:coverage": "npm -w @fila-saude/api run test:coverage",

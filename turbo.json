@@ -13,12 +13,6 @@
       "persistent": true,
       "cache": false
     },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
-    "lint:fix": {
-      "dependsOn": ["^lint:fix"]
-    },
     "format": {
       "dependsOn": ["^format"]
     },

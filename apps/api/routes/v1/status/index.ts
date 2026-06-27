@@ -26,11 +26,8 @@ export default async function (fastify: FastifyInstance) {
     });
 
     const databaseVersion = databaseResult.version[0]?.server_version ?? null;
-    const databaseMaxConnections = Number(
-      databaseResult.maxConnections[0]?.max_connections ?? null,
-    );
-    const databaseOpenedConnections =
-      databaseResult.openedConnections[0]?.count ?? null;
+    const databaseMaxConnections = Number(databaseResult.maxConnections[0]?.max_connections ?? null);
+    const databaseOpenedConnections = databaseResult.openedConnections[0]?.count ?? null;
 
     return statusSchema.parse({
       updated_at: updatedAt,
