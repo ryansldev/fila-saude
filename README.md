@@ -9,10 +9,10 @@ Monorepo com a API (Fastify), o frontend (Next.js) e pacotes compartilhados. O g
 ```
 fila-saude/
 ├── apps/
-│   ├── api/          # API REST (Fastify + Drizzle + PostgreSQL)
-│   └── web/          # Frontend (Next.js + React + Tailwind CSS)
+│   ├── api/           # API REST (Fastify + Drizzle + PostgreSQL)
+│   └── web/           # Frontend (Next.js + React + Tailwind CSS)
 └── packages/
-    ├── schemas/      # Schemas Zod compartilhados entre API e clientes
+    ├── schemas/       # Schemas Zod compartilhados entre API e clientes
     └── http-client/   # Cliente HTTP da API
 ```
 

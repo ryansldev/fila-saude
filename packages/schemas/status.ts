@@ -5,8 +5,12 @@ export const statusSchema = z.object({
   dependencies: z.object({
     database: z.object({
       version: z.string(),
-      max_connections: z.number(),
-      opened_connections: z.number(),
+      connections: z.object({
+        max: z.number(),
+        total: z.number(),
+        idle: z.number(),
+        waiting: z.number(),
+      }),
     }),
   }),
 });
