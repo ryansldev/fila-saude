@@ -1,4 +1,4 @@
-name: Auitomated Tests
+name: Automated Tests
 on: pull_request
 
 jobs:
