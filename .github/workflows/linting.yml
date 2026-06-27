@@ -13,7 +13,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
   commitlint:
-    name: commitling
+    name: commitlint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
