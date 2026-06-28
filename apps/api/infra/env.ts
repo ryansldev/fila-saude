@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
+import dotEnvExpand from "dotenv-expand";
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -22,7 +23,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 
 const envFile = path.resolve(rootDir, envFilename);
 
-dotenv.config({ path: envFile });
+dotEnvExpand.expand(dotenv.config({ path: envFile }));
 
 const env = envSchema.parse(process.env);
 
