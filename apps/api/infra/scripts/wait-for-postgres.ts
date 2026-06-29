@@ -1,7 +1,10 @@
 import { exec } from "node:child_process";
+import env from "infra/env";
+
+const NODE_ENV = env.NODE_ENV.toLowerCase(); // development, test, production, staging
 
 function checkPostgres() {
-  exec("docker exec postgres-dev pg_isready --host localhost", handleReturn);
+  exec(`docker exec postgres-${NODE_ENV} pg_isready --host localhost`, handleReturn);
 
   function handleReturn(_error: Error | null, stdout: string) {
     if (stdout.search("accepting connections") === -1) {
