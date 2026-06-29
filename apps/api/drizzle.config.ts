@@ -3,8 +3,8 @@ import { defineConfig } from "drizzle-kit";
 import env from "./infra/env";
 
 export default defineConfig({
-  out: "./drizzle",
-  schema: "./infra/db/schema.ts",
+  out: "./infra/migrations",
+  schema: "./infra/database-schema.ts",
   dialect: "postgresql",
   dbCredentials: {
     url: env.DATABASE_URL,
