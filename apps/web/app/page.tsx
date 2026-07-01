@@ -19,10 +19,7 @@ export default function Home() {
               <SpeechBubble className="w-full">
                 <p className="text-sm leading-relaxed text-gray-800 sm:text-base">
                   <strong>Chega de esperar horas no posto.</strong> Entre na fila pelo celular e só vá quando for a sua
-                  vez.
-                </p>
-                <p className="mt-2.5 text-xs leading-relaxed text-gray-500 sm:text-sm">
-                  Gratuito. <strong className="font-medium text-gray-600">Open source</strong>.
+                  vez. É gratuito e open source.
                 </p>
               </SpeechBubble>
 
