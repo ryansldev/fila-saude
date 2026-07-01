@@ -15,14 +15,16 @@ const nunito = Nunito({
 
 const SITE_URL = "https://filasaude.com.br";
 
+const description =
+  "Você entra na fila de atendimento de casa. A gente te avisa quando estiver perto da sua vez. Simples assim. Um projeto open source pra tornar o SUS mais transparente.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: "Fila Saúde — Acompanhe sua vez sem sair de casa",
     template: "%s | Fila Saúde",
   },
-  description:
-    "Você entra na fila de atendimento de casa. A gente te avisa quando estiver perto da sua vez. Simples assim. Um projeto open source pra tornar o SUS mais transparente.",
+  description,
   applicationName: "Fila Saúde",
   keywords: [
     "fila de espera SUS",
@@ -54,23 +56,12 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: "Fila Saúde",
     title: "Fila Saúde — Acompanhe sua vez sem sair de casa",
-    description:
-      "Você entra na fila de casa. A gente te avisa quando estiver perto da sua vez. Simples assim. Um projeto open source pra tornar o SUS mais transparente.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Fila Saúde — acompanhe sua vez sem sair de casa",
-      },
-    ],
+    description,
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "Fila Saúde — Acompanhe sua vez sem sair de casa",
-    description:
-      "Você entra na fila de casa. A gente te avisa quando estiver perto da sua vez. Simples assim. Open source.",
-    images: ["/og-image.png"],
+    description,
   },
   robots: {
     index: true,
@@ -82,12 +73,6 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
-    apple: "/apple-touch-icon.png",
-  },
-  manifest: "/site.webmanifest",
   formatDetection: {
     telephone: false,
   },
