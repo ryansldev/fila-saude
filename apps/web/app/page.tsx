@@ -18,8 +18,8 @@ export default function Home() {
             <div className="flex w-full flex-col gap-4 sm:flex-1 sm:gap-5 sm:pt-[clamp(2.75rem,11vw,5.25rem)]">
               <SpeechBubble className="w-full">
                 <p className="text-sm leading-relaxed text-gray-800 sm:text-base">
-                  <strong>Chega de esperar horas no posto.</strong> Entre na fila pelo celular e só vá quando for a sua
-                  vez. É gratuito e open source.
+                  <strong>Chega de esperar horas no postinho.</strong> Entre na fila pelo celular e só vá quando for a
+                  sua vez. É gratuito e open source.
                 </p>
               </SpeechBubble>
 
