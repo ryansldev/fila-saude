@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <PageShell>
       <SiteHeader repositoryUrl={REPOSITORY_URL} />
-      <HeroSection repositoryUrl={REPOSITORY_URL} />
+      <HeroSection />
       <HowItWorks />
       <CtaBanner repositoryUrl={REPOSITORY_URL} />
       <PageFooter>
