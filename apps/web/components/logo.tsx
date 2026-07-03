@@ -1,9 +1,15 @@
-export function Logo() {
+import { cn } from "@/lib/utils";
+
+interface LogoProps {
+  className?: string;
+}
+
+export function Logo({ className }: LogoProps) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={64} height={64} fill="none">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" className={cn("size-8", className)}>
       <title>Logo Fila Saúde</title>
       <path
-        fill="#1A73C8"
+        fill="currentColor"
         d="M5.127 23.609C6.564 36.242 20.52 48.093 29.33 54.212a4.673 4.673 0 0 0 5.34 0c8.81-6.119 22.767-17.97 24.203-30.603C60.863 6.099 38.967 3.972 32 13.977 25.033 3.972 3.137 6.1 5.127 23.61Z"
       />
       <path
