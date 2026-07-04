@@ -41,13 +41,11 @@ export function NearbyClinicsIllustration() {
                 <Check className="size-3.5" strokeWidth={3} />
                 <span className="text-sm font-extrabold">UBS</span>
               </div>
-              <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2">
+              <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 opacity-50">
                 <Siren className="size-3.5 text-gray-400" strokeWidth={2.5} />
                 <span className="text-sm font-extrabold text-gray-500">UPA</span>
               </div>
             </div>
-
-            <p className="text-center text-sm text-gray-500">consulta · sintomas leves</p>
 
             <div className="overflow-hidden rounded-2xl border-2 border-primary bg-white shadow-sm">
               <div className="flex items-start gap-2.5 border-b border-primary-100 bg-primary-50 px-3 py-2.5">
@@ -123,7 +121,7 @@ export function NearbyClinicsIllustration() {
                 ))}
               </div>
               <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">
-                quer trocar? você sai da cadastrada.
+                na UPA não precisa de cadastro.
               </p>
             </div>
           </div>
