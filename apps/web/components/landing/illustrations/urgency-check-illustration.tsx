@@ -22,12 +22,8 @@ export function UrgencyCheckIllustration() {
         <PhoneFrame>
           <div className="space-y-3 px-1 pb-2 pt-1">
             <div>
-              <p className="text-lg font-extrabold lowercase leading-tight text-gray-900">
-                tem algum sinal urgente?
-              </p>
-              <p className="mt-1 text-sm text-gray-500">
-                marque o que estiver sentindo agora
-              </p>
+              <p className="text-lg font-extrabold lowercase leading-tight text-gray-900">tem algum sinal urgente?</p>
+              <p className="mt-1 text-sm text-gray-500">marque o que estiver sentindo agora</p>
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-b-2 border-gray-100 bg-white shadow-sm">
@@ -53,9 +49,7 @@ export function UrgencyCheckIllustration() {
               <span className="flex size-5 shrink-0 items-center justify-center rounded-md border-2 border-green-600 bg-green-500 text-white">
                 <Check className="size-3.5" strokeWidth={3} />
               </span>
-              <span className="min-w-0 flex-1 text-sm font-extrabold lowercase text-green-900">
-                nenhum desses
-              </span>
+              <span className="min-w-0 flex-1 text-sm font-extrabold lowercase text-green-900">nenhum desses</span>
             </div>
 
             <div className="rounded-2xl border border-b-4 border-primary-700 bg-primary py-3.5 text-center text-base font-extrabold uppercase tracking-wide text-white shadow-sm">

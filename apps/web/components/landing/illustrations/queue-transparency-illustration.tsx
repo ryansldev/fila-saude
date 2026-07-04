@@ -21,10 +21,7 @@ export function QueueTransparencyIllustration() {
 
         <PhoneFrame>
           <div className="space-y-3 px-1 pb-2 pt-1">
-            <button
-              type="button"
-              className="flex items-center gap-1 text-sm font-extrabold lowercase text-primary"
-            >
+            <button type="button" className="flex items-center gap-1 text-sm font-extrabold lowercase text-primary">
               <ChevronLeft className="size-4" strokeWidth={2.5} />
               sua posição
             </button>

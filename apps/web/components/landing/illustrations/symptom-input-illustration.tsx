@@ -59,9 +59,7 @@ export function SymptomInputIllustration() {
 
             <div className="space-y-2 rounded-2xl border border-b-2 border-gray-100 bg-white p-2.5 shadow-sm">
               <div className="min-h-14 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                <p className="text-sm leading-relaxed text-gray-600">
-                  febre desde ontem, dor de cabeça e mal-estar
-                </p>
+                <p className="text-sm leading-relaxed text-gray-600">febre desde ontem, dor de cabeça e mal-estar</p>
               </div>
 
               <div className="flex flex-wrap gap-1.5">

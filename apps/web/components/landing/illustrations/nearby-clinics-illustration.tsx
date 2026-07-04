@@ -66,10 +66,7 @@ export function NearbyClinicsIllustration() {
 
                 {todayServices.map((service) =>
                   service.public ? (
-                    <div
-                      key={service.id}
-                      className="rounded-xl border-2 border-primary bg-primary-50 px-2.5 py-2"
-                    >
+                    <div key={service.id} className="rounded-xl border-2 border-primary bg-primary-50 px-2.5 py-2">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-extrabold text-gray-900">{service.name}</p>
                         <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold tabular-nums text-primary">
@@ -120,9 +117,7 @@ export function NearbyClinicsIllustration() {
                   </div>
                 ))}
               </div>
-              <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">
-                na UPA não precisa de cadastro.
-              </p>
+              <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">na UPA não precisa de cadastro.</p>
             </div>
           </div>
         </PhoneFrame>
