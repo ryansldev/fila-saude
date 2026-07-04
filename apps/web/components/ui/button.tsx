@@ -4,32 +4,32 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const elevatedPress =
-  "box-border active:not-aria-[haspopup]:not-disabled:border-b-0 active:not-aria-[haspopup]:not-disabled:border-t-4";
+  "box-border active:not-aria-[haspopup]:not-disabled:border-b-0 active:not-aria-[haspopup]:not-disabled:border-t-4 active:not-aria-[haspopup]:not-disabled:border-t-transparent active:not-aria-[haspopup]:transition-none";
 
 const buttonVariants = cva(
-  "group/button box-border inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[border-width] duration-200 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:border-b-0 disabled:border-gray-200 disabled:text-gray-400 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button box-border inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:border-b-0 disabled:border-gray-200 disabled:text-gray-400 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: cn(
-          "bg-primary text-primary-foreground hover:bg-primary-400 border border-b-4 border-primary-700 aria-expanded:bg-primary-400 aria-expanded:text-primary-foreground",
+          "bg-primary text-primary-foreground hover:bg-primary-400 active:bg-primary border border-transparent border-b-4 border-b-primary-700 aria-expanded:bg-primary-400 aria-expanded:text-primary-foreground",
           elevatedPress,
         ),
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary: cn(
-          "bg-white text-primary-400 hover:bg-gray-50 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground border border-b-4 border-gray-100",
+          "bg-white text-primary-400 hover:bg-gray-50 active:bg-white aria-expanded:bg-secondary aria-expanded:text-secondary-foreground border border-transparent border-b-4 border-b-gray-100",
           elevatedPress,
         ),
         ghost:
           "text-primary hover:bg-gray-50 aria-expanded:bg-gray-50 aria-expanded:text-primary disabled:bg-transparent disabled:border-none",
         destructive: cn(
-          "bg-destructive text-white hover:bg-red-400 focus-visible:border-red-300 focus-visible:ring-red-400 dark:bg-red-400 dark:hover:bg-red-400 dark:focus-visible:ring-red-300 border border-b-4 border-red-700",
+          "bg-destructive text-white hover:bg-red-400 active:bg-destructive focus-visible:border-red-300 focus-visible:ring-red-400 dark:bg-red-400 dark:hover:bg-red-400 dark:active:bg-red-400 dark:focus-visible:ring-red-300 border border-transparent border-b-4 border-b-red-700",
           elevatedPress,
         ),
         link: "text-primary underline-offset-4 hover:underline disabled:bg-transparent disabled:border-none",
         success: cn(
-          "bg-green-500 text-white hover:bg-green-400 border border-b-4 border-green-700 aria-expanded:bg-green-400 aria-expanded:text-white",
+          "bg-green-500 text-white hover:bg-green-400 active:bg-green-500 border border-transparent border-b-4 border-b-green-700 aria-expanded:bg-green-400 aria-expanded:text-white",
           elevatedPress,
         ),
       },
