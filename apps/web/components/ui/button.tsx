@@ -3,24 +3,48 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+const elevatedPress =
+  "hover:brightness-110 active:not-aria-[haspopup]:not-disabled:border-b-0 active:not-aria-[haspopup]:not-disabled:border-t-4";
+
+const elevatedShadowColors = {
+  default: "bg-primary-400",
+  secondary: "bg-gray-50",
+  destructive: "bg-red-400",
+  success: "bg-green-400",
+} as const;
+
+type ElevatedVariant = keyof typeof elevatedShadowColors;
+
+function isElevatedVariant(variant: string | null | undefined): variant is ElevatedVariant {
+  return variant != null && variant in elevatedShadowColors;
+}
+
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:border-b-0 disabled:border-gray-200 disabled:text-gray-400 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button relative inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all duration-200 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:border-b-0 disabled:border-gray-200 disabled:text-gray-400 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
-        default:
+        default: cn(
           "bg-primary text-primary-foreground hover:bg-primary-400 border border-b-4 border-primary-700 aria-expanded:bg-primary-400 aria-expanded:text-primary-foreground",
+          elevatedPress,
+        ),
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary:
+        secondary: cn(
           "bg-white text-primary-400 hover:bg-gray-50 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground border border-b-4 border-gray-100",
+          elevatedPress,
+        ),
         ghost:
           "text-primary hover:bg-gray-50 aria-expanded:bg-gray-50 aria-expanded:text-primary disabled:bg-transparent disabled:border-none",
-        destructive:
+        destructive: cn(
           "bg-destructive text-white hover:bg-red-400 focus-visible:border-red-300 focus-visible:ring-red-400 dark:bg-red-400 dark:hover:bg-red-400 dark:focus-visible:ring-red-300 border border-b-4 border-red-700",
+          elevatedPress,
+        ),
         link: "text-primary underline-offset-4 hover:underline disabled:bg-transparent disabled:border-none",
-        success:
+        success: cn(
           "bg-green-500 text-white hover:bg-green-400 border border-b-4 border-green-700 aria-expanded:bg-green-400 aria-expanded:text-white",
+          elevatedPress,
+        ),
       },
       size: {
         default:
@@ -46,9 +70,23 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  children,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
-  return <ButtonPrimitive data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+  return (
+    <ButtonPrimitive data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props}>
+      {isElevatedVariant(variant) ? (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-0 -z-10 rounded-lg border-b-4 border-solid border-transparent",
+            elevatedShadowColors[variant],
+          )}
+        />
+      ) : null}
+      {children}
+    </ButtonPrimitive>
+  );
 }
 
 export { Button, buttonVariants };
