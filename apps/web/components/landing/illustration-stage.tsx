@@ -107,18 +107,25 @@ export function PrimaryCtaBar({ children, className }: PrimaryCtaBarProps) {
 
 interface PhoneQueueHeaderProps {
   ticket: string;
+  unitName?: string;
+  serviceName?: string;
   className?: string;
 }
 
-export function PhoneQueueHeader({ ticket, className }: PhoneQueueHeaderProps) {
+export function PhoneQueueHeader({
+  ticket,
+  unitName = "UBS Centro",
+  serviceName = "acolhimento",
+  className,
+}: PhoneQueueHeaderProps) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
         <MapPin className="size-4" strokeWidth={2.5} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-bold text-gray-800">UBS Centro</p>
-        <p className="truncate text-sm font-bold text-primary">acolhimento</p>
+        <p className="truncate text-base font-bold text-gray-800">{unitName}</p>
+        <p className="truncate text-sm font-bold text-primary">{serviceName}</p>
       </div>
       <div className="shrink-0 text-right">
         <p className="text-sm font-bold text-gray-500">senha</p>

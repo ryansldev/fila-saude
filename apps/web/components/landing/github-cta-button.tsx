@@ -27,7 +27,8 @@ export function GithubCtaButton({
       render={<Link href={repositoryUrl} target="_blank" rel="noopener noreferrer" />}
     >
       {children}
-      {icon ? <ArrowUpRight /> : null}
+      {icon ? <ArrowUpRight aria-hidden /> : null}
+      <span className="sr-only"> (abre em nova aba)</span>
     </Button>
   );
 }
