@@ -3,14 +3,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const elevatedPressActive = "[&:active:not([aria-haspopup]):not(:disabled)]";
-
 const elevatedPress = cn(
   "box-border",
-  `${elevatedPressActive}:border-b-0`,
-  `${elevatedPressActive}:border-t-4`,
-  `${elevatedPressActive}:border-t-transparent`,
-  `${elevatedPressActive}:transition-none`,
+  `[&:active:not([aria-haspopup]):not(:disabled)]:border-b-0`,
+  `[&:active:not([aria-haspopup]):not(:disabled)]:border-t-4`,
+  `[&:active:not([aria-haspopup]):not(:disabled)]:border-t-transparent`,
+  `[&:active:not([aria-haspopup]):not(:disabled)]:transition-none`,
 );
 
 const buttonVariants = cva(
