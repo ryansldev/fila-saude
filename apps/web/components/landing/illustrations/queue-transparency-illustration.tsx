@@ -109,20 +109,12 @@ export function QueueTransparencyIllustration() {
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
   const tapPhase =
-    contentPhase === "idle" || contentPhase === "intro"
-      ? "intro"
-      : contentPhase === "select"
-        ? "select"
-        : "result";
+    contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
   return (
     <IllustrationStage tone="primary">
       <IllustrationScene className="pb-20 sm:pb-24">
-        <motion.div
-          ref={ref}
-          className="relative"
-          animate={levitating ? illustrationLevitate : { y: 0 }}
-        >
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
           <motion.div
             className={cn(floatingBadgeClasses("left"), "inline-flex")}
             initial="idle"
@@ -194,17 +186,12 @@ export function QueueTransparencyIllustration() {
                   </motion.div>
                 ))}
 
-                <motion.div
-                  className="rounded-xl border-2 border-primary bg-primary-50 px-3 py-2.5"
-                  variants={popItem}
-                >
+                <motion.div className="rounded-xl border-2 border-primary bg-primary-50 px-3 py-2.5" variants={popItem}>
                   <div className="flex items-center gap-2.5">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">
                       4º
                     </span>
-                    <p className="font-mono text-sm font-extrabold tabular-nums text-primary-900">
-                      senha {userTicket}
-                    </p>
+                    <p className="font-mono text-sm font-extrabold tabular-nums text-primary-900">senha {userTicket}</p>
                     <span className="text-sm font-extrabold text-primary-800">você</span>
                     <span className="ml-auto rounded-full bg-white px-2.5 py-0.5 text-sm font-bold lowercase text-primary-700">
                       consulta

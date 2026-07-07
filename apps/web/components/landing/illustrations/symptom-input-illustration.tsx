@@ -4,12 +4,7 @@ import { Stethoscope, User } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
-import {
-  easeInOut,
-  easePop,
-  illustrationLevitate,
-  inViewViewportLoop,
-} from "@/lib/motion";
+import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
 import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
@@ -123,20 +118,12 @@ export function SymptomInputIllustration() {
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
   const textPhase =
-    contentPhase === "idle" || contentPhase === "intro"
-      ? "intro"
-      : contentPhase === "select"
-        ? "select"
-        : "result";
+    contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
   return (
     <IllustrationStage tone="green">
       <IllustrationScene>
-        <motion.div
-          ref={ref}
-          className="relative"
-          animate={levitating ? illustrationLevitate : { y: 0 }}
-        >
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"

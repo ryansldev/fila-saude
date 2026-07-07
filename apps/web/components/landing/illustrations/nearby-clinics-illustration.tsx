@@ -8,12 +8,7 @@ import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/
 import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
-import {
-  floatingBadgeClasses,
-  IllustrationScene,
-  IllustrationStage,
-  PhoneFrame,
-} from "../illustration-stage";
+import { floatingBadgeClasses, IllustrationScene, IllustrationStage, PhoneFrame } from "../illustration-stage";
 
 const todayServices = [
   {
@@ -121,20 +116,12 @@ export function NearbyClinicsIllustration() {
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
   const ctaPhase =
-    contentPhase === "idle" || contentPhase === "intro"
-      ? "intro"
-      : contentPhase === "select"
-        ? "select"
-        : "result";
+    contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
   return (
     <IllustrationStage tone="primary">
       <IllustrationScene className="pb-20 sm:pb-24">
-        <motion.div
-          ref={ref}
-          className="relative"
-          animate={levitating ? illustrationLevitate : { y: 0 }}
-        >
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"
@@ -188,10 +175,7 @@ export function NearbyClinicsIllustration() {
                 </motion.div>
 
                 <motion.div className="space-y-1.5 px-2.5 py-2" variants={listSequence}>
-                  <motion.p
-                    className="text-sm font-bold lowercase tracking-wide text-gray-400"
-                    variants={popItem}
-                  >
+                  <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-400" variants={popItem}>
                     atendimentos de hoje
                   </motion.p>
 
@@ -232,12 +216,7 @@ export function NearbyClinicsIllustration() {
                     className="rounded-xl border border-b-[3px] border-primary-700 bg-primary py-2.5 text-center text-sm font-extrabold uppercase tracking-wide text-white shadow-sm"
                     variants={popItem}
                   >
-                    <motion.span
-                      className="inline-block"
-                      initial="intro"
-                      animate={ctaPhase}
-                      variants={ctaPress}
-                    >
+                    <motion.span className="inline-block" initial="intro" animate={ctaPhase} variants={ctaPress}>
                       entrar no acolhimento
                     </motion.span>
                   </motion.div>
@@ -264,9 +243,7 @@ export function NearbyClinicsIllustration() {
                     </motion.div>
                   ))}
                 </motion.div>
-                <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">
-                  na UPA não precisa de cadastro.
-                </p>
+                <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">na UPA não precisa de cadastro.</p>
               </motion.div>
             </motion.div>
           </PhoneFrame>

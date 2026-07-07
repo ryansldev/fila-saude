@@ -100,24 +100,15 @@ export function QueuePositionIllustration() {
   const prefersReducedMotion = useReducedMotion();
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
-  const isAdvanced =
-    contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
+  const isAdvanced = contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
 
   const positionPhase =
-    contentPhase === "idle" || contentPhase === "intro"
-      ? "intro"
-      : contentPhase === "select"
-        ? "select"
-        : "result";
+    contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
   return (
     <IllustrationStage tone="yellow">
       <IllustrationScene className="pb-20 sm:pb-24">
-        <motion.div
-          ref={ref}
-          className="relative"
-          animate={levitating ? illustrationLevitate : { y: 0 }}
-        >
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"

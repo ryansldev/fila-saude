@@ -9,12 +9,7 @@ import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/
 import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
-import {
-  floatingBadgeClasses,
-  IllustrationScene,
-  IllustrationStage,
-  PhoneFrame,
-} from "../illustration-stage";
+import { floatingBadgeClasses, IllustrationScene, IllustrationStage, PhoneFrame } from "../illustration-stage";
 
 const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
 
@@ -92,20 +87,12 @@ export function NotificationIllustration() {
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
   const bellPhase =
-    contentPhase === "idle" || contentPhase === "intro"
-      ? "intro"
-      : contentPhase === "select"
-        ? "select"
-        : "result";
+    contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
   return (
     <IllustrationStage tone="green">
       <IllustrationScene className="pb-20 sm:pb-24">
-        <motion.div
-          ref={ref}
-          className="relative"
-          animate={levitating ? illustrationLevitate : { y: 0 }}
-        >
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"
@@ -127,10 +114,7 @@ export function NotificationIllustration() {
                 <motion.div variants={popItem}>
                   <BrandName size="sm" logoClassName="size-6" textClassName="text-sm font-bold text-gray-500" />
                 </motion.div>
-                <motion.p
-                  className="text-base font-extrabold lowercase text-gray-800 sm:text-lg"
-                  variants={popItem}
-                >
+                <motion.p className="text-base font-extrabold lowercase text-gray-800 sm:text-lg" variants={popItem}>
                   acolhimento · senha 013
                 </motion.p>
                 <motion.div className="flex items-center justify-center gap-1.5" variants={popItem}>
