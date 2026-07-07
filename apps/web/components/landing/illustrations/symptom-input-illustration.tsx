@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useInView, useReducedMotion } from "motion/react";
 import { Stethoscope, User } from "lucide-react";
+import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
 import { inViewViewport } from "@/lib/motion";
@@ -110,16 +110,8 @@ export function SymptomInputIllustration() {
           </motion.div>
 
           <PhoneFrame>
-            <motion.div
-              className="space-y-3 px-1 pb-2 pt-1"
-              initial="rest"
-              animate={phase}
-              variants={sequence}
-            >
-              <motion.p
-                className="text-sm font-bold lowercase tracking-wide text-gray-500"
-                variants={item}
-              >
+            <motion.div className="space-y-3 px-1 pb-2 pt-1" initial="rest" animate={phase} variants={sequence}>
+              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={item}>
                 pra quem é?
               </motion.p>
 
@@ -140,10 +132,7 @@ export function SymptomInputIllustration() {
                 ))}
               </motion.div>
 
-              <motion.p
-                className="text-sm font-bold lowercase tracking-wide text-gray-500"
-                variants={item}
-              >
+              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={item}>
                 do que precisa?
               </motion.p>
 
@@ -163,10 +152,7 @@ export function SymptomInputIllustration() {
                 ))}
               </motion.div>
 
-              <motion.p
-                className="text-sm font-bold lowercase tracking-wide text-gray-500"
-                variants={item}
-              >
+              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={item}>
                 conta o motivo
               </motion.p>
 
@@ -175,10 +161,7 @@ export function SymptomInputIllustration() {
                 variants={textBoxVariants}
               >
                 <div className="min-h-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                  <motion.p
-                    className="text-sm leading-relaxed text-gray-600"
-                    variants={textRevealVariants}
-                  >
+                  <motion.p className="text-sm leading-relaxed text-gray-600" variants={textRevealVariants}>
                     {MOTION_TEXT}
                   </motion.p>
                 </div>

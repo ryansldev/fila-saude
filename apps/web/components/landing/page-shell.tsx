@@ -22,4 +22,3 @@ export function PageShell({ children, className }: PageShellProps) {
     </main>
   );
 }
-
