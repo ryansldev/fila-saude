@@ -5,8 +5,15 @@ import { Stethoscope, User } from "lucide-react";
 import { useRef } from "react";
 
 import { inViewViewport } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
-import { IllustrationScene, IllustrationStage, PhoneFrame } from "../illustration-stage";
+import {
+  floatingBadgeClasses,
+  IllustrationScene,
+  IllustrationStage,
+  PhoneFrame,
+  primaryCtaBarClasses,
+} from "../illustration-stage";
 
 const whoOptions = [
   { id: "voce", label: "você", selected: true },
@@ -93,7 +100,7 @@ export function SymptomInputIllustration() {
       <IllustrationScene>
         <div ref={ref} className="relative">
           <motion.div
-            className="absolute top-0 right-0 z-10 inline-flex max-w-[calc(100%-0.5rem)] items-center gap-2 rounded-full border border-b-[3px] border-gray-100 bg-white px-3 py-1.5 shadow-md sm:px-4 sm:py-2"
+            className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="rest"
             animate={phase}
             variants={badgeVariants}
@@ -189,10 +196,7 @@ export function SymptomInputIllustration() {
                 </motion.div>
               </motion.div>
 
-              <motion.div
-                className="rounded-2xl border border-b-4 border-primary-700 bg-primary py-3.5 text-center text-base font-extrabold uppercase tracking-wide text-white shadow-sm"
-                variants={continueVariants}
-              >
+              <motion.div className={primaryCtaBarClasses} variants={continueVariants}>
                 continuar
               </motion.div>
             </motion.div>

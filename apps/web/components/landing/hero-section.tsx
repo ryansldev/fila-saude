@@ -1,9 +1,9 @@
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 
 import { Character } from "@/components/character";
 import { Button } from "@/components/ui/button";
-import { REPOSITORY_URL } from "@/lib/constants";
+
+import { GithubCtaButton } from "./github-cta-button";
 
 export function HeroSection() {
   return (
@@ -24,14 +24,9 @@ export function HeroSection() {
           <Button className="w-full sm:w-auto" render={<Link href="#como-funciona" />}>
             Como funciona
           </Button>
-          <Button
-            variant="secondary"
-            className="w-full gap-2 sm:w-auto"
-            render={<Link href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer" />}
-          >
+          <GithubCtaButton variant="secondary" icon className="w-full sm:w-auto">
             Contribuir no GitHub
-            <ArrowUpRight />
-          </Button>
+          </GithubCtaButton>
         </div>
       </div>
     </section>

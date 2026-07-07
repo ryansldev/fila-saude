@@ -1,3 +1,4 @@
+import { MapPin } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -71,6 +72,58 @@ export function PhoneFrame({ children, className }: PhoneFrameProps) {
         <span className="h-2 w-12 rounded-full bg-gray-100" />
       </div>
       <div className="min-w-0 text-sm leading-snug">{children}</div>
+    </div>
+  );
+}
+
+export function floatingBadgeClasses(align: "left" | "right" = "right") {
+  return cn(
+    "absolute top-0 z-10 flex max-w-[calc(100%-0.5rem)] items-center gap-2 rounded-full border border-b-[3px] border-gray-100 bg-white px-3 py-1.5 shadow-md sm:px-4 sm:py-2",
+    align === "left" ? "left-0" : "right-0",
+  );
+}
+
+interface FloatingBadgeProps {
+  children: ReactNode;
+  align?: "left" | "right";
+  className?: string;
+}
+
+export function FloatingBadge({ children, align = "right", className }: FloatingBadgeProps) {
+  return <div className={cn(floatingBadgeClasses(align), className)}>{children}</div>;
+}
+
+export const primaryCtaBarClasses =
+  "rounded-2xl border border-b-4 border-primary-700 bg-primary py-3.5 text-center text-base font-extrabold uppercase tracking-wide text-white shadow-sm";
+
+interface PrimaryCtaBarProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export function PrimaryCtaBar({ children, className }: PrimaryCtaBarProps) {
+  return <div className={cn(primaryCtaBarClasses, className)}>{children}</div>;
+}
+
+interface PhoneQueueHeaderProps {
+  ticket: string;
+  className?: string;
+}
+
+export function PhoneQueueHeader({ ticket, className }: PhoneQueueHeaderProps) {
+  return (
+    <div className={cn("flex items-center gap-2.5", className)}>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
+        <MapPin className="size-4" strokeWidth={2.5} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-base font-bold text-gray-800">UBS Centro</p>
+        <p className="truncate text-sm font-bold text-primary">acolhimento</p>
+      </div>
+      <div className="shrink-0 text-right">
+        <p className="text-sm font-bold text-gray-500">senha</p>
+        <p className="font-mono text-base font-extrabold tabular-nums text-primary">{ticket}</p>
+      </div>
     </div>
   );
 }

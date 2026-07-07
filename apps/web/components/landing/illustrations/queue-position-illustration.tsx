@@ -1,31 +1,25 @@
-import { ArrowUp, Clock, MapPin, Users } from "lucide-react";
+import { ArrowUp, Clock, Users } from "lucide-react";
 
-import { IllustrationScene, IllustrationStage, PhoneFrame } from "../illustration-stage";
+import {
+  FloatingBadge,
+  IllustrationScene,
+  IllustrationStage,
+  PhoneFrame,
+  PhoneQueueHeader,
+} from "../illustration-stage";
 
 export function QueuePositionIllustration() {
   return (
     <IllustrationStage tone="yellow">
       <IllustrationScene className="pb-20 sm:pb-[5.5rem]">
-        <div className="absolute top-0 right-0 z-10 flex max-w-[calc(100%-0.5rem)] items-center gap-2 rounded-full border border-b-[3px] border-gray-100 bg-white px-3 py-1.5 shadow-md sm:px-4 sm:py-2">
+        <FloatingBadge>
           <span className="size-2.5 animate-pulse rounded-full bg-green-500" />
           <span className="text-sm font-bold text-gray-700">ao vivo</span>
-        </div>
+        </FloatingBadge>
 
         <PhoneFrame>
           <div className="space-y-3 px-1 pb-2 pt-1">
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
-                <MapPin className="size-4" strokeWidth={2.5} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-bold text-gray-800">UBS Centro</p>
-                <p className="truncate text-sm font-bold text-primary">acolhimento</p>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-sm font-bold text-gray-500">senha</p>
-                <p className="font-mono text-base font-extrabold tabular-nums text-primary">013</p>
-              </div>
-            </div>
+            <PhoneQueueHeader ticket="013" />
 
             <div className="rounded-2xl border border-b-4 border-primary-200 bg-primary-50 px-4 py-5 text-center">
               <p className="text-sm font-bold lowercase tracking-wide text-primary-700">sua posição</p>

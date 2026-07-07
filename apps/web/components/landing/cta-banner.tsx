@@ -1,10 +1,7 @@
-import { ArrowUpRight } from "lucide-react";
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
 import { REPOSITORY_URL } from "@/lib/constants";
 
 import { BrandName } from "./brand-name";
+import { GithubCtaButton } from "./github-cta-button";
 
 interface CtaBannerProps {
   repositoryUrl?: string;
@@ -20,13 +17,9 @@ export function CtaBanner({ repositoryUrl = REPOSITORY_URL }: CtaBannerProps) {
       <p className="max-w-md px-2 text-lg leading-8 text-gray-600 sm:px-0 sm:text-xl sm:leading-9">
         Open source, feito por quem usa o SUS. Contribui e ajuda quem espera no postinho.
       </p>
-      <Button
-        className="gap-2 tracking-wide"
-        render={<Link href={repositoryUrl} target="_blank" rel="noopener noreferrer" />}
-      >
+      <GithubCtaButton repositoryUrl={repositoryUrl} icon className="tracking-wide">
         Ver no GitHub
-        <ArrowUpRight />
-      </Button>
+      </GithubCtaButton>
     </section>
   );
 }

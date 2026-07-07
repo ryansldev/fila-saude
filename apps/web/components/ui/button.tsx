@@ -3,8 +3,15 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const elevatedPress =
-  "box-border active:not-aria-[haspopup]:not-disabled:border-b-0 active:not-aria-[haspopup]:not-disabled:border-t-4 active:not-aria-[haspopup]:not-disabled:border-t-transparent active:not-aria-[haspopup]:transition-none";
+const elevatedPressActive = "[&:active:not([aria-haspopup]):not(:disabled)]";
+
+const elevatedPress = cn(
+  "box-border",
+  `${elevatedPressActive}:border-b-0`,
+  `${elevatedPressActive}:border-t-4`,
+  `${elevatedPressActive}:border-t-transparent`,
+  `${elevatedPressActive}:transition-none`,
+);
 
 const buttonVariants = cva(
   "group/button box-border inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:bg-gray-100 disabled:text-gray-400 disabled:border-b-0 disabled:border-gray-200 disabled:text-gray-400 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",

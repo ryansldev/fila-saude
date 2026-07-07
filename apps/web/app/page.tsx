@@ -8,12 +8,14 @@ import { REPOSITORY_URL } from "@/lib/constants";
 
 export default function Home() {
   return (
-    <PageShell>
+    <>
       <SiteHeader repositoryUrl={REPOSITORY_URL} />
-      <HeroSection />
-      <HowItWorks />
-      <CtaBanner repositoryUrl={REPOSITORY_URL} />
+      <PageShell>
+        <HeroSection />
+        <HowItWorks />
+        <CtaBanner repositoryUrl={REPOSITORY_URL} />
+      </PageShell>
       <PageFooter>Em construção. Feito com 💙 por quem usa o SUS.</PageFooter>
-    </PageShell>
+    </>
   );
 }

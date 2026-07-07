@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-const headerHeight = "4.25rem";
+export const headerHeight = "4.25rem";
 
 interface PageShellProps {
   children: ReactNode;
@@ -23,4 +23,3 @@ export function PageShell({ children, className }: PageShellProps) {
   );
 }
 
-export { headerHeight };

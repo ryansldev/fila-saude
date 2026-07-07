@@ -1,10 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
 import { REPOSITORY_URL } from "@/lib/constants";
 
 import { BrandName } from "./brand-name";
+import { GithubCtaButton } from "./github-cta-button";
 import { headerHeight } from "./page-shell";
 
 interface SiteHeaderProps {
@@ -24,12 +24,12 @@ export function SiteHeader({ cta, repositoryUrl = REPOSITORY_URL }: SiteHeaderPr
         </Link>
 
         {cta ?? (
-          <Button
+          <GithubCtaButton
+            repositoryUrl={repositoryUrl}
             className="h-9 shrink-0 px-3 text-sm uppercase tracking-wide sm:h-11 sm:min-w-28 sm:px-8 sm:text-base"
-            render={<Link href={repositoryUrl} target="_blank" rel="noopener noreferrer" />}
           >
             Contribuir
-          </Button>
+          </GithubCtaButton>
         )}
       </div>
     </header>
