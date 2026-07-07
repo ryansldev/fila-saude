@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, Siren } from "lucide-react";
+import { AlertTriangle, Check } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
@@ -119,37 +119,9 @@ const ctaVariants = {
   },
 };
 
-const footerCard = {
-  idle: { scale: 0.92, y: 16, opacity: 0 },
-  static: { scale: 1, y: 0, opacity: 1 },
-  reset: { scale: 0.92, y: 16, opacity: 0, transition: { duration: 0.2, ease: easeInOut } },
-  intro: { scale: 0.92, y: 16, opacity: 0 },
-  select: { scale: 0.9, y: 14, opacity: 0 },
-  result: {
-    opacity: [0, 1, 1],
-    scale: [0.88, 1.08, 1],
-    y: [20, 0],
-    transition: { duration: 0.52, ease: easePop },
-  },
-};
-
-const footerHint = {
-  idle: { scale: 0.9, y: 12, opacity: 0 },
-  static: { scale: 1, y: 0, opacity: 0.9 },
-  reset: { scale: 0.9, y: 12, opacity: 0, transition: { duration: 0.2, ease: easeInOut } },
-  intro: { scale: 0.9, y: 12, opacity: 0 },
-  select: { scale: 0.9, y: 12, opacity: 0 },
-  result: {
-    opacity: [0, 0.9, 0.9],
-    scale: [0.9, 1.04, 1],
-    y: [12, 0],
-    transition: { duration: 0.45, ease: easePop, delay: 0.12 },
-  },
-};
-
 const INTRO_MS = 1550;
 const SELECT_MS = 520;
-const RESULT_MS = 2100;
+const RESULT_MS = 800;
 
 export function UrgencyCheckIllustration() {
   const ref = useRef<HTMLDivElement>(null);
@@ -204,7 +176,7 @@ export function UrgencyCheckIllustration() {
 
   return (
     <IllustrationStage tone="yellow">
-      <IllustrationScene className="pb-32 sm:pb-36">
+      <IllustrationScene>
         <motion.div
           ref={ref}
           className="relative"
@@ -298,39 +270,6 @@ export function UrgencyCheckIllustration() {
               </motion.p>
             </motion.div>
           </PhoneFrame>
-
-        <motion.div
-          className="absolute inset-x-0 bottom-0 space-y-1.5"
-          initial="idle"
-          animate={contentPhase}
-          variants={introSequence}
-          aria-hidden={contentPhase !== "result" && contentPhase !== "static"}
-        >
-          <motion.div
-            className="rounded-2xl border border-b-4 border-green-700 bg-green-500 px-3 py-2.5 shadow-[0_16px_32px_-10px_rgba(34,197,94,0.55)] sm:px-4 sm:py-3"
-            variants={footerCard}
-          >
-            <div className="flex items-center gap-2.5">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
-                <Check className="size-4" strokeWidth={3} />
-              </span>
-              <div className="min-w-0 text-white">
-                <p className="text-sm font-extrabold sm:text-base">sem sinais urgentes</p>
-                <p className="truncate text-sm text-green-50">caminho leve · UBS</p>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="flex items-center gap-2 rounded-xl border border-b-2 border-orange-200 bg-orange-50 px-3 py-2"
-            variants={footerHint}
-          >
-            <Siren className="size-4 shrink-0 text-orange-600" strokeWidth={2.5} />
-            <p className="min-w-0 text-sm font-bold text-orange-900">
-              sinal urgente ou outro → <span className="font-extrabold">UPA</span>
-            </p>
-          </motion.div>
-        </motion.div>
         </motion.div>
       </IllustrationScene>
     </IllustrationStage>
