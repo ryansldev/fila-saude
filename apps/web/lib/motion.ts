@@ -18,3 +18,25 @@ export const inViewViewport = {
   once: true,
   amount: 0.35,
 } as const;
+
+export const inViewViewportLoop = {
+  once: false,
+  amount: 0.35,
+} as const;
+
+export const easePop = [0.34, 1.45, 0.64, 1] as const;
+export const easeInOut = "easeInOut" as const;
+
+export const lottiePassThrough = {
+  rest: {},
+  reset: {},
+  intro: {},
+  select: {},
+  result: {},
+};
+
+export function lottieSleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
