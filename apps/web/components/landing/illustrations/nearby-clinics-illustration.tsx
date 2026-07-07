@@ -1,6 +1,18 @@
-import { Building2, Check, Lock, Siren, UserCheck, Users } from "lucide-react";
+"use client";
 
-import { IllustrationScene, IllustrationStage, PhoneFrame } from "../illustration-stage";
+import { Building2, Check, Lock, Siren, UserCheck, Users } from "lucide-react";
+import { motion, useInView, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+
+import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop, lottieSleep } from "@/lib/motion";
+import { cn } from "@/lib/utils";
+
+import {
+  floatingBadgeClasses,
+  IllustrationScene,
+  IllustrationStage,
+  PhoneFrame,
+} from "../illustration-stage";
 
 const todayServices = [
   {
@@ -23,118 +35,295 @@ const otherUnits = [
   { id: "jardim", name: "UBS Jardim", distance: "3,4 km" },
 ] as const;
 
+type StoryPhase = "idle" | "static" | "intro" | "select" | "result" | "float";
+
+const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
+
+const badgeVariants = {
+  idle: { ...hiddenItem, rotate: -8 },
+  static: { scale: 1, y: 0, rotate: 0, opacity: 1 },
+  reset: { ...hiddenItem, rotate: -8, transition: { duration: 0.2, ease: easeInOut } },
+  intro: {
+    opacity: [0, 1, 1],
+    scale: [0.65, 1.12, 1],
+    y: [-18, 0],
+    rotate: [-10, 0],
+    transition: { duration: 0.52, ease: easePop },
+  },
+  select: { scale: 1, y: 0, rotate: 0, opacity: 1 },
+  result: { scale: 1, y: 0, rotate: 0, opacity: 1 },
+};
+
+const introSequence = {
+  idle: {},
+  static: {},
+  reset: {},
+  intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
+  select: {},
+  result: {},
+};
+
+const popItem = {
+  idle: hiddenItem,
+  static: { scale: 1, y: 0, opacity: 1 },
+  reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
+  intro: {
+    opacity: [0, 1, 1],
+    scale: [0.82, 1.06, 1],
+    y: [12, -3, 0],
+    transition: { duration: 0.44, ease: easePop },
+  },
+  select: { scale: 1, y: 0, opacity: 1 },
+  result: { scale: 1, y: 0, opacity: 1 },
+};
+
+const listSequence = {
+  idle: {},
+  static: {},
+  reset: {},
+  intro: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
+  select: {},
+  result: {},
+};
+
+const ctaPress = {
+  intro: { scale: 1 },
+  static: { scale: 1 },
+  select: {
+    scale: [1, 0.94, 1],
+    transition: { duration: 0.38, ease: easePop },
+  },
+  result: { scale: 1 },
+};
+
+const footerVariants = {
+  idle: { opacity: 0, y: 24 },
+  static: { opacity: 1, y: 0 },
+  reset: { opacity: 0, y: 24, transition: { duration: 0.2, ease: easeInOut } },
+  intro: { opacity: 0, y: 24 },
+  select: { opacity: 0, y: 24 },
+  result: {
+    opacity: [0, 1, 1],
+    y: [24, 0],
+    transition: { duration: 0.55, ease: easePop },
+  },
+};
+
+const INTRO_MS = 1850;
+const SELECT_MS = 520;
+const RESULT_MS = 900;
+
 export function NearbyClinicsIllustration() {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, inViewViewportLoop);
+  const prefersReducedMotion = useReducedMotion();
+  const [phase, setPhase] = useState<StoryPhase>("idle");
+  const [storyDone, setStoryDone] = useState(false);
+
+  const contentPhase = prefersReducedMotion
+    ? "static"
+    : storyDone || phase === "float" || phase === "result"
+      ? "result"
+      : phase;
+
+  const ctaPhase =
+    contentPhase === "idle" || contentPhase === "intro"
+      ? "intro"
+      : contentPhase === "select"
+        ? "select"
+        : "result";
+
+  const levitating = isInView && storyDone && !prefersReducedMotion;
+
+  useEffect(() => {
+    if (!isInView && !storyDone) {
+      setPhase("idle");
+    }
+  }, [isInView, storyDone]);
+
+  useEffect(() => {
+    if (prefersReducedMotion || !isInView || storyDone) return;
+
+    let cancelled = false;
+
+    (async () => {
+      setPhase("intro");
+      await lottieSleep(INTRO_MS);
+      if (cancelled) return;
+
+      setPhase("select");
+      await lottieSleep(SELECT_MS);
+      if (cancelled) return;
+
+      setPhase("result");
+      await lottieSleep(RESULT_MS);
+      if (cancelled) return;
+
+      setStoryDone(true);
+      setPhase("float");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isInView, prefersReducedMotion, storyDone]);
+
   return (
     <IllustrationStage tone="primary">
-      <IllustrationScene className="pb-20 sm:pb-[5.5rem]">
-        <div className="absolute top-0 right-0 z-10 flex max-w-[calc(100%-0.5rem)] items-center gap-2 rounded-full border border-b-[3px] border-gray-100 bg-white px-3 py-1.5 shadow-md sm:px-4 sm:py-2">
-          <UserCheck className="size-4 text-primary" strokeWidth={2.5} />
-          <span className="text-sm font-bold text-gray-700">sua UBS</span>
-        </div>
+      <IllustrationScene className="pb-20 sm:pb-24">
+        <motion.div
+          ref={ref}
+          className="relative"
+          animate={levitating ? illustrationLevitate : { y: 0 }}
+        >
+          <motion.div
+            className={cn(floatingBadgeClasses("right"), "inline-flex")}
+            initial="idle"
+            animate={contentPhase}
+            variants={badgeVariants}
+          >
+            <UserCheck className="size-4 text-primary" strokeWidth={2.5} />
+            <span className="text-sm font-bold text-gray-700">sua UBS</span>
+          </motion.div>
 
-        <PhoneFrame>
-          <div className="space-y-3 px-0.5 pb-1 pt-0.5">
-            <p className="text-sm font-bold lowercase tracking-wide text-gray-500">pra onde ir?</p>
+          <PhoneFrame>
+            <motion.div
+              className="space-y-3 px-0.5 pb-1 pt-0.5"
+              initial="idle"
+              animate={contentPhase}
+              variants={introSequence}
+            >
+              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
+                pra onde ir?
+              </motion.p>
 
-            <div className="flex gap-1 rounded-xl bg-gray-100 p-0.5">
-              <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border-b-[3px] border-primary-700 bg-primary py-2 text-white shadow-sm">
-                <Check className="size-3.5" strokeWidth={3} />
-                <span className="text-sm font-extrabold">UBS</span>
-              </div>
-              <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 opacity-50">
-                <Siren className="size-3.5 text-gray-400" strokeWidth={2.5} />
-                <span className="text-sm font-extrabold text-gray-500">UPA</span>
-              </div>
-            </div>
+              <motion.div className="flex gap-1 rounded-xl bg-gray-100 p-0.5" variants={popItem}>
+                <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border-b-[3px] border-primary-700 bg-primary py-2 text-white shadow-sm">
+                  <Check className="size-3.5" strokeWidth={3} />
+                  <span className="text-sm font-extrabold">UBS</span>
+                </div>
+                <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 opacity-50">
+                  <Siren className="size-3.5 text-gray-400" strokeWidth={2.5} />
+                  <span className="text-sm font-extrabold text-gray-500">UPA</span>
+                </div>
+              </motion.div>
 
-            <div className="overflow-hidden rounded-2xl border-2 border-primary bg-white shadow-sm">
-              <div className="flex items-start gap-2.5 border-b border-primary-100 bg-primary-50 px-3 py-2.5">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                  <Building2 className="size-4" strokeWidth={2.5} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-extrabold text-gray-900">UBS Centro</p>
-                  <p className="mt-0.5 text-sm text-gray-500">R. das Flores, 120 · 0,8 km</p>
-                  <span className="mt-1 inline-flex rounded-full border border-b-2 border-primary-200 bg-white px-2 py-0.5 text-sm font-extrabold lowercase text-primary">
-                    cadastrada
+              <motion.div
+                className="overflow-hidden rounded-2xl border-2 border-primary bg-white shadow-sm"
+                variants={listSequence}
+              >
+                <motion.div
+                  className="flex items-start gap-2.5 border-b border-primary-100 bg-primary-50 px-3 py-2.5"
+                  variants={popItem}
+                >
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                    <Building2 className="size-4" strokeWidth={2.5} />
                   </span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 px-2.5 py-2">
-                <p className="text-sm font-bold lowercase tracking-wide text-gray-400">atendimentos de hoje</p>
-
-                {todayServices.map((service) =>
-                  service.public ? (
-                    <div key={service.id} className="rounded-xl border-2 border-primary bg-primary-50 px-2.5 py-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-extrabold text-gray-900">{service.name}</p>
-                        <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold tabular-nums text-primary">
-                          <Users className="size-3.5" strokeWidth={2.5} />
-                          {service.queueCount}
-                        </span>
-                      </div>
-                      <span className="mt-1 inline-flex rounded-full bg-green-100 px-2 py-0.5 text-sm font-bold lowercase text-green-800">
-                        {service.status}
-                      </span>
-                    </div>
-                  ) : (
-                    <div
-                      key={service.id}
-                      className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-2.5 py-2"
-                    >
-                      <Lock className="size-3.5 shrink-0 text-gray-400" strokeWidth={2.5} />
-                      <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-600">{service.name}</p>
-                      <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-sm font-bold lowercase text-gray-600">
-                        {service.status}
-                      </span>
-                    </div>
-                  ),
-                )}
-
-                <div className="rounded-xl border border-b-[3px] border-primary-700 bg-primary py-2.5 text-center text-sm font-extrabold uppercase tracking-wide text-white shadow-sm">
-                  entrar no acolhimento
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-1.5 text-sm font-bold lowercase tracking-wide text-gray-400">outras UBS</p>
-              <div className="space-y-1">
-                {otherUnits.map((unit) => (
-                  <div
-                    key={unit.id}
-                    className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-b-2 border-gray-100 bg-white px-2.5 py-2 shadow-sm"
-                  >
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-                      <Building2 className="size-3.5" strokeWidth={2.5} />
-                    </span>
-                    <p className="min-w-0 flex-1 truncate text-sm font-extrabold text-gray-800">{unit.name}</p>
-                    <span className="shrink-0 text-sm tabular-nums text-gray-500">{unit.distance}</span>
-                    <span className="shrink-0 rounded-lg border border-b-2 border-gray-200 bg-gray-50 px-2 py-1 text-sm font-extrabold lowercase text-gray-700">
-                      cadastrar
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-extrabold text-gray-900">UBS Centro</p>
+                    <p className="mt-0.5 text-sm text-gray-500">R. das Flores, 120 · 0,8 km</p>
+                    <span className="mt-1 inline-flex rounded-full border border-b-2 border-primary-200 bg-white px-2 py-0.5 text-sm font-extrabold lowercase text-primary">
+                      cadastrada
                     </span>
                   </div>
-                ))}
-              </div>
-              <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">na UPA não precisa de cadastro.</p>
-            </div>
-          </div>
-        </PhoneFrame>
+                </motion.div>
 
-        <div className="absolute inset-x-0 bottom-0 rounded-2xl border border-b-4 border-green-700 bg-green-500 px-3 py-2.5 shadow-[0_16px_32px_-10px_rgba(34,197,94,0.55)] sm:px-4 sm:py-3">
-          <div className="flex items-center gap-2.5">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white">
-              <Check className="size-4" strokeWidth={3} />
-            </span>
-            <div className="min-w-0 text-white">
-              <p className="text-sm font-extrabold sm:text-base">você entrou na fila!</p>
-              <p className="truncate text-sm text-green-50">
-                acolhimento · senha <span className="font-mono font-extrabold">013</span>
-              </p>
+                <motion.div className="space-y-1.5 px-2.5 py-2" variants={listSequence}>
+                  <motion.p
+                    className="text-sm font-bold lowercase tracking-wide text-gray-400"
+                    variants={popItem}
+                  >
+                    atendimentos de hoje
+                  </motion.p>
+
+                  {todayServices.map((service) =>
+                    service.public ? (
+                      <motion.div
+                        key={service.id}
+                        className="rounded-xl border-2 border-primary bg-primary-50 px-2.5 py-2"
+                        variants={popItem}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-extrabold text-gray-900">{service.name}</p>
+                          <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold tabular-nums text-primary">
+                            <Users className="size-3.5" strokeWidth={2.5} />
+                            {service.queueCount}
+                          </span>
+                        </div>
+                        <span className="mt-1 inline-flex rounded-full bg-green-100 px-2 py-0.5 text-sm font-bold lowercase text-green-800">
+                          {service.status}
+                        </span>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key={service.id}
+                        className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-2.5 py-2"
+                        variants={popItem}
+                      >
+                        <Lock className="size-3.5 shrink-0 text-gray-400" strokeWidth={2.5} />
+                        <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-600">{service.name}</p>
+                        <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-sm font-bold lowercase text-gray-600">
+                          {service.status}
+                        </span>
+                      </motion.div>
+                    ),
+                  )}
+
+                  <motion.div
+                    className="rounded-xl border border-b-[3px] border-primary-700 bg-primary py-2.5 text-center text-sm font-extrabold uppercase tracking-wide text-white shadow-sm"
+                    variants={popItem}
+                  >
+                    <motion.span
+                      className="inline-block"
+                      initial="intro"
+                      animate={ctaPhase}
+                      variants={ctaPress}
+                    >
+                      entrar no acolhimento
+                    </motion.span>
+                  </motion.div>
+                </motion.div>
+              </motion.div>
+
+              <motion.div variants={popItem}>
+                <p className="mb-1.5 text-sm font-bold lowercase tracking-wide text-gray-400">outras UBS</p>
+                <motion.div className="space-y-1" variants={listSequence}>
+                  {otherUnits.map((unit) => (
+                    <motion.div
+                      key={unit.id}
+                      className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-b-2 border-gray-100 bg-white px-2.5 py-2 shadow-sm"
+                      variants={popItem}
+                    >
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                        <Building2 className="size-3.5" strokeWidth={2.5} />
+                      </span>
+                      <p className="min-w-0 flex-1 truncate text-sm font-extrabold text-gray-800">{unit.name}</p>
+                      <span className="shrink-0 text-sm tabular-nums text-gray-500">{unit.distance}</span>
+                      <span className="shrink-0 rounded-lg border border-b-2 border-gray-200 bg-gray-50 px-2 py-1 text-sm font-extrabold lowercase text-gray-700">
+                        cadastrar
+                      </span>
+                    </motion.div>
+                  ))}
+                </motion.div>
+                <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">
+                  na UPA não precisa de cadastro.
+                </p>
+              </motion.div>
+            </motion.div>
+          </PhoneFrame>
+
+          <motion.div
+            className="absolute inset-x-6 -bottom-5 z-20 sm:inset-x-8 sm:-bottom-6"
+            initial="idle"
+            animate={contentPhase}
+            variants={footerVariants}
+          >
+            <div className="flex items-center justify-center gap-1.5 rounded-xl border border-b-[3px] border-green-700 bg-green-500 px-3 py-2 shadow-md">
+              <Check className="size-3.5 shrink-0 text-white" strokeWidth={3} />
+              <p className="text-sm font-extrabold text-white">você entrou na fila!</p>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </IllustrationScene>
     </IllustrationStage>
   );
