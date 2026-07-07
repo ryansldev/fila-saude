@@ -2,9 +2,10 @@
 
 import { AlertTriangle, Check } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
-import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop, lottieSleep } from "@/lib/motion";
+import { type AnimatePhase, easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
+import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
 import {
@@ -23,9 +24,8 @@ const urgentSigns = [
   { id: "convulsao", label: "convulsão" },
 ] as const;
 
-type StoryPhase = "idle" | "static" | "intro" | "select" | "result" | "float";
-
 const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
+const stableItem = { scale: 1, y: 0, opacity: 1 };
 
 const badgeVariants = {
   idle: { ...hiddenItem, rotate: -8 },
@@ -40,7 +40,8 @@ const badgeVariants = {
   },
   select: { scale: 1, y: 0, rotate: 0, opacity: 1 },
   result: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-};
+  float: { scale: 1, y: 0, rotate: 0, opacity: 1 },
+} satisfies Record<AnimatePhase, object>;
 
 const introSequence = {
   idle: {},
@@ -49,11 +50,12 @@ const introSequence = {
   intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
   select: {},
   result: {},
-};
+  float: {},
+} satisfies Record<AnimatePhase, object>;
 
 const popItem = {
   idle: hiddenItem,
-  static: { scale: 1, y: 0, opacity: 1 },
+  static: stableItem,
   reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
   intro: {
     opacity: [0, 1, 1],
@@ -61,9 +63,10 @@ const popItem = {
     y: [12, -3, 0],
     transition: { duration: 0.44, ease: easePop },
   },
-  select: { scale: 1, y: 0, opacity: 1 },
-  result: { scale: 1, y: 0, opacity: 1 },
-};
+  select: stableItem,
+  result: stableItem,
+  float: stableItem,
+} satisfies Record<AnimatePhase, object>;
 
 const listSequence = {
   idle: {},
@@ -72,11 +75,12 @@ const listSequence = {
   intro: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
   select: {},
   result: {},
-};
+  float: {},
+} satisfies Record<AnimatePhase, object>;
 
 const noneRow = {
   idle: hiddenItem,
-  static: { scale: 1, y: 0, opacity: 1 },
+  static: stableItem,
   reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
   intro: {
     opacity: [0, 1, 1],
@@ -84,9 +88,10 @@ const noneRow = {
     y: [12, -3, 0],
     transition: { duration: 0.44, ease: easePop },
   },
-  select: { scale: 1, y: 0, opacity: 1 },
-  result: { scale: 1, y: 0, opacity: 1 },
-};
+  select: stableItem,
+  result: stableItem,
+  float: stableItem,
+} satisfies Record<AnimatePhase, object>;
 
 const checkPop = {
   idle: { scale: 0, opacity: 0 },
@@ -99,7 +104,8 @@ const checkPop = {
     transition: { duration: 0.42, ease: easePop },
   },
   result: { scale: 1, opacity: 1 },
-};
+  float: { scale: 1, opacity: 1 },
+} satisfies Record<AnimatePhase, object>;
 
 const ctaVariants = {
   idle: { scale: 0.86, y: 14, opacity: 0 },
@@ -113,78 +119,30 @@ const ctaVariants = {
     y: [14, 0],
     transition: { duration: 0.5, ease: easePop },
   },
-};
+  float: { scale: 1, y: 0, opacity: 1 },
+} satisfies Record<AnimatePhase, object>;
 
-const INTRO_MS = 1550;
-const SELECT_MS = 520;
-const RESULT_MS = 800;
+const PHASE_DURATIONS = {
+  intro: 1550,
+  select: 520,
+  result: 800,
+} as const;
 
 export function UrgencyCheckIllustration() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, inViewViewportLoop);
   const prefersReducedMotion = useReducedMotion();
-  const [phase, setPhase] = useState<StoryPhase>("idle");
-  const [storyDone, setStoryDone] = useState(false);
+  const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
-  const contentPhase = prefersReducedMotion
-    ? "static"
-    : storyDone || phase === "float" || phase === "result"
-      ? "result"
-      : phase;
-
-  const isNoneChecked =
-    contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
+  const isNoneChecked = contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
 
   const checkPhase =
-    contentPhase === "idle" || contentPhase === "intro"
-      ? "intro"
-      : contentPhase === "select"
-        ? "select"
-        : "result";
-
-  const levitating = isInView && storyDone && !prefersReducedMotion;
-
-  useEffect(() => {
-    if (!isInView && !storyDone) {
-      setPhase("idle");
-    }
-  }, [isInView, storyDone]);
-
-  useEffect(() => {
-    if (prefersReducedMotion || !isInView || storyDone) return;
-
-    let cancelled = false;
-
-    (async () => {
-      setPhase("intro");
-      await lottieSleep(INTRO_MS);
-      if (cancelled) return;
-
-      setPhase("select");
-      await lottieSleep(SELECT_MS);
-      if (cancelled) return;
-
-      setPhase("result");
-      await lottieSleep(RESULT_MS);
-      if (cancelled) return;
-
-      setStoryDone(true);
-      setPhase("float");
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isInView, prefersReducedMotion, storyDone]);
+    contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
   return (
     <IllustrationStage tone="yellow">
       <IllustrationScene>
-        <motion.div
-          ref={ref}
-          className="relative"
-          animate={levitating ? illustrationLevitate : { y: 0 }}
-        >
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"
@@ -196,78 +154,78 @@ export function UrgencyCheckIllustration() {
           </motion.div>
 
           <PhoneFrame>
-            <motion.div
-              className="space-y-3 px-1 pb-2 pt-1"
-              initial="idle"
-              animate={contentPhase}
-              variants={introSequence}
-            >
-              <motion.div variants={popItem}>
-                <p className="text-lg font-extrabold lowercase leading-tight text-gray-900">tem algum sinal urgente?</p>
-                <p className="mt-1 text-sm text-gray-500">marque o que estiver sentindo agora</p>
-              </motion.div>
-
+            <div aria-hidden>
               <motion.div
-                className="overflow-hidden rounded-2xl border border-b-2 border-gray-100 bg-white shadow-sm"
-                variants={listSequence}
+                className="space-y-3 px-1 pb-2 pt-1"
+                initial="idle"
+                animate={contentPhase}
+                variants={introSequence}
               >
-                {urgentSigns.map((sign, index) => (
-                  <motion.div
-                    key={sign.id}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-3",
-                      index < urgentSigns.length - 1 && "border-b border-gray-100",
-                    )}
-                    variants={popItem}
-                  >
-                    <span className="flex size-5 shrink-0 rounded-md border-2 border-gray-300 bg-white" />
-                    <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">{sign.label}</span>
-                  </motion.div>
-                ))}
-              </motion.div>
+                <motion.div variants={popItem}>
+                  <p className="text-lg font-extrabold lowercase leading-tight text-gray-900">
+                    tem algum sinal urgente?
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">marque o que estiver sentindo agora</p>
+                </motion.div>
 
-              <motion.div
-                className="flex items-center gap-3 rounded-2xl border border-b-2 border-gray-100 bg-white px-3 py-3 shadow-sm"
-                variants={popItem}
-              >
-                <span className="flex size-5 shrink-0 rounded-md border-2 border-gray-300 bg-white" />
-                <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">outro</span>
-              </motion.div>
-
-              <motion.div
-                className="flex items-center gap-3 rounded-2xl border border-b-2 border-gray-100 bg-white px-3 py-3 shadow-sm"
-                variants={noneRow}
-              >
-                <span
-                  className={cn(
-                    "flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-200",
-                    isNoneChecked
-                      ? "border-green-600 bg-green-500 text-white"
-                      : "border-gray-300 bg-white",
-                  )}
+                <motion.div
+                  className="overflow-hidden rounded-2xl border border-b-2 border-gray-100 bg-white shadow-sm"
+                  variants={listSequence}
                 >
-                  <motion.span
-                    className="flex items-center justify-center"
-                    initial="intro"
-                    animate={checkPhase}
-                    variants={checkPop}
+                  {urgentSigns.map((sign, index) => (
+                    <motion.div
+                      key={sign.id}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-3",
+                        index < urgentSigns.length - 1 && "border-b border-gray-100",
+                      )}
+                      variants={popItem}
+                    >
+                      <span className="flex size-5 shrink-0 rounded-md border-2 border-gray-300 bg-white" />
+                      <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">{sign.label}</span>
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+                <motion.div
+                  className="flex items-center gap-3 rounded-2xl border border-b-2 border-gray-100 bg-white px-3 py-3 shadow-sm"
+                  variants={popItem}
+                >
+                  <span className="flex size-5 shrink-0 rounded-md border-2 border-gray-300 bg-white" />
+                  <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">outro</span>
+                </motion.div>
+
+                <motion.div
+                  className="flex items-center gap-3 rounded-2xl border border-b-2 border-gray-100 bg-white px-3 py-3 shadow-sm"
+                  variants={noneRow}
+                >
+                  <span
+                    className={cn(
+                      "flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-200",
+                      isNoneChecked ? "border-green-600 bg-green-500 text-white" : "border-gray-300 bg-white",
+                    )}
                   >
-                    <Check className="size-3.5" strokeWidth={3} />
-                  </motion.span>
-                </span>
-                <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">
-                  nenhum desses
-                </span>
-              </motion.div>
+                    <motion.span
+                      className="flex items-center justify-center"
+                      initial="intro"
+                      animate={checkPhase}
+                      variants={checkPop}
+                    >
+                      <Check className="size-3.5" strokeWidth={3} />
+                    </motion.span>
+                  </span>
+                  <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">nenhum desses</span>
+                </motion.div>
 
-              <motion.div className={primaryCtaBarClasses} variants={ctaVariants}>
-                continuar
-              </motion.div>
+                <motion.div className={primaryCtaBarClasses} variants={ctaVariants}>
+                  continuar
+                </motion.div>
 
-              <motion.p className="text-center text-sm leading-snug text-gray-400" variants={popItem}>
-                na unidade, o enfermeiro faz a classificação oficial
-              </motion.p>
-            </motion.div>
+                <motion.p className="text-center text-sm leading-snug text-gray-400" variants={popItem}>
+                  na unidade, o enfermeiro faz a classificação oficial
+                </motion.p>
+              </motion.div>
+            </div>
           </PhoneFrame>
         </motion.div>
       </IllustrationScene>

@@ -2,15 +2,15 @@
 
 import { Stethoscope, User } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 
 import {
   easeInOut,
   easePop,
   illustrationLevitate,
   inViewViewportLoop,
-  lottieSleep,
 } from "@/lib/motion";
+import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
 import {
@@ -36,8 +36,6 @@ const symptomTags = ["febre", "dor de cabeça", "mal-estar"] as const;
 const MOTION_TEXT = "febre desde ontem, dor de cabeça e mal-estar";
 
 const easeReveal = [0.22, 1, 0.36, 1] as const;
-
-type StoryPhase = "idle" | "static" | "intro" | "select" | "result" | "float";
 
 const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
 
@@ -112,22 +110,17 @@ const ctaVariants = {
   },
 };
 
-const INTRO_MS = 1650;
-const SELECT_MS = 900;
-const RESULT_MS = 800;
+const PHASE_DURATIONS = {
+  intro: 1650,
+  select: 900,
+  result: 800,
+} as const;
 
 export function SymptomInputIllustration() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, inViewViewportLoop);
   const prefersReducedMotion = useReducedMotion();
-  const [phase, setPhase] = useState<StoryPhase>("idle");
-  const [storyDone, setStoryDone] = useState(false);
-
-  const contentPhase = prefersReducedMotion
-    ? "static"
-    : storyDone || phase === "float" || phase === "result"
-      ? "result"
-      : phase;
+  const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
   const textPhase =
     contentPhase === "idle" || contentPhase === "intro"
@@ -135,41 +128,6 @@ export function SymptomInputIllustration() {
       : contentPhase === "select"
         ? "select"
         : "result";
-
-  const levitating = isInView && storyDone && !prefersReducedMotion;
-
-  useEffect(() => {
-    if (!isInView && !storyDone) {
-      setPhase("idle");
-    }
-  }, [isInView, storyDone]);
-
-  useEffect(() => {
-    if (prefersReducedMotion || !isInView || storyDone) return;
-
-    let cancelled = false;
-
-    (async () => {
-      setPhase("intro");
-      await lottieSleep(INTRO_MS);
-      if (cancelled) return;
-
-      setPhase("select");
-      await lottieSleep(SELECT_MS);
-      if (cancelled) return;
-
-      setPhase("result");
-      await lottieSleep(RESULT_MS);
-      if (cancelled) return;
-
-      setStoryDone(true);
-      setPhase("float");
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isInView, prefersReducedMotion, storyDone]);
 
   return (
     <IllustrationStage tone="green">

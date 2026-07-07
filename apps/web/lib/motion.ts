@@ -1,5 +1,8 @@
 import type { Transition } from "motion/react";
 
+export type StandardStoryPhase = "idle" | "static" | "intro" | "select" | "result" | "float";
+export type AnimatePhase = StandardStoryPhase | "reset";
+
 export const springPop: Transition = {
   type: "spring",
   stiffness: 520,
@@ -44,8 +47,20 @@ export const lottiePassThrough = {
   result: {},
 };
 
-export function lottieSleep(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms);
+export function lottieSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      return;
+    }
+
+    const id = window.setTimeout(resolve, ms);
+
+    const onAbort = () => {
+      window.clearTimeout(id);
+      reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
