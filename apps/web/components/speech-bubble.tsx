@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { SurfaceCard } from "@/components/landing/surface-card";
 import { cn } from "@/lib/utils";
 
 interface SpeechBubbleProps {
@@ -9,12 +10,7 @@ interface SpeechBubbleProps {
 
 export function SpeechBubble({ children, className }: SpeechBubbleProps) {
   return (
-    <div
-      className={cn(
-        "relative rounded-xl border border-b-4 border-gray-100 bg-gray-50 px-4 py-3.5 text-left shadow-sm sm:px-6 sm:py-5",
-        className,
-      )}
-    >
+    <SurfaceCard className={cn("relative px-4 py-3.5 text-left sm:px-6 sm:py-5", className)}>
       <span
         aria-hidden
         className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full sm:hidden"
@@ -32,6 +28,6 @@ export function SpeechBubble({ children, className }: SpeechBubbleProps) {
       </span>
 
       {children}
-    </div>
+    </SurfaceCard>
   );
 }
