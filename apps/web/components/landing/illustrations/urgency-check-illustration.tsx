@@ -4,7 +4,7 @@ import { AlertTriangle, Check, Siren } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
-import { easeInOut, easePop, inViewViewportLoop, lottieSleep } from "@/lib/motion";
+import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop, lottieSleep } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 import {
@@ -23,7 +23,7 @@ const urgentSigns = [
   { id: "convulsao", label: "convulsão" },
 ] as const;
 
-type StoryPhase = "idle" | "static" | "reset" | "intro" | "select" | "result";
+type StoryPhase = "idle" | "static" | "intro" | "select" | "result" | "float";
 
 const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
 
@@ -147,7 +147,6 @@ const footerHint = {
   },
 };
 
-const RESET_MS = 360;
 const INTRO_MS = 1550;
 const SELECT_MS = 520;
 const RESULT_MS = 2100;
@@ -157,56 +156,64 @@ export function UrgencyCheckIllustration() {
   const isInView = useInView(ref, inViewViewportLoop);
   const prefersReducedMotion = useReducedMotion();
   const [phase, setPhase] = useState<StoryPhase>("idle");
+  const [storyDone, setStoryDone] = useState(false);
 
-  const looping = isInView && !prefersReducedMotion;
-  const animatePhase = prefersReducedMotion ? "static" : looping ? phase : "idle";
+  const contentPhase = prefersReducedMotion
+    ? "static"
+    : storyDone || phase === "float" || phase === "result"
+      ? "result"
+      : phase;
+
   const isNoneSelected =
-    animatePhase === "select" || animatePhase === "result" || animatePhase === "static";
+    contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
+
+  const levitating = isInView && storyDone && !prefersReducedMotion;
 
   useEffect(() => {
-    if (!looping) {
+    if (!isInView && !storyDone) {
       setPhase("idle");
-      return;
     }
+  }, [isInView, storyDone]);
+
+  useEffect(() => {
+    if (prefersReducedMotion || !isInView || storyDone) return;
 
     let cancelled = false;
-    let isFirstCycle = true;
 
     (async () => {
-      while (!cancelled) {
-        if (!isFirstCycle) {
-          setPhase("reset");
-          await lottieSleep(RESET_MS);
-          if (cancelled) break;
-        }
-        isFirstCycle = false;
+      setPhase("intro");
+      await lottieSleep(INTRO_MS);
+      if (cancelled) return;
 
-        setPhase("intro");
-        await lottieSleep(INTRO_MS);
-        if (cancelled) break;
+      setPhase("select");
+      await lottieSleep(SELECT_MS);
+      if (cancelled) return;
 
-        setPhase("select");
-        await lottieSleep(SELECT_MS);
-        if (cancelled) break;
+      setPhase("result");
+      await lottieSleep(RESULT_MS);
+      if (cancelled) return;
 
-        setPhase("result");
-        await lottieSleep(RESULT_MS);
-      }
+      setStoryDone(true);
+      setPhase("float");
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [looping]);
+  }, [isInView, prefersReducedMotion, storyDone]);
 
   return (
     <IllustrationStage tone="yellow">
       <IllustrationScene className="pb-32 sm:pb-36">
-        <div ref={ref} className="relative">
+        <motion.div
+          ref={ref}
+          className="relative"
+          animate={levitating ? illustrationLevitate : { y: 0 }}
+        >
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"
-            animate={animatePhase}
+            animate={contentPhase}
             variants={badgeVariants}
           >
             <AlertTriangle className="size-4 text-yellow-600" strokeWidth={2.5} />
@@ -217,7 +224,7 @@ export function UrgencyCheckIllustration() {
             <motion.div
               className="space-y-3 px-1 pb-2 pt-1"
               initial="idle"
-              animate={animatePhase}
+              animate={contentPhase}
               variants={introSequence}
             >
               <motion.div variants={popItem}>
@@ -291,14 +298,13 @@ export function UrgencyCheckIllustration() {
               </motion.p>
             </motion.div>
           </PhoneFrame>
-        </div>
 
         <motion.div
           className="absolute inset-x-0 bottom-0 space-y-1.5"
           initial="idle"
-          animate={animatePhase}
+          animate={contentPhase}
           variants={introSequence}
-          aria-hidden={animatePhase !== "result" && animatePhase !== "static"}
+          aria-hidden={contentPhase !== "result" && contentPhase !== "static"}
         >
           <motion.div
             className="rounded-2xl border border-b-4 border-green-700 bg-green-500 px-3 py-2.5 shadow-[0_16px_32px_-10px_rgba(34,197,94,0.55)] sm:px-4 sm:py-3"
@@ -324,6 +330,7 @@ export function UrgencyCheckIllustration() {
               sinal urgente ou outro → <span className="font-extrabold">UPA</span>
             </p>
           </motion.div>
+        </motion.div>
         </motion.div>
       </IllustrationScene>
     </IllustrationStage>

@@ -2,9 +2,9 @@
 
 import { Stethoscope, User } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { inViewViewport } from "@/lib/motion";
+import { illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 import {
@@ -89,20 +89,37 @@ const continueVariants = {
   },
 };
 
+const PLAY_MS = 2200;
+
 export function SymptomInputIllustration() {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, inViewViewport);
+  const isInView = useInView(ref, inViewViewportLoop);
   const prefersReducedMotion = useReducedMotion();
-  const phase = isInView && !prefersReducedMotion ? "play" : "rest";
+  const [storyDone, setStoryDone] = useState(false);
+
+  const contentPhase =
+    prefersReducedMotion || storyDone ? "rest" : isInView ? "play" : "rest";
+  const levitating = isInView && storyDone && !prefersReducedMotion;
+
+  useEffect(() => {
+    if (prefersReducedMotion || !isInView || storyDone) return;
+
+    const timer = window.setTimeout(() => setStoryDone(true), PLAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [isInView, prefersReducedMotion, storyDone]);
 
   return (
     <IllustrationStage tone="green">
       <IllustrationScene>
-        <div ref={ref} className="relative">
+        <motion.div
+          ref={ref}
+          className="relative"
+          animate={levitating ? illustrationLevitate : { y: 0 }}
+        >
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="rest"
-            animate={phase}
+            animate={contentPhase}
             variants={badgeVariants}
           >
             <Stethoscope className="size-4 text-primary" strokeWidth={2.5} />
@@ -110,7 +127,7 @@ export function SymptomInputIllustration() {
           </motion.div>
 
           <PhoneFrame>
-            <motion.div className="space-y-3 px-1 pb-2 pt-1" initial="rest" animate={phase} variants={sequence}>
+            <motion.div className="space-y-3 px-1 pb-2 pt-1" initial="rest" animate={contentPhase} variants={sequence}>
               <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={item}>
                 pra quem é?
               </motion.p>
@@ -184,7 +201,7 @@ export function SymptomInputIllustration() {
               </motion.div>
             </motion.div>
           </PhoneFrame>
-        </div>
+        </motion.div>
       </IllustrationScene>
     </IllustrationStage>
   );

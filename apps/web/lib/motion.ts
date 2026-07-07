@@ -27,6 +27,15 @@ export const inViewViewportLoop = {
 export const easePop = [0.34, 1.45, 0.64, 1] as const;
 export const easeInOut = "easeInOut" as const;
 
+export const illustrationLevitate = {
+  y: [0, -6, 0],
+  transition: {
+    duration: 2.8,
+    repeat: Infinity,
+    ease: easeInOut,
+  },
+};
+
 export const lottiePassThrough = {
   rest: {},
   reset: {},
