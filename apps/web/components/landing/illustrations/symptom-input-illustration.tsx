@@ -4,7 +4,13 @@ import { Stethoscope, User } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
-import { illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
+import {
+  easeInOut,
+  easePop,
+  illustrationLevitate,
+  inViewViewportLoop,
+  lottieSleep,
+} from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 import {
@@ -29,83 +35,140 @@ const symptomTags = ["febre", "dor de cabeça", "mal-estar"] as const;
 
 const MOTION_TEXT = "febre desde ontem, dor de cabeça e mal-estar";
 
-const easePop = [0.34, 1.45, 0.64, 1] as const;
 const easeReveal = [0.22, 1, 0.36, 1] as const;
 
-const passThrough = {
-  rest: {},
-  play: {},
+type StoryPhase = "idle" | "static" | "intro" | "select" | "result" | "float";
+
+const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
+
+const badgeVariants = {
+  idle: { ...hiddenItem, rotate: -8 },
+  static: { scale: 1, y: 0, rotate: 0, opacity: 1 },
+  reset: { ...hiddenItem, rotate: -8, transition: { duration: 0.2, ease: easeInOut } },
+  intro: {
+    opacity: [0, 1, 1],
+    scale: [0.65, 1.12, 1],
+    y: [-18, 0],
+    rotate: [-10, 0],
+    transition: { duration: 0.52, ease: easePop },
+  },
+  select: { scale: 1, y: 0, rotate: 0, opacity: 1 },
+  result: { scale: 1, y: 0, rotate: 0, opacity: 1 },
 };
 
-const item = {
-  rest: { scale: 1, y: 0 },
-  play: {
-    scale: [0.8, 1.05, 1],
-    y: [14, -2, 0],
+const introSequence = {
+  idle: {},
+  static: {},
+  reset: {},
+  intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
+  select: {},
+  result: {},
+};
+
+const popItem = {
+  idle: hiddenItem,
+  static: { scale: 1, y: 0, opacity: 1 },
+  reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
+  intro: {
+    opacity: [0, 1, 1],
+    scale: [0.82, 1.06, 1],
+    y: [12, -3, 0],
+    transition: { duration: 0.44, ease: easePop },
+  },
+  select: { scale: 1, y: 0, opacity: 1 },
+  result: { scale: 1, y: 0, opacity: 1 },
+};
+
+const listSequence = {
+  idle: {},
+  static: {},
+  reset: {},
+  intro: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
+  select: {},
+  result: {},
+};
+
+const textRevealVariants = {
+  intro: { clipPath: "inset(0 100% 0 0)" },
+  static: { clipPath: "inset(0 0% 0 0)" },
+  select: {
+    clipPath: ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
+    transition: { duration: 0.8, ease: easeReveal },
+  },
+  result: { clipPath: "inset(0 0% 0 0)" },
+};
+
+const ctaVariants = {
+  idle: { scale: 0.86, y: 14, opacity: 0 },
+  static: { scale: 1, y: 0, opacity: 1 },
+  reset: { scale: 0.86, y: 14, opacity: 0, transition: { duration: 0.2, ease: easeInOut } },
+  intro: { scale: 0.86, y: 14, opacity: 0 },
+  select: { scale: 0.86, y: 14, opacity: 0 },
+  result: {
+    opacity: [0, 1, 1],
+    scale: [0.86, 1.06, 1],
+    y: [14, 0],
     transition: { duration: 0.5, ease: easePop },
   },
 };
 
-const sequence = {
-  rest: {},
-  play: {
-    transition: { staggerChildren: 0.1, delayChildren: 0.08 },
-  },
-};
-
-const badgeVariants = {
-  rest: { scale: 1, y: 0, rotate: 0 },
-  play: {
-    scale: [0.65, 1.08, 1],
-    y: [-18, 0],
-    rotate: [-10, 0],
-    transition: { duration: 0.55, ease: easePop },
-  },
-};
-
-const textBoxVariants = {
-  rest: { scale: 1, y: 0 },
-  play: {
-    scale: [0.94, 1],
-    y: [10, 0],
-    transition: { duration: 0.45, ease: easePop },
-  },
-};
-
-const textRevealVariants = {
-  rest: { clipPath: "inset(0 0% 0 0)" },
-  play: {
-    clipPath: ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
-    transition: { duration: 0.8, ease: easeReveal },
-  },
-};
-
-const continueVariants = {
-  rest: { scale: 1, y: 0 },
-  play: {
-    scale: [0.88, 1.04, 1],
-    y: [16, 0],
-    transition: { duration: 0.55, ease: easePop },
-  },
-};
-
-const PLAY_MS = 2200;
+const INTRO_MS = 1650;
+const SELECT_MS = 900;
+const RESULT_MS = 800;
 
 export function SymptomInputIllustration() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, inViewViewportLoop);
   const prefersReducedMotion = useReducedMotion();
+  const [phase, setPhase] = useState<StoryPhase>("idle");
   const [storyDone, setStoryDone] = useState(false);
 
-  const contentPhase =
-    prefersReducedMotion || storyDone ? "rest" : isInView ? "play" : "rest";
+  const contentPhase = prefersReducedMotion
+    ? "static"
+    : storyDone || phase === "float" || phase === "result"
+      ? "result"
+      : phase;
+
+  const textPhase =
+    contentPhase === "idle" || contentPhase === "intro"
+      ? "intro"
+      : contentPhase === "select"
+        ? "select"
+        : "result";
+
   const levitating = isInView && storyDone && !prefersReducedMotion;
+
+  useEffect(() => {
+    if (!isInView && !storyDone) {
+      setPhase("idle");
+    }
+  }, [isInView, storyDone]);
 
   useEffect(() => {
     if (prefersReducedMotion || !isInView || storyDone) return;
 
-    const timer = window.setTimeout(() => setStoryDone(true), PLAY_MS);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+
+    (async () => {
+      setPhase("intro");
+      await lottieSleep(INTRO_MS);
+      if (cancelled) return;
+
+      setPhase("select");
+      await lottieSleep(SELECT_MS);
+      if (cancelled) return;
+
+      setPhase("result");
+      await lottieSleep(RESULT_MS);
+      if (cancelled) return;
+
+      setStoryDone(true);
+      setPhase("float");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isInView, prefersReducedMotion, storyDone]);
 
   return (
@@ -118,7 +181,7 @@ export function SymptomInputIllustration() {
         >
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
-            initial="rest"
+            initial="idle"
             animate={contentPhase}
             variants={badgeVariants}
           >
@@ -127,12 +190,17 @@ export function SymptomInputIllustration() {
           </motion.div>
 
           <PhoneFrame>
-            <motion.div className="space-y-3 px-1 pb-2 pt-1" initial="rest" animate={contentPhase} variants={sequence}>
-              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={item}>
+            <motion.div
+              className="space-y-3 px-1 pb-2 pt-1"
+              initial="idle"
+              animate={contentPhase}
+              variants={introSequence}
+            >
+              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
                 pra quem é?
               </motion.p>
 
-              <motion.div className="flex flex-wrap gap-1.5" variants={passThrough}>
+              <motion.div className="flex flex-wrap gap-1.5" variants={listSequence}>
                 {whoOptions.map((option) => (
                   <motion.span
                     key={option.id}
@@ -141,7 +209,7 @@ export function SymptomInputIllustration() {
                         ? "inline-flex items-center gap-1 rounded-full border-b-[3px] border-primary-700 bg-primary px-2.5 py-1.5 text-sm font-extrabold lowercase text-white shadow-sm"
                         : "inline-flex rounded-full border border-b-2 border-gray-200 bg-white px-2.5 py-1.5 text-sm font-bold lowercase text-gray-600"
                     }
-                    variants={item}
+                    variants={popItem}
                   >
                     {option.selected ? <User className="size-3.5" strokeWidth={2.5} /> : null}
                     {option.label}
@@ -149,11 +217,11 @@ export function SymptomInputIllustration() {
                 ))}
               </motion.div>
 
-              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={item}>
+              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
                 do que precisa?
               </motion.p>
 
-              <motion.div className="flex flex-wrap gap-1.5" variants={passThrough}>
+              <motion.div className="flex flex-wrap gap-1.5" variants={listSequence}>
                 {needOptions.map((option) => (
                   <motion.span
                     key={option.id}
@@ -162,33 +230,38 @@ export function SymptomInputIllustration() {
                         ? "inline-flex rounded-full border-b-[3px] border-primary-700 bg-primary px-2.5 py-1.5 text-sm font-extrabold lowercase text-white shadow-sm"
                         : "inline-flex rounded-full border border-b-2 border-gray-200 bg-white px-2.5 py-1.5 text-sm font-bold lowercase text-gray-600"
                     }
-                    variants={item}
+                    variants={popItem}
                   >
                     {option.label}
                   </motion.span>
                 ))}
               </motion.div>
 
-              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={item}>
+              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
                 conta o motivo
               </motion.p>
 
               <motion.div
                 className="space-y-2 rounded-2xl border border-b-2 border-gray-100 bg-white p-2.5 shadow-sm"
-                variants={textBoxVariants}
+                variants={popItem}
               >
                 <div className="min-h-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                  <motion.p className="text-sm leading-relaxed text-gray-600" variants={textRevealVariants}>
+                  <motion.p
+                    className="text-sm leading-relaxed text-gray-600"
+                    initial="intro"
+                    animate={textPhase}
+                    variants={textRevealVariants}
+                  >
                     {MOTION_TEXT}
                   </motion.p>
                 </div>
 
-                <motion.div className="flex flex-wrap gap-1.5" variants={passThrough}>
+                <motion.div className="flex flex-wrap gap-1.5" variants={listSequence}>
                   {symptomTags.map((tag) => (
                     <motion.span
                       key={tag}
                       className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-sm font-bold lowercase text-primary-800"
-                      variants={item}
+                      variants={popItem}
                     >
                       {tag}
                     </motion.span>
@@ -196,7 +269,7 @@ export function SymptomInputIllustration() {
                 </motion.div>
               </motion.div>
 
-              <motion.div className={primaryCtaBarClasses} variants={continueVariants}>
+              <motion.div className={primaryCtaBarClasses} variants={ctaVariants}>
                 continuar
               </motion.div>
             </motion.div>
