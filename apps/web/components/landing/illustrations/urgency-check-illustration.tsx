@@ -48,7 +48,7 @@ const introSequence = {
   reset: {},
   intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
   select: {},
-  result: { transition: { staggerChildren: 0.08, delayChildren: 0.04 } },
+  result: {},
 };
 
 const popItem = {
@@ -61,8 +61,8 @@ const popItem = {
     y: [12, -3, 0],
     transition: { duration: 0.44, ease: easePop },
   },
-  select: { opacity: 0.38, scale: 0.97, transition: { duration: 0.22 } },
-  result: { opacity: 0.38, scale: 0.97 },
+  select: { scale: 1, y: 0, opacity: 1 },
+  result: { scale: 1, y: 0, opacity: 1 },
 };
 
 const listSequence = {
@@ -84,11 +84,7 @@ const noneRow = {
     y: [12, -3, 0],
     transition: { duration: 0.44, ease: easePop },
   },
-  select: {
-    opacity: 1,
-    scale: [1, 1.05, 1],
-    transition: { duration: 0.38, ease: easePop },
-  },
+  select: { scale: 1, y: 0, opacity: 1 },
   result: { scale: 1, y: 0, opacity: 1 },
 };
 
@@ -136,8 +132,15 @@ export function UrgencyCheckIllustration() {
       ? "result"
       : phase;
 
-  const isNoneSelected =
+  const isNoneChecked =
     contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
+
+  const checkPhase =
+    contentPhase === "idle" || contentPhase === "intro"
+      ? "intro"
+      : contentPhase === "select"
+        ? "select"
+        : "result";
 
   const levitating = isInView && storyDone && !prefersReducedMotion;
 
@@ -232,31 +235,27 @@ export function UrgencyCheckIllustration() {
               </motion.div>
 
               <motion.div
-                className={cn(
-                  "flex items-center gap-3 rounded-2xl px-3 py-3 shadow-sm transition-colors duration-200",
-                  isNoneSelected
-                    ? "border-2 border-green-500 bg-green-50"
-                    : "border border-b-2 border-gray-100 bg-white",
-                )}
+                className="flex items-center gap-3 rounded-2xl border border-b-2 border-gray-100 bg-white px-3 py-3 shadow-sm"
                 variants={noneRow}
               >
-                <motion.span
+                <span
                   className={cn(
                     "flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-200",
-                    isNoneSelected
+                    isNoneChecked
                       ? "border-green-600 bg-green-500 text-white"
                       : "border-gray-300 bg-white",
                   )}
-                  variants={checkPop}
                 >
-                  {isNoneSelected ? <Check className="size-3.5" strokeWidth={3} /> : null}
-                </motion.span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 text-sm font-bold lowercase",
-                    isNoneSelected ? "font-extrabold text-green-900" : "text-gray-800",
-                  )}
-                >
+                  <motion.span
+                    className="flex items-center justify-center"
+                    initial="intro"
+                    animate={checkPhase}
+                    variants={checkPop}
+                  >
+                    <Check className="size-3.5" strokeWidth={3} />
+                  </motion.span>
+                </span>
+                <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">
                   nenhum desses
                 </span>
               </motion.div>
