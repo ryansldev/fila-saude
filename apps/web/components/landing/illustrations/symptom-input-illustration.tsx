@@ -30,8 +30,6 @@ const symptomTags = ["febre", "dor de cabeça", "mal-estar"] as const;
 
 const MOTION_TEXT = "febre desde ontem, dor de cabeça e mal-estar";
 
-const easeReveal = [0.22, 1, 0.36, 1] as const;
-
 const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
 
 const badgeVariants = {
@@ -81,16 +79,6 @@ const listSequence = {
   result: {},
 };
 
-const textRevealVariants = {
-  intro: { clipPath: "inset(0 100% 0 0)" },
-  static: { clipPath: "inset(0 0% 0 0)" },
-  select: {
-    clipPath: ["inset(0 100% 0 0)", "inset(0 0% 0 0)"],
-    transition: { duration: 0.8, ease: easeReveal },
-  },
-  result: { clipPath: "inset(0 0% 0 0)" },
-};
-
 const ctaVariants = {
   idle: { scale: 0.86, y: 14, opacity: 0 },
   static: { scale: 1, y: 0, opacity: 1 },
@@ -106,9 +94,9 @@ const ctaVariants = {
 };
 
 const PHASE_DURATIONS = {
-  intro: 1650,
-  select: 900,
-  result: 800,
+  intro: 520,
+  select: 220,
+  result: 500,
 } as const;
 
 export function SymptomInputIllustration() {
@@ -116,9 +104,6 @@ export function SymptomInputIllustration() {
   const isInView = useInView(ref, inViewViewportLoop);
   const prefersReducedMotion = useReducedMotion();
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
-
-  const textPhase =
-    contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
   return (
     <IllustrationStage tone="green">
@@ -191,14 +176,7 @@ export function SymptomInputIllustration() {
                 variants={popItem}
               >
                 <div className="min-h-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                  <motion.p
-                    className="text-sm leading-relaxed text-gray-600"
-                    initial="intro"
-                    animate={textPhase}
-                    variants={textRevealVariants}
-                  >
-                    {MOTION_TEXT}
-                  </motion.p>
+                  <p className="text-sm leading-relaxed text-gray-600">{MOTION_TEXT}</p>
                 </div>
 
                 <motion.div className="flex flex-wrap gap-1.5" variants={listSequence}>

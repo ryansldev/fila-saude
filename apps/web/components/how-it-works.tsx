@@ -51,7 +51,7 @@ export function HowItWorks() {
     <section
       id="como-funciona"
       aria-label="Como funciona"
-      className="flex w-full min-w-0 flex-col pt-14 sm:pt-20 md:pt-24"
+      className="flex w-full min-w-0 flex-col"
       style={{ scrollMarginTop: `calc(${headerHeight} + 1rem)` }}
     >
       {features.map((feature, index) => (
