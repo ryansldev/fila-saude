@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 const elevatedPress = cn(
   "shadow-[0_var(--elev-depth)_0_0_var(--elev-shadow)]",
+  // Skip press-down for popup/menu triggers (aria-haspopup) so the control doesn't shift under an opening surface.
   "[&:active:not([aria-haspopup]):not(:disabled)]:translate-y-[var(--elev-depth)]",
   "[&:active:not([aria-haspopup]):not(:disabled)]:shadow-none",
   "[&:active:not([aria-haspopup]):not(:disabled)]:transition-none",

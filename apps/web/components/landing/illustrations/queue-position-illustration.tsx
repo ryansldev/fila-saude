@@ -43,7 +43,7 @@ export function QueuePositionIllustration() {
 
   const isAdvanced = contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
   const progress = isAdvanced ? 0.28 : 0.22;
-  const progressPercent = isAdvanced ? 28 : 22;
+  const progressPercent = progress * 100;
 
   const positionPhase =
     contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
