@@ -123,9 +123,9 @@ const ctaVariants = {
 } satisfies Record<AnimatePhase, object>;
 
 const PHASE_DURATIONS = {
-  intro: 1550,
-  select: 520,
-  result: 800,
+  intro: 650,
+  select: 320,
+  result: 500,
 } as const;
 
 export function UrgencyCheckIllustration() {

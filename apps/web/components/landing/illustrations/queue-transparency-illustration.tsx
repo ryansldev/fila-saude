@@ -97,9 +97,9 @@ const footerVariants = {
 };
 
 const PHASE_DURATIONS = {
-  intro: 1850,
-  select: 520,
-  result: 900,
+  intro: 750,
+  select: 320,
+  result: 400,
 } as const;
 
 export function QueueTransparencyIllustration() {

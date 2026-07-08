@@ -75,9 +75,9 @@ const footerVariants = {
 };
 
 const PHASE_DURATIONS = {
-  intro: 1400,
-  select: 520,
-  result: 900,
+  intro: 550,
+  select: 320,
+  result: 500,
 } as const;
 
 export function NotificationIllustration() {
