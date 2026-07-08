@@ -4,7 +4,16 @@ import { Stethoscope, User } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
-import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
+import {
+  badgeVariants,
+  ctaVariants,
+  illustrationLevitate,
+  illustrationRest,
+  introSequence,
+  inViewViewportLoop,
+  listSequence,
+  popItem,
+} from "@/lib/motion";
 import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
@@ -30,69 +39,6 @@ const symptomTags = ["febre", "dor de cabeça", "mal-estar"] as const;
 
 const MOTION_TEXT = "febre desde ontem, dor de cabeça e mal-estar";
 
-const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
-
-const badgeVariants = {
-  idle: { ...hiddenItem, rotate: -8 },
-  static: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  reset: { ...hiddenItem, rotate: -8, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.65, 1.12, 1],
-    y: [-18, 0],
-    rotate: [-10, 0],
-    transition: { duration: 0.52, ease: easePop },
-  },
-  select: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  result: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-};
-
-const introSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
-  select: {},
-  result: {},
-};
-
-const popItem = {
-  idle: hiddenItem,
-  static: { scale: 1, y: 0, opacity: 1 },
-  reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.82, 1.06, 1],
-    y: [12, -3, 0],
-    transition: { duration: 0.44, ease: easePop },
-  },
-  select: { scale: 1, y: 0, opacity: 1 },
-  result: { scale: 1, y: 0, opacity: 1 },
-};
-
-const listSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
-  select: {},
-  result: {},
-};
-
-const ctaVariants = {
-  idle: { scale: 0.86, y: 14, opacity: 0 },
-  static: { scale: 1, y: 0, opacity: 1 },
-  reset: { scale: 0.86, y: 14, opacity: 0, transition: { duration: 0.2, ease: easeInOut } },
-  intro: { scale: 0.86, y: 14, opacity: 0 },
-  select: { scale: 0.86, y: 14, opacity: 0 },
-  result: {
-    opacity: [0, 1, 1],
-    scale: [0.86, 1.06, 1],
-    y: [14, 0],
-    transition: { duration: 0.5, ease: easePop },
-  },
-};
-
 const PHASE_DURATIONS = {
   intro: 520,
   select: 220,
@@ -108,7 +54,7 @@ export function SymptomInputIllustration() {
   return (
     <IllustrationStage tone="green">
       <IllustrationScene>
-        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : illustrationRest}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"

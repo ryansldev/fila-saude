@@ -4,7 +4,17 @@ import { ChevronLeft, Info } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
-import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
+import {
+  badgeVariants,
+  countPressVariant,
+  footerVariants,
+  illustrationLevitate,
+  illustrationRest,
+  introSequence,
+  inViewViewportLoop,
+  listSequence,
+  popItem,
+} from "@/lib/motion";
 import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
@@ -24,78 +34,6 @@ const aheadRows = [
 
 const userTicket = "013";
 
-const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
-
-const badgeVariants = {
-  idle: { ...hiddenItem, rotate: -8 },
-  static: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  reset: { ...hiddenItem, rotate: -8, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.65, 1.12, 1],
-    y: [-18, 0],
-    rotate: [-10, 0],
-    transition: { duration: 0.52, ease: easePop },
-  },
-  select: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  result: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-};
-
-const introSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
-  select: {},
-  result: {},
-};
-
-const popItem = {
-  idle: hiddenItem,
-  static: { scale: 1, y: 0, opacity: 1 },
-  reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.82, 1.06, 1],
-    y: [12, -3, 0],
-    transition: { duration: 0.44, ease: easePop },
-  },
-  select: { scale: 1, y: 0, opacity: 1 },
-  result: { scale: 1, y: 0, opacity: 1 },
-};
-
-const listSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
-  select: {},
-  result: {},
-};
-
-const countPress = {
-  intro: { scale: 1 },
-  static: { scale: 1 },
-  select: {
-    scale: [1, 0.92, 1],
-    transition: { duration: 0.38, ease: easePop },
-  },
-  result: { scale: 1 },
-};
-
-const footerVariants = {
-  idle: { opacity: 0, y: 24 },
-  static: { opacity: 1, y: 0 },
-  reset: { opacity: 0, y: 24, transition: { duration: 0.2, ease: easeInOut } },
-  intro: { opacity: 0, y: 24 },
-  select: { opacity: 0, y: 24 },
-  result: {
-    opacity: [0, 1, 1],
-    y: [24, 0],
-    transition: { duration: 0.55, ease: easePop },
-  },
-};
-
 const PHASE_DURATIONS = {
   intro: 750,
   select: 320,
@@ -114,7 +52,7 @@ export function QueueTransparencyIllustration() {
   return (
     <IllustrationStage tone="primary">
       <IllustrationScene className="pb-20 sm:pb-24">
-        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : illustrationRest}>
           <motion.div
             className={cn(floatingBadgeClasses("left"), "inline-flex")}
             initial="idle"
@@ -153,7 +91,7 @@ export function QueueTransparencyIllustration() {
                   className="rounded-full bg-primary-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-primary"
                   initial="intro"
                   animate={tapPhase}
-                  variants={countPress}
+                  variants={countPressVariant}
                 >
                   3
                 </motion.span>

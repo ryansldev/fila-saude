@@ -4,7 +4,17 @@ import { AlertTriangle, Check } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
-import { type AnimatePhase, easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
+import {
+  badgeVariants,
+  checkPopVariant,
+  ctaVariants,
+  illustrationLevitate,
+  illustrationRest,
+  introSequence,
+  inViewViewportLoop,
+  listSequence,
+  popItem,
+} from "@/lib/motion";
 import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
@@ -23,104 +33,6 @@ const urgentSigns = [
   { id: "sangue", label: "sangramento que não para" },
   { id: "convulsao", label: "convulsão" },
 ] as const;
-
-const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
-const stableItem = { scale: 1, y: 0, opacity: 1 };
-
-const badgeVariants = {
-  idle: { ...hiddenItem, rotate: -8 },
-  static: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  reset: { ...hiddenItem, rotate: -8, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.65, 1.12, 1],
-    y: [-18, 0],
-    rotate: [-10, 0],
-    transition: { duration: 0.52, ease: easePop },
-  },
-  select: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  result: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  float: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-} satisfies Record<AnimatePhase, object>;
-
-const introSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
-  select: {},
-  result: {},
-  float: {},
-} satisfies Record<AnimatePhase, object>;
-
-const popItem = {
-  idle: hiddenItem,
-  static: stableItem,
-  reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.82, 1.06, 1],
-    y: [12, -3, 0],
-    transition: { duration: 0.44, ease: easePop },
-  },
-  select: stableItem,
-  result: stableItem,
-  float: stableItem,
-} satisfies Record<AnimatePhase, object>;
-
-const listSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
-  select: {},
-  result: {},
-  float: {},
-} satisfies Record<AnimatePhase, object>;
-
-const noneRow = {
-  idle: hiddenItem,
-  static: stableItem,
-  reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.82, 1.06, 1],
-    y: [12, -3, 0],
-    transition: { duration: 0.44, ease: easePop },
-  },
-  select: stableItem,
-  result: stableItem,
-  float: stableItem,
-} satisfies Record<AnimatePhase, object>;
-
-const checkPop = {
-  idle: { scale: 0, opacity: 0 },
-  static: { scale: 1, opacity: 1 },
-  reset: { scale: 0, opacity: 0, transition: { duration: 0.15 } },
-  intro: { scale: 0, opacity: 0 },
-  select: {
-    scale: [0, 1.3, 1],
-    opacity: 1,
-    transition: { duration: 0.42, ease: easePop },
-  },
-  result: { scale: 1, opacity: 1 },
-  float: { scale: 1, opacity: 1 },
-} satisfies Record<AnimatePhase, object>;
-
-const ctaVariants = {
-  idle: { scale: 0.86, y: 14, opacity: 0 },
-  static: { scale: 1, y: 0, opacity: 1 },
-  reset: { scale: 0.86, y: 14, opacity: 0, transition: { duration: 0.2, ease: easeInOut } },
-  intro: { scale: 0.86, y: 14, opacity: 0 },
-  select: { scale: 0.86, y: 14, opacity: 0 },
-  result: {
-    opacity: [0, 1, 1],
-    scale: [0.86, 1.06, 1],
-    y: [14, 0],
-    transition: { duration: 0.5, ease: easePop },
-  },
-  float: { scale: 1, y: 0, opacity: 1 },
-} satisfies Record<AnimatePhase, object>;
 
 const PHASE_DURATIONS = {
   intro: 650,
@@ -142,7 +54,7 @@ export function UrgencyCheckIllustration() {
   return (
     <IllustrationStage tone="yellow">
       <IllustrationScene>
-        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : illustrationRest}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"
@@ -197,7 +109,7 @@ export function UrgencyCheckIllustration() {
 
                 <motion.div
                   className="flex items-center gap-3 rounded-2xl border border-b-2 border-gray-100 bg-white px-3 py-3 shadow-sm"
-                  variants={noneRow}
+                  variants={popItem}
                 >
                   <span
                     className={cn(
@@ -209,7 +121,7 @@ export function UrgencyCheckIllustration() {
                       className="flex items-center justify-center"
                       initial="intro"
                       animate={checkPhase}
-                      variants={checkPop}
+                      variants={checkPopVariant}
                     >
                       <Check className="size-3.5" strokeWidth={3} />
                     </motion.span>
