@@ -12,10 +12,7 @@ interface PageShellProps {
 export function PageShell({ children, className }: PageShellProps) {
   return (
     <main
-      className={cn(
-        "flex min-h-screen flex-col overflow-x-clip bg-background px-4 sm:px-6 lg:px-8",
-        className,
-      )}
+      className={cn("flex min-h-screen flex-col overflow-x-clip bg-background px-4 sm:px-6 lg:px-8", className)}
       style={{ paddingTop: `calc(${headerHeight} + 1.5rem)` }}
     >
       {children}
