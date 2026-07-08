@@ -15,7 +15,7 @@ export default function Home() {
         <HowItWorks />
         <CtaBanner repositoryUrl={REPOSITORY_URL} />
       </PageShell>
-      <PageFooter>Em construção. Feito com 💙 por quem usa o SUS.</PageFooter>
+      <PageFooter>Feito com 💙 por quem usa o SUS.</PageFooter>
     </>
   );
 }

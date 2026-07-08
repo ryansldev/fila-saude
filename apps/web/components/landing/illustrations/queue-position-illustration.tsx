@@ -4,7 +4,18 @@ import { ArrowUp, Clock, Users } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
-import { easeInOut, easePop, illustrationLevitate, inViewViewportLoop } from "@/lib/motion";
+import {
+  badgeVariants,
+  easePop,
+  emphasisScaleVariant,
+  footerVariants,
+  illustrationLevitate,
+  illustrationRest,
+  introSequence,
+  inViewViewportLoop,
+  listSequence,
+  popItem,
+} from "@/lib/motion";
 import { useStandardPhaseLoop } from "@/lib/use-standard-phase-loop";
 import { cn } from "@/lib/utils";
 
@@ -16,83 +27,13 @@ import {
   PhoneQueueHeader,
 } from "../illustration-stage";
 
-const hiddenItem = { scale: 0.92, y: 10, opacity: 0 };
-
-const badgeVariants = {
-  idle: { ...hiddenItem, rotate: -8 },
-  static: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  reset: { ...hiddenItem, rotate: -8, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.65, 1.12, 1],
-    y: [-18, 0],
-    rotate: [-10, 0],
-    transition: { duration: 0.52, ease: easePop },
-  },
-  select: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-  result: { scale: 1, y: 0, rotate: 0, opacity: 1 },
-};
-
-const introSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.07, delayChildren: 0.06 } },
-  select: {},
-  result: {},
-};
-
-const popItem = {
-  idle: hiddenItem,
-  static: { scale: 1, y: 0, opacity: 1 },
-  reset: { ...hiddenItem, transition: { duration: 0.2, ease: easeInOut } },
-  intro: {
-    opacity: [0, 1, 1],
-    scale: [0.82, 1.06, 1],
-    y: [12, -3, 0],
-    transition: { duration: 0.44, ease: easePop },
-  },
-  select: { scale: 1, y: 0, opacity: 1 },
-  result: { scale: 1, y: 0, opacity: 1 },
-};
-
-const listSequence = {
-  idle: {},
-  static: {},
-  reset: {},
-  intro: { transition: { staggerChildren: 0.05, delayChildren: 0.02 } },
-  select: {},
-  result: {},
-};
-
-const positionPop = {
-  intro: { scale: 1 },
-  static: { scale: 1 },
-  select: {
-    scale: [1, 1.06, 1],
-    transition: { duration: 0.42, ease: easePop },
-  },
-  result: { scale: 1 },
-};
-
-const footerVariants = {
-  idle: { opacity: 0, y: 24 },
-  static: { opacity: 1, y: 0 },
-  reset: { opacity: 0, y: 24, transition: { duration: 0.2, ease: easeInOut } },
-  intro: { opacity: 0, y: 24 },
-  select: { opacity: 0, y: 24 },
-  result: {
-    opacity: [0, 1, 1],
-    y: [24, 0],
-    transition: { duration: 0.55, ease: easePop },
-  },
-};
-
 const PHASE_DURATIONS = {
   intro: 650,
   select: 300,
   result: 500,
 } as const;
+
+const progressTransition = { duration: 0.45, ease: easePop } as const;
 
 export function QueuePositionIllustration() {
   const ref = useRef<HTMLDivElement>(null);
@@ -101,6 +42,8 @@ export function QueuePositionIllustration() {
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
   const isAdvanced = contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
+  const progress = isAdvanced ? 0.28 : 0.22;
+  const progressPercent = progress * 100;
 
   const positionPhase =
     contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
@@ -108,7 +51,7 @@ export function QueuePositionIllustration() {
   return (
     <IllustrationStage tone="yellow">
       <IllustrationScene className="pb-20 sm:pb-24">
-        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : { y: 0 }}>
+        <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : illustrationRest}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
             initial="idle"
@@ -139,7 +82,7 @@ export function QueuePositionIllustration() {
                   className="mt-1 text-6xl font-extrabold leading-none text-primary tabular-nums sm:text-8xl lg:text-9xl"
                   initial="intro"
                   animate={positionPhase}
-                  variants={positionPop}
+                  variants={emphasisScaleVariant}
                 >
                   {isAdvanced ? "4º" : "5º"}
                 </motion.p>
@@ -151,17 +94,21 @@ export function QueuePositionIllustration() {
                   <span className="tabular-nums">{isAdvanced ? "3" : "4"} na frente</span>
                   <span className="tabular-nums">9 atrás</span>
                 </div>
-                <div className="relative h-3 overflow-hidden rounded-full bg-gray-100">
+                <div className="relative h-3">
+                  <div className="absolute inset-0 overflow-hidden rounded-full bg-gray-100">
+                    <motion.div
+                      className="h-full w-full origin-left rounded-full bg-primary"
+                      animate={{ transform: `scaleX(${progress})` }}
+                      transition={progressTransition}
+                    />
+                  </div>
                   <motion.div
-                    className="absolute inset-y-0 left-0 rounded-full bg-primary"
-                    animate={{ width: isAdvanced ? "28%" : "22%" }}
-                    transition={{ duration: 0.45, ease: easePop }}
-                  />
-                  <motion.div
-                    className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-sm"
-                    animate={{ left: isAdvanced ? "28%" : "22%" }}
-                    transition={{ duration: 0.45, ease: easePop }}
-                  />
+                    className="absolute top-1/2 w-full"
+                    animate={{ transform: `translateX(${progressPercent}%) translateY(-50%)` }}
+                    transition={progressTransition}
+                  >
+                    <div className="absolute left-0 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-sm" />
+                  </motion.div>
                 </div>
               </motion.div>
 
@@ -175,7 +122,7 @@ export function QueuePositionIllustration() {
                     className="mt-1 text-xl font-extrabold tabular-nums text-gray-900"
                     initial="intro"
                     animate={positionPhase}
-                    variants={positionPop}
+                    variants={emphasisScaleVariant}
                   >
                     {isAdvanced ? "3" : "4"}
                   </motion.p>
