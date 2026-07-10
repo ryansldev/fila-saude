@@ -5,11 +5,11 @@ import { cn } from "@/lib/utils";
 const characterVariants = cva("aspect-[300/463] shrink-0", {
   variants: {
     size: {
-      xs: "w-[120px]",
-      sm: "w-[200px]",
-      md: "w-[300px]",
-      lg: "w-[400px]",
-      xl: "w-[500px]",
+      xs: "w-[132px]",
+      sm: "w-[220px]",
+      md: "w-[330px]",
+      lg: "w-[440px]",
+      xl: "w-[550px]",
     },
   },
   defaultVariants: {

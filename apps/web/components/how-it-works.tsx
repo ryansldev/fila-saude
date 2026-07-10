@@ -5,7 +5,6 @@ import { QueuePositionIllustration } from "@/components/landing/illustrations/qu
 import { QueueTransparencyIllustration } from "@/components/landing/illustrations/queue-transparency-illustration";
 import { SymptomInputIllustration } from "@/components/landing/illustrations/symptom-input-illustration";
 import { UrgencyCheckIllustration } from "@/components/landing/illustrations/urgency-check-illustration";
-import { headerHeight } from "@/components/landing/page-shell";
 
 const features = [
   {
@@ -48,12 +47,7 @@ const features = [
 
 export function HowItWorks() {
   return (
-    <section
-      id="como-funciona"
-      aria-label="Como funciona"
-      className="flex w-full min-w-0 flex-col"
-      style={{ scrollMarginTop: `calc(${headerHeight} + 1rem)` }}
-    >
+    <section id="como-funciona" aria-label="Como funciona" className="flex w-full min-w-0 flex-col">
       {features.map((feature, index) => (
         <FeatureSection
           key={feature.headline}

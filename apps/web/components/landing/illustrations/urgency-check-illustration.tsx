@@ -61,8 +61,8 @@ export function UrgencyCheckIllustration() {
             animate={contentPhase}
             variants={badgeVariants}
           >
-            <AlertTriangle className="size-4 text-yellow-600" strokeWidth={2.5} />
-            <span className="text-sm font-bold text-gray-700">pré-triagem</span>
+            <AlertTriangle className="size-[1.1rem] text-yellow-600" strokeWidth={2.5} />
+            <span className="text-[0.9625rem] font-bold text-gray-700">pré-triagem</span>
           </motion.div>
 
           <PhoneFrame>
@@ -74,10 +74,10 @@ export function UrgencyCheckIllustration() {
                 variants={introSequence}
               >
                 <motion.div variants={popItem}>
-                  <p className="text-lg font-extrabold lowercase leading-tight text-gray-900">
+                  <p className="text-[1.2375rem] font-extrabold lowercase leading-tight text-gray-900">
                     tem algum sinal urgente?
                   </p>
-                  <p className="mt-1 text-sm text-gray-500">marque o que estiver sentindo agora</p>
+                  <p className="mt-1 text-[0.9625rem] text-gray-500">marque o que estiver sentindo agora</p>
                 </motion.div>
 
                 <motion.div
@@ -93,8 +93,10 @@ export function UrgencyCheckIllustration() {
                       )}
                       variants={popItem}
                     >
-                      <span className="flex size-5 shrink-0 rounded-md border-2 border-gray-300 bg-white" />
-                      <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">{sign.label}</span>
+                      <span className="flex size-[1.375rem] shrink-0 rounded-md border-2 border-gray-300 bg-white" />
+                      <span className="min-w-0 flex-1 text-[0.9625rem] font-bold lowercase text-gray-800">
+                        {sign.label}
+                      </span>
                     </motion.div>
                   ))}
                 </motion.div>
@@ -103,8 +105,8 @@ export function UrgencyCheckIllustration() {
                   className="flex items-center gap-3 rounded-2xl border border-b-2 border-gray-100 bg-white px-3 py-3 shadow-sm"
                   variants={popItem}
                 >
-                  <span className="flex size-5 shrink-0 rounded-md border-2 border-gray-300 bg-white" />
-                  <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">outro</span>
+                  <span className="flex size-[1.375rem] shrink-0 rounded-md border-2 border-gray-300 bg-white" />
+                  <span className="min-w-0 flex-1 text-[0.9625rem] font-bold lowercase text-gray-800">outro</span>
                 </motion.div>
 
                 <motion.div
@@ -113,7 +115,7 @@ export function UrgencyCheckIllustration() {
                 >
                   <span
                     className={cn(
-                      "flex size-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-200",
+                      "flex size-[1.375rem] shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-200",
                       isNoneChecked ? "border-green-600 bg-green-500 text-white" : "border-gray-300 bg-white",
                     )}
                   >
@@ -123,17 +125,19 @@ export function UrgencyCheckIllustration() {
                       animate={checkPhase}
                       variants={checkPopVariant}
                     >
-                      <Check className="size-3.5" strokeWidth={3} />
+                      <Check className="size-[0.9625rem]" strokeWidth={3} />
                     </motion.span>
                   </span>
-                  <span className="min-w-0 flex-1 text-sm font-bold lowercase text-gray-800">nenhum desses</span>
+                  <span className="min-w-0 flex-1 text-[0.9625rem] font-bold lowercase text-gray-800">
+                    nenhum desses
+                  </span>
                 </motion.div>
 
                 <motion.div className={primaryCtaBarClasses} variants={ctaVariants}>
                   continuar
                 </motion.div>
 
-                <motion.p className="text-center text-sm leading-snug text-gray-400" variants={popItem}>
+                <motion.p className="text-center text-[0.9625rem] leading-snug text-gray-400" variants={popItem}>
                   na unidade, o enfermeiro faz a classificação oficial
                 </motion.p>
               </motion.div>

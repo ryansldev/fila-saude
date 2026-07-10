@@ -6,7 +6,7 @@ interface LogoProps {
 
 export function Logo({ className }: LogoProps) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" className={cn("size-8", className)}>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" className={cn("size-[2.2rem]", className)}>
       <title>Logo Fila Saúde</title>
       <path
         fill="currentColor"

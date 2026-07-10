@@ -58,7 +58,7 @@ export function NearbyClinicsIllustration() {
 
   return (
     <IllustrationStage tone="primary">
-      <IllustrationScene className="pb-20 sm:pb-24">
+      <IllustrationScene className="pb-[5.5rem] sm:pb-[6.6rem]">
         <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : illustrationRest}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
@@ -66,8 +66,8 @@ export function NearbyClinicsIllustration() {
             animate={contentPhase}
             variants={badgeVariants}
           >
-            <UserCheck className="size-4 text-primary" strokeWidth={2.5} />
-            <span className="text-sm font-bold text-gray-700">sua UBS</span>
+            <UserCheck className="size-[1.1rem] text-primary" strokeWidth={2.5} />
+            <span className="text-[0.9625rem] font-bold text-gray-700">sua UBS</span>
           </motion.div>
 
           <PhoneFrame>
@@ -77,18 +77,18 @@ export function NearbyClinicsIllustration() {
               animate={contentPhase}
               variants={introSequence}
             >
-              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
+              <motion.p className="text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
                 pra onde ir?
               </motion.p>
 
               <motion.div className="flex gap-1 rounded-xl bg-gray-100 p-0.5" variants={popItem}>
                 <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border-b-[3px] border-primary-700 bg-primary py-2 text-white shadow-sm">
-                  <Check className="size-3.5" strokeWidth={3} />
-                  <span className="text-sm font-extrabold">UBS</span>
+                  <Check className="size-[0.9625rem]" strokeWidth={3} />
+                  <span className="text-[0.9625rem] font-extrabold">UBS</span>
                 </div>
                 <div className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 opacity-50">
-                  <Siren className="size-3.5 text-gray-400" strokeWidth={2.5} />
-                  <span className="text-sm font-extrabold text-gray-500">UPA</span>
+                  <Siren className="size-[0.9625rem] text-gray-400" strokeWidth={2.5} />
+                  <span className="text-[0.9625rem] font-extrabold text-gray-500">UPA</span>
                 </div>
               </motion.div>
 
@@ -100,20 +100,23 @@ export function NearbyClinicsIllustration() {
                   className="flex items-start gap-2.5 border-b border-primary-100 bg-primary-50 px-3 py-2.5"
                   variants={popItem}
                 >
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                    <Building2 className="size-4" strokeWidth={2.5} />
+                  <span className="flex size-[2.475rem] shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                    <Building2 className="size-[1.1rem]" strokeWidth={2.5} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-extrabold text-gray-900">UBS Centro</p>
-                    <p className="mt-0.5 text-sm text-gray-500">R. das Flores, 120 · 0,8 km</p>
-                    <span className="mt-1 inline-flex rounded-full border border-b-2 border-primary-200 bg-white px-2 py-0.5 text-sm font-extrabold lowercase text-primary">
+                    <p className="text-[0.9625rem] font-extrabold text-gray-900">UBS Centro</p>
+                    <p className="mt-0.5 text-[0.9625rem] text-gray-500">R. das Flores, 120 · 0,8 km</p>
+                    <span className="mt-1 inline-flex rounded-full border border-b-2 border-primary-200 bg-white px-2 py-0.5 text-[0.9625rem] font-extrabold lowercase text-primary">
                       cadastrada
                     </span>
                   </div>
                 </motion.div>
 
                 <motion.div className="space-y-1.5 px-2.5 py-2" variants={listSequence}>
-                  <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-400" variants={popItem}>
+                  <motion.p
+                    className="text-[0.9625rem] font-bold lowercase tracking-wide text-gray-400"
+                    variants={popItem}
+                  >
                     atendimentos de hoje
                   </motion.p>
 
@@ -125,13 +128,13 @@ export function NearbyClinicsIllustration() {
                         variants={popItem}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-extrabold text-gray-900">{service.name}</p>
-                          <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold tabular-nums text-primary">
-                            <Users className="size-3.5" strokeWidth={2.5} />
+                          <p className="text-[0.9625rem] font-extrabold text-gray-900">{service.name}</p>
+                          <span className="flex shrink-0 items-center gap-1 text-[0.9625rem] font-extrabold tabular-nums text-primary">
+                            <Users className="size-[0.9625rem]" strokeWidth={2.5} />
                             {service.queueCount}
                           </span>
                         </div>
-                        <span className="mt-1 inline-flex rounded-full bg-green-100 px-2 py-0.5 text-sm font-bold lowercase text-green-800">
+                        <span className="mt-1 inline-flex rounded-full bg-green-100 px-2 py-0.5 text-[0.9625rem] font-bold lowercase text-green-800">
                           {service.status}
                         </span>
                       </motion.div>
@@ -141,9 +144,11 @@ export function NearbyClinicsIllustration() {
                         className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-2.5 py-2"
                         variants={popItem}
                       >
-                        <Lock className="size-3.5 shrink-0 text-gray-400" strokeWidth={2.5} />
-                        <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-600">{service.name}</p>
-                        <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-sm font-bold lowercase text-gray-600">
+                        <Lock className="size-[0.9625rem] shrink-0 text-gray-400" strokeWidth={2.5} />
+                        <p className="min-w-0 flex-1 truncate text-[0.9625rem] font-bold text-gray-600">
+                          {service.name}
+                        </p>
+                        <span className="shrink-0 rounded-full bg-gray-200 px-2 py-0.5 text-[0.9625rem] font-bold lowercase text-gray-600">
                           {service.status}
                         </span>
                       </motion.div>
@@ -151,7 +156,7 @@ export function NearbyClinicsIllustration() {
                   )}
 
                   <motion.div
-                    className="rounded-xl border border-b-[3px] border-primary-700 bg-primary py-2.5 text-center text-sm font-extrabold uppercase tracking-wide text-white shadow-sm"
+                    className="rounded-xl border border-b-[3px] border-primary-700 bg-primary py-2.5 text-center text-[0.9625rem] font-extrabold uppercase tracking-wide text-white shadow-sm"
                     variants={popItem}
                   >
                     <motion.span
@@ -167,7 +172,7 @@ export function NearbyClinicsIllustration() {
               </motion.div>
 
               <motion.div variants={popItem}>
-                <p className="mb-1.5 text-sm font-bold lowercase tracking-wide text-gray-400">outras UBS</p>
+                <p className="mb-1.5 text-[0.9625rem] font-bold lowercase tracking-wide text-gray-400">outras UBS</p>
                 <motion.div className="space-y-1" variants={listSequence}>
                   {otherUnits.map((unit) => (
                     <motion.div
@@ -175,18 +180,22 @@ export function NearbyClinicsIllustration() {
                       className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-b-2 border-gray-100 bg-white px-2.5 py-2 shadow-sm"
                       variants={popItem}
                     >
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
-                        <Building2 className="size-3.5" strokeWidth={2.5} />
+                      <span className="flex size-[1.925rem] shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+                        <Building2 className="size-[0.9625rem]" strokeWidth={2.5} />
                       </span>
-                      <p className="min-w-0 flex-1 truncate text-sm font-extrabold text-gray-800">{unit.name}</p>
-                      <span className="shrink-0 text-sm tabular-nums text-gray-500">{unit.distance}</span>
-                      <span className="shrink-0 rounded-lg border border-b-2 border-gray-200 bg-gray-50 px-2 py-1 text-sm font-extrabold lowercase text-gray-700">
+                      <p className="min-w-0 flex-1 truncate text-[0.9625rem] font-extrabold text-gray-800">
+                        {unit.name}
+                      </p>
+                      <span className="shrink-0 text-[0.9625rem] tabular-nums text-gray-500">{unit.distance}</span>
+                      <span className="shrink-0 rounded-lg border border-b-2 border-gray-200 bg-gray-50 px-2 py-1 text-[0.9625rem] font-extrabold lowercase text-gray-700">
                         cadastrar
                       </span>
                     </motion.div>
                   ))}
                 </motion.div>
-                <p className="mt-1.5 text-center text-sm leading-snug text-gray-400">na UPA não precisa de cadastro.</p>
+                <p className="mt-1.5 text-center text-[0.9625rem] leading-snug text-gray-400">
+                  na UPA não precisa de cadastro.
+                </p>
               </motion.div>
             </motion.div>
           </PhoneFrame>
@@ -198,8 +207,8 @@ export function NearbyClinicsIllustration() {
             variants={footerVariants}
           >
             <div className="flex items-center justify-center gap-1.5 rounded-xl border border-b-[3px] border-green-700 bg-green-500 px-3 py-2 shadow-md">
-              <Check className="size-3.5 shrink-0 text-white" strokeWidth={3} />
-              <p className="text-sm font-extrabold text-white">você entrou na fila!</p>
+              <Check className="size-[0.9625rem] shrink-0 text-white" strokeWidth={3} />
+              <p className="text-[0.9625rem] font-extrabold text-white">você entrou na fila!</p>
             </div>
           </motion.div>
         </motion.div>

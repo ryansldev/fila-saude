@@ -61,8 +61,8 @@ export function SymptomInputIllustration() {
             animate={contentPhase}
             variants={badgeVariants}
           >
-            <Stethoscope className="size-4 text-primary" strokeWidth={2.5} />
-            <span className="text-sm font-bold text-gray-700">primeiro passo</span>
+            <Stethoscope className="size-[1.1rem] text-primary" strokeWidth={2.5} />
+            <span className="text-[0.9625rem] font-bold text-gray-700">primeiro passo</span>
           </motion.div>
 
           <PhoneFrame>
@@ -72,7 +72,7 @@ export function SymptomInputIllustration() {
               animate={contentPhase}
               variants={introSequence}
             >
-              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
+              <motion.p className="text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
                 pra quem é?
               </motion.p>
 
@@ -82,18 +82,18 @@ export function SymptomInputIllustration() {
                     key={option.id}
                     className={
                       option.selected
-                        ? "inline-flex items-center gap-1 rounded-full border-b-[3px] border-primary-700 bg-primary px-2.5 py-1.5 text-sm font-extrabold lowercase text-white shadow-sm"
-                        : "inline-flex rounded-full border border-b-2 border-gray-200 bg-white px-2.5 py-1.5 text-sm font-bold lowercase text-gray-600"
+                        ? "inline-flex items-center gap-1 rounded-full border-b-[3px] border-primary-700 bg-primary px-2.5 py-1.5 text-[0.9625rem] font-extrabold lowercase text-white shadow-sm"
+                        : "inline-flex rounded-full border border-b-2 border-gray-200 bg-white px-2.5 py-1.5 text-[0.9625rem] font-bold lowercase text-gray-600"
                     }
                     variants={popItem}
                   >
-                    {option.selected ? <User className="size-3.5" strokeWidth={2.5} /> : null}
+                    {option.selected ? <User className="size-[0.9625rem]" strokeWidth={2.5} /> : null}
                     {option.label}
                   </motion.span>
                 ))}
               </motion.div>
 
-              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
+              <motion.p className="text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
                 do que precisa?
               </motion.p>
 
@@ -103,8 +103,8 @@ export function SymptomInputIllustration() {
                     key={option.id}
                     className={
                       option.selected
-                        ? "inline-flex rounded-full border-b-[3px] border-primary-700 bg-primary px-2.5 py-1.5 text-sm font-extrabold lowercase text-white shadow-sm"
-                        : "inline-flex rounded-full border border-b-2 border-gray-200 bg-white px-2.5 py-1.5 text-sm font-bold lowercase text-gray-600"
+                        ? "inline-flex rounded-full border-b-[3px] border-primary-700 bg-primary px-2.5 py-1.5 text-[0.9625rem] font-extrabold lowercase text-white shadow-sm"
+                        : "inline-flex rounded-full border border-b-2 border-gray-200 bg-white px-2.5 py-1.5 text-[0.9625rem] font-bold lowercase text-gray-600"
                     }
                     variants={popItem}
                   >
@@ -113,7 +113,7 @@ export function SymptomInputIllustration() {
                 ))}
               </motion.div>
 
-              <motion.p className="text-sm font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
+              <motion.p className="text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500" variants={popItem}>
                 conta o motivo
               </motion.p>
 
@@ -121,15 +121,15 @@ export function SymptomInputIllustration() {
                 className="space-y-2 rounded-2xl border border-b-2 border-gray-100 bg-white p-2.5 shadow-sm"
                 variants={popItem}
               >
-                <div className="min-h-14 overflow-hidden rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
-                  <p className="text-sm leading-relaxed text-gray-600">{MOTION_TEXT}</p>
+                <div className="min-h-[3.85rem] overflow-hidden rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                  <p className="text-[0.9625rem] leading-relaxed text-gray-600">{MOTION_TEXT}</p>
                 </div>
 
                 <motion.div className="flex flex-wrap gap-1.5" variants={listSequence}>
                   {symptomTags.map((tag) => (
                     <motion.span
                       key={tag}
-                      className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-sm font-bold lowercase text-primary-800"
+                      className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[0.9625rem] font-bold lowercase text-primary-800"
                       variants={popItem}
                     >
                       {tag}

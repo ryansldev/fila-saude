@@ -19,7 +19,10 @@ export function SiteHeader({ cta, repositoryUrl = REPOSITORY_URL }: SiteHeaderPr
       style={{ height: headerHeight }}
     >
       <div className="mx-auto flex h-full w-full max-w-5xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="min-w-0 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <Link
+          href="/"
+          className="min-w-0 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 flex items-center justify-center"
+        >
           <BrandName logoClassName="size-8 sm:size-9" textClassName="text-lg font-extrabold sm:text-xl" />
         </Link>
 

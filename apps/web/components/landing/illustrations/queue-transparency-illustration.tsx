@@ -51,7 +51,7 @@ export function QueueTransparencyIllustration() {
 
   return (
     <IllustrationStage tone="primary">
-      <IllustrationScene className="pb-20 sm:pb-24">
+      <IllustrationScene className="pb-[5.5rem] sm:pb-[6.6rem]">
         <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : illustrationRest}>
           <motion.div
             className={cn(floatingBadgeClasses("left"), "inline-flex")}
@@ -59,8 +59,8 @@ export function QueueTransparencyIllustration() {
             animate={contentPhase}
             variants={badgeVariants}
           >
-            <Info className="size-4 text-primary" strokeWidth={2.5} />
-            <span className="text-sm font-bold text-gray-700">tudo claro</span>
+            <Info className="size-[1.1rem] text-primary" strokeWidth={2.5} />
+            <span className="text-[0.9625rem] font-bold text-gray-700">tudo claro</span>
           </motion.div>
 
           <PhoneFrame>
@@ -71,10 +71,10 @@ export function QueueTransparencyIllustration() {
               variants={introSequence}
             >
               <motion.div
-                className="flex items-center gap-1 text-sm font-extrabold lowercase text-primary"
+                className="flex items-center gap-1 text-[0.9625rem] font-extrabold lowercase text-primary"
                 variants={popItem}
               >
-                <ChevronLeft className="size-4" strokeWidth={2.5} />
+                <ChevronLeft className="size-[1.1rem]" strokeWidth={2.5} />
                 sua posição
               </motion.div>
 
@@ -86,9 +86,9 @@ export function QueueTransparencyIllustration() {
               </motion.div>
 
               <motion.div className="flex items-center justify-between" variants={popItem}>
-                <p className="text-sm font-bold lowercase tracking-wide text-gray-500">na sua frente</p>
+                <p className="text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500">na sua frente</p>
                 <motion.span
-                  className="rounded-full bg-primary-50 px-2.5 py-0.5 text-sm font-extrabold tabular-nums text-primary"
+                  className="rounded-full bg-primary-50 px-2.5 py-0.5 text-[0.9625rem] font-extrabold tabular-nums text-primary"
                   initial="intro"
                   animate={tapPhase}
                   variants={countPressVariant}
@@ -106,16 +106,18 @@ export function QueueTransparencyIllustration() {
                   >
                     <span
                       className={cn(
-                        "flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white",
+                        "flex size-[2.2rem] shrink-0 items-center justify-center rounded-full text-[0.9625rem] font-extrabold text-white",
                         row.preferential ? "bg-orange-500" : "bg-gray-300",
                       )}
                     >
                       {row.position}º
                     </span>
-                    <p className="font-mono text-sm font-extrabold tabular-nums text-gray-800">senha {row.ticket}</p>
+                    <p className="font-mono text-[0.9625rem] font-extrabold tabular-nums text-gray-800">
+                      senha {row.ticket}
+                    </p>
                     <span
                       className={cn(
-                        "ml-auto shrink-0 rounded-full px-2 py-0.5 text-xs font-bold lowercase sm:px-2.5 sm:text-sm",
+                        "ml-auto shrink-0 rounded-full px-2 py-0.5 text-[0.825rem] font-bold lowercase sm:px-2.5 sm:text-[0.9625rem]",
                         row.preferential ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-700",
                       )}
                     >
@@ -126,19 +128,21 @@ export function QueueTransparencyIllustration() {
 
                 <motion.div className="rounded-xl border-2 border-primary bg-primary-50 px-3 py-2.5" variants={popItem}>
                   <div className="flex items-center gap-2.5">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">
+                    <span className="flex size-[2.2rem] shrink-0 items-center justify-center rounded-full bg-primary text-[0.9625rem] font-extrabold text-white">
                       4º
                     </span>
-                    <p className="font-mono text-sm font-extrabold tabular-nums text-primary-900">senha {userTicket}</p>
-                    <span className="text-sm font-extrabold text-primary-800">você</span>
-                    <span className="ml-auto rounded-full bg-white px-2.5 py-0.5 text-sm font-bold lowercase text-primary-700">
+                    <p className="font-mono text-[0.9625rem] font-extrabold tabular-nums text-primary-900">
+                      senha {userTicket}
+                    </p>
+                    <span className="text-[0.9625rem] font-extrabold text-primary-800">você</span>
+                    <span className="ml-auto rounded-full bg-white px-2.5 py-0.5 text-[0.9625rem] font-bold lowercase text-primary-700">
                       consulta
                     </span>
                   </div>
                 </motion.div>
               </motion.div>
 
-              <motion.p className="text-center text-sm text-gray-500" variants={popItem}>
+              <motion.p className="text-center text-[0.9625rem] text-gray-500" variants={popItem}>
                 preferência legal primeiro, depois ordem de senha
               </motion.p>
             </motion.div>
@@ -151,8 +155,8 @@ export function QueueTransparencyIllustration() {
             variants={footerVariants}
           >
             <div className="flex items-center justify-center gap-1.5 rounded-xl border border-b-[3px] border-primary-700 bg-primary px-3 py-2 shadow-md">
-              <Info className="size-3.5 shrink-0 text-white" strokeWidth={3} />
-              <p className="text-sm font-extrabold text-white">agora faz sentido!</p>
+              <Info className="size-[0.9625rem] shrink-0 text-white" strokeWidth={3} />
+              <p className="text-[0.9625rem] font-extrabold text-white">agora faz sentido!</p>
             </div>
           </motion.div>
         </motion.div>

@@ -19,14 +19,14 @@ export function IllustrationStage({ children, className, tone = "primary" }: Ill
   return (
     <div
       className={cn(
-        "relative flex w-full min-w-0 max-w-full items-center justify-center overflow-x-clip py-6 sm:py-8 lg:py-12",
+        "relative flex w-full min-w-0 max-w-full items-center justify-center overflow-x-clip py-[1.65rem] sm:py-9 lg:py-[3.3rem]",
         className,
       )}
     >
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute size-[min(100%,14rem)] rounded-full opacity-90 sm:size-[18rem] lg:size-[22rem]",
+          "pointer-events-none absolute size-[min(100%,15.4rem)] rounded-full opacity-90 sm:size-[19.8rem] lg:size-[24.2rem]",
           toneClasses[tone],
         )}
       />
@@ -45,7 +45,7 @@ export function IllustrationScene({ children, className }: IllustrationSceneProp
   return (
     <div
       className={cn(
-        "relative mx-auto w-full max-w-full px-1 pt-9 pb-4 sm:max-w-80 sm:px-2 sm:pt-8 sm:pb-6 lg:max-w-[22rem]",
+        "relative mx-auto w-full max-w-full px-1 pt-[2.475rem] pb-[1.1rem] sm:max-w-[22rem] sm:px-2 sm:pt-9 sm:pb-[1.65rem] lg:max-w-[24.2rem]",
         className,
       )}
     >
@@ -71,7 +71,7 @@ export function PhoneFrame({ children, className }: PhoneFrameProps) {
         <span className="size-2 rounded-full bg-gray-200" />
         <span className="h-2 w-12 rounded-full bg-gray-100" />
       </div>
-      <div className="min-w-0 text-sm leading-snug">{children}</div>
+      <div className="min-w-0 text-[0.9625rem] leading-snug">{children}</div>
     </div>
   );
 }
@@ -94,7 +94,7 @@ export function FloatingBadge({ children, align = "right", className }: Floating
 }
 
 export const primaryCtaBarClasses =
-  "rounded-2xl border border-b-4 border-primary-700 bg-primary py-3.5 text-center text-base font-extrabold uppercase tracking-wide text-white shadow-sm";
+  "rounded-2xl border border-b-4 border-primary-700 bg-primary py-[0.9625rem] text-center text-[1.1rem] font-extrabold uppercase tracking-wide text-white shadow-sm";
 
 interface PrimaryCtaBarProps {
   children: ReactNode;
@@ -120,16 +120,16 @@ export function PhoneQueueHeader({
 }: PhoneQueueHeaderProps) {
   return (
     <div className={cn("flex items-center gap-2.5", className)}>
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
-        <MapPin className="size-4" strokeWidth={2.5} />
+      <span className="flex size-[2.475rem] shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary">
+        <MapPin className="size-[1.1rem]" strokeWidth={2.5} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-base font-bold text-gray-800">{unitName}</p>
-        <p className="truncate text-sm font-bold text-primary">{serviceName}</p>
+        <p className="truncate text-[1.1rem] font-bold text-gray-800">{unitName}</p>
+        <p className="truncate text-[0.9625rem] font-bold text-primary">{serviceName}</p>
       </div>
       <div className="shrink-0 text-right">
-        <p className="text-sm font-bold text-gray-500">senha</p>
-        <p className="font-mono text-base font-extrabold tabular-nums text-primary">{ticket}</p>
+        <p className="text-[0.9625rem] font-bold text-gray-500">senha</p>
+        <p className="font-mono text-[1.1rem] font-extrabold tabular-nums text-primary">{ticket}</p>
       </div>
     </div>
   );
