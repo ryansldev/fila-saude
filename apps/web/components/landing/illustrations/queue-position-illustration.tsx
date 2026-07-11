@@ -50,7 +50,7 @@ export function QueuePositionIllustration() {
 
   return (
     <IllustrationStage tone="yellow">
-      <IllustrationScene className="pb-20 sm:pb-24">
+      <IllustrationScene className="pb-[5.5rem] sm:pb-[6.6rem]">
         <motion.div ref={ref} className="relative" animate={levitating ? illustrationLevitate : illustrationRest}>
           <motion.div
             className={cn(floatingBadgeClasses("right"), "inline-flex")}
@@ -58,8 +58,8 @@ export function QueuePositionIllustration() {
             animate={contentPhase}
             variants={badgeVariants}
           >
-            <span className="size-2.5 animate-pulse rounded-full bg-green-500" />
-            <span className="text-sm font-bold text-gray-700">ao vivo</span>
+            <span className="size-[0.6875rem] animate-pulse rounded-full bg-green-500" />
+            <span className="text-[0.9625rem] font-bold text-gray-700">ao vivo</span>
           </motion.div>
 
           <PhoneFrame>
@@ -77,20 +77,20 @@ export function QueuePositionIllustration() {
                 className="rounded-2xl border border-b-4 border-primary-200 bg-primary-50 px-4 py-5 text-center"
                 variants={popItem}
               >
-                <p className="text-sm font-bold lowercase tracking-wide text-primary-700">sua posição</p>
+                <p className="text-[0.9625rem] font-bold lowercase tracking-wide text-primary-700">sua posição</p>
                 <motion.p
-                  className="mt-1 text-6xl font-extrabold leading-none text-primary tabular-nums sm:text-8xl lg:text-9xl"
+                  className="mt-1 text-[4.125rem] font-extrabold leading-none text-primary tabular-nums sm:text-[6.6rem] lg:text-[8.8rem]"
                   initial="intro"
                   animate={positionPhase}
                   variants={emphasisScaleVariant}
                 >
                   {isAdvanced ? "4º" : "5º"}
                 </motion.p>
-                <p className="mt-2 text-sm font-bold lowercase tracking-wide text-gray-500">no acolhimento</p>
+                <p className="mt-2 text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500">no acolhimento</p>
               </motion.div>
 
               <motion.div className="space-y-2" variants={popItem}>
-                <div className="flex items-center justify-between text-sm font-bold text-gray-500">
+                <div className="flex items-center justify-between text-[0.9625rem] font-bold text-gray-500">
                   <span className="tabular-nums">{isAdvanced ? "3" : "4"} na frente</span>
                   <span className="tabular-nums">9 atrás</span>
                 </div>
@@ -107,7 +107,7 @@ export function QueuePositionIllustration() {
                     animate={{ transform: `translateX(${progressPercent}%) translateY(-50%)` }}
                     transition={progressTransition}
                   >
-                    <div className="absolute left-0 top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-sm" />
+                    <div className="absolute left-0 top-1/2 size-[1.1rem] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-sm" />
                   </motion.div>
                 </div>
               </motion.div>
@@ -117,24 +117,24 @@ export function QueuePositionIllustration() {
                   className="rounded-2xl border border-b-2 border-gray-100 bg-white px-2.5 py-2.5 text-center shadow-sm"
                   variants={popItem}
                 >
-                  <Users className="mx-auto size-5 text-primary" strokeWidth={2.5} />
+                  <Users className="mx-auto size-[1.375rem] text-primary" strokeWidth={2.5} />
                   <motion.p
-                    className="mt-1 text-xl font-extrabold tabular-nums text-gray-900"
+                    className="mt-1 text-[1.375rem] font-extrabold tabular-nums text-gray-900"
                     initial="intro"
                     animate={positionPhase}
                     variants={emphasisScaleVariant}
                   >
                     {isAdvanced ? "3" : "4"}
                   </motion.p>
-                  <p className="text-sm font-bold text-gray-500">na frente</p>
+                  <p className="text-[0.9625rem] font-bold text-gray-500">na frente</p>
                 </motion.div>
                 <motion.div
                   className="rounded-2xl border border-b-2 border-gray-100 bg-white px-2.5 py-2.5 text-center shadow-sm"
                   variants={popItem}
                 >
-                  <Clock className="mx-auto size-5 text-primary" strokeWidth={2.5} />
-                  <p className="mt-1 text-xl font-extrabold tabular-nums text-gray-900">~18</p>
-                  <p className="text-sm font-bold text-gray-500">min</p>
+                  <Clock className="mx-auto size-[1.375rem] text-primary" strokeWidth={2.5} />
+                  <p className="mt-1 text-[1.375rem] font-extrabold tabular-nums text-gray-900">~18</p>
+                  <p className="text-[0.9625rem] font-bold text-gray-500">min</p>
                 </motion.div>
               </motion.div>
             </motion.div>
@@ -147,8 +147,8 @@ export function QueuePositionIllustration() {
             variants={footerVariants}
           >
             <div className="flex items-center justify-center gap-1.5 rounded-xl border border-b-[3px] border-primary-700 bg-primary px-3 py-2 shadow-md">
-              <ArrowUp className="size-3.5 shrink-0 text-white" strokeWidth={3} />
-              <p className="text-sm font-extrabold text-white">você avançou!</p>
+              <ArrowUp className="size-[0.9625rem] shrink-0 text-white" strokeWidth={3} />
+              <p className="text-[0.9625rem] font-extrabold text-white">você avançou!</p>
             </div>
           </motion.div>
         </motion.div>

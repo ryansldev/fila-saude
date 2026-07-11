@@ -5,14 +5,14 @@ import { cn } from "@/lib/utils";
 
 const elevatedPress = cn(
   "shadow-[0_var(--elev-depth)_0_0_var(--elev-shadow)]",
+  "transition-all duration-200",
   // Skip press-down for popup/menu triggers (aria-haspopup) so the control doesn't shift under an opening surface.
   "[&:active:not([aria-haspopup]):not(:disabled)]:translate-y-[var(--elev-depth)]",
   "[&:active:not([aria-haspopup]):not(:disabled)]:shadow-none",
-  "[&:active:not([aria-haspopup]):not(:disabled)]:transition-none",
 );
 
 const buttonVariants = cva(
-  "group/button box-border inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent [--elev-depth:4px] text-sm font-medium whitespace-nowrap transition-colors duration-150 outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:border-gray-200 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "uppercase group/button box-border inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent [--elev-depth:4px] text-sm font-medium whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:border-gray-200 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -22,20 +22,20 @@ const buttonVariants = cva(
           elevatedPress,
         ),
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-border bg-background transition-colors duration-150 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary: cn(
           "bg-white text-primary-400 hover:bg-gray-50 active:bg-white aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
           "[--elev-shadow:var(--color-gray-100)]",
           elevatedPress,
         ),
         ghost:
-          "text-primary hover:bg-gray-50 aria-expanded:bg-gray-50 aria-expanded:text-primary disabled:bg-transparent disabled:border-none",
+          "text-primary transition-colors duration-150 hover:bg-gray-50 aria-expanded:bg-gray-50 aria-expanded:text-primary disabled:bg-transparent disabled:border-none",
         destructive: cn(
           "bg-destructive text-white hover:bg-red-400 active:bg-destructive focus-visible:border-red-300 focus-visible:ring-red-400 dark:bg-red-400 dark:hover:bg-red-400 dark:active:bg-red-400 dark:focus-visible:ring-red-300",
           "[--elev-shadow:var(--color-red-700)]",
           elevatedPress,
         ),
-        link: "text-primary underline-offset-4 hover:underline disabled:bg-transparent disabled:border-none",
+        link: "text-primary underline-offset-4 transition-colors duration-150 hover:underline disabled:bg-transparent disabled:border-none",
         success: cn(
           "bg-green-500 text-white hover:bg-green-400 active:bg-green-500 aria-expanded:bg-green-400 aria-expanded:text-white",
           "[--elev-shadow:var(--color-green-700)]",

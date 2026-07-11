@@ -21,8 +21,8 @@ const sizeClasses = {
   },
   lg: {
     gap: "gap-2.5",
-    logo: "size-10 sm:size-11",
-    text: "text-3xl font-extrabold tracking-tight sm:text-4xl",
+    logo: "size-11 sm:size-12",
+    text: "text-[2.0625rem] font-extrabold tracking-tight sm:text-[2.475rem]",
   },
 } as const;
 
