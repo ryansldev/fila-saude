@@ -20,6 +20,7 @@ const envFile = path.resolve(rootDir, envFilename);
 dotEnvExpand.expand(dotenv.config({ path: envFile }));
 
 export const env = envSchema.parse({
+  NODE_ENV: process.env.NODE_ENV,
   API_URL: process.env.API_URL,
   WEB_URL: process.env.WEB_URL,
 });
