@@ -1,0 +1,11 @@
+{
+  "name": "@fila-saude/configs",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    ".": "./env.ts"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}
