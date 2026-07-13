@@ -24,6 +24,7 @@ const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const envFile = path.resolve(rootDir, envFilename);
 
 dotEnvExpand.expand(dotenv.config({ path: envFile }));
+dotEnvExpand.expand(dotenv.config({ path: `${envFile}.local`, override: true }));
 
 const env = envSchema.parse(process.env);
 
