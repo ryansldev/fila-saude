@@ -27,6 +27,9 @@
     "db:push": "npm -w @fila-saude/api run db:push",
     "db:generate": "npm -w @fila-saude/api run db:generate",
     "db:migrate": "npm -w @fila-saude/api run db:migrate",
+    "db:push:test": "npm -w @fila-saude/api run db:push:test",
+    "db:generate:test": "npm -w @fila-saude/api run db:generate:test",
+    "db:migrate:test": "npm -w @fila-saude/api run db:migrate:test",
     "prepare": "husky",
     "commit": "cz"
   },

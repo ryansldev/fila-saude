@@ -12,6 +12,9 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:push:test": "cross-env NODE_ENV=test drizzle-kit push",
+    "db:generate:test": "cross-env NODE_ENV=test drizzle-kit generate",
+    "db:migrate:test": "cross-env NODE_ENV=test drizzle-kit migrate",
     "test": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"cross-env NODE_ENV=test tsx server.ts\" \"vitest run\"",
     "test:watch": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"cross-env NODE_ENV=test tsx server.ts\" \"vitest watch\"",
     "test:coverage": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"cross-env NODE_ENV=test tsx server.ts\" \"vitest run --coverage\""
