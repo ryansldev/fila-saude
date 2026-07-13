@@ -1,0 +1,34 @@
+---
+description: When suggesting commits, explain type and separate title/description for copy
+alwaysApply: true
+---
+
+# Commit messages
+
+When the user asks for a commit title, description, or what to write in a commit:
+
+- Always provide **type**, **title**, and **description**
+- Follow conventional commits (`feat`, `fix`, `chore`, etc.)
+- Title: concise, focuses on why — **without** the type prefix (`feat:`, `chore:`, …)
+- Description: 1–2 short sentences explaining the why/impact, without listing files
+- Write the description so it can be pasted straight into the terminal (e.g. a `git commit` HEREDOC): plain text only, no markdown, and prefer a single continuous line
+- Present title and description in **separate copyable code blocks**
+- Introduce the type in natural language, with a short reason — not as part of the title block
+
+## Format to use in chat
+
+O commit deveria ser um **chore**, porque só ajusta o carregamento de env local, sem mudar comportamento de produto.
+
+**Título**
+
+```
+support local env overrides via .env.*.local
+```
+
+**Descrição**
+
+```
+Load .env.{NODE_ENV}.local after the base env file so local secrets can override shared defaults without changing committed env files.
+```
+
+When actually creating the git commit (via `git commit`), join them as `type: title` plus the description body.
