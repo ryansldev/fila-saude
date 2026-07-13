@@ -1,5 +1,8 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import retry from "async-retry";
 import { sql } from "drizzle-orm";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import database from "infra/database";
 import webserver from "infra/webserver";
 
@@ -23,12 +26,23 @@ async function waitForAllServices() {
 }
 
 async function clearDatabase() {
-  await database.execute(sql`drop schema public cascade; create schema public;`);
+  await database.execute(sql`
+    DROP SCHEMA public CASCADE;
+    CREATE SCHEMA public;
+    DROP SCHEMA IF EXISTS drizzle CASCADE;
+  `);
+}
+
+async function runPendingMigrations() {
+  await migrate(database, {
+    migrationsFolder: path.join(path.dirname(fileURLToPath(import.meta.url)), "../infra/migrations"),
+  });
 }
 
 const orquestrator = {
   waitForAllServices,
   clearDatabase,
+  runPendingMigrations,
 };
 
 export default orquestrator;

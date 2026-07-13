@@ -13,5 +13,6 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
     },
+    fileParallelism: false,
   },
 });

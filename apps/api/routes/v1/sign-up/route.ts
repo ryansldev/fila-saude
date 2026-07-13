@@ -1,5 +1,9 @@
+import { STATUS_CODES } from "node:http";
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
-import { signUpRequestSchema } from "@fila-saude/schemas/auth";
+import { signUpRequestSchema, signUpResponseSchema } from "@fila-saude/schemas/auth";
+import { errorResponseSchema } from "@fila-saude/schemas/common";
+import { APIError } from "better-auth";
+import { auth } from "infra/auth";
 
 const signUpRoute: FastifyPluginAsyncZod = async (server) => {
   server.post(
@@ -7,16 +11,59 @@ const signUpRoute: FastifyPluginAsyncZod = async (server) => {
     {
       schema: {
         body: signUpRequestSchema,
+        response: {
+          201: signUpResponseSchema,
+          default: errorResponseSchema,
+        },
       },
     },
     async (request, reply) => {
-      const { email, password, name } = request.body;
+      const { email, password, name, rememberMe, callbackURL } = request.body;
 
-      return reply.status(201).send({
-        email,
-        name,
-        password,
-      });
+      try {
+        const session = await auth.api.signUpEmail({
+          body: {
+            email,
+            password,
+            name,
+            rememberMe,
+            callbackURL,
+          },
+        });
+
+        const response = signUpResponseSchema.safeParse({
+          token: session.token,
+          user: {
+            email: session.user.email,
+            name: session.user.name,
+            id: session.user.id,
+            created_at: session.user.createdAt.toISOString(),
+            updated_at: session.user.updatedAt.toISOString(),
+            email_verified: session.user.emailVerified,
+            image: session.user.image,
+          },
+        });
+
+        if (!response.success) {
+          return reply.status(400).send({
+            status: 400,
+            message: STATUS_CODES[400] ?? "Bad Request",
+            error: response?.error?.message,
+          });
+        }
+
+        return reply.status(201).send(response.data);
+      } catch (error) {
+        if (error instanceof APIError) {
+          return reply.status(error.statusCode).send({
+            status: error.statusCode,
+            message: STATUS_CODES[error.statusCode] ?? String(error.status),
+            error: error.body?.message ?? error.message,
+          });
+        }
+
+        throw error;
+      }
     },
   );
 };

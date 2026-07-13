@@ -6,6 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   await orchestrator.clearDatabase();
+  await orchestrator.runPendingMigrations();
 });
 
 describe("GET /api/v1/status", () => {
