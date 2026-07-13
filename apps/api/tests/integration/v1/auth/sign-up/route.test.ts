@@ -13,7 +13,7 @@ beforeAll(async () => {
 describe("sign up routes", () => {
   describe("POST /v1/sign-up", () => {
     it("should sign up a new user", async () => {
-      const response = await fetch(`${webserver.origin}/v1/sign-up`, {
+      const response = await fetch(`${webserver.origin}/v1/auth/sign-up`, {
         method: "POST",
         body: JSON.stringify({ name: "John Doe", email: "john.doe@example.com", password: "password" }),
         headers: {
@@ -32,7 +32,7 @@ describe("sign up routes", () => {
     });
 
     it("should return a 422 if the email is already in use", async () => {
-      const response = await fetch(`${webserver.origin}/v1/sign-up`, {
+      const response = await fetch(`${webserver.origin}/v1/auth/sign-up`, {
         method: "POST",
         body: JSON.stringify({ name: "John Doe", email: "john.doe@example.com", password: "password" }),
         headers: {
@@ -49,7 +49,7 @@ describe("sign up routes", () => {
     });
 
     it("should return a 400 if the email is invalid", async () => {
-      const response = await fetch(`${webserver.origin}/v1/sign-up`, {
+      const response = await fetch(`${webserver.origin}/v1/auth/sign-up`, {
         method: "POST",
         body: JSON.stringify({ name: "John Doe", email: "invalid-email", password: "password" }),
         headers: {
