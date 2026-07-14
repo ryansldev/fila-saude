@@ -10,6 +10,17 @@ const userSchema = z.object({
   image: z.string().nullish(),
 });
 
+export const sessionSchema = z.object({
+  expires_at: z.iso.datetime(),
+  token: z.string(),
+  created_at: z.iso.datetime(),
+  updated_at: z.iso.datetime(),
+  ip_address: z.string().nullish(),
+  user_agent: z.string().nullish(),
+  user_id: z.string(),
+  id: z.string(),
+});
+
 export const signUpRequestSchema = z.object({
   name: z.string(),
   email: z.email(),
@@ -32,3 +43,10 @@ export const signInResponseSchema = z.object({
   token: z.string(),
   user: userSchema,
 });
+
+export const getSessionResponseSchema = z
+  .object({
+    session: sessionSchema,
+    user: userSchema,
+  })
+  .nullable();

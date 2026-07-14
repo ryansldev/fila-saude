@@ -29,6 +29,14 @@ describe("sign up routes", () => {
       expect(responseBody?.user?.name).toBe("John Doe");
       expect(responseBody?.user?.id).toBeDefined();
       expect(responseBody?.user?.email_verified).toBe(false);
+
+      const cookies = response.headers.getSetCookie();
+
+      expect(cookies.length).toBeGreaterThan(0);
+      expect(cookies.some((cookie) => cookie.includes("better-auth.session_token"))).toBe(true);
+
+      const authCookie = cookies.find((cookie) => cookie.includes("better-auth.session_token"));
+      expect(authCookie).include(`better-auth.session_token=${responseBody.token}`);
     });
 
     it("should return a 422 if the email is already in use", async () => {

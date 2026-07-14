@@ -24,13 +24,6 @@ describe("POST /v1/auth/sign-in", () => {
       },
     });
 
-    // await fetch(`${webserver.origin}/v1/auth/sign-out`, {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    // });
-
     const response = await fetch(`${webserver.origin}/v1/auth/sign-in`, {
       method: "POST",
       body: JSON.stringify({
@@ -56,6 +49,14 @@ describe("POST /v1/auth/sign-in", () => {
     expect(responseBody.user.updated_at).toBeDefined();
     expect(responseBody.user.email_verified).toBe(false);
     expect(responseBody.user.image).toBeNull();
+
+    const cookies = response.headers.getSetCookie();
+
+    expect(cookies.length).toBeGreaterThan(0);
+    expect(cookies.some((cookie) => cookie.includes("better-auth.session_token"))).toBe(true);
+
+    const authCookie = cookies.find((cookie) => cookie.includes("better-auth.session_token"));
+    expect(authCookie).include(`better-auth.session_token=${responseBody.token}`);
   });
 
   it("should return a 401 status code if the email or password is incorrect", async () => {

@@ -3,10 +3,12 @@ import { auth } from "infra/auth";
 
 const signOutRoute: FastifyPluginAsyncZod = async (server) => {
   server.post("/", async (req, res) => {
-    const response = await auth.api.signOut({
+    const { headers, response } = await auth.api.signOut({
       headers: req.headers,
+      returnHeaders: true,
     });
 
+    res.header("set-cookie", headers.getSetCookie());
     return res.status(200).send(response);
   });
 };

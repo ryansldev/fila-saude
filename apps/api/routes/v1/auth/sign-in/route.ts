@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { signInRequestSchema, signInResponseSchema } from "@fila-saude/schemas/auth";
 import { auth } from "infra/auth";
-import { user } from "infra/database/schemas/auth";
+import { keysToSnakeCase } from "utils/serialization";
 
 const signInRoute: FastifyPluginAsyncZod = async (server) => {
   server.post(
@@ -17,23 +17,18 @@ const signInRoute: FastifyPluginAsyncZod = async (server) => {
     async (req, res) => {
       const { email, password } = req.body;
 
-      const response = await auth.api.signInEmail({
+      const { headers, response } = await auth.api.signInEmail({
         headers: req.headers,
         body: {
           email,
           password,
         },
+        returnHeaders: true,
       });
 
-      const responseBody = signInResponseSchema.parse({
-        ...response,
-        user: {
-          ...response.user,
-          updated_at: response.user.updatedAt.toISOString(),
-          created_at: response.user.createdAt.toISOString(),
-        },
-      });
+      const responseBody = signInResponseSchema.parse(keysToSnakeCase(response));
 
+      res.header("set-cookie", headers.getSetCookie());
       return res.status(200).send(responseBody);
     },
   );
