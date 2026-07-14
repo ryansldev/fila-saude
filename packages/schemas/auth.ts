@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const userSchema = z.object({
+const UserSchema = z.object({
   email: z.email(),
   name: z.string(),
   id: z.string(),
@@ -10,7 +10,7 @@ const userSchema = z.object({
   image: z.string().nullish(),
 });
 
-export const sessionSchema = z.object({
+export const SessionSchema = z.object({
   expires_at: z.iso.datetime(),
   token: z.string(),
   created_at: z.iso.datetime(),
@@ -21,7 +21,7 @@ export const sessionSchema = z.object({
   id: z.string(),
 });
 
-export const signUpRequestSchema = z.object({
+export const SignUpRequestSchema = z.object({
   name: z.string(),
   email: z.email(),
   password: z.string(),
@@ -29,26 +29,26 @@ export const signUpRequestSchema = z.object({
   callbackURL: z.string().optional(),
 });
 
-export const signUpResponseSchema = z.object({
+export const SignUpResponseSchema = z.object({
   token: z.string(),
-  user: userSchema,
+  user: UserSchema,
 });
 
-export const signInRequestSchema = z.object({
+export const SignInRequestSchema = z.object({
   email: z.email(),
   password: z.string(),
 });
 
-export const signInResponseSchema = z.object({
+export const SignInResponseSchema = z.object({
   token: z.string(),
-  user: userSchema,
+  user: UserSchema,
   redirect: z.boolean(),
   url: z.string().optional(),
 });
 
-export const getSessionResponseSchema = z
+export const GetSessionResponseSchema = z
   .object({
-    session: sessionSchema,
-    user: userSchema,
+    session: SessionSchema,
+    user: UserSchema,
   })
   .nullable();

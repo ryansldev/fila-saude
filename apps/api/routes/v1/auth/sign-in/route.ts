@@ -1,7 +1,7 @@
 import { STATUS_CODES } from "node:http";
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
-import { signInRequestSchema, signInResponseSchema } from "@fila-saude/schemas/auth";
-import { errorResponseSchema } from "@fila-saude/schemas/common";
+import { SignInRequestSchema, SignInResponseSchema } from "@fila-saude/schemas/auth";
+import { ErrorResponseSchema } from "@fila-saude/schemas/common";
 import { APIError } from "better-auth";
 import { auth } from "infra/auth";
 import { normalizeResponse } from "utils/serialization";
@@ -11,10 +11,10 @@ const signInRoute: FastifyPluginAsyncZod = async (server) => {
     "/",
     {
       schema: {
-        body: signInRequestSchema,
+        body: SignInRequestSchema,
         response: {
-          200: signInResponseSchema,
-          default: errorResponseSchema,
+          200: SignInResponseSchema,
+          default: ErrorResponseSchema,
         },
       },
     },
@@ -32,7 +32,7 @@ const signInRoute: FastifyPluginAsyncZod = async (server) => {
         });
 
         console.log("AQUI É O RESPONSE", normalizeResponse(response));
-        const responseBody = signInResponseSchema.parse(normalizeResponse(response));
+        const responseBody = SignInResponseSchema.parse(normalizeResponse(response));
 
         reply.header("set-cookie", headers.getSetCookie());
         return reply.status(200).send(responseBody);

@@ -1,4 +1,4 @@
-import { getSessionResponseSchema, signUpResponseSchema } from "@fila-saude/schemas/auth";
+import { GetSessionResponseSchema, SignUpResponseSchema } from "@fila-saude/schemas/auth";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -23,7 +23,7 @@ describe("GET /v1/auth/session", () => {
       },
     });
 
-    const session = signUpResponseSchema.parse(await responseSignUp.json());
+    const session = SignUpResponseSchema.parse(await responseSignUp.json());
 
     const response = await fetch(`${webserver.origin}/v1/auth/session`, {
       headers: {
@@ -38,7 +38,7 @@ describe("GET /v1/auth/session", () => {
     expect(response.status).toBe(200);
 
     const responseBody = await response.json();
-    const parsedResponseBody = getSessionResponseSchema.parse(responseBody);
+    const parsedResponseBody = GetSessionResponseSchema.parse(responseBody);
 
     expect(parsedResponseBody?.session).toBeDefined();
     expect(parsedResponseBody?.user?.email).toBe("john.doe@example.com");

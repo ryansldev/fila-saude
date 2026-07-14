@@ -1,4 +1,4 @@
-import { statusSchema } from "@fila-saude/schemas/status";
+import { StatusSchema } from "@fila-saude/schemas/status";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -14,7 +14,7 @@ describe("GET /api/v1/status", () => {
     const response = await fetch(`${webserver.origin}/v1/status`);
     expect(response.status).toBe(200);
 
-    const responseBody = statusSchema.parse(await response.json());
+    const responseBody = StatusSchema.parse(await response.json());
     const parsedUpdatedAt = new Date(responseBody.updated_at).toISOString();
 
     expect(responseBody.updated_at).toEqual(parsedUpdatedAt);

@@ -1,5 +1,5 @@
-import { signInResponseSchema } from "@fila-saude/schemas/auth";
-import { errorResponseSchema } from "@fila-saude/schemas/common";
+import { SignInResponseSchema } from "@fila-saude/schemas/auth";
+import { ErrorResponseSchema } from "@fila-saude/schemas/common";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -37,7 +37,7 @@ describe("POST /v1/auth/sign-in", () => {
 
     expect(response.status).toBe(200);
 
-    const responseBody = signInResponseSchema.parse(await response.json());
+    const responseBody = SignInResponseSchema.parse(await response.json());
 
     expect(responseBody).toBeDefined();
     expect(responseBody.token).toBeDefined();
@@ -72,7 +72,7 @@ describe("POST /v1/auth/sign-in", () => {
     });
 
     expect(response.status).toBe(401);
-    const responseBody = errorResponseSchema.parse(await response.json());
+    const responseBody = ErrorResponseSchema.parse(await response.json());
 
     expect(responseBody.status).toEqual(401);
     expect(responseBody.message).toEqual("Unauthorized");
@@ -90,7 +90,7 @@ describe("POST /v1/auth/sign-in", () => {
     });
 
     expect(response.status).toBe(400);
-    const responseBody = errorResponseSchema.parse(await response.json());
+    const responseBody = ErrorResponseSchema.parse(await response.json());
 
     expect(responseBody.status).toEqual(400);
     expect(responseBody.message).toEqual("Bad Request");
@@ -108,7 +108,7 @@ describe("POST /v1/auth/sign-in", () => {
     });
 
     expect(response.status).toBe(400);
-    const responseBody = errorResponseSchema.parse(await response.json());
+    const responseBody = ErrorResponseSchema.parse(await response.json());
 
     expect(responseBody.status).toEqual(400);
     expect(responseBody.message).toEqual("Bad Request");
@@ -126,7 +126,7 @@ describe("POST /v1/auth/sign-in", () => {
     });
 
     expect(response.status).toBe(400);
-    const responseBody = errorResponseSchema.parse(await response.json());
+    const responseBody = ErrorResponseSchema.parse(await response.json());
 
     expect(responseBody.status).toEqual(400);
     expect(responseBody.message).toEqual("Bad Request");

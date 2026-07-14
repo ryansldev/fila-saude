@@ -1,5 +1,5 @@
-import { signUpResponseSchema } from "@fila-saude/schemas/auth";
-import { errorResponseSchema } from "@fila-saude/schemas/common";
+import { SignUpResponseSchema } from "@fila-saude/schemas/auth";
+import { ErrorResponseSchema } from "@fila-saude/schemas/common";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -21,7 +21,7 @@ describe("sign up routes", () => {
         },
       });
 
-      const responseBody = signUpResponseSchema.parse(await response.json());
+      const responseBody = SignUpResponseSchema.parse(await response.json());
 
       expect(response.status).toBe(201);
       expect(responseBody?.token).toBeDefined();
@@ -49,7 +49,7 @@ describe("sign up routes", () => {
       });
 
       expect(response.status).toBe(422);
-      const responseBody = errorResponseSchema.parse(await response.json());
+      const responseBody = ErrorResponseSchema.parse(await response.json());
 
       expect(responseBody?.message).toEqual("Unprocessable Entity");
       expect(responseBody?.status).toEqual(422);
@@ -66,7 +66,7 @@ describe("sign up routes", () => {
       });
 
       expect(response.status).toBe(400);
-      const responseBody = errorResponseSchema.parse(await response.json());
+      const responseBody = ErrorResponseSchema.parse(await response.json());
 
       expect(responseBody?.message).toEqual("Bad Request");
       expect(responseBody?.status).toEqual(400);

@@ -1,6 +1,6 @@
 import z from "zod";
 
-export const statusSchema = z.object({
+export const StatusSchema = z.object({
   updated_at: z.string(),
   dependencies: z.object({
     database: z.object({
@@ -15,4 +15,4 @@ export const statusSchema = z.object({
   }),
 });
 
-export type StatusSchema = z.infer<typeof statusSchema>;
+export type Status = z.infer<typeof StatusSchema>;

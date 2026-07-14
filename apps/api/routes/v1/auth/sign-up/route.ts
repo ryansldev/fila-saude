@@ -1,7 +1,7 @@
 import { STATUS_CODES } from "node:http";
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
-import { signUpRequestSchema, signUpResponseSchema } from "@fila-saude/schemas/auth";
-import { errorResponseSchema } from "@fila-saude/schemas/common";
+import { SignUpRequestSchema, SignUpResponseSchema } from "@fila-saude/schemas/auth";
+import { ErrorResponseSchema } from "@fila-saude/schemas/common";
 import { APIError } from "better-auth";
 import { auth } from "infra/auth";
 import { normalizeResponse } from "utils/serialization";
@@ -11,10 +11,10 @@ const signUpRoute: FastifyPluginAsyncZod = async (server) => {
     "/",
     {
       schema: {
-        body: signUpRequestSchema,
+        body: SignUpRequestSchema,
         response: {
-          201: signUpResponseSchema,
-          default: errorResponseSchema,
+          201: SignUpResponseSchema,
+          default: ErrorResponseSchema,
         },
       },
     },
@@ -33,7 +33,7 @@ const signUpRoute: FastifyPluginAsyncZod = async (server) => {
           returnHeaders: true,
         });
 
-        const response = signUpResponseSchema.safeParse({
+        const response = SignUpResponseSchema.safeParse({
           token: session.token,
           user: {
             email: session.user.email,

@@ -1,4 +1,4 @@
-import { statusSchema } from "@fila-saude/schemas/status";
+import { StatusSchema } from "@fila-saude/schemas/status";
 import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import database, { pool } from "infra/database";
@@ -24,7 +24,7 @@ export default async function (app: FastifyInstance) {
     const databaseVersion = databaseResult.version[0]?.server_version ?? null;
     const databaseMaxConnections = Number(databaseResult.maxConnections[0]?.max_connections ?? null);
 
-    return statusSchema.parse({
+    return StatusSchema.parse({
       updated_at: updatedAt,
       dependencies: {
         database: {

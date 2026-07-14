@@ -1,6 +1,6 @@
 import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
-import { getSessionResponseSchema } from "@fila-saude/schemas/auth";
-import { errorResponseSchema } from "@fila-saude/schemas/common";
+import { GetSessionResponseSchema } from "@fila-saude/schemas/auth";
+import { ErrorResponseSchema } from "@fila-saude/schemas/common";
 import { auth } from "infra/auth";
 import { normalizeResponse } from "utils/serialization";
 
@@ -10,8 +10,8 @@ const sessionRoute: FastifyPluginAsyncZod = async (server) => {
     {
       schema: {
         response: {
-          200: getSessionResponseSchema,
-          default: errorResponseSchema,
+          200: GetSessionResponseSchema,
+          default: ErrorResponseSchema,
         },
       },
     },
@@ -20,7 +20,7 @@ const sessionRoute: FastifyPluginAsyncZod = async (server) => {
         headers: req.headers,
       });
 
-      const response = getSessionResponseSchema.parse(normalizeResponse(session));
+      const response = GetSessionResponseSchema.parse(normalizeResponse(session));
 
       return res.status(200).send(response);
     },
