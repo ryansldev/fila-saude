@@ -4,7 +4,7 @@ import { signUpRequestSchema, signUpResponseSchema } from "@fila-saude/schemas/a
 import { errorResponseSchema } from "@fila-saude/schemas/common";
 import { APIError } from "better-auth";
 import { auth } from "infra/auth";
-import { keysToSnakeCase } from "utils/serialization";
+import { normalizeResponse } from "utils/serialization";
 
 const signUpRoute: FastifyPluginAsyncZod = async (server) => {
   server.post(
@@ -55,7 +55,7 @@ const signUpRoute: FastifyPluginAsyncZod = async (server) => {
         }
 
         reply.header("set-cookie", headers.getSetCookie());
-        return reply.status(201).send(keysToSnakeCase(response.data));
+        return reply.status(201).send(normalizeResponse(response.data));
       } catch (error) {
         if (error instanceof APIError) {
           return reply.status(error.statusCode).send({

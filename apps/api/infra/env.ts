@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test", "staging"]).default("development"),
-  VERCEL_URL: z.string().optional(),
+  FRONTEND_URL: z.string().optional(),
   POSTGRES_USER: z.string(),
   POSTGRES_PASSWORD: z.string(),
   POSTGRES_DB: z.string(),

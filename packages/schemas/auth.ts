@@ -42,6 +42,8 @@ export const signInRequestSchema = z.object({
 export const signInResponseSchema = z.object({
   token: z.string(),
   user: userSchema,
+  redirect: z.boolean(),
+  url: z.string().optional(),
 });
 
 export const getSessionResponseSchema = z

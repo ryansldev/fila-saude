@@ -2,7 +2,7 @@ import type { FastifyPluginAsyncZod } from "@fastify/type-provider-zod";
 import { getSessionResponseSchema } from "@fila-saude/schemas/auth";
 import { errorResponseSchema } from "@fila-saude/schemas/common";
 import { auth } from "infra/auth";
-import { keysToSnakeCase } from "utils/serialization";
+import { normalizeResponse } from "utils/serialization";
 
 const sessionRoute: FastifyPluginAsyncZod = async (server) => {
   server.get(
@@ -20,7 +20,7 @@ const sessionRoute: FastifyPluginAsyncZod = async (server) => {
         headers: req.headers,
       });
 
-      const response = getSessionResponseSchema.parse(keysToSnakeCase(session));
+      const response = getSessionResponseSchema.parse(normalizeResponse(session));
 
       return res.status(200).send(response);
     },

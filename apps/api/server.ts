@@ -1,6 +1,6 @@
+import { STATUS_CODES } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { STATUS_CODES } from "node:http";
 import autoload from "@fastify/autoload";
 import {
   hasZodFastifySchemaValidationErrors,
