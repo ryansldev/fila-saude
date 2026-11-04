@@ -306,7 +306,8 @@ Proof: `! grep -rnE "animation|transition|@keyframes" prototype/css`
 ## Handoff
 
 **Settled mid-build:** none
-**Dispatched:** Verifier at `0a2c9df` (proofs.md at `0a2c9df`, same code) - returned (FAIL, 9 findings)
+**Dispatched:** Verifier at `0a2c9df` (proofs.md at `0a2c9df`, same code) - returned (FAIL, 9 findings); revisão 2: Verifier at `2ee2d78` - sent
+**Walked (revisão 2):** 2026-11-04, Chrome headless via CDP por file://. Um script que só clica no elemento com a marca do roteiro (`.hint`) terminou as três histórias: `historia-lista.html` 7/7, `historia-alocacao.html` 6/6, `historia-fila.html` 10/10 (também a 1280 px), sem erro de console. Apresentação, histórias e modo livre sem rolagem horizontal a 1280 e 1440 px, e o menu do topo sem transbordo. Na fila do dia, a Dora (remota, 1ª) vê "Sua vez está chegando: venha agora" no cartão verde. João presente vê "você é o 1º a ser chamado". Na alocação, "Prioridade legal antes" põe a Dora nas 3 vagas e tira o Carlos (urgente sugerido).
 **Walked:** 2026-11-04, Chrome headless via CDP, `prototype/index.html` por file://, sem login.
 - Simulador (PROTO-01): a 1280 e 1440 px as quatro visões ficam lado a lado sem rolagem horizontal (colunas 20..392, 412..845, 865..1245 a 1280). Os três botões de cenário trocam dados e passos. "+5 min" pula o chamado.
 - Lista de espera (PROTO-02), cenário "Lista de espera e risco": pin UBS Vila Nova mostra "Terça, 17/11 · Clínico geral · privada · 19 vagas". Maria em Clínico (nenhum, novo, moderado) dá "Atenção · sugerido". Segunda tentativa mostra "Você já está nesta lista". Em Cardiologia pede a foto; o agendador rejeita "Fora da validade" e o aviso aparece no celular. Antônio com dor no peito vê "Ligar 192 · SAMU" sem entrada. Lúcia com autolesão vê CVV 188 e SAMU 192, segue e entra como "Urgente · sugerido", com alerta no Agendador.
