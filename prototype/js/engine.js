@@ -81,8 +81,9 @@
   // ---------- Questionário v1 (fonte 7.3): vale a primeira regra que bater ----------
 
   function classify(a, age) {
-    const alarms = a.alarms || [];
+    const alarms = (a.alarms || []).filter((x) => x !== "nenhum");
     const grupos = a.grupos || [];
+    const condicoes = (a.condicoes || []).filter((x) => x !== "nenhuma");
     const novo = a.motivo === "novo";
     const gestante = grupos.includes("gestante");
     if (alarms.some((x) => x !== "autolesao")) return { level: "emergencia", rule: "Sinal de alarme na Tela 1" };
@@ -92,7 +93,7 @@
     if (novo && a.gravidade === "moderado" && gestante)
       return { level: "urgente", rule: "Gestante com problema novo moderado" };
     if (novo && a.gravidade === "moderado") return { level: "atencao", rule: "Problema novo moderado" };
-    if (novo && (a.condicoes || []).length) return { level: "atencao", rule: "Problema novo com condição de saúde" };
+    if (novo && condicoes.length) return { level: "atencao", rule: "Problema novo com condição de saúde" };
     if (novo && (age < 2 || age >= 60))
       return { level: "atencao", rule: "Problema novo com idade abaixo de 2 ou a partir de 60" };
     if (novo && a.gravidade === "leve" && gestante)
@@ -115,15 +116,20 @@
 
   // ---------- Lista de espera ----------
 
+  // RN-LE-02 / INV-01: no máximo uma entrada ativa por serviço.
+  function activeEntry(st, patientId, serviceId) {
+    return st.entries.find(
+      (e) => e.patientId === patientId && e.serviceId === serviceId && !FINAL_ENTRY.includes(e.status),
+    );
+  }
+
   function createEntry(st, { patientId, serviceId, answers, referralPhoto }) {
     const p = patient(st, patientId);
     const svc = service(st, serviceId);
     const age = ageAt(p.birth, st.now);
     const c = classify(answers, age);
     if (c.level === "emergencia") return { ok: false, error: "emergencia", classification: c };
-    const existing = st.entries.find(
-      (e) => e.patientId === patientId && e.serviceId === serviceId && !FINAL_ENTRY.includes(e.status),
-    );
+    const existing = activeEntry(st, patientId, serviceId);
     if (existing) return { ok: false, error: "duplicada", existing, classification: c };
     const legal = legalPriority(age, answers.grupos, p.sexo);
     const entry = {
@@ -562,18 +568,118 @@
     }
   }
 
-  function counters(st, sessionId) {
-    const s = session(st, sessionId);
-    return st.services
-      .filter((svc) => svc.id === s.serviceId)
-      .map((svc) => {
-        const q = s.queue.filter((x) => x.serviceId === svc.id && x.status === "fila");
+  // "Nenhum destes" e "Nenhuma" são exclusivos: marcá-los desmarca as outras opções (fonte 7.3).
+  function toggleOption(selected, value, noneValue) {
+    if (selected.includes(value)) return selected.filter((x) => x !== value);
+    if (value === noneValue) return [noneValue];
+    return [...selected.filter((x) => x !== noneValue), value];
+  }
+
+  const WEEKDAY = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "America/Sao_Paulo" });
+  const DAYMONTH = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+
+  function dayLabel(t) {
+    const w = WEEKDAY.format(t).split("-")[0];
+    return `${w.charAt(0).toUpperCase()}${w.slice(1)}, ${DAYMONTH.format(t)}`;
+  }
+
+  // RN-AG-01: horário e sessões futuras com serviço, dia, visibilidade e vagas restantes. Sem pacientes (RN-AG-02).
+  function unitAgenda(st, unitId) {
+    const unit = byId(st.units, unitId);
+    const svcIds = st.services.filter((x) => x.unitId === unitId).map((x) => x.id);
+    const sessions = st.sessions
+      .filter((s) => svcIds.includes(s.serviceId) && s.start > st.now)
+      .sort((a, b) => a.start - b.start)
+      .map((s) => {
+        const left = s.slots - occupied(st, s.id);
         return {
-          service: svc,
-          aguardando: q.filter((x) => x.presence === "presente").length,
-          caminho: q.filter((x) => x.presence === "remoto").length,
+          sessionId: s.id,
+          serviceId: s.serviceId,
+          left,
+          text: `${dayLabel(s.start)} · ${service(st, s.serviceId).name} · ${s.visibility} · ${left} vagas`,
         };
       });
+    return { name: unit.name, hours: unit.hours, sessions };
+  }
+
+  function newTvCode(st) {
+    st.tv.code = String(100000 + ((st.seq * 7919 + 482913) % 900000));
+  }
+
+  // RN-TV-01: o admin digita o código mostrado na TV.
+  function pairTv(st, code) {
+    if (st.tv.paired || code !== st.tv.code) return { ok: false, error: "codigo" };
+    st.tv.paired = true;
+    return { ok: true };
+  }
+
+  function revokeTv(st) {
+    st.tv.paired = false;
+    st.seq++;
+    newTvCode(st);
+  }
+
+  // RN-TV-02 e RN-TV-05: sem pareamento, só o código; pareada, só senhas e contadores.
+  function tvView(st) {
+    if (!st.tv.paired) return { paired: false, code: st.tv.code };
+    const open = st.sessions.filter((s) => s.state === "aberta");
+    const counters = open.map((s) => {
+      const q = s.queue.filter((x) => x.status === "fila");
+      return {
+        name: service(st, s.serviceId).name,
+        aguardando: q.filter((x) => x.presence === "presente").length,
+        caminho: q.filter((x) => x.presence === "remoto").length,
+      };
+    });
+    return {
+      paired: true,
+      announcements: st.tv.announcements.map((a) => ({
+        id: a.id,
+        senha: a.senha,
+        dest: a.dest,
+        service: service(st, a.serviceId).name,
+        at: a.at,
+      })),
+      counters,
+      qr: open.length ? qrToken(open[0], st.now) : null,
+      qrSessionId: open.length ? open[0].id : null,
+    };
+  }
+
+  // INV-06: o app do paciente recebe só os dados dele.
+  function patientView(st, patientId) {
+    const entries = st.entries.filter((e) => e.patientId === patientId);
+    let queue = null;
+    for (const s of st.sessions) {
+      const q = [...s.queue].reverse().find((x) => x.patientId === patientId);
+      if (!q) continue;
+      const station = q.stationId && byId(st.stations, q.stationId);
+      queue = {
+        sessionId: s.id,
+        entryId: q.entryId,
+        senha: q.senha,
+        presence: q.presence,
+        status: q.status,
+        skips: q.skips,
+        station: station ? station.name : null,
+        eta: q.status === "fila" ? eta(st, s.id, q.id) : null,
+      };
+    }
+    return {
+      patient: patient(st, patientId),
+      entries,
+      notifications: st.notifications.filter((n) => n.patientId === patientId),
+      queue,
+    };
+  }
+
+  function advance(st, ms) {
+    st.now += ms;
+    tick(st);
   }
 
   const api = {
@@ -608,7 +714,15 @@
     skip,
     frontDesk,
     tick,
-    counters,
+    toggleOption,
+    dayLabel,
+    unitAgenda,
+    pairTv,
+    revokeTv,
+    tvView,
+    patientView,
+    advance,
+    activeEntry,
     findItem,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

@@ -62,6 +62,7 @@ test("classify: alarm sign is emergency", () => {
   for (const a of ["falta_ar", "dor_peito", "desmaio", "avc", "sangramento", "convulsao"]) {
     assert.equal(E.classify(answers({ alarms: [a] }), 30).level, "emergencia", a);
   }
+  assert.equal(E.classify(answers({ alarms: ["nenhum"] }), 30).level, "rotina");
   const st = baseState();
   const r = E.createEntry(st, { patientId: "ana", serviceId: "cli", answers: answers({ alarms: ["dor_peito"] }) });
   assert.equal(r.ok, false);
@@ -87,6 +88,7 @@ test("classify: urgent, attention and routine rules", () => {
   assert.equal(E.classify(novo("moderado", { grupos: ["gestante"] }), 30).level, "urgente");
   assert.equal(E.classify(novo("moderado"), 30).level, "atencao");
   assert.equal(E.classify(novo("leve", { condicoes: ["diabetes"] }), 30).level, "atencao");
+  assert.equal(E.classify(novo("leve", { condicoes: ["nenhuma"] }), 30).level, "rotina");
   assert.equal(E.classify(novo("leve"), 1).level, "atencao");
   assert.equal(E.classify(novo("leve"), 60).level, "atencao");
   assert.equal(E.classify(novo("leve"), 59).level, "rotina");
@@ -373,4 +375,110 @@ test("queue: front desk entry is present", () => {
   const emerg = E.frontDesk(st, "s1", { name: "X", birth: "1990-01-01", answers: answers({ alarms: ["convulsao"] }) });
   assert.equal(emerg.ok, false);
   assert.equal(emerg.error, "emergencia");
+});
+
+// ---------- Visões que as telas mostram ----------
+
+test("quiz: none option is exclusive", () => {
+  assert.deepEqual(E.toggleOption(["diabetes", "asma"], "nenhuma", "nenhuma"), ["nenhuma"]);
+  assert.deepEqual(E.toggleOption(["nenhuma"], "diabetes", "nenhuma"), ["diabetes"]);
+  assert.deepEqual(E.toggleOption(["diabetes"], "asma", "nenhuma"), ["diabetes", "asma"]);
+  assert.deepEqual(E.toggleOption(["diabetes", "asma"], "diabetes", "nenhuma"), ["asma"]);
+});
+
+test("agenda: unit shows future sessions with remaining slots", () => {
+  const st = baseState({
+    units: [{ id: "u1", name: "UBS Vila Nova", hours: "Seg a Sex · 7h às 17h" }],
+    sessions: [
+      { id: "s1", serviceId: "cli", start: Date.UTC(2026, 10, 17, 10, 0), slots: 20, visibility: "privada" },
+      { id: "s0", serviceId: "cli", start: NOW - DAY, slots: 5, visibility: "pública" },
+    ],
+  });
+  const e = E.createEntry(st, { patientId: "ana", serviceId: "cli", answers: none }).entry;
+  E.allocate(st, "s1", [e.id], { version: st.sessions[0].version });
+  const agenda = E.unitAgenda(st, "u1");
+  assert.equal(agenda.hours, "Seg a Sex · 7h às 17h");
+  assert.deepEqual(
+    agenda.sessions.map((s) => s.text),
+    ["Terça, 17/11 · Clínico geral · privada · 19 vagas"],
+  );
+  assert.ok(!JSON.stringify(agenda).includes("Ana"));
+});
+
+test("tv: pairing shows only code until paired and after revoke", () => {
+  const st = confirmedSession(["ana", "joao"]);
+  const before = E.tvView(st);
+  assert.equal(before.paired, false);
+  assert.match(before.code, /^\d{6}$/);
+  assert.equal(before.counters, undefined);
+  assert.equal(before.qr, undefined);
+  assert.equal(E.pairTv(st, "000000").ok, false);
+  assert.equal(E.pairTv(st, before.code).ok, true);
+  const after = E.tvView(st);
+  assert.equal(after.paired, true);
+  assert.deepEqual(after.counters, [{ name: "Clínico geral", aguardando: 0, caminho: 2 }]);
+  assert.equal(after.qr, E.qrToken(st.sessions[0], st.now));
+  E.revokeTv(st);
+  const revoked = E.tvView(st);
+  assert.equal(revoked.paired, false);
+  assert.match(revoked.code, /^\d{6}$/);
+});
+
+test("tv: shows only tickets and counters, never names", () => {
+  const st = confirmedSession(["ana", "joao", "bruno"]);
+  E.pairTv(st, E.tvView(st).code);
+  checkIn(st, "ana");
+  checkIn(st, "joao");
+  E.callNext(st, "s1", "st1");
+  const view = E.tvView(st);
+  assert.deepEqual(view.counters, [{ name: "Clínico geral", aguardando: 1, caminho: 1 }]);
+  assert.deepEqual(
+    view.announcements.map((a) => [a.senha, a.dest, a.service]),
+    [["C-001", "Consultório 3", "Clínico geral"]],
+  );
+  const json = JSON.stringify(view);
+  for (const p of st.patients) assert.ok(!json.includes(p.name), p.name);
+});
+
+test("privacy: patient view holds only own data", () => {
+  const st = confirmedSession(["ana", "joao", "bruno"]);
+  checkIn(st, "joao");
+  E.callNext(st, "s1", "st1");
+  const v = E.patientView(st, "ana");
+  assert.ok(v.entries.every((e) => e.patientId === "ana"));
+  assert.ok(v.notifications.every((n) => n.patientId === "ana"));
+  assert.equal(v.queue.senha, "C-001");
+  assert.deepEqual(v.queue.eta, E.eta(st, "s1", item(st, "ana").id));
+  const json = JSON.stringify(v);
+  for (const name of ["João", "Bruno", "C-002", "C-003"]) assert.ok(!json.includes(name), name);
+});
+
+test("calllist: pending allocation highlighted after 24 h", () => {
+  const st = baseState();
+  const e = E.createEntry(st, { patientId: "ana", serviceId: "cli", answers: none }).entry;
+  E.allocate(st, "s1", [e.id], { version: st.sessions[0].version });
+  assert.equal(e.status, "alocada");
+  assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Confirme em 24 h")));
+  assert.deepEqual(
+    E.callList(st).map((c) => [c.entry.id, c.overdue]),
+    [[e.id, false]],
+  );
+  E.advance(st, 24 * 60 * MIN - MIN);
+  assert.equal(E.callList(st)[0].overdue, false);
+  E.advance(st, MIN);
+  assert.equal(E.callList(st)[0].overdue, true);
+  assert.equal(E.confirmAllocation(st, e.id).ok, true);
+  assert.equal(e.status, "confirmada");
+  assert.equal(E.callList(st).length, 0);
+});
+
+test("clock: advancing re-evaluates tolerance", () => {
+  const st = confirmedSession(["ana", "joao"]);
+  checkIn(st, "ana");
+  E.callNext(st, "s1", "st1");
+  E.advance(st, 4 * MIN);
+  assert.equal(item(st, "ana").status, "chamado");
+  E.advance(st, MIN);
+  assert.equal(item(st, "ana").status, "fila");
+  assert.equal(item(st, "ana").skips, 1);
 });

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fila Saúde · protótipo</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <strong>Fila Saúde</strong>
+          <small>protótipo de validação · dados fictícios</small>
+        </div>
+      </div>
+      <nav class="scenarios" id="scenarios" aria-label="Cenários"></nav>
+      <div class="clock" id="clock"></div>
+    </header>
+
+    <section class="guide" id="guide" aria-label="Passo a passo"></section>
+
+    <main class="stage">
+      <section class="col col-phone" aria-label="App do paciente">
+        <div class="col-head">
+          <h2>App do paciente</h2>
+          <label class="persona">Ver como <select id="persona"></select></label>
+        </div>
+        <div class="phone" id="phone"></div>
+      </section>
+
+      <section class="col col-admin" aria-label="Painel administrativo">
+        <div class="col-head"><h2>Painel administrativo</h2></div>
+        <div class="admin" id="admin"></div>
+      </section>
+
+      <section class="col col-right">
+        <section aria-label="Estação de chamada">
+          <div class="col-head"><h2>Estação de chamada</h2></div>
+          <div class="station" id="station"></div>
+        </section>
+        <section aria-label="TV da sala de espera">
+          <div class="col-head"><h2>TV da sala de espera</h2></div>
+          <div class="tv" id="tv"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="js/engine.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

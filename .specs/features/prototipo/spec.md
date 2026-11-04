@@ -184,7 +184,7 @@ Proof: run engine | ✔ waitlist: referral gates allocation
 **C6** - Sugestão ordena urgência confirmada, remanejado, risco, prioridade legal, data original, com motivos (PROTO-03, AC 1)
 Proof: run engine | ✔ allocation: suggestion order and reasons
 
-**C7** - Alocação além das vagas é recusada (PROTO-03, AC 3)
+**C7** - Alocação além das vagas é recusada; alocar com a lista desatualizada dá conflito (PROTO-03, AC 3 e AC 4)
 Proof: run engine | ✔ allocation: never exceeds slots
 
 **C8** - Recusa libera a vaga e devolve a entrada com a data original (PROTO-03, AC 7)
@@ -196,7 +196,7 @@ Proof: run engine | ✔ queue: open numbers by original date
 **C10** - Posição e tempo estimado por RN-ETA-01; sem estação, sem tempo (PROTO-04, AC 2)
 Proof: run engine | ✔ queue: eta and position
 
-**C11** - QR atual e anterior aceitos; mais antigo recusado (PROTO-04, AC 4)
+**C11** - QR atual e anterior aceitos; mais antigo recusado; "Vou sair" mantém o número (PROTO-04, AC 4 e AC 5)
 Proof: run engine | ✔ queue: qr current and previous only
 
 **C12** - RN-ORD-01: João presente é chamado antes de Ana que acabou de chegar (PROTO-04, AC 6)
@@ -222,6 +222,33 @@ Proof: run engine | ✔ queue: leave home notice once
 
 **C19** - Balcão entra presente com o próximo número; vagas respeitadas (PROTO-04, AC 10)
 Proof: run engine | ✔ queue: front desk entry is present
+
+**C20** - "Nenhum destes" e "Nenhuma" desmarcam as outras opções (PROTO-02, AC 7)
+Proof: run engine | ✔ quiz: none option is exclusive
+
+**C21** - A unidade mostra horário e sessões futuras como "Terça, 17/11 · Clínico geral · privada · 19 vagas", sem pacientes (PROTO-02, AC 1)
+Proof: run engine | ✔ agenda: unit shows future sessions with remaining slots
+
+**C22** - TV sem pareamento mostra só o código; pareada mostra contadores e QR; revogada volta ao código (PROTO-04, AC 11)
+Proof: run engine | ✔ tv: pairing shows only code until paired and after revoke
+
+**C23** - A TV mostra só senhas, destino e contadores, nunca nomes (PROTO-04, AC 12)
+Proof: run engine | ✔ tv: shows only tickets and counters, never names
+
+**C24** - O celular recebe só os dados do paciente escolhido (PROTO-01, AC 4)
+Proof: run engine | ✔ privacy: patient view holds only own data
+
+**C25** - Alocação avisa "confirme em 24 h", entra na lista de ligação, fica destacada aos 24 h e sai ao confirmar (PROTO-03, AC 2, AC 5 e AC 6)
+Proof: run engine | ✔ calllist: pending allocation highlighted after 24 h
+
+**C26** - Avançar o relógio reavalia a tolerância de chamada (PROTO-01, AC 3)
+Proof: run engine | ✔ clock: advancing re-evaluates tolerance
+
+**C27** - A página mostra celular, painel, estação e TV juntos a 1280 px, e cada cenário carrega seus dados e passos (PROTO-01, AC 1 e AC 2)
+Proof: walk
+
+**C28** - Chamar próximo destaca a senha e o destino na TV por 10 s com bipe (PROTO-04, AC 8)
+Proof: walk
 
 ## Handoff
 
