@@ -123,6 +123,7 @@ test("waitlist: referral gates allocation", () => {
   assert.equal(E.suggest(st, "s2").length, 0);
   const blocked = E.allocate(st, "s2", [r.entry.id], { version: st.sessions[0].version });
   assert.equal(blocked.ok, false);
+  assert.equal(blocked.error, "nao_alocavel");
   E.rejectReferral(st, r.entry.id, "Encaminhamento ilegível");
   assert.equal(r.entry.status, "aguardando_encaminhamento");
   assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Encaminhamento ilegível")));
