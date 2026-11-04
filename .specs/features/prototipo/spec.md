@@ -254,4 +254,9 @@ Proof: walk
 
 **Settled mid-build:** none
 **Dispatched:** none
-**Walked:** none
+**Walked:** 2026-11-04, Chrome headless via CDP, `prototype/index.html` por file://, sem login.
+- Simulador (PROTO-01): a 1280 e 1440 px as quatro visões ficam lado a lado sem rolagem horizontal (colunas 20..392, 412..845, 865..1245 a 1280). Os três botões de cenário trocam dados e passos. "+5 min" pula o chamado.
+- Lista de espera (PROTO-02), cenário "Lista de espera e risco": pin UBS Vila Nova mostra "Terça, 17/11 · Clínico geral · privada · 19 vagas". Maria em Clínico (nenhum, novo, moderado) dá "Atenção · sugerido". Segunda tentativa mostra "Você já está nesta lista". Em Cardiologia pede a foto; o agendador rejeita "Fora da validade" e o aviso aparece no celular. Antônio com dor no peito vê "Ligar 192 · SAMU" sem entrada. Lúcia com autolesão vê CVV 188 e SAMU 192, segue e entra como "Urgente · sugerido", com alerta no Agendador.
+- Alocação (PROTO-03), cenário "Alocação e confirmação": a sugestão vem Eduardo (remanejado), Carlos (urgente), Helena (gestante), Fátima (2 faltas), Dora (82), Gil, com as 3 primeiras marcadas. Alocar ocupa 4 de 4 vagas. Helena confirma no app. Na lista de ligação Ivo aparece destacado; "Recusou" sugere Fátima. "Simular outro agendador" seguido de Alocar mostra o erro de conflito, e a nova tentativa aloca. "+1 dia" destaca todos os pendentes.
+- Fila do dia (PROTO-04), cenário "Fila do dia": código errado da TV é recusado; o certo pareia, e "Iniciar painel" mostra contadores e QR. Abrir sessão gera C-001..C-006 remotos e libera Sérgio. Check-in João, Ana, Bruno dá a ordem João, Bruno, Ana (RN-ORD-03). A chamada destaca C-003 na TV por 10 s, depois a senha desce para "últimas chamadas". O QR antigo dá "QR expirado". Triagem urgente no Paulo o põe como próximo. 1º pulo mantém presente, 2º volta para remoto, 3º "Você saiu da fila". O balcão gera C-007 presente. Fechar o Consultório 3 mostra "aguardando início do atendimento".
+
