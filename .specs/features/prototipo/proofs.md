@@ -1,9 +1,9 @@
 # prototipo proofs
 
-**HEAD**: 940b4b3
+**HEAD**: a3a7a3a
 **Tree**: dirty - .agents/.skill-lock.json, .agents/.skill-lock.json.backup, .claude/skills/tlc-spec-driven/.skill-meta.json, .claude/skills/tlc-spec-driven/SKILL.md, .claude/skills/tlc-spec-driven/references/coding-principles.md
 **Shell**: /bin/sh
-**Result**: 29 pass, 0 fail
+**Result**: 35 pass, 0 fail
 
 | Check | Proof | Result |
 | --- | --- | --- |
@@ -35,26 +35,38 @@
 | C26 | `run engine / ✔ clock: advancing re-evaluates tolerance` | pass |
 | C27 | `walk` | pass (Walked) |
 | C28 | `walk` | pass (Walked) |
-| Build | `node --check prototype/js/engine.js && node --check prototype/js/app.js` | pass |
+| C29 | `run engine / ✔ eta: present patient sees real call order` | pass |
+| C30 | `run engine / ✔ eta: remote first sees come now` | pass |
+| C31 | `run engine / ✔ priority: municipal rule switches legal before risk` | pass |
+| C32 | `walk` | pass (Walked) |
+| C34 | `run engine / ✔ order: leaving and coming back never deadlocks` | pass |
+| C33 | `! grep -rnE "animation/transition/@keyframes" prototype/css` | pass |
+| Build | `node --check prototype/js/engine.js && node --check prototype/js/scenarios.js && node --check prototype/js/app` | pass |
 
 ## Output
 
 `Run engine` - exit 0
 
 ```
-✔ quiz: none option is exclusive (0.110869ms)
-✔ agenda: unit shows future sessions with remaining slots (0.257529ms)
-✔ tv: pairing shows only code until paired and after revoke (0.349179ms)
-✔ tv: shows only tickets and counters, never names (0.195889ms)
-✔ privacy: patient view holds only own data (0.223289ms)
-✔ calllist: pending allocation highlighted after 24 h (0.208799ms)
-✔ clock: advancing re-evaluates tolerance (0.116629ms)
-ℹ tests 26
+✔ privacy: patient view holds only own data (0.294678ms)
+✔ calllist: pending allocation highlighted after 24 h (0.190229ms)
+✔ clock: advancing re-evaluates tolerance (0.127359ms)
+✔ eta: present patient sees real call order (0.248538ms)
+✔ eta: remote first sees come now (0.232419ms)
+✔ priority: municipal rule switches legal before risk (0.398027ms)
+✔ order: leaving and coming back never deadlocks (0.383548ms)
+ℹ tests 30
 ℹ suites 0
-ℹ pass 26
+ℹ pass 30
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 76.656877
+ℹ duration_ms 73.814395
+```
+
+`! grep -rnE "animation/transition/@keyframes" prototype/css` - exit 0
+
+```
+(no output)
 ```

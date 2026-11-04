@@ -30,9 +30,14 @@ function baseState(extra = {}) {
 }
 
 // Coloca uma lista de pacientes confirmados na sessão, na ordem dada (data original crescente).
-function confirmedSession(ids, { slots = 10 } = {}) {
+function confirmedSession(ids, { slots = 10, triage = false } = {}) {
   const st = baseState();
   st.sessions[0].slots = slots;
+  if (triage) {
+    E.setServiceTriage(st, "cli", true);
+    E.createStation(st, { name: "Triagem 1", stage: "triagem", services: ["cli"] });
+    st.services.find((x) => x.id === "cli").avgTriageMin = 5;
+  }
   ids.forEach((pid, i) => {
     st.now = NOW - (ids.length - i) * DAY;
     const r = E.createEntry(st, { patientId: pid, serviceId: "cli", answers: none });
@@ -386,8 +391,7 @@ test("call: three skips", () => {
   checkIn(st, "joao");
   checkIn(st, "bruno");
   E.callNext(st, "s1", "st1"); // Ana
-  st.now += 5 * MIN;
-  E.tick(st); // tolerância esgota: 1º pulo
+  E.skip(st, "s1", "st1"); // "Não compareceu": 1º pulo
   assert.equal(item(st, "ana").skips, 1);
   assert.equal(item(st, "ana").presence, "presente");
   assert.deepEqual(order(st), ["joao", "ana", "bruno"]);
@@ -542,10 +546,11 @@ test("clock: advancing re-evaluates tolerance", () => {
   checkIn(st, "ana");
   E.callNext(st, "s1", "st1");
   E.advance(st, 4 * MIN);
-  assert.equal(item(st, "ana").status, "chamado");
+  assert.deepEqual(E.tolerance(st, "s1", "st1"), { leftMs: MIN, expired: false });
   E.advance(st, MIN);
-  assert.equal(item(st, "ana").status, "fila");
-  assert.equal(item(st, "ana").skips, 1);
+  assert.deepEqual(E.tolerance(st, "s1", "st1"), { leftMs: 0, expired: true });
+  assert.equal(item(st, "ana").status, "chamado"); // AD-006: ninguém é pulado sozinho
+  assert.equal(item(st, "ana").skips, 0);
 });
 
 // ---------- Revisão 2: posição real e regra de prioridade (AD-002 a AD-004) ----------
@@ -652,4 +657,81 @@ test("order: leaving and coming back never deadlocks", () => {
   checkIn(st2, "ana");
   assert.deepEqual(order(st2), ["bruno", "ana"]);
   assert.equal(E.callNext(st2, "s1", "st1").item.patientId, "bruno");
+});
+
+// ---------- Revisão 3: sem pulo automático (AD-006) e triagem (AD-007) ----------
+
+test("call: tolerance never skips on its own", () => {
+  const st = confirmedSession(["ana", "joao"]);
+  checkIn(st, "ana");
+  checkIn(st, "joao");
+  E.callNext(st, "s1", "st1"); // Ana entra no consultório
+  E.advance(st, 12 * MIN); // consulta longa
+  assert.equal(item(st, "ana").status, "chamado");
+  assert.equal(item(st, "ana").skips, 0);
+  assert.equal(E.callNext(st, "s1", "st1").item.patientId, "joao");
+  assert.equal(item(st, "ana").status, "atendido");
+  E.advance(st, 6 * MIN);
+  assert.equal(item(st, "joao").skips, 0);
+  E.skip(st, "s1", "st1"); // "Não compareceu"
+  assert.equal(item(st, "joao").skips, 1);
+  assert.equal(item(st, "joao").presence, "presente");
+});
+
+test("triage: admin enables triage and creates a station", () => {
+  const st = baseState();
+  assert.equal(E.setServiceTriage(st, "cli", true).ok, true);
+  assert.equal(st.services.find((x) => x.id === "cli").requiresTriage, true);
+  const tri = E.createStation(st, { name: "Triagem 1", stage: "triagem", services: ["cli"] });
+  assert.equal(tri.stage, "triagem");
+  assert.equal(tri.open, true);
+  assert.ok(st.stations.includes(tri));
+  assert.equal(st.stations.find((x) => x.id === "st1").stage, "atendimento");
+  const open = confirmedSession(["ana"]);
+  const r = E.setServiceTriage(open, "cli", true);
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "sessao_aberta");
+  assert.ok(!open.services.find((x) => x.id === "cli").requiresTriage);
+});
+
+test("triage: two stages with the same ticket", () => {
+  const st = confirmedSession(["ana", "joao"], { triage: true });
+  const tri = st.stations.find((x) => x.stage === "triagem");
+  assert.equal(item(st, "ana").stage, "triagem");
+  checkIn(st, "ana");
+  checkIn(st, "joao");
+  const early = E.callNext(st, "s1", "st1");
+  assert.equal(early.ok, false); // o consultório não chama antes da triagem
+  assert.equal(early.error, "ninguem");
+  assert.equal(E.callNext(st, "s1", tri.id).item.patientId, "ana");
+  assert.ok(st.tv.announcements.some((a) => a.senha === "C-001" && a.dest === "Triagem 1"));
+  E.confirmRisk(st, "s1", item(st, "ana").id, "atencao");
+  assert.equal(item(st, "ana").confirmedLevel, "atencao");
+  E.callNext(st, "s1", tri.id); // fecha a triagem da Ana e chama João
+  const ana = item(st, "ana");
+  assert.deepEqual(
+    [ana.stage, ana.status, ana.presence, ana.senha, ana.number],
+    ["atendimento", "fila", "presente", "C-001", 1],
+  );
+  assert.equal(item(st, "joao").status, "chamado");
+  E.finish(st, "s1", tri.id); // João triado, rotina
+  assert.equal(item(st, "joao").stage, "atendimento");
+  assert.deepEqual(order(st), ["ana", "joao"]);
+  assert.equal(E.callNext(st, "s1", "st1").item.patientId, "ana");
+  assert.ok(st.tv.announcements.some((a) => a.senha === "C-001" && a.dest === "Consultório 3"));
+});
+
+test("triage: eta sums both stages", () => {
+  const st = confirmedSession(["ana", "joao"], { triage: true });
+  // João: 1 à frente na triagem (5 min) + 1 à frente no serviço (15 min).
+  assert.deepEqual(E.patientEta(st, "s1", item(st, "joao").id), {
+    mode: "remoto",
+    position: 2,
+    minutes: 20,
+    comeNow: false,
+  });
+  assert.deepEqual(E.eta(st, "s1", item(st, "joao").id), { position: 2, minutes: 20 });
+  assert.equal(E.patientEta(st, "s1", item(st, "ana").id).comeNow, true);
+  st.stations.find((x) => x.stage === "triagem").open = false;
+  assert.equal(E.patientEta(st, "s1", item(st, "joao").id).minutes, null);
 });

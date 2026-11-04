@@ -48,13 +48,14 @@
     });
     st.stations.forEach((s) => {
       s.current = s.current || null;
+      s.stage = s.stage || "atendimento";
     });
     st.sessions.forEach((s) => {
       s.state = s.state || "planejada";
       s.version = s.version || 1;
       s.queue = s.queue || [];
       s.nextNumber = s.nextNumber || 1;
-      s.maxCalledNumber = s.maxCalledNumber || 0;
+      s.maxCalled = s.maxCalled || {}; // maior número já chamado, por etapa
       s.secret = s.secret || `q${s.id}`;
     });
     return st;
@@ -313,6 +314,7 @@
       calledAt: null,
       stationId: null,
       leaveHomeSent: false,
+      stage: svc.requiresTriage ? "triagem" : "atendimento", // RN-TRI-01
       ...fields,
     };
     s.queue.push(it);
@@ -354,16 +356,18 @@
 
   const isEligible = (q) => q.status === "fila" && q.presence === "presente";
 
-  function stationServes(st, stationId, q) {
-    if (!stationId) return true;
-    return byId(st.stations, stationId).services.includes(q.serviceId);
+  // Sem estação, vale a etapa pedida (padrão: atendimento).
+  function stationServes(st, stationId, q, stage) {
+    if (!stationId) return q.stage === (stage || "atendimento");
+    const station = byId(st.stations, stationId);
+    return station.services.includes(q.serviceId) && (station.stage || "atendimento") === q.stage;
   }
 
   // Ordem de chamada com a janela protegida: ninguém passa à frente de quem o trava (8.3).
-  function callOrder(st, sessionId, stationId, exclude) {
+  function callOrder(st, sessionId, stationId, exclude, stage) {
     const s = session(st, sessionId);
     const pool = s.queue
-      .filter((q) => isEligible(q) && q.id !== exclude && stationServes(st, stationId, q))
+      .filter((q) => isEligible(q) && q.id !== exclude && stationServes(st, stationId, q, stage))
       .sort((a, b) => orderCompare(st, a, b));
     const ids = new Set(pool.map((q) => q.id));
     const placed = [];
@@ -380,12 +384,12 @@
   }
 
   function becomeEligible(st, s, q, { applyLate }) {
-    if (applyLate && !urgConf(q) && s.maxCalledNumber > q.number) {
+    if (applyLate && !urgConf(q) && (s.maxCalled[q.stage] || 0) > q.number) {
       q.number = s.nextNumber++; // atraso: perdeu a vez, vai para o fim
     }
     q.blockers = urgConf(q)
       ? []
-      : callOrder(st, s.id, null, q.id)
+      : callOrder(st, s.id, null, q.id, q.stage)
           .slice(0, st.config.K)
           .map((x) => x.id);
     q.presence = "presente";
@@ -428,20 +432,35 @@
     return { ok: true };
   }
 
-  function openStations(st, serviceId) {
-    return st.stations.filter((x) => x.open && x.services.includes(serviceId)).length;
+  function openStations(st, serviceId, stage = "atendimento") {
+    return st.stations.filter((x) => x.open && (x.stage || "atendimento") === stage && x.services.includes(serviceId))
+      .length;
   }
 
-  // RN-ETA-01: pessoas à frente em ordem(todas), presentes e remotas.
+  const avgFor = (st, serviceId, stage) =>
+    stage === "triagem" ? service(st, serviceId).avgTriageMin || st.config.avgMin : st.config.avgMin;
+
+  // RN-ETA-01: pessoas à frente em ordem(todas) da mesma etapa, presentes e remotas.
+  // Quem ainda não foi triado soma as duas etapas.
   function eta(st, sessionId, itemId) {
     const s = session(st, sessionId);
     const q = byId(s.queue, itemId);
-    const waiting = s.queue
-      .filter((x) => x.status === "fila" && x.serviceId === q.serviceId)
-      .sort((a, b) => orderCompare(st, a, b));
-    const ahead = waiting.indexOf(q);
-    const n = openStations(st, q.serviceId);
-    return { position: ahead + 1, minutes: n ? Math.ceil((ahead * st.config.avgMin) / n) : null };
+    const sorted = (stage) =>
+      s.queue
+        .filter((x) => x.status === "fila" && x.serviceId === q.serviceId && (!stage || x.stage === stage))
+        .sort((a, b) => orderCompare(st, a, b));
+    const ahead = sorted(q.stage).indexOf(q);
+    const nA = openStations(st, q.serviceId, "atendimento");
+    if (q.stage !== "triagem") {
+      return { position: ahead + 1, minutes: nA ? Math.ceil((ahead * st.config.avgMin) / nA) : null };
+    }
+    const nT = openStations(st, q.serviceId, "triagem");
+    const aheadAll = sorted(null).indexOf(q);
+    const minutes =
+      nT && nA
+        ? Math.ceil((ahead * avgFor(st, q.serviceId, "triagem")) / nT + (aheadAll * st.config.avgMin) / nA)
+        : null;
+    return { position: ahead + 1, minutes };
   }
 
   function confirmRisk(st, sessionId, itemId, level) {
@@ -470,6 +489,17 @@
     const q = station.current && byId(s.queue, station.current);
     station.current = null;
     if (!q) return;
+    if (station.stage === "triagem") {
+      // RN-TRI-04: o triado entra presente na fila do consultório, mesma senha e número.
+      q.stage = "atendimento";
+      q.status = "fila";
+      q.stationId = null;
+      q.calledAt = null;
+      q.leaveHomeSent = false;
+      becomeEligible(st, s, q, { applyLate: false });
+      notify(st, q.patientId, `Triagem concluída. Aguarde na sala: o consultório vai chamar a senha ${q.senha}.`);
+      return;
+    }
     q.status = "atendido";
     const e = q.entryId && byId(st.entries, q.entryId);
     if (e) e.status = "concluida";
@@ -488,7 +518,7 @@
     q.calledAt = st.now;
     q.stationId = stationId;
     station.current = q.id;
-    s.maxCalledNumber = Math.max(s.maxCalledNumber, q.number);
+    s.maxCalled[q.stage] = Math.max(s.maxCalled[q.stage] || 0, q.number);
     s.queue.forEach((x) => {
       x.blockers = x.blockers.filter((b) => b !== q.id); // a trava acaba quando o travador é chamado
     });
@@ -566,13 +596,32 @@
     return { ok: true, item: q, classification: c };
   }
 
-  // Prazos que dependem do relógio: tolerância e "saia de casa".
+  // AD-006: a tolerância é só um contador; quem pula é o profissional ("Não compareceu").
+  function tolerance(st, sessionId, stationId) {
+    const station = byId(st.stations, stationId);
+    const q = station.current && byId(session(st, sessionId).queue, station.current);
+    if (!q) return null;
+    const leftMs = Math.max(0, st.config.toleranceMin * MIN - (st.now - q.calledAt));
+    return { leftMs, expired: leftMs === 0 };
+  }
+
+  // RN-TRI-01: a triagem é configuração do serviço; não muda com sessão aberta.
+  function setServiceTriage(st, serviceId, on) {
+    if (st.sessions.some((x) => x.serviceId === serviceId && x.state === "aberta"))
+      return { ok: false, error: "sessao_aberta" };
+    service(st, serviceId).requiresTriage = !!on;
+    return { ok: true };
+  }
+
+  function createStation(st, { name, stage, services }) {
+    const station = { id: nextId(st, "est"), name, stage, services, open: true, current: null };
+    st.stations.push(station);
+    return station;
+  }
+
+  // Prazo que depende do relógio: "saia de casa".
   function tick(st) {
     for (const s of st.sessions.filter((x) => x.state === "aberta")) {
-      for (const station of st.stations) {
-        const q = station.current && byId(s.queue, station.current);
-        if (q && st.now - q.calledAt >= st.config.toleranceMin * MIN) skip(st, s.id, station.id);
-      }
       for (const q of s.queue) {
         if (q.status !== "fila" || q.presence !== "remoto" || q.leaveHomeSent || !q.patientId) continue;
         const { minutes } = eta(st, s.id, q.id);
@@ -700,11 +749,11 @@
   function patientEta(st, sessionId, itemId) {
     const s = session(st, sessionId);
     const q = byId(s.queue, itemId);
-    const n = openStations(st, q.serviceId);
+    const n = openStations(st, q.serviceId, q.stage);
     if (q.presence === "presente") {
-      const order = callOrder(st, sessionId, null).filter((x) => x.serviceId === q.serviceId);
+      const order = callOrder(st, sessionId, null, undefined, q.stage).filter((x) => x.serviceId === q.serviceId);
       const position = order.indexOf(q) + 1;
-      const minutes = n ? Math.ceil(((position - 1) * st.config.avgMin) / n) : null;
+      const minutes = n ? Math.ceil(((position - 1) * avgFor(st, q.serviceId, q.stage)) / n) : null;
       return { mode: "presente", position, minutes, comeNow: false };
     }
     const e = eta(st, sessionId, itemId);
@@ -769,6 +818,9 @@
     tvView,
     patientView,
     advance,
+    tolerance,
+    setServiceTriage,
+    createStation,
     etaText,
     patientEta,
     activeEntry,

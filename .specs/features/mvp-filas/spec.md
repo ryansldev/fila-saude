@@ -42,6 +42,7 @@ A fonte marca como **proposta** as regras abaixo. Elas entram no MVP com o valor
 | Peso entre prioridade legal e risco (RN-ORD, RN-AL-02) | Configuração do município: `risco antes` (padrão) ou `prioridade legal antes`, sempre abaixo da urgência confirmada (AD-004) | A área técnica de cada município decide; o padrão segue a fonte | y |
 | Posição mostrada ao paciente presente (RN-ETA-04) | Posição na ordem de chamada real entre os presentes; tempo = (posição − 1) × média ÷ estações (AD-002) | RN-ETA-01 contava remotos à frente de quem já é o próximo a ser chamado | y |
 | Remoto que já é o 1º (RN-ETA-04) | App mostra "venha agora" e que só é chamado após ler o QR (AD-003) | "1º · ~0 min" engana quem ainda não pode ser chamado | y |
+| Pulo automático por tolerância (RN-CHAM-03, RN-EST-05) | Não existe: a tolerância é um contador; só o profissional pula ("Não compareceu") ou avança ("Chamar próximo") (AD-006) | O pulo automático pulava quem já estava em consulta | y |
 | Validade do encaminhamento | Agendador informa a data de vencimento ao aceitar | Fonte em aberto; é o caminho que não inventa prazo | n |
 | Prazo de exclusão das fotos após inatividade (RNF-LGPD-04) | Fotos retidas enquanto o cadastro estiver ativo; exclusão a definir | Depende do jurídico; não bloqueia o protótipo | n |
 | Algoritmo de tempo médio (RN-ETA-05) | Últimos 10 atendimentos, descarta fora de 1/3–3× a mediana, mínimo 3 válidos | Proposta da fonte | n |

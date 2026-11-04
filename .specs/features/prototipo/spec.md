@@ -2,6 +2,7 @@
 
 **Approved**: 2026-11-04 - user: "Aprovado, pode construir"
 **Approved (revisão 2)**: 2026-11-04 - user: "Sim, seguir esse plano"
+**Approved (revisão 3)**: 2026-11-04 - user: "deixa a tolerancia lá, mas nn desabilita o nao compareceu. o nao compareceu tem que ficar lá e só vai pro próximo se o cara clicar em nao compareceu ou próximo" e "História 4 com duas etapas (Recommended)"
 
 ## Problem Statement
 
@@ -18,7 +19,7 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 | --- | --- |
 | Exceções P2 (pré-cadastro, cancelar sessão, sessão pública, cancelar vaga) | Usuário escolheu só os cenários P1 |
 | Backend, banco, login real, push real | Protótipo; estado em memória no navegador |
-| Etapa de triagem com fila própria | A triagem aparece só como confirmação de risco; as duas etapas ficam para o MVP |
+| Etapa de triagem com fila própria | Entrou na revisão 3 (AD-007, PROTO-08) |
 | Mapa real (tiles) | Mapa ilustrado, sem dependência externa |
 | Document Picture-in-Picture | A estação aparece como cartão na página; a mini-janela é do MVP |
 | Persistência entre recargas | Recarregar volta ao cenário inicial |
@@ -55,7 +56,7 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 
 1. WHEN a pessoa abre `prototype/index.html` THEN a página SHALL mostrar o celular do paciente, o painel administrativo, a estação e a TV ao mesmo tempo, num navegador de 1280 px ou mais.
 2. WHEN a pessoa escolhe um cenário (Lista de espera e risco, Alocação e confirmação, Fila do dia) THEN a página SHALL carregar os dados do cenário e mostrar seus passos.
-3. WHEN a pessoa usa "+1 min" ou "+5 min" THEN o relógio simulado SHALL avançar e os prazos dependentes (tolerância, QR, 24 h, "saia de casa") SHALL ser reavaliados.
+3. WHEN a pessoa usa "+1 min" ou "+5 min" THEN o relógio simulado SHALL avançar e os prazos dependentes (contador de tolerância, QR, 24 h, "saia de casa") SHALL ser reavaliados.
 4. The celular SHALL mostrar só os dados do paciente escolhido em "ver como" (INV-06).
 
 **Independent Test**: Abrir a página, trocar de cenário três vezes e ver os dados mudarem.
@@ -118,7 +119,7 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 6. WHEN os exemplos RN-ORD-01, RN-ORD-03 e RN-ORD-04 são reproduzidos THEN a ordem de chamada SHALL ser a da fonte.
 7. WHEN a triagem confirma urgente para um remoto THEN o paciente SHALL receber "venha agora" e, presente, SHALL ser o próximo chamado.
 8. WHEN o profissional clica em Chamar próximo THEN a TV SHALL destacar a senha e o destino por 10 s com bipe, o paciente SHALL receber "sua vez" e o anterior SHALL ficar atendido.
-9. WHEN o chamado é pulado (manualmente ou após 5 min simulados) THEN o 1º pulo SHALL mantê-lo presente atrás dos próximos K, o 2º SHALL voltá-lo para remoto e o 3º SHALL tirá-lo da fila.
+9. WHEN o profissional marca o chamado como "Não compareceu" THEN o 1º pulo SHALL mantê-lo presente atrás dos próximos K, o 2º SHALL voltá-lo para remoto e o 3º SHALL tirá-lo da fila. (O pulo automático após 5 min foi retirado pela AD-006, ver PROTO-07.)
 10. WHEN a recepção inclui um paciente no balcão THEN ele SHALL entrar presente com o próximo número, e IF o questionário dá emergência THEN o painel SHALL orientar encaminhar à emergência.
 11. WHEN a TV abre sem pareamento THEN ela SHALL mostrar só um código de 6 dígitos, WHEN o admin digita o código THEN ela SHALL mostrar chamadas, contadores e QR, e WHEN o admin revoga THEN ela SHALL voltar ao código.
 12. The TV SHALL mostrar só senhas e contadores ("N aguardando · +M a caminho"), nunca nomes.
@@ -162,6 +163,43 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 
 ---
 
+### P1: Chamada sem pulo automático (revisão 3, AD-006)
+
+**User Story**: Como profissional, quero que só eu decida quando o chamado não veio, para ninguém ser pulado no meio da consulta.
+
+**Why P1**: O pulo automático pulava quem já estava sendo atendido.
+
+**Acceptance Criteria**:
+
+1. WHILE há um paciente chamado na estação the estação SHALL mostrar o contador de tolerância e o botão "Não compareceu" habilitado.
+2. The sistema SHALL nunca pular um chamado sem o profissional clicar em "Não compareceu", mesmo depois da tolerância.
+3. WHEN a tolerância de 5 min acaba THEN a estação SHALL mostrar "tolerância esgotada" e destacar "Não compareceu".
+4. WHEN o profissional clica em "Chamar próximo" THEN o chamado atual SHALL ser fechado como atendido e o próximo SHALL ser chamado.
+
+**Independent Test**: Chamar alguém, avançar 12 min e ver que ele continua chamado; clicar "Não compareceu" e ver o 1º pulo.
+
+---
+
+### P1: Triagem com duas etapas (revisão 3, AD-007)
+
+**User Story**: Como admin e enfermeira, quero configurar a triagem e confirmar o risco antes do consultório.
+
+**Why P1**: A triagem tem a palavra final sobre o risco (RN-TRI).
+
+**Acceptance Criteria**:
+
+1. WHILE nenhuma sessão do serviço está aberta the admin SHALL poder marcar ou desmarcar "exige triagem" no serviço, e IF há sessão aberta THEN o sistema SHALL recusar a mudança.
+2. WHEN o admin cria uma estação com nome e etapa (triagem ou atendimento) THEN ela SHALL aparecer na lista de estações e na escolha da estação de chamada.
+3. WHERE o serviço exige triagem the abertura da sessão SHALL colocar os confirmados na fila de triagem, e a estação de atendimento SHALL não chamá-los antes da triagem.
+4. WHEN a estação de triagem chama THEN a TV SHALL mostrar a senha com destino na sala de triagem.
+5. WHEN a enfermeira confirma o risco na estação de triagem THEN essa SHALL ser a classificação confirmada.
+6. WHEN a estação de triagem chama o próximo ou finaliza THEN o paciente triado SHALL entrar presente na fila do consultório com a mesma senha e o mesmo número, ordenado pela classificação confirmada, prioridade legal e número (RN-TRI-04).
+7. WHILE o paciente ainda não foi triado the tempo estimado SHALL somar as duas etapas: (à frente na triagem × média da triagem ÷ estações de triagem) + (à frente no serviço × média do atendimento ÷ estações de atendimento).
+
+**Independent Test**: Ligar a triagem, criar "Triagem 1", abrir a sessão, chamar João na triagem, confirmar Atenção, finalizar e chamá-lo no Consultório 3 com a mesma senha.
+
+---
+
 ## Edge Cases
 
 - IF a estação chama sem nenhum elegível THEN a estação SHALL mostrar "ninguém presente" e não chamar ninguém.
@@ -179,8 +217,10 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 | PROTO-04 | P1: Fila do dia | Execute | Pending |
 | PROTO-05 | P1: Apresentação e histórias guiadas | Execute | Pending |
 | PROTO-06 | P1: Posição real e regra de prioridade | Execute | Pending |
+| PROTO-07 | P1: Chamada sem pulo automático | Execute | Pending |
+| PROTO-08 | P1: Triagem com duas etapas | Execute | Pending |
 
-**Coverage:** 6 total, 6 mapped to checks, 0 unmapped
+**Coverage:** 8 total, 8 mapped to checks, 0 unmapped
 
 ---
 
@@ -252,7 +292,7 @@ Proof: run engine | ✔ order: confirmed urgency jumps window
 **C16** - Chamar próximo encerra o anterior como atendido e nunca chama remoto (PROTO-04, AC 8)
 Proof: run engine | ✔ call: next closes previous and skips remote
 
-**C17** - 1º, 2º e 3º pulo: presente atrás de K, remoto, fora da fila (PROTO-04, AC 9)
+**C17** - 1º, 2º e 3º "Não compareceu": presente atrás de K, remoto, fora da fila (PROTO-04, AC 9)
 Proof: run engine | ✔ call: three skips
 
 **C18** - "Saia de casa" sai uma vez quando o tempo do remoto chega a 30 min (PROTO-04, AC 3)
@@ -279,7 +319,7 @@ Proof: run engine | ✔ privacy: patient view holds only own data
 **C25** - Alocação avisa "confirme em 24 h", entra na lista de ligação, fica destacada aos 24 h e sai ao confirmar (PROTO-03, AC 2, AC 5 e AC 6)
 Proof: run engine | ✔ calllist: pending allocation highlighted after 24 h
 
-**C26** - Avançar o relógio reavalia a tolerância de chamada (PROTO-01, AC 3)
+**C26** - Avançar o relógio reavalia o contador de tolerância, que esgota aos 5 min sem pular ninguém (PROTO-01, AC 3; PROTO-07, AC 2 e AC 3)
 Proof: run engine | ✔ clock: advancing re-evaluates tolerance
 
 **C27** - O modo livre mostra celular, painel, estação e TV juntos a 1280 px, e cada cenário carrega seus dados e passos (PROTO-01, AC 1 e AC 2; PROTO-05, AC 5)
@@ -302,6 +342,21 @@ Proof: walk
 
 **C34** - Sair ("Vou sair") ou ir para casa no 2º pulo e voltar nunca trava a ordem de chamada (PROTO-04, AC 5 e AC 9; PROTO-06, AC 1)
 Proof: run engine | ✔ order: leaving and coming back never deadlocks
+
+**C35** - O chamado nunca é pulado sozinho; só "Não compareceu" pula e "Chamar próximo" fecha como atendido (PROTO-07, AC 2 e AC 4)
+Proof: run engine | ✔ call: tolerance never skips on its own
+
+**C36** - "Exige triagem" só muda sem sessão aberta; o admin cria estação com etapa (PROTO-08, AC 1 e AC 2)
+Proof: run engine | ✔ triage: admin enables triage and creates a station
+
+**C37** - Com triagem, a sessão abre na fila de triagem; o consultório não chama antes; a triagem confirma o risco e o triado volta presente ao consultório com a mesma senha e número (PROTO-08, AC 3 a AC 6)
+Proof: run engine | ✔ triage: two stages with the same ticket
+
+**C38** - O tempo de quem não foi triado soma as duas etapas (PROTO-08, AC 7)
+Proof: run engine | ✔ triage: eta sums both stages
+
+**C39** - Estação mostra contador, "tolerância esgotada" e "Não compareceu" sempre habilitado; a história 4 vai do início ao fim pelo roteiro (PROTO-07, AC 1 e AC 3; PROTO-08)
+Proof: walk
 
 **C33** - Nenhuma animação ou transição CSS (PROTO-05, AC 4)
 Proof: `! grep -rnE "animation|transition|@keyframes" prototype/css`
