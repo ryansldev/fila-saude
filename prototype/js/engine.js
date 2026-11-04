@@ -20,7 +20,7 @@
   function createState(partial) {
     const st = {
       now: Date.now(),
-      config: { K: 1, toleranceMin: 5, leaveHomeMin: 30, avgMin: 15, confirmHours: 24 },
+      config: { K: 1, toleranceMin: 5, leaveHomeMin: 30, avgMin: 15, confirmHours: 24, priorityOrder: "risco" },
       units: [],
       services: [],
       sessions: [],
@@ -40,6 +40,7 @@
       leaveHomeMin: 30,
       avgMin: 15,
       confirmHours: 24,
+      priorityOrder: "risco",
       ...partial?.config,
     };
     st.patients.forEach((p) => {
@@ -179,15 +180,18 @@
     notify(st, e.patientId, `Encaminhamento rejeitado: ${reason}. Envie outra foto.`);
   }
 
+  // AD-004: o município escolhe se o risco vem antes da prioridade legal ("risco") ou o contrário ("legal").
+  function riskThenLegal(st, a, b) {
+    const risk = RISK_RANK[vigente(b)] - RISK_RANK[vigente(a)];
+    const legal = b.legal.rank - a.legal.rank;
+    return st.config.priorityOrder === "legal" ? legal || risk : risk || legal;
+  }
+
   // ---------- Alocação (RN-AL) ----------
 
-  function allocCompare(a, b) {
+  function allocCompare(st, a, b) {
     return (
-      urgConf(b) - urgConf(a) ||
-      b.remanejado - a.remanejado ||
-      RISK_RANK[vigente(b)] - RISK_RANK[vigente(a)] ||
-      b.legal.rank - a.legal.rank ||
-      a.createdAt - b.createdAt
+      urgConf(b) - urgConf(a) || b.remanejado - a.remanejado || riskThenLegal(st, a, b) || a.createdAt - b.createdAt
     );
   }
 
@@ -212,7 +216,7 @@
     const s = session(st, sessionId);
     return st.entries
       .filter((e) => e.serviceId === s.serviceId && e.status === "aguardando" && !e.refusedSessions.includes(sessionId))
-      .sort(allocCompare)
+      .sort((a, b) => allocCompare(st, a, b))
       .map((e) => ({
         entry: e,
         reasons: reasons(st, e),
@@ -344,13 +348,8 @@
   }
 
   // RN-ORD, sem travas: usado para posição e tempo (RN-ETA-01).
-  function orderCompare(a, b) {
-    return (
-      urgConf(b) - urgConf(a) ||
-      RISK_RANK[vigente(b)] - RISK_RANK[vigente(a)] ||
-      b.legal.rank - a.legal.rank ||
-      a.number - b.number
-    );
+  function orderCompare(st, a, b) {
+    return urgConf(b) - urgConf(a) || riskThenLegal(st, a, b) || a.number - b.number;
   }
 
   const isEligible = (q) => q.status === "fila" && q.presence === "presente";
@@ -365,7 +364,7 @@
     const s = session(st, sessionId);
     const pool = s.queue
       .filter((q) => isEligible(q) && q.id !== exclude && stationServes(st, stationId, q))
-      .sort(orderCompare);
+      .sort((a, b) => orderCompare(st, a, b));
     const ids = new Set(pool.map((q) => q.id));
     const placed = [];
     const done = new Set();
@@ -427,7 +426,9 @@
   function eta(st, sessionId, itemId) {
     const s = session(st, sessionId);
     const q = byId(s.queue, itemId);
-    const waiting = s.queue.filter((x) => x.status === "fila" && x.serviceId === q.serviceId).sort(orderCompare);
+    const waiting = s.queue
+      .filter((x) => x.status === "fila" && x.serviceId === q.serviceId)
+      .sort((a, b) => orderCompare(st, a, b));
     const ahead = waiting.indexOf(q);
     const n = openStations(st, q.serviceId);
     return { position: ahead + 1, minutes: n ? Math.ceil((ahead * st.config.avgMin) / n) : null };
@@ -671,6 +672,7 @@
         skips: q.skips,
         station: station ? station.name : null,
         eta: q.status === "fila" ? eta(st, s.id, q.id) : null,
+        display: q.status === "fila" ? patientEta(st, s.id, q.id) : null,
       };
     }
     return {
@@ -681,10 +683,33 @@
     };
   }
 
-  // RN-ETA-04: "você é o 4º · ~12 min"; sem estação aberta, sem tempo (RN-ETA-02).
+  // O que o app mostra (RN-ETA-04 com AD-002 e AD-003).
+  // Presente: posição na ordem de chamada real entre os presentes do serviço.
+  // Remoto: RN-ETA-01; em 1º com estação aberta, "venha agora".
+  function patientEta(st, sessionId, itemId) {
+    const s = session(st, sessionId);
+    const q = byId(s.queue, itemId);
+    const n = openStations(st, q.serviceId);
+    if (q.presence === "presente") {
+      const order = callOrder(st, sessionId, null).filter((x) => x.serviceId === q.serviceId);
+      const position = order.indexOf(q) + 1;
+      const minutes = n ? Math.ceil(((position - 1) * st.config.avgMin) / n) : null;
+      return { mode: "presente", position, minutes, comeNow: false };
+    }
+    const e = eta(st, sessionId, itemId);
+    return {
+      mode: "remoto",
+      position: e.position,
+      minutes: e.minutes,
+      comeNow: e.position === 1 && e.minutes !== null,
+    };
+  }
+
   function etaText(eta) {
     if (!eta) return "";
+    if (eta.comeNow) return "Sua vez está chegando: venha agora. Você só é chamado depois de ler o QR na unidade.";
     if (eta.minutes === null) return `você é o ${eta.position}º · aguardando início do atendimento`;
+    if (eta.mode === "presente") return `você é o ${eta.position}º a ser chamado · ~${eta.minutes} min`;
     return `você é o ${eta.position}º · ~${eta.minutes} min`;
   }
 
@@ -734,6 +759,7 @@
     patientView,
     advance,
     etaText,
+    patientEta,
     activeEntry,
     findItem,
   };

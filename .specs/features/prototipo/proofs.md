@@ -1,6 +1,6 @@
 # prototipo proofs
 
-**HEAD**: fbccee6
+**HEAD**: 940b4b3
 **Tree**: dirty - .agents/.skill-lock.json, .agents/.skill-lock.json.backup, .claude/skills/tlc-spec-driven/.skill-meta.json, .claude/skills/tlc-spec-driven/SKILL.md, .claude/skills/tlc-spec-driven/references/coding-principles.md
 **Shell**: /bin/sh
 **Result**: 29 pass, 0 fail
@@ -42,13 +42,13 @@
 `Run engine` - exit 0
 
 ```
-✔ quiz: none option is exclusive (0.107679ms)
-✔ agenda: unit shows future sessions with remaining slots (0.257109ms)
-✔ tv: pairing shows only code until paired and after revoke (0.345798ms)
-✔ tv: shows only tickets and counters, never names (0.197979ms)
-✔ privacy: patient view holds only own data (0.310049ms)
-✔ calllist: pending allocation highlighted after 24 h (0.180009ms)
-✔ clock: advancing re-evaluates tolerance (0.102889ms)
+✔ quiz: none option is exclusive (0.110869ms)
+✔ agenda: unit shows future sessions with remaining slots (0.257529ms)
+✔ tv: pairing shows only code until paired and after revoke (0.349179ms)
+✔ tv: shows only tickets and counters, never names (0.195889ms)
+✔ privacy: patient view holds only own data (0.223289ms)
+✔ calllist: pending allocation highlighted after 24 h (0.208799ms)
+✔ clock: advancing re-evaluates tolerance (0.116629ms)
 ℹ tests 26
 ℹ suites 0
 ℹ pass 26
@@ -56,5 +56,5 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 75.457854
+ℹ duration_ms 76.656877
 ```

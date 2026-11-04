@@ -547,3 +547,75 @@ test("clock: advancing re-evaluates tolerance", () => {
   assert.equal(item(st, "ana").status, "fila");
   assert.equal(item(st, "ana").skips, 1);
 });
+
+// ---------- Revisão 2: posição real e regra de prioridade (AD-002 a AD-004) ----------
+
+test("eta: present patient sees real call order", () => {
+  const st = confirmedSession(["ana", "joao", "bruno", "dora"]); // Dora, 82, tem prioridade legal
+  checkIn(st, "joao");
+  checkIn(st, "ana"); // posição melhor, mas fica atrás de João (janela protegida)
+  const joao = E.patientEta(st, "s1", item(st, "joao").id);
+  assert.deepEqual(joao, { mode: "presente", position: 1, minutes: 0, comeNow: false });
+  assert.equal(E.etaText(joao), "você é o 1º a ser chamado · ~0 min");
+  const ana = E.patientEta(st, "s1", item(st, "ana").id);
+  assert.deepEqual(ana, { mode: "presente", position: 2, minutes: 15, comeNow: false });
+  assert.equal(E.etaText(ana), "você é o 2º a ser chamado · ~15 min");
+  st.stations[0].open = true;
+  st.stations.push({ id: "st2", name: "Consultório 4", services: ["cli"], open: true, current: null });
+  assert.equal(E.patientEta(st, "s1", item(st, "ana").id).minutes, 8);
+  // Remoto continua com RN-ETA-01 (todos à frente, presentes e remotos).
+  assert.deepEqual(E.patientEta(st, "s1", item(st, "bruno").id), {
+    mode: "remoto",
+    position: 4,
+    minutes: 23,
+    comeNow: false,
+  });
+});
+
+test("eta: remote first sees come now", () => {
+  const st = confirmedSession(["ana", "joao", "dora"]);
+  const dora = () => E.patientEta(st, "s1", item(st, "dora").id);
+  assert.deepEqual(dora(), { mode: "remoto", position: 1, minutes: 0, comeNow: true });
+  assert.match(E.etaText(dora()), /venha agora/);
+  assert.doesNotMatch(E.etaText(dora()), /1º/);
+  assert.equal(E.patientEta(st, "s1", item(st, "ana").id).comeNow, false);
+  st.stations[0].open = false;
+  assert.deepEqual(dora(), { mode: "remoto", position: 1, minutes: null, comeNow: false });
+  assert.equal(E.etaText(dora()), "você é o 1º · aguardando início do atendimento");
+  // Presente nunca vê "venha agora".
+  st.stations[0].open = true;
+  checkIn(st, "dora");
+  assert.equal(dora().comeNow, false);
+});
+
+test("priority: municipal rule switches legal before risk", () => {
+  const st = baseState();
+  st.sessions[0].slots = 10;
+  const mk = (pid, daysAgo, ans) => {
+    st.now = NOW - daysAgo * DAY;
+    return E.createEntry(st, { patientId: pid, serviceId: "cli", answers: ans }).entry;
+  };
+  const urgent = mk("joao", 1, none);
+  const reman = mk("edu", 2, none);
+  const attention = mk("bruno", 5, answers({ motivo: "novo", gravidade: "moderado" }));
+  const elderly = mk("dora", 3, none);
+  const routine = mk("ana", 50, none);
+  st.now = NOW;
+  urgent.confirmedLevel = "urgente";
+  reman.remanejado = true;
+  const ids = () => E.suggest(st, "s1").map((s) => s.entry.id);
+  assert.equal(st.config.priorityOrder, "risco");
+  assert.deepEqual(ids(), [urgent.id, reman.id, attention.id, elderly.id, routine.id]);
+  st.config.priorityOrder = "legal";
+  assert.deepEqual(ids(), [urgent.id, reman.id, elderly.id, attention.id, routine.id]);
+  // Na fila do dia, a mesma regra vale para a ordem.
+  const q = confirmedSession(["bruno", "dora"]);
+  item(q, "bruno").confirmedLevel = "atencao";
+  const pos = (pid) => E.eta(q, "s1", item(q, pid).id).position;
+  assert.equal(pos("bruno"), 1);
+  q.config.priorityOrder = "legal";
+  assert.equal(pos("dora"), 1);
+  assert.equal(pos("bruno"), 2);
+  E.confirmRisk(q, "s1", item(q, "bruno").id, "urgente");
+  assert.equal(pos("bruno"), 1);
+});

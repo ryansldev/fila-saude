@@ -1,6 +1,7 @@
 # Protótipo de validação Specification
 
 **Approved**: 2026-11-04 - user: "Aprovado, pode construir"
+**Approved (revisão 2)**: 2026-11-04 - user: "Sim, seguir esse plano"
 
 ## Problem Statement
 
@@ -126,6 +127,41 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 
 ---
 
+### P1: Apresentação e histórias guiadas (revisão 2, AD-005)
+
+**User Story**: Como quem apresenta o protótipo, quero que ele se explique sozinho e venda a ideia.
+
+**Why P1**: O protótipo existe para validar a ideia com quem nunca viu o produto.
+
+**Acceptance Criteria**:
+
+1. WHEN a pessoa abre `prototype/index.html` THEN a página SHALL apresentar o produto no visual da landing de `apps/web` (Nunito, títulos em minúsculas, azul primário, cards com borda inferior grossa, mascote) com um card por história e um link para o modo livre.
+2. WHEN a pessoa abre uma história THEN a página SHALL mostrar só as telas daquela história, cada uma com a legenda de quem a usa, e um roteiro com o passo atual em destaque e o controle a usar marcado.
+3. WHEN a pessoa faz a ação de um passo THEN o roteiro SHALL marcar o passo como feito e destacar o próximo, com uma linha de "por que isso importa".
+4. The protótipo SHALL não usar animações nem transições CSS.
+5. WHEN a pessoa abre o modo livre THEN a página SHALL mostrar celular, painel, estação e TV juntos, com os três cenários.
+
+**Independent Test**: Abrir a apresentação, entrar na história da fila e seguir o roteiro até o fim só pelas marcações.
+
+---
+
+### P1: Posição real e regra de prioridade (revisão 2, AD-002 a AD-004)
+
+**User Story**: Como paciente e como área técnica, quero números que batem com a fila real e uma regra de prioridade que o município escolhe.
+
+**Why P1**: O walk mostrou números que confundem e uma ordem que depende de decisão local.
+
+**Acceptance Criteria**:
+
+1. WHILE o paciente está presente e na fila the app SHALL mostrar a posição na ordem de chamada real entre os presentes do serviço, com janela protegida, e o tempo = (posição − 1) × tempo médio ÷ estações abertas, como "você é o Nº a ser chamado · ~X min" (AD-002).
+2. WHILE o paciente está remoto, é o 1º em ordem(todas) e há estação aberta the app SHALL mostrar "venha agora" em vez de número e tempo, e que só é chamado depois de ler o QR (AD-003).
+3. WHERE o município configura "prioridade legal antes" the sugestão de alocação e a ordem de chamada SHALL ordenar a prioridade legal antes do risco, abaixo da urgência confirmada e, na alocação, dos remanejados (AD-004).
+4. WHEN o agendador troca a regra do município no painel THEN a sugestão SHALL se reordenar na hora.
+
+**Independent Test**: Na fila do dia, João presente vê "1º a ser chamado"; Dora remota em 1º vê "venha agora"; na alocação, trocar a regra põe Dora (82) dentro das vagas.
+
+---
+
 ## Edge Cases
 
 - IF a estação chama sem nenhum elegível THEN a estação SHALL mostrar "ninguém presente" e não chamar ninguém.
@@ -141,8 +177,10 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 | PROTO-02 | P1: Lista de espera e risco | Execute | Pending |
 | PROTO-03 | P1: Alocação e confirmação | Execute | Pending |
 | PROTO-04 | P1: Fila do dia | Execute | Pending |
+| PROTO-05 | P1: Apresentação e histórias guiadas | Execute | Pending |
+| PROTO-06 | P1: Posição real e regra de prioridade | Execute | Pending |
 
-**Coverage:** 4 total, 4 mapped to checks, 0 unmapped
+**Coverage:** 6 total, 6 mapped to checks, 0 unmapped
 
 ---
 
@@ -244,11 +282,26 @@ Proof: run engine | ✔ calllist: pending allocation highlighted after 24 h
 **C26** - Avançar o relógio reavalia a tolerância de chamada (PROTO-01, AC 3)
 Proof: run engine | ✔ clock: advancing re-evaluates tolerance
 
-**C27** - A página mostra celular, painel, estação e TV juntos a 1280 px, e cada cenário carrega seus dados e passos (PROTO-01, AC 1 e AC 2)
+**C27** - O modo livre mostra celular, painel, estação e TV juntos a 1280 px, e cada cenário carrega seus dados e passos (PROTO-01, AC 1 e AC 2; PROTO-05, AC 5)
 Proof: walk
 
 **C28** - Chamar próximo destaca a senha e o destino na TV por 10 s com bipe (PROTO-04, AC 8)
 Proof: walk
+
+**C29** - Presente vê a posição na ordem de chamada real, com janela protegida, e (posição − 1) × média ÷ estações (PROTO-06, AC 1)
+Proof: run engine | ✔ eta: present patient sees real call order
+
+**C30** - Remoto em 1º com estação aberta vê "venha agora"; sem estação, "aguardando início" (PROTO-06, AC 2)
+Proof: run engine | ✔ eta: remote first sees come now
+
+**C31** - "Prioridade legal antes" põe a prioridade legal acima do risco na sugestão e na chamada, abaixo de urgência confirmada e remanejados (PROTO-06, AC 3 e AC 4)
+Proof: run engine | ✔ priority: municipal rule switches legal before risk
+
+**C32** - Apresentação no visual da landing com cards das histórias; cada história mostra só suas telas com legendas e um roteiro que marca o passo feito e destaca o próximo (PROTO-05, AC 1 a AC 3)
+Proof: walk
+
+**C33** - Nenhuma animação ou transição CSS (PROTO-05, AC 4)
+Proof: `! grep -rnE "animation|transition|@keyframes" prototype/css`
 
 ## Handoff
 
