@@ -51,3 +51,27 @@
 | Slot counting differs by path: a served front-desk patient keeps occupying a slot, but a served list patient frees one (entry goes to `concluida`) | scratch `exp2.js`: slots 2, 1 list + 1 desk; desk served, occupied stays 2; list patient served, occupied drops to 1, so the desk can add another. `occupied` counts desk `q.status !== "saiu"` but list only `alocada/confirmada/na_fila` | Pick one meaning of "vagas" (INV-02 non-final, or total capacity), apply it to both paths, and test it in C19 | 76c1375 - C19 |
 | Browser rule with no test: the ETA text deviates from AC 2 for position 1 | `app.js` `etaText`: `position === 1` gives "você é o próximo" with no "~X min", also for a remote patient who cannot be called yet; AC 2 fixes "você é o Nº · ~X min" | Move the text into the engine (or a pure helper) and test it, or align it with AC 2 | 76c1375 - C10 |
 | "Venha agora" for remote only is not pinned | Mutation notifying on every urgent confirmation (present too) leaves 26/26 green | In C15, confirm urgency for a present patient and assert that no "Venha agora" is sent | 76c1375 - C15 |
+
+## Revision 2
+
+**Verdict**: FAIL
+**Proofs**: proofs.md at db2e302
+**Verifier**: independent sub-agent (author != verifier)
+
+### Checks
+
+| Check | Test | Holds |
+| --- | --- | --- |
+| C29 | `engine.test.js` `eta: present patient sees real call order` | yes - Ana behind João (window) at 2º, ~15 min, ~8 min with 2 stations, remote Bruno on RN-ETA-01; mutations using `eta()` for present patients, dropping the window, or `position` instead of `position - 1` all fail it. Loose: `Math.round` in place of `Math.ceil` passes (0, 15 and 7.5 round the same). Own random check (399 seeds, 746 present patients, K=1, check-ins, calls, skips, urgency, leave, both rules): the shown position always equals the real `callNext` sequence |
+| C30 | `engine.test.js` `eta: remote first sees come now` | yes - dropping `minutes !== null` fails it, and so does giving "venha agora" to a present patient. Own example: a remote patient first behind a patient already `chamado` sees "venha agora" (the called one is not counted), consistent with AD-003 |
+| C31 | `engine.test.js` `priority: municipal rule switches legal before risk` | partly - the suggestion half holds (urgent confirmed and remanejado stay above legal in `legal` mode, and the risk tie-break inside legal fails when removed). The call-order half asserts through `E.eta` (RN-ETA-01 position), not `callOrder`/`callNext`: hard-coding `callOrder` to `risco` leaves 29/29 green |
+| C32 | walk | walk - re-walked: a script that only clicks the `.hint` element finished `historia-lista.html` 7/7, `historia-alocacao.html` 6/6 and `historia-fila.html` 10/10; each story shows only its screens with captions ("app do paciente", "equipe da unidade", "estação de chamada", "TV da unidade"), current step has "por que isso importa", done steps get the check mark. Story texts match the engine (Dora 1ª "venha agora", Ana "2º a ser chamado", Dora in / Carlos out under "Prioridade legal antes"). `index.html` loads Nunito, the mascot, three story cards and "Modo livre" |
+| C33 | `! grep -rnE "animation\|transition\|@keyframes" prototype/css` | yes - grep exits 1; also no `animat`, `transition`, `smooth` or `requestAnimationFrame` in `prototype/**/*.html`, `*.js` or `mascote.svg` |
+
+### Findings
+
+| Finding | Evidence | Fix | Closed |
+| --- | --- | --- | --- |
+| A present patient who taps "Vou sair" and reads the QR again creates a blocker cycle; `callOrder` then throws, and since revision 2 `patientView` calls it through `patientEta`, so the phone stops rendering and "Chamar próximo" throws | Scratch `min.test.js`: check in Ana, check in João (blocked by Ana), `leave` Ana, check in Ana: Ana blocked by João and João by Ana; `patientView(joao)` and `callNext` throw `Cannot read properties of undefined (reading 'id')` at `engine.js:374`. Reproduced in Chrome on `historia-fila.html` after step 6 (João "Vou sair", QR again): the phone stays on the stale text and the console shows the exception from `patientEta` and from `st-next`. Same root cause on the 2nd skip (remote) then check-in. `leave` (and the 2nd skip) clear only the leaver's own `blockers`, not the others' references to it | When an item stops being present (leave, 2nd skip), remove its id from every other item's `blockers`; add a test: check in A, B, A leaves and returns, `callOrder` and `patientEta` give a full order without throwing | |
+| C31 does not prove the municipal rule on the call order | Mutation `callOrder` sorting with `{config:{priorityOrder:"risco"}}` leaves 29/29 green; the test's "fila do dia" half uses `E.eta(...).position` | In C31, check in Bruno (atenção) and Dora (82) and assert `callOrder` (or `callNext`) puts Dora first under `legal`, and Bruno under `risco` | |
+| The Build line does not check `scenarios.js`, which holds the story steps and their done predicates | `**Build**`: `node --check prototype/js/engine.js && node --check prototype/js/app.js` | Add `&& node --check prototype/js/scenarios.js` | |
