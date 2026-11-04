@@ -4,50 +4,138 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Fila Saúde · protótipo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"></span>
-        <div>
-          <strong>Fila Saúde</strong>
-          <small>protótipo de validação · dados fictícios</small>
-        </div>
+    <header class="site-header">
+      <div class="inner">
+        <a class="brand" href="index.html"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path fill="currentColor" d="M5.127 23.609C6.564 36.242 20.52 48.093 29.33 54.212a4.673 4.673 0 0 0 5.34 0c8.81-6.119 22.767-17.97 24.203-30.603C60.863 6.099 38.967 3.972 32 13.977 25.033 3.972 3.137 6.1 5.127 23.61Z"/><path fill="#fff" d="M28.704 21.09a2.583 2.583 0 0 1 2.583-2.584h2.583a2.583 2.583 0 0 1 2.583 2.583v20.665a2.583 2.583 0 0 1-2.583 2.583h-2.583a2.583 2.583 0 0 1-2.583-2.583V21.09Z"/><path fill="#fff" d="M19.663 30.13a2.583 2.583 0 0 1 2.583-2.583H42.91a2.583 2.583 0 0 1 2.583 2.583v2.583a2.583 2.583 0 0 1-2.583 2.583H22.246a2.583 2.583 0 0 1-2.583-2.583V30.13Z"/></svg>Fila Saúde <span class="tag">protótipo</span></a>
+        <nav class="nav" aria-label="Páginas do protótipo"><a href="index.html" aria-current="page">Apresentação</a><a href="historia-lista.html"><span class="num">1</span>lista e risco</a><a href="historia-alocacao.html"><span class="num">2</span>alocação</a><a href="historia-fila.html"><span class="num">3</span>fila do dia</a><a href="simulador.html">Modo livre</a></nav>
+        
       </div>
-      <nav class="scenarios" id="scenarios" aria-label="Cenários"></nav>
-      <div class="clock" id="clock"></div>
     </header>
-
-    <section class="guide" id="guide" aria-label="Passo a passo"></section>
-
-    <main class="stage">
-      <section class="col col-phone" aria-label="App do paciente">
-        <div class="col-head">
-          <h2>App do paciente</h2>
-          <label class="persona">Ver como <select id="persona"></select></label>
+    <main class="page">
+      <section class="hero">
+        <img src="assets/mascote.svg" alt="Mascote do Fila Saúde, um médico acenando" />
+        <div>
+          <h1>chega de esperar <span class="accent">horas no postinho.</span></h1>
+          <p class="lead">O paciente entra na fila pelo celular, espera em casa e só vai à unidade quando a vez estiver perto.</p>
+          <div class="surface speech">Este é um protótipo navegável, com dados fictícios. Escolha uma história: o roteiro ao lado diz o que fazer, marca onde clicar e explica por que cada passo importa. Cada uma leva uns 3 minutos.</div>
+          <div class="row wrap">
+            <a class="btn lg" href="historia-lista.html">Começar pela história 1</a>
+            <a class="btn lg secondary" href="simulador.html">Modo livre</a>
+          </div>
         </div>
-        <div class="phone" id="phone"></div>
       </section>
 
-      <section class="col col-admin" aria-label="Painel administrativo">
-        <div class="col-head"><h2>Painel administrativo</h2></div>
-        <div class="admin" id="admin"></div>
+      <section class="section" aria-labelledby="como">
+        <div class="section-head">
+          <h2 id="como">como funciona</h2>
+          <p>Três momentos, do celular do paciente até a TV da sala de espera.</p>
+        </div>
+
+        <article class="feature">
+          <div class="text">
+            <span class="step-num">1</span>
+            <h3>o paciente diz o que sente, de casa</h3>
+            <p>São cinco telas de toque, sem texto livre. Sinal de alarme não entra em fila: o app manda ligar 192. O resto vira um nível sugerido, que a equipe confirma.</p>
+          </div>
+          <div class="visual surface">
+            <div class="mini-phone">
+              <span class="label">Clínico geral · 2 de 5</span>
+              <p class="q">Por que você quer o atendimento?</p>
+              <div class="option selected">Problema novo ou que piorou</div>
+              <div class="option">Acompanhamento de doença</div>
+              <div class="option">Exame, check-up ou rotina</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature reverse">
+          <div class="text">
+            <span class="step-num">2</span>
+            <h3>a unidade organiza as vagas</h3>
+            <p>O sistema sugere quem ocupa cada vaga e explica o motivo. O agendador decide e liga para quem não confirmou. Nada é alocado sozinho.</p>
+          </div>
+          <div class="visual surface">
+            <div class="mini-phone">
+              <span class="label">sugestão para sexta · 3 vagas</span>
+              <div class="card" style="margin-top: 10px"><strong>Carlos Melo</strong><div class="reasons">urgente sugerido · espera há 3 dias</div></div>
+              <div class="card"><strong>Helena Prado</strong><div class="reasons">atenção · gestante · espera há 8 dias</div></div>
+              <div class="card" style="margin-bottom: 0"><strong>Dora Alves</strong><div class="reasons">idosa, 82 anos · espera há 41 dias</div></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <span class="step-num">3</span>
+            <h3>espera em casa, chega na hora</h3>
+            <p>No dia, o app mostra a posição e o tempo. Quando a vez se aproxima, chega o aviso “saia de casa”. Na unidade, o QR da TV confirma a chegada, e a TV chama pela senha.</p>
+          </div>
+          <div class="visual surface">
+            <div class="mini-phone">
+              <span class="label">fila de hoje · clínico geral</span>
+              <div class="ticket" style="margin: 10px 0 0"><div class="senha">C-003</div><div class="pos">você é o 2º a ser chamado</div></div>
+              <div class="stat-grid"><div class="stat"><b>1</b><span>na frente</span></div><div class="stat"><b>~15</b><span>min</span></div></div>
+            </div>
+          </div>
+        </article>
       </section>
 
-      <section class="col col-right">
-        <section aria-label="Estação de chamada">
-          <div class="col-head"><h2>Estação de chamada</h2></div>
-          <div class="station" id="station"></div>
-        </section>
-        <section aria-label="TV da sala de espera">
-          <div class="col-head"><h2>TV da sala de espera</h2></div>
-          <div class="tv" id="tv"></div>
-        </section>
+      <section class="section" aria-labelledby="historias">
+        <div class="section-head">
+          <h2 id="historias">veja funcionando</h2>
+          <p>Cada história mostra só as telas que importam e guia você passo a passo.</p>
+        </div>
+        <div class="stories">
+          <div class="surface story-card">
+            <span class="tag">história 1 · ~3 min</span>
+            <h3>o paciente diz o que sente</h3>
+            <div class="who-row"><span class="chip rotina">celular do paciente</span><span class="chip">agendador</span></div>
+            <ul><li>Mapa e agenda da unidade</li><li>Questionário de risco</li><li>Encaminhamento por foto</li><li>Emergência e apoio (192 e 188)</li></ul>
+            <a class="btn block" href="historia-lista.html">Abrir história</a>
+          </div>
+          <div class="surface story-card">
+            <span class="tag">história 2 · ~3 min</span>
+            <h3>a unidade organiza as vagas</h3>
+            <div class="who-row"><span class="chip">agendador</span><span class="chip">lista de ligação</span><span class="chip rotina">celular</span></div>
+            <ul><li>Sugestão com motivos</li><li>Confirmação em 24 h</li><li>Recusa e próximo da lista</li><li>Regra de prioridade do município</li></ul>
+            <a class="btn block" href="historia-alocacao.html">Abrir história</a>
+          </div>
+          <div class="surface story-card">
+            <span class="tag">história 3 · ~4 min</span>
+            <h3>espera em casa, chega na hora</h3>
+            <div class="who-row"><span class="chip rotina">celular</span><span class="chip">estação</span><span class="chip">TV</span><span class="chip">recepção</span></div>
+            <ul><li>Fila remota e “venha agora”</li><li>Check-in pelo QR da TV</li><li>Quem chegou antes é chamado antes</li><li>Urgência, pulos e balcão</li></ul>
+            <a class="btn block" href="historia-fila.html">Abrir história</a>
+          </div>
+        </div>
       </section>
+
+      <section class="section" aria-labelledby="regras">
+        <div class="section-head">
+          <h2 id="regras">o que nunca muda</h2>
+          <p>Regras que valem em todas as telas.</p>
+        </div>
+        <div class="principles">
+          <div class="surface principle"><b>o humano decide</b><p>O sistema sugere e explica. Agendador e triagem confirmam.</p></div>
+          <div class="surface principle"><b>presente tem preferência</b><p>Só é chamado quem está na unidade, e quem chegou antes não é ultrapassado.</p></div>
+          <div class="surface principle"><b>saúde em primeiro lugar</b><p>Urgência confirmada por um profissional passa na frente de todos.</p></div>
+          <div class="surface principle"><b>ninguém fica de fora</b><p>Quem não tem celular entra pela recepção, na mesma fila.</p></div>
+          <div class="surface principle"><b>privacidade</b><p>Um paciente nunca vê outro. A TV mostra só senhas.</p></div>
+          <div class="surface principle"><b>somos só a fila</b><p>Nada de prontuário: depois do atendimento, a responsabilidade é de outro sistema.</p></div>
+        </div>
+      </section>
+
+      <section class="surface cta">
+        <h2>pronto para ver?</h2>
+        <a class="btn lg" href="historia-lista.html">Começar pela história 1</a>
+      </section>
+      <p class="footer">Protótipo com dados fictícios · feito com 💙 por quem usa o SUS.</p>
     </main>
-
-    <script src="js/engine.js"></script>
-    <script src="js/app.js"></script>
   </body>
 </html>
