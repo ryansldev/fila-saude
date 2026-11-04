@@ -1,0 +1,616 @@
+// Regras do protótipo: questionário, lista de espera, alocação e fila do dia.
+// Funções puras sobre um objeto de estado em memória. Sem DOM: roda no navegador e no Node.
+// Códigos RN-*, INV-* remetem a .specs/features/mvp-filas/source.md.
+((root) => {
+  const MIN = 60 * 1000;
+  const DAY = 24 * 60 * MIN;
+  const QR_STEP = 30 * 1000;
+  const RISK_RANK = { urgente: 3, atencao: 2, rotina: 1 };
+  const RISK_LABEL = { urgente: "Urgente", atencao: "Atenção", rotina: "Rotina", emergencia: "Emergência" };
+  const FINAL_ENTRY = ["concluida", "cancelada", "encerrada"];
+  const GROUP_LABEL = {
+    gestante: "gestante",
+    lactante: "lactante",
+    colo: "com criança de colo",
+    pcd: "PcD",
+    tea: "TEA",
+    obesidade: "obesidade",
+  };
+
+  function createState(partial) {
+    const st = {
+      now: Date.now(),
+      config: { K: 1, toleranceMin: 5, leaveHomeMin: 30, avgMin: 15, confirmHours: 24 },
+      units: [],
+      services: [],
+      sessions: [],
+      patients: [],
+      entries: [],
+      notifications: [],
+      alerts: [],
+      stations: [],
+      tv: { paired: false, code: "482913", announcements: [] },
+      log: [],
+      seq: 0,
+      ...partial,
+    };
+    st.config = {
+      K: 1,
+      toleranceMin: 5,
+      leaveHomeMin: 30,
+      avgMin: 15,
+      confirmHours: 24,
+      ...partial?.config,
+    };
+    st.patients.forEach((p) => {
+      p.faltas = p.faltas || [];
+    });
+    st.stations.forEach((s) => {
+      s.current = s.current || null;
+    });
+    st.sessions.forEach((s) => {
+      s.state = s.state || "planejada";
+      s.version = s.version || 1;
+      s.queue = s.queue || [];
+      s.nextNumber = s.nextNumber || 1;
+      s.maxCalledNumber = s.maxCalledNumber || 0;
+      s.secret = s.secret || `q${s.id}`;
+    });
+    return st;
+  }
+
+  const nextId = (st, p) => `${p}${++st.seq}`;
+  const byId = (list, id) => list.find((x) => x.id === id);
+  const service = (st, id) => byId(st.services, id);
+  const session = (st, id) => byId(st.sessions, id);
+  const patient = (st, id) => byId(st.patients, id);
+
+  function ageAt(birth, now) {
+    const b = new Date(birth);
+    const n = new Date(now);
+    let a = n.getUTCFullYear() - b.getUTCFullYear();
+    const m = n.getUTCMonth() - b.getUTCMonth();
+    if (m < 0 || (m === 0 && n.getUTCDate() < b.getUTCDate())) a--;
+    return a;
+  }
+
+  function notify(st, patientId, text) {
+    if (patientId) st.notifications.push({ id: nextId(st, "n"), patientId, text, at: st.now });
+  }
+
+  // ---------- Questionário v1 (fonte 7.3): vale a primeira regra que bater ----------
+
+  function classify(a, age) {
+    const alarms = a.alarms || [];
+    const grupos = a.grupos || [];
+    const novo = a.motivo === "novo";
+    const gestante = grupos.includes("gestante");
+    if (alarms.some((x) => x !== "autolesao")) return { level: "emergencia", rule: "Sinal de alarme na Tela 1" };
+    if (alarms.includes("autolesao"))
+      return { level: "urgente", support: true, rule: "Pensamentos de tirar a própria vida ou de se machucar" };
+    if (novo && a.gravidade === "forte") return { level: "urgente", rule: "Problema novo forte" };
+    if (novo && a.gravidade === "moderado" && gestante)
+      return { level: "urgente", rule: "Gestante com problema novo moderado" };
+    if (novo && a.gravidade === "moderado") return { level: "atencao", rule: "Problema novo moderado" };
+    if (novo && (a.condicoes || []).length) return { level: "atencao", rule: "Problema novo com condição de saúde" };
+    if (novo && (age < 2 || age >= 60))
+      return { level: "atencao", rule: "Problema novo com idade abaixo de 2 ou a partir de 60" };
+    if (novo && a.gravidade === "leve" && gestante)
+      return { level: "atencao", rule: "Gestante com problema novo leve" };
+    return { level: "rotina", rule: "Sem sinais de risco" };
+  }
+
+  // Prioridade legal (RN-RISCO-04): 80+ antes dos demais; entre grupos diferentes, empate.
+  function legalPriority(age, grupos, sexo) {
+    const idoso = sexo === "F" ? "idosa" : "idoso";
+    if (age >= 80) return { rank: 2, label: `${idoso}, ${age} anos` };
+    if (age >= 60) return { rank: 1, label: `${idoso}, ${age} anos` };
+    const g = (grupos || []).filter((x) => GROUP_LABEL[x]);
+    if (g.length) return { rank: 1, label: g.map((x) => GROUP_LABEL[x]).join(", ") };
+    return { rank: 0, label: null };
+  }
+
+  const vigente = (x) => x.confirmedLevel || x.suggested;
+  const urgConf = (x) => x.confirmedLevel === "urgente";
+
+  // ---------- Lista de espera ----------
+
+  function createEntry(st, { patientId, serviceId, answers, referralPhoto }) {
+    const p = patient(st, patientId);
+    const svc = service(st, serviceId);
+    const age = ageAt(p.birth, st.now);
+    const c = classify(answers, age);
+    if (c.level === "emergencia") return { ok: false, error: "emergencia", classification: c };
+    const existing = st.entries.find(
+      (e) => e.patientId === patientId && e.serviceId === serviceId && !FINAL_ENTRY.includes(e.status),
+    );
+    if (existing) return { ok: false, error: "duplicada", existing, classification: c };
+    const legal = legalPriority(age, answers.grupos, p.sexo);
+    const entry = {
+      id: nextId(st, "e"),
+      patientId,
+      serviceId,
+      createdAt: st.now,
+      suggested: c.level,
+      rule: c.rule,
+      support: !!c.support,
+      confirmedLevel: null,
+      answers,
+      legal,
+      remanejado: false,
+      refusals: 0,
+      sessionId: null,
+      status: svc.requiresReferral ? "aguardando_encaminhamento" : "aguardando",
+      referral: svc.requiresReferral ? { status: "pendente", photo: referralPhoto || null, reason: null } : null,
+    };
+    st.entries.push(entry);
+    if (c.level === "urgente")
+      st.alerts.push({
+        id: nextId(st, "a"),
+        entryId: entry.id,
+        text: `${p.name}: urgente sugerido (${c.rule})`,
+        at: st.now,
+      });
+    return { ok: true, entry, classification: c };
+  }
+
+  function acceptReferral(st, entryId) {
+    const e = byId(st.entries, entryId);
+    e.referral.status = "aceito";
+    e.status = "aguardando";
+    notify(
+      st,
+      e.patientId,
+      `Encaminhamento aceito para ${service(st, e.serviceId).name}. Você está na lista de espera.`,
+    );
+  }
+
+  function rejectReferral(st, entryId, reason) {
+    const e = byId(st.entries, entryId);
+    e.referral.status = "rejeitado";
+    e.referral.reason = reason;
+    notify(st, e.patientId, `Encaminhamento rejeitado: ${reason}. Envie outra foto.`);
+  }
+
+  // ---------- Alocação (RN-AL) ----------
+
+  function allocCompare(a, b) {
+    return (
+      urgConf(b) - urgConf(a) ||
+      b.remanejado - a.remanejado ||
+      RISK_RANK[vigente(b)] - RISK_RANK[vigente(a)] ||
+      b.legal.rank - a.legal.rank ||
+      a.createdAt - b.createdAt
+    );
+  }
+
+  function faltasRecentes(st, p) {
+    return p.faltas.filter((t) => st.now - t <= 90 * DAY).length;
+  }
+
+  function reasons(st, e) {
+    const r = [];
+    r.push(
+      e.confirmedLevel
+        ? `${RISK_LABEL[e.confirmedLevel].toLowerCase()} confirmado`
+        : `${RISK_LABEL[e.suggested].toLowerCase()} sugerido`,
+    );
+    if (e.remanejado) r.push("remanejado");
+    if (e.legal.label) r.push(e.legal.label);
+    r.push(`espera há ${Math.floor((st.now - e.createdAt) / DAY)} dias`);
+    return r;
+  }
+
+  function suggest(st, sessionId) {
+    const s = session(st, sessionId);
+    return st.entries
+      .filter((e) => e.serviceId === s.serviceId && e.status === "aguardando")
+      .sort(allocCompare)
+      .map((e) => ({
+        entry: e,
+        reasons: reasons(st, e),
+        faltaAlert: faltasRecentes(st, patient(st, e.patientId)) >= 2,
+      }));
+  }
+
+  // INV-02: entradas não finais numa sessão, somando todos os caminhos.
+  function occupied(st, sessionId) {
+    const fromList = st.entries.filter(
+      (e) => e.sessionId === sessionId && ["alocada", "confirmada", "na_fila"].includes(e.status),
+    ).length;
+    const desk = session(st, sessionId).queue.filter((q) => q.origin === "balcao" && q.status !== "saiu").length;
+    return fromList + desk;
+  }
+
+  function allocate(st, sessionId, entryIds, { version }) {
+    const s = session(st, sessionId);
+    if (version !== s.version) return { ok: false, error: "conflito" };
+    const entries = entryIds.map((id) => byId(st.entries, id));
+    if (entries.some((e) => e.status !== "aguardando" || e.serviceId !== s.serviceId))
+      return { ok: false, error: "nao_alocavel" };
+    if (occupied(st, sessionId) + entries.length > s.slots) return { ok: false, error: "sem_vagas" };
+    const deadline = Math.min(st.now + st.config.confirmHours * 60 * MIN, s.start);
+    for (const e of entries) {
+      e.status = "alocada";
+      e.sessionId = sessionId;
+      e.allocatedAt = st.now;
+      e.deadline = deadline;
+      if (!e.confirmedLevel) e.confirmedLevel = e.suggested; // RN-RISCO-01: confirmado na alocação
+      notify(st, e.patientId, `Você foi alocado em ${service(st, s.serviceId).name}. Confirme em 24 h.`);
+    }
+    s.version++;
+    return { ok: true };
+  }
+
+  function callList(st) {
+    return st.entries
+      .filter((e) => e.status === "alocada")
+      .map((e) => ({ entry: e, overdue: st.now - e.allocatedAt >= st.config.confirmHours * 60 * MIN }))
+      .sort((a, b) => session(st, a.entry.sessionId).start - session(st, b.entry.sessionId).start);
+  }
+
+  function confirmAllocation(st, entryId) {
+    const e = byId(st.entries, entryId);
+    if (e.status !== "alocada") return { ok: false, error: "estado" };
+    e.status = "confirmada";
+    return { ok: true };
+  }
+
+  function release(st, e) {
+    const s = session(st, e.sessionId);
+    e.status = "aguardando";
+    e.sessionId = null;
+    if (s) s.version++;
+  }
+
+  // RN-CONF-04 e RN-REM-03: recusa libera a vaga; data original preservada (INV-09).
+  function refuseAllocation(st, entryId) {
+    const e = byId(st.entries, entryId);
+    if (e.status !== "alocada") return { ok: false, error: "estado" };
+    const sessionId = e.sessionId;
+    if (e.remanejado && e.refusals === 0) e.refusals++;
+    else e.remanejado = false;
+    release(st, e);
+    return { ok: true, next: suggest(st, sessionId)[0] || null };
+  }
+
+  // ---------- Fila do dia ----------
+
+  function qrToken(s, now) {
+    const bucket = Math.floor(now / QR_STEP);
+    let h = 0;
+    const str = `${s.secret}:${bucket}`;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return `${bucket}.${h.toString(36)}`;
+  }
+
+  function newItem(st, s, fields) {
+    const svc = service(st, s.serviceId);
+    const number = s.nextNumber++;
+    const it = {
+      id: nextId(st, "q"),
+      number,
+      senha: `${svc.prefix}-${String(number).padStart(3, "0")}`,
+      serviceId: s.serviceId,
+      presence: "remoto",
+      status: "fila",
+      skips: 0,
+      blockers: [],
+      calledAt: null,
+      stationId: null,
+      leaveHomeSent: false,
+      ...fields,
+    };
+    s.queue.push(it);
+    return it;
+  }
+
+  // RN-FILA-01: confirmados entram remotos, numerados pela data de entrada original.
+  function openSession(st, sessionId) {
+    const s = session(st, sessionId);
+    s.state = "aberta";
+    st.entries
+      .filter((e) => e.sessionId === sessionId && e.status === "alocada")
+      .forEach((e) => {
+        release(st, e);
+      });
+    st.entries
+      .filter((e) => e.sessionId === sessionId && e.status === "confirmada")
+      .sort((a, b) => a.createdAt - b.createdAt)
+      .forEach((e) => {
+        e.status = "na_fila";
+        const it = newItem(st, s, {
+          entryId: e.id,
+          patientId: e.patientId,
+          name: patient(st, e.patientId).name,
+          suggested: e.suggested,
+          confirmedLevel: e.confirmedLevel,
+          legal: e.legal,
+          origin: "alocado",
+        });
+        notify(st, e.patientId, `Sessão aberta: você está na fila remota com a senha ${it.senha}.`);
+      });
+    tick(st);
+  }
+
+  // RN-ORD, sem travas: usado para posição e tempo (RN-ETA-01).
+  function orderCompare(a, b) {
+    return (
+      urgConf(b) - urgConf(a) ||
+      RISK_RANK[vigente(b)] - RISK_RANK[vigente(a)] ||
+      b.legal.rank - a.legal.rank ||
+      a.number - b.number
+    );
+  }
+
+  const isEligible = (q) => q.status === "fila" && q.presence === "presente";
+
+  function stationServes(st, stationId, q) {
+    if (!stationId) return true;
+    return byId(st.stations, stationId).services.includes(q.serviceId);
+  }
+
+  // Ordem de chamada com a janela protegida: ninguém passa à frente de quem o trava (8.3).
+  function callOrder(st, sessionId, stationId, exclude) {
+    const s = session(st, sessionId);
+    const pool = s.queue
+      .filter((q) => isEligible(q) && q.id !== exclude && stationServes(st, stationId, q))
+      .sort(orderCompare);
+    const ids = new Set(pool.map((q) => q.id));
+    const placed = [];
+    const done = new Set();
+    while (placed.length < pool.length) {
+      const next = pool.find((q) => !done.has(q.id) && q.blockers.every((b) => !ids.has(b) || done.has(b)));
+      placed.push(next);
+      done.add(next.id);
+    }
+    return placed;
+  }
+
+  function becomeEligible(st, s, q, { applyLate }) {
+    if (applyLate && !urgConf(q) && s.maxCalledNumber > q.number) {
+      q.number = s.nextNumber++; // atraso: perdeu a vez, vai para o fim
+    }
+    q.blockers = urgConf(q)
+      ? []
+      : callOrder(st, s.id, null, q.id)
+          .slice(0, st.config.K)
+          .map((x) => x.id);
+    q.presence = "presente";
+  }
+
+  function findItem(s, patientId) {
+    return s.queue.find((q) => q.patientId === patientId && q.status !== "saiu" && q.status !== "atendido");
+  }
+
+  function checkIn(st, sessionId, patientId, token) {
+    const s = session(st, sessionId);
+    const valid = [qrToken(s, st.now), qrToken(s, st.now - QR_STEP)];
+    if (!valid.includes(token)) return { ok: false, error: "qr_invalido" };
+    return markPresent(st, sessionId, patientId);
+  }
+
+  // RN-PRES-03: recepção marca presença como se fosse o check-in.
+  function markPresent(st, sessionId, patientId) {
+    const s = session(st, sessionId);
+    const q = findItem(s, patientId);
+    if (q?.status !== "fila") return { ok: false, error: "fora_da_fila" };
+    if (q.presence === "presente") return { ok: true, item: q };
+    becomeEligible(st, s, q, { applyLate: true });
+    tick(st);
+    return { ok: true, item: q };
+  }
+
+  function leave(st, sessionId, patientId) {
+    const q = findItem(session(st, sessionId), patientId);
+    if (q?.status !== "fila") return { ok: false, error: "estado" };
+    q.presence = "remoto";
+    q.blockers = [];
+    return { ok: true };
+  }
+
+  function openStations(st, serviceId) {
+    return st.stations.filter((x) => x.open && x.services.includes(serviceId)).length;
+  }
+
+  // RN-ETA-01: pessoas à frente em ordem(todas), presentes e remotas.
+  function eta(st, sessionId, itemId) {
+    const s = session(st, sessionId);
+    const q = byId(s.queue, itemId);
+    const waiting = s.queue.filter((x) => x.status === "fila" && x.serviceId === q.serviceId).sort(orderCompare);
+    const ahead = waiting.indexOf(q);
+    const n = openStations(st, q.serviceId);
+    return { position: ahead + 1, minutes: n ? Math.ceil((ahead * st.config.avgMin) / n) : null };
+  }
+
+  function confirmRisk(st, sessionId, itemId, level) {
+    const q = byId(session(st, sessionId).queue, itemId);
+    q.confirmedLevel = level;
+    const e = q.entryId && byId(st.entries, q.entryId);
+    if (e) e.confirmedLevel = level;
+    if (level === "urgente") {
+      q.blockers = [];
+      if (q.presence === "remoto") notify(st, q.patientId, "Venha agora: seu atendimento foi priorizado.");
+    }
+    tick(st);
+  }
+
+  function announce(st, q, station) {
+    st.tv.announcements.push({
+      id: nextId(st, "t"),
+      senha: q.senha,
+      dest: station.name,
+      serviceId: q.serviceId,
+      at: st.now,
+    });
+  }
+
+  function finishCurrent(st, s, station) {
+    const q = station.current && byId(s.queue, station.current);
+    station.current = null;
+    if (!q) return;
+    q.status = "atendido";
+    const e = q.entryId && byId(st.entries, q.entryId);
+    if (e) e.status = "concluida";
+  }
+
+  function callNext(st, sessionId, stationId) {
+    const s = session(st, sessionId);
+    const station = byId(st.stations, stationId);
+    finishCurrent(st, s, station);
+    const q = callOrder(st, sessionId, stationId)[0];
+    if (!q) {
+      tick(st);
+      return { ok: false, error: "ninguem" };
+    }
+    q.status = "chamado";
+    q.calledAt = st.now;
+    q.stationId = stationId;
+    station.current = q.id;
+    s.maxCalledNumber = Math.max(s.maxCalledNumber, q.number);
+    s.queue.forEach((x) => {
+      x.blockers = x.blockers.filter((b) => b !== q.id); // a trava acaba quando o travador é chamado
+    });
+    announce(st, q, station);
+    notify(st, q.patientId, `Sua vez: senha ${q.senha}, ${service(st, q.serviceId).name}, ${station.name}.`);
+    tick(st);
+    return { ok: true, item: q };
+  }
+
+  function recall(st, sessionId, stationId) {
+    const station = byId(st.stations, stationId);
+    const q = station.current && byId(session(st, sessionId).queue, station.current);
+    if (!q) return { ok: false, error: "ninguem" };
+    announce(st, q, station); // tolerância não reinicia
+    return { ok: true, item: q };
+  }
+
+  function finish(st, sessionId, stationId) {
+    finishCurrent(st, session(st, sessionId), byId(st.stations, stationId));
+    tick(st);
+  }
+
+  // RN-CHAM-03: 1º pulo presente atrás de K; 2º remoto; 3º sai da fila.
+  function skip(st, sessionId, stationId) {
+    const s = session(st, sessionId);
+    const station = byId(st.stations, stationId);
+    const q = station.current && byId(s.queue, station.current);
+    if (!q) return { ok: false, error: "ninguem" };
+    station.current = null;
+    q.skips++;
+    q.stationId = null;
+    if (q.skips === 1) {
+      q.status = "fila";
+      becomeEligible(st, s, q, { applyLate: false });
+      notify(st, q.patientId, `Você foi pulado (senha ${q.senha}). Continue na unidade: será chamado em breve.`);
+    } else if (q.skips === 2) {
+      q.status = "fila";
+      q.presence = "remoto";
+      q.blockers = [];
+      notify(
+        st,
+        q.patientId,
+        `Você foi pulado de novo e voltou para remoto. Ao chegar, leia o QR: você vai para o fim.`,
+      );
+    } else {
+      q.status = "saiu";
+      const e = q.entryId && byId(st.entries, q.entryId);
+      if (e) e.status = "encerrada";
+      const p = q.patientId && patient(st, q.patientId);
+      if (p) p.faltas.push(st.now);
+      notify(st, q.patientId, `Você saiu da fila por não comparecer à chamada 3 vezes.`);
+    }
+    tick(st);
+    return { ok: true, item: q };
+  }
+
+  // RN-FILA-03: balcão entra presente com o próximo número.
+  function frontDesk(st, sessionId, { name, birth, answers }) {
+    const s = session(st, sessionId);
+    const age = ageAt(birth, st.now);
+    const c = classify(answers, age);
+    if (c.level === "emergencia") return { ok: false, error: "emergencia", classification: c };
+    if (occupied(st, sessionId) >= s.slots) return { ok: false, error: "sem_vagas" };
+    const q = newItem(st, s, {
+      patientId: null,
+      name,
+      suggested: c.level,
+      confirmedLevel: null,
+      legal: legalPriority(age, answers.grupos, null),
+      origin: "balcao",
+    });
+    becomeEligible(st, s, q, { applyLate: false });
+    tick(st);
+    return { ok: true, item: q, classification: c };
+  }
+
+  // Prazos que dependem do relógio: tolerância e "saia de casa".
+  function tick(st) {
+    for (const s of st.sessions.filter((x) => x.state === "aberta")) {
+      for (const station of st.stations) {
+        const q = station.current && byId(s.queue, station.current);
+        if (q && st.now - q.calledAt >= st.config.toleranceMin * MIN) skip(st, s.id, station.id);
+      }
+      for (const q of s.queue) {
+        if (q.status !== "fila" || q.presence !== "remoto" || q.leaveHomeSent || !q.patientId) continue;
+        const { minutes } = eta(st, s.id, q.id);
+        if (minutes !== null && minutes <= st.config.leaveHomeMin) {
+          q.leaveHomeSent = true;
+          notify(st, q.patientId, `Saia de casa: sua vez está chegando (~${minutes} min).`);
+        }
+      }
+    }
+  }
+
+  function counters(st, sessionId) {
+    const s = session(st, sessionId);
+    return st.services
+      .filter((svc) => svc.id === s.serviceId)
+      .map((svc) => {
+        const q = s.queue.filter((x) => x.serviceId === svc.id && x.status === "fila");
+        return {
+          service: svc,
+          aguardando: q.filter((x) => x.presence === "presente").length,
+          caminho: q.filter((x) => x.presence === "remoto").length,
+        };
+      });
+  }
+
+  const api = {
+    MIN,
+    DAY,
+    QR_STEP,
+    RISK_LABEL,
+    createState,
+    ageAt,
+    classify,
+    legalPriority,
+    createEntry,
+    acceptReferral,
+    rejectReferral,
+    suggest,
+    occupied,
+    allocate,
+    callList,
+    confirmAllocation,
+    refuseAllocation,
+    qrToken,
+    openSession,
+    callOrder,
+    checkIn,
+    markPresent,
+    leave,
+    eta,
+    confirmRisk,
+    callNext,
+    recall,
+    finish,
+    skip,
+    frontDesk,
+    tick,
+    counters,
+    findItem,
+  };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else root.Engine = api;
+})(typeof globalThis !== "undefined" ? globalThis : this);

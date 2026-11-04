@@ -162,7 +162,7 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 ## Checks
 
 **Build**: `node --check prototype/js/engine.js && node --check prototype/js/app.js`
-**Run engine**: `node --test prototype/tests/`
+**Run engine**: `node --test prototype/tests/engine.test.js`
 
 Regras em `prototype/js/engine.js`, testadas por `prototype/tests/engine.test.js`. As telas são conferidas no passo a passo (Handoff, Walked).
 
