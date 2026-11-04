@@ -3,6 +3,7 @@
 **Approved**: 2026-11-04 - user: "Aprovado, pode construir"
 **Approved (revisão 2)**: 2026-11-04 - user: "Sim, seguir esse plano"
 **Approved (revisão 3)**: 2026-11-04 - user: "deixa a tolerancia lá, mas nn desabilita o nao compareceu. o nao compareceu tem que ficar lá e só vai pro próximo se o cara clicar em nao compareceu ou próximo" e "História 4 com duas etapas (Recommended)"
+**Approved (revisão 4)**: 2026-11-04 - user: "nao quero varias histórias, eu quero uma única que é o fluxo principal e mostra tudo" (fluxo de 9 passos), "Pela vez na triagem", "Agendador aloca", "Apresentação + fluxo + modo livre"
 
 ## Problem Statement
 
@@ -113,7 +114,7 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 
 1. WHEN o admin abre a sessão THEN cada confirmado SHALL entrar remoto com senha `C-NNN` e número na ordem da data de entrada original, e alocações pendentes SHALL ser liberadas.
 2. WHILE o paciente está na fila the app SHALL mostrar "você é o Nº · ~X min" pela regra RN-ETA-01, ou "aguardando início do atendimento" sem estação aberta.
-3. WHEN o tempo estimado de um remoto cai a 30 min ou menos THEN o paciente SHALL receber "saia de casa" uma vez.
+3. WHEN o tempo estimado de um remoto na etapa dele cai a 30 min ou menos THEN o paciente SHALL receber "saia de casa" uma vez por etapa (AD-009).
 4. WHEN o paciente lê o QR atual ou o anterior THEN o sistema SHALL marcá-lo presente, e IF lê um QR mais antigo THEN o sistema SHALL recusar.
 5. WHEN o paciente toca "Vou sair" THEN o sistema SHALL voltá-lo para remoto com o mesmo número.
 6. WHEN os exemplos RN-ORD-01, RN-ORD-03 e RN-ORD-04 são reproduzidos THEN a ordem de chamada SHALL ser a da fonte.
@@ -194,9 +195,29 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 4. WHEN a estação de triagem chama THEN a TV SHALL mostrar a senha com destino na sala de triagem.
 5. WHEN a enfermeira confirma o risco na estação de triagem THEN essa SHALL ser a classificação confirmada.
 6. WHEN a estação de triagem chama o próximo ou finaliza THEN o paciente triado SHALL entrar presente na fila do consultório com a mesma senha e o mesmo número, ordenado pela classificação confirmada, prioridade legal e número (RN-TRI-04).
-7. WHILE o paciente ainda não foi triado the tempo estimado SHALL somar as duas etapas: (à frente na triagem × média da triagem ÷ estações de triagem) + (à frente no serviço × média do atendimento ÷ estações de atendimento).
+7. WHILE o paciente ainda não foi triado the app SHALL mostrar a posição e o tempo da triagem (à frente na triagem × média da triagem ÷ estações de triagem) e, separada, a previsão da consulta: tempo da triagem + (à frente no serviço × média do atendimento ÷ estações de atendimento). (Revisão 4, AD-009: antes era só a soma.)
 
 **Independent Test**: Ligar a triagem, criar "Triagem 1", abrir a sessão, chamar João na triagem, confirmar Atenção, finalizar e chamá-lo no Consultório 3 com a mesma senha.
+
+---
+
+### P1: Fluxo principal (revisão 4, AD-008 e AD-009)
+
+**User Story**: Como quem apresenta o protótipo, quero uma única história que mostre o fluxo inteiro, do cadastro da sessão ao paciente indo feliz para casa.
+
+**Why P1**: Uma história só, completa, vende a ideia melhor que quatro pedaços.
+
+**Acceptance Criteria**:
+
+1. WHEN o admin cadastra uma sessão com serviço, dia, horário, vagas e visibilidade (pública ou privada) THEN a sessão SHALL aparecer planejada no Admin, na agenda da unidade no app e, se privada, no Agendador.
+2. WHEN a paciente entra na lista do serviço e o agendador a aloca na sessão privada THEN ela SHALL receber "confirme em 24 h" e poder confirmar no app; quem não é alocado SHALL continuar na lista.
+3. WHEN a pessoa usa "Esperar até o próximo aviso" THEN o relógio SHALL avançar com as estações chamando e atendendo os outros pacientes e os outros chegando quando recebem "saia de casa", e SHALL parar quando a protagonista recebe um aviso novo ou é chamada, sem nunca agir por ela.
+4. WHILE a paciente ainda não foi triada the aviso "saia de casa" SHALL vir pela vez dela na triagem (AD-009).
+5. WHEN a paciente triada toca "Vou sair" THEN ela SHALL manter o lugar na fila do consultório e receber novo "saia de casa" quando a consulta se aproximar (RN-TRI-05).
+6. WHEN a paciente é atendida THEN o app SHALL mostrar quanto tempo ela passou na unidade e quanto esperou fora dela.
+7. The protótipo SHALL ter só a apresentação, o fluxo principal e o modo livre.
+
+**Independent Test**: Abrir `fluxo.html` e seguir o roteiro até a Maria ser atendida, vendo o resumo do tempo na unidade.
 
 ---
 
@@ -219,8 +240,9 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 | PROTO-06 | P1: Posição real e regra de prioridade | Execute | Pending |
 | PROTO-07 | P1: Chamada sem pulo automático | Execute | Pending |
 | PROTO-08 | P1: Triagem com duas etapas | Execute | Pending |
+| PROTO-09 | P1: Fluxo principal | Execute | Pending |
 
-**Coverage:** 8 total, 8 mapped to checks, 0 unmapped
+**Coverage:** 9 total, 9 mapped to checks, 0 unmapped
 
 ---
 
@@ -337,7 +359,7 @@ Proof: run engine | ✔ eta: remote first sees come now
 **C31** - "Prioridade legal antes" põe a prioridade legal acima do risco na sugestão, na posição e na ordem de chamada real, abaixo de urgência confirmada e remanejados (PROTO-06, AC 3 e AC 4)
 Proof: run engine | ✔ priority: municipal rule switches legal before risk
 
-**C32** - Apresentação no visual da landing com cards das histórias; cada história mostra só suas telas com legendas e um roteiro que marca o passo feito e destaca o próximo (PROTO-05, AC 1 a AC 3)
+**C32** - Apresentação no visual da landing levando ao fluxo principal; o fluxo mostra as telas com legendas e um roteiro que marca o passo feito e destaca o próximo (PROTO-05, AC 1 a AC 3; PROTO-09, AC 7)
 Proof: walk
 
 **C34** - Sair ("Vou sair") ou ir para casa no 2º pulo e voltar nunca trava a ordem de chamada (PROTO-04, AC 5 e AC 9; PROTO-06, AC 1)
@@ -352,11 +374,23 @@ Proof: run engine | ✔ triage: admin enables triage and creates a station
 **C37** - Com triagem, a sessão abre na fila de triagem; o consultório não chama antes; a triagem confirma o risco e o triado volta presente ao consultório com a mesma senha e número (PROTO-08, AC 3 a AC 6)
 Proof: run engine | ✔ triage: two stages with the same ticket
 
-**C38** - O tempo de quem não foi triado soma as duas etapas (PROTO-08, AC 7)
+**C38** - Quem não foi triado vê a posição e o tempo da triagem, e a previsão da consulta separada (PROTO-08, AC 7)
 Proof: run engine | ✔ triage: eta sums both stages
 
-**C39** - Estação mostra contador, "tolerância esgotada" e "Não compareceu" sempre habilitado; a história 4 vai do início ao fim pelo roteiro (PROTO-07, AC 1 e AC 3; PROTO-08)
+**C39** - Estação mostra contador, "tolerância esgotada" e "Não compareceu" sempre habilitado; o fluxo principal vai do início ao fim pelo roteiro e termina com o resumo do tempo (PROTO-07, AC 1 e AC 3; PROTO-08; PROTO-09)
 Proof: walk
+
+**C40** - O admin cadastra sessão pública ou privada, e ela aparece na agenda da unidade (PROTO-09, AC 1)
+Proof: run engine | ✔ flow: admin creates a public or private session
+
+**C41** - Um "saia de casa" por etapa: antes da triagem pela vez na triagem, depois de "Vou sair" pela vez na consulta (PROTO-09, AC 4 e AC 5; PROTO-04, AC 3)
+Proof: run engine | ✔ triage: leave home notice per stage
+
+**C42** - O tempo na unidade soma só os períodos presentes (PROTO-09, AC 6)
+Proof: run engine | ✔ presence: time at the unit is tracked
+
+**C43** - "Esperar até o próximo aviso" move os outros pacientes e para quando a protagonista é avisada ou chamada, sem agir por ela (PROTO-09, AC 3)
+Proof: run engine | ✔ simulate: others move, protagonist acts alone
 
 **C33** - Nenhuma animação ou transição CSS (PROTO-05, AC 4)
 Proof: `! grep -rnE "animation|transition|@keyframes" prototype/css`

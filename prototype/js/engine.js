@@ -314,6 +314,9 @@
       calledAt: null,
       stationId: null,
       leaveHomeSent: false,
+      presentMs: 0,
+      presentSince: null,
+      finishedAt: null,
       stage: svc.requiresTriage ? "triagem" : "atendimento", // RN-TRI-01
       ...fields,
     };
@@ -325,6 +328,7 @@
   function openSession(st, sessionId) {
     const s = session(st, sessionId);
     s.state = "aberta";
+    s.openedAt = st.now;
     st.entries
       .filter((e) => e.sessionId === sessionId && e.status === "alocada")
       .forEach((e) => {
@@ -393,6 +397,13 @@
           .slice(0, st.config.K)
           .map((x) => x.id);
     q.presence = "presente";
+    if (q.presentSince === null) q.presentSince = st.now;
+  }
+
+  // Tempo na unidade (PROTO-09): soma só os períodos em que o paciente esteve presente.
+  function markAway(st, q) {
+    if (q.presentSince !== null) q.presentMs += st.now - q.presentSince;
+    q.presentSince = null;
   }
 
   function findItem(s, patientId) {
@@ -428,6 +439,7 @@
     const q = findItem(s, patientId);
     if (q?.status !== "fila") return { ok: false, error: "estado" };
     q.presence = "remoto";
+    markAway(st, q);
     releaseLocks(s, q);
     return { ok: true };
   }
@@ -454,13 +466,13 @@
     if (q.stage !== "triagem") {
       return { position: ahead + 1, minutes: nA ? Math.ceil((ahead * st.config.avgMin) / nA) : null };
     }
+    // AD-009: o aviso e o tempo vêm da vez na triagem; a consulta aparece separada.
     const nT = openStations(st, q.serviceId, "triagem");
     const aheadAll = sorted(null).indexOf(q);
-    const minutes =
-      nT && nA
-        ? Math.ceil((ahead * avgFor(st, q.serviceId, "triagem")) / nT + (aheadAll * st.config.avgMin) / nA)
-        : null;
-    return { position: ahead + 1, minutes };
+    const tri = nT ? (ahead * avgFor(st, q.serviceId, "triagem")) / nT : null;
+    const minutes = tri === null ? null : Math.ceil(tri);
+    const consultMinutes = tri !== null && nA ? Math.ceil(tri + (aheadAll * st.config.avgMin) / nA) : null;
+    return { position: ahead + 1, minutes, consultMinutes };
   }
 
   function confirmRisk(st, sessionId, itemId, level) {
@@ -501,6 +513,8 @@
       return;
     }
     q.status = "atendido";
+    markAway(st, q);
+    q.finishedAt = st.now;
     const e = q.entryId && byId(st.entries, q.entryId);
     if (e) e.status = "concluida";
   }
@@ -557,6 +571,7 @@
     } else if (q.skips === 2) {
       q.status = "fila";
       q.presence = "remoto";
+      markAway(st, q);
       releaseLocks(s, q);
       notify(
         st,
@@ -565,6 +580,7 @@
       );
     } else {
       q.status = "saiu";
+      markAway(st, q);
       releaseLocks(s, q);
       const e = q.entryId && byId(st.entries, q.entryId);
       if (e) e.status = "encerrada";
@@ -617,6 +633,55 @@
     const station = { id: nextId(st, "est"), name, stage, services, open: true, current: null };
     st.stations.push(station);
     return station;
+  }
+
+  // Cadastro da sessão pelo admin (seção 6): pública ou privada.
+  function createSession(st, { serviceId, start, slots, visibility, professional }) {
+    if (!(slots >= 1)) return null;
+    const s = {
+      id: nextId(st, "s"),
+      serviceId,
+      start,
+      slots,
+      visibility,
+      professional: professional || "",
+      state: "planejada",
+      version: 1,
+      queue: [],
+      nextNumber: 1,
+      maxCalled: {},
+      secret: `q${st.seq}`,
+    };
+    st.sessions.push(s);
+    return s;
+  }
+
+  // Demonstração (AD-008): o relógio anda e a unidade trabalha nos outros pacientes. Eles chegam quando
+  // recebem "saia de casa" e as estações chamam e atendem no tempo médio da etapa. Nunca age pela
+  // protagonista: para quando ela recebe um aviso novo ou é chamada.
+  function simulate(st, sessionId, { protagonist, maxMs = 4 * 60 * MIN, stepMs = MIN }) {
+    const s = session(st, sessionId);
+    const isP = (q) => !!q && q.patientId === protagonist;
+    const mine = () => st.notifications.filter((n) => n.patientId === protagonist).length;
+    const stations = st.stations.filter((x) => x.services.includes(s.serviceId));
+    if (stations.some((x) => isP(x.current && byId(s.queue, x.current)))) return { reason: "busy" };
+    const start = mine();
+    for (let t = 0; t < maxMs; t += stepMs) {
+      for (const q of s.queue) {
+        if (!q.patientId || isP(q) || q.status !== "fila" || q.presence !== "remoto" || !q.leaveHomeSent) continue;
+        markPresent(st, sessionId, q.patientId);
+      }
+      for (const station of stations.filter((x) => x.open)) {
+        const cur = station.current && byId(s.queue, station.current);
+        if (cur && st.now - cur.calledAt < avgFor(st, s.serviceId, station.stage) * MIN) continue;
+        const r = callNext(st, sessionId, station.id);
+        if (r.ok && isP(r.item)) return { reason: "called" };
+      }
+      if (mine() > start) return { reason: "notified" };
+      advance(st, stepMs);
+      if (mine() > start) return { reason: "notified" };
+    }
+    return { reason: "timeout" };
   }
 
   // Prazo que depende do relógio: "saia de casa".
@@ -730,6 +795,9 @@
         presence: q.presence,
         status: q.status,
         skips: q.skips,
+        stage: q.stage,
+        presentMs: q.presentMs + (q.presentSince === null ? 0 : st.now - q.presentSince),
+        awayMs: q.finishedAt === null ? null : q.finishedAt - s.openedAt - q.presentMs,
         station: station ? station.name : null,
         eta: q.status === "fila" ? eta(st, s.id, q.id) : null,
         display: q.status === "fila" ? patientEta(st, s.id, q.id) : null,
@@ -754,23 +822,29 @@
       const order = callOrder(st, sessionId, null, undefined, q.stage).filter((x) => x.serviceId === q.serviceId);
       const position = order.indexOf(q) + 1;
       const minutes = n ? Math.ceil(((position - 1) * avgFor(st, q.serviceId, q.stage)) / n) : null;
-      return { mode: "presente", position, minutes, comeNow: false };
+      const pres = { mode: "presente", position, minutes, comeNow: false };
+      return q.stage === "triagem" ? { ...pres, stage: "triagem" } : pres;
     }
     const e = eta(st, sessionId, itemId);
-    return {
+    const rem = {
       mode: "remoto",
       position: e.position,
       minutes: e.minutes,
       comeNow: e.position === 1 && e.minutes !== null,
     };
+    return q.stage === "triagem" ? { ...rem, stage: "triagem", consultMinutes: e.consultMinutes } : rem;
   }
 
   function etaText(eta) {
     if (!eta) return "";
-    if (eta.comeNow) return "Sua vez está chegando: venha agora. Você só é chamado depois de ler o QR na unidade.";
-    if (eta.minutes === null) return `você é o ${eta.position}º · aguardando início do atendimento`;
-    if (eta.mode === "presente") return `você é o ${eta.position}º a ser chamado · ~${eta.minutes} min`;
-    return `você é o ${eta.position}º · ~${eta.minutes} min`;
+    const tri = eta.stage === "triagem";
+    const pre = tri ? "triagem: " : "";
+    if (eta.comeNow)
+      return `Sua vez${tri ? " na triagem" : ""} está chegando: venha agora. Você só é chamado depois de ler o QR na unidade.`;
+    if (eta.minutes === null) return `${pre}você é o ${eta.position}º · aguardando início do atendimento`;
+    if (eta.mode === "presente") return `${pre}você é o ${eta.position}º a ser chamado · ~${eta.minutes} min`;
+    const consult = tri && eta.consultMinutes != null ? ` · consulta em ~${eta.consultMinutes} min` : "";
+    return `${pre}você é o ${eta.position}º · ~${eta.minutes} min${consult}`;
   }
 
   function advance(st, ms) {
@@ -818,6 +892,8 @@
     tvView,
     patientView,
     advance,
+    createSession,
+    simulate,
     tolerance,
     setServiceTriage,
     createStation,
