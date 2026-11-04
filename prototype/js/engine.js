@@ -369,7 +369,10 @@
     const placed = [];
     const done = new Set();
     while (placed.length < pool.length) {
-      const next = pool.find((q) => !done.has(q.id) && q.blockers.every((b) => !ids.has(b) || done.has(b)));
+      // Sem candidato livre (não deveria ocorrer), segue a ordem sem travas em vez de travar a fila.
+      const next =
+        pool.find((q) => !done.has(q.id) && q.blockers.every((b) => !ids.has(b) || done.has(b))) ||
+        pool.find((q) => !done.has(q.id));
       placed.push(next);
       done.add(next.id);
     }
@@ -410,11 +413,18 @@
     return { ok: true, item: q };
   }
 
+  // Quem deixa de estar na sala (chamado, saiu, foi para casa) não trava mais ninguém.
+  function releaseLocks(s, q) {
+    q.blockers = [];
+    for (const x of s.queue) x.blockers = x.blockers.filter((b) => b !== q.id);
+  }
+
   function leave(st, sessionId, patientId) {
-    const q = findItem(session(st, sessionId), patientId);
+    const s = session(st, sessionId);
+    const q = findItem(s, patientId);
     if (q?.status !== "fila") return { ok: false, error: "estado" };
     q.presence = "remoto";
-    q.blockers = [];
+    releaseLocks(s, q);
     return { ok: true };
   }
 
@@ -517,7 +527,7 @@
     } else if (q.skips === 2) {
       q.status = "fila";
       q.presence = "remoto";
-      q.blockers = [];
+      releaseLocks(s, q);
       notify(
         st,
         q.patientId,
@@ -525,6 +535,7 @@
       );
     } else {
       q.status = "saiu";
+      releaseLocks(s, q);
       const e = q.entryId && byId(st.entries, q.entryId);
       if (e) e.status = "encerrada";
       const p = q.patientId && patient(st, q.patientId);

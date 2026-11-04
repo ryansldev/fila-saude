@@ -199,7 +199,7 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 
 ## Checks
 
-**Build**: `node --check prototype/js/engine.js && node --check prototype/js/app.js`
+**Build**: `node --check prototype/js/engine.js && node --check prototype/js/scenarios.js && node --check prototype/js/app.js`
 **Run engine**: `node --test prototype/tests/engine.test.js`
 
 Regras em `prototype/js/engine.js`, testadas por `prototype/tests/engine.test.js`. As telas são conferidas no passo a passo (Handoff, Walked).
@@ -294,11 +294,14 @@ Proof: run engine | ✔ eta: present patient sees real call order
 **C30** - Remoto em 1º com estação aberta vê "venha agora"; sem estação, "aguardando início" (PROTO-06, AC 2)
 Proof: run engine | ✔ eta: remote first sees come now
 
-**C31** - "Prioridade legal antes" põe a prioridade legal acima do risco na sugestão e na chamada, abaixo de urgência confirmada e remanejados (PROTO-06, AC 3 e AC 4)
+**C31** - "Prioridade legal antes" põe a prioridade legal acima do risco na sugestão, na posição e na ordem de chamada real, abaixo de urgência confirmada e remanejados (PROTO-06, AC 3 e AC 4)
 Proof: run engine | ✔ priority: municipal rule switches legal before risk
 
 **C32** - Apresentação no visual da landing com cards das histórias; cada história mostra só suas telas com legendas e um roteiro que marca o passo feito e destaca o próximo (PROTO-05, AC 1 a AC 3)
 Proof: walk
+
+**C34** - Sair ("Vou sair") ou ir para casa no 2º pulo e voltar nunca trava a ordem de chamada (PROTO-04, AC 5 e AC 9; PROTO-06, AC 1)
+Proof: run engine | ✔ order: leaving and coming back never deadlocks
 
 **C33** - Nenhuma animação ou transição CSS (PROTO-05, AC 4)
 Proof: `! grep -rnE "animation|transition|@keyframes" prototype/css`
@@ -306,7 +309,7 @@ Proof: `! grep -rnE "animation|transition|@keyframes" prototype/css`
 ## Handoff
 
 **Settled mid-build:** none
-**Dispatched:** Verifier at `0a2c9df` (proofs.md at `0a2c9df`, same code) - returned (FAIL, 9 findings); revisão 2: Verifier at `2ee2d78` - sent
+**Dispatched:** Verifier at `0a2c9df` (proofs.md at `0a2c9df`, same code) - returned (FAIL, 9 findings); revisão 2: Verifier at `db2e302` - returned (FAIL, 3 findings)
 **Walked (revisão 2):** 2026-11-04, Chrome headless via CDP por file://. Um script que só clica no elemento com a marca do roteiro (`.hint`) terminou as três histórias: `historia-lista.html` 7/7, `historia-alocacao.html` 6/6, `historia-fila.html` 10/10 (também a 1280 px), sem erro de console. Apresentação, histórias e modo livre sem rolagem horizontal a 1280 e 1440 px, e o menu do topo sem transbordo. Na fila do dia, a Dora (remota, 1ª) vê "Sua vez está chegando: venha agora" no cartão verde. João presente vê "você é o 1º a ser chamado". Na alocação, "Prioridade legal antes" põe a Dora nas 3 vagas e tira o Carlos (urgente sugerido).
 **Walked:** 2026-11-04, Chrome headless via CDP, `prototype/index.html` por file://, sem login.
 - Simulador (PROTO-01): a 1280 e 1440 px as quatro visões ficam lado a lado sem rolagem horizontal (colunas 20..392, 412..845, 865..1245 a 1280). Os três botões de cenário trocam dados e passos. "+5 min" pula o chamado.

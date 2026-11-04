@@ -618,4 +618,38 @@ test("priority: municipal rule switches legal before risk", () => {
   assert.equal(pos("bruno"), 2);
   E.confirmRisk(q, "s1", item(q, "bruno").id, "urgente");
   assert.equal(pos("bruno"), 1);
+  // Ordem de chamada real (sem janela protegida, para isolar a regra).
+  const c = confirmedSession(["bruno", "dora"]);
+  c.config.K = 0;
+  item(c, "bruno").confirmedLevel = "atencao";
+  checkIn(c, "bruno");
+  checkIn(c, "dora");
+  assert.deepEqual(order(c), ["bruno", "dora"]);
+  c.config.priorityOrder = "legal";
+  assert.deepEqual(order(c), ["dora", "bruno"]);
+  assert.equal(E.callNext(c, "s1", "st1").item.patientId, "dora");
+});
+
+test("order: leaving and coming back never deadlocks", () => {
+  const st = confirmedSession(["ana", "joao", "bruno"]);
+  checkIn(st, "ana");
+  checkIn(st, "joao"); // João fica atrás de Ana (janela protegida)
+  E.leave(st, "s1", "ana");
+  checkIn(st, "ana"); // Ana volta: agora fica atrás de João
+  assert.deepEqual(order(st), ["joao", "ana"]);
+  assert.equal(E.patientEta(st, "s1", item(st, "ana").id).position, 2);
+  assert.equal(E.callNext(st, "s1", "st1").item.patientId, "joao");
+  // O mesmo depois de um 2º pulo, que manda o paciente para casa.
+  const st2 = confirmedSession(["ana", "joao", "bruno"]);
+  checkIn(st2, "ana");
+  checkIn(st2, "joao");
+  checkIn(st2, "bruno");
+  E.callNext(st2, "s1", "st1"); // Ana
+  E.skip(st2, "s1", "st1"); // 1º pulo: Ana atrás de João
+  E.callNext(st2, "s1", "st1"); // João
+  E.callNext(st2, "s1", "st1"); // Ana
+  E.skip(st2, "s1", "st1"); // 2º pulo: Ana em casa
+  checkIn(st2, "ana");
+  assert.deepEqual(order(st2), ["bruno", "ana"]);
+  assert.equal(E.callNext(st2, "s1", "st1").item.patientId, "bruno");
 });
