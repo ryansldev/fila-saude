@@ -63,6 +63,7 @@ test("classify: alarm sign is emergency", () => {
     assert.equal(E.classify(answers({ alarms: [a] }), 30).level, "emergencia", a);
   }
   assert.equal(E.classify(answers({ alarms: ["nenhum"] }), 30).level, "rotina");
+  assert.equal(E.classify(answers({ alarms: ["autolesao", "dor_peito"] }), 30).level, "emergencia");
   const st = baseState();
   const r = E.createEntry(st, { patientId: "ana", serviceId: "cli", answers: answers({ alarms: ["dor_peito"] }) });
   assert.equal(r.ok, false);
@@ -90,6 +91,7 @@ test("classify: urgent, attention and routine rules", () => {
   assert.equal(E.classify(novo("leve", { condicoes: ["diabetes"] }), 30).level, "atencao");
   assert.equal(E.classify(novo("leve", { condicoes: ["nenhuma"] }), 30).level, "rotina");
   assert.equal(E.classify(novo("leve"), 1).level, "atencao");
+  assert.equal(E.classify(novo("leve"), 2).level, "rotina");
   assert.equal(E.classify(novo("leve"), 60).level, "atencao");
   assert.equal(E.classify(novo("leve"), 59).level, "rotina");
   assert.equal(E.classify(novo("leve", { grupos: ["gestante"] }), 30).level, "atencao");
@@ -126,6 +128,7 @@ test("waitlist: referral gates allocation", () => {
   assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Encaminhamento ilegível")));
   E.acceptReferral(st, r.entry.id);
   assert.equal(r.entry.status, "aguardando");
+  assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Encaminhamento aceito")));
   assert.equal(E.suggest(st, "s2").length, 1);
 });
 
@@ -151,9 +154,22 @@ test("allocation: suggestion order and reasons", () => {
   const dora = E.suggest(st, "s1").find((s) => s.entry.id === elderly.id);
   assert.ok(dora.reasons.includes("idosa, 82 anos"), dora.reasons.join(" · "));
   assert.ok(dora.reasons.includes("espera há 20 dias"), dora.reasons.join(" · "));
-  st.patients.find((p) => p.id === "ana").faltas = [NOW - 10 * DAY, NOW - 40 * DAY];
-  const ana = E.suggest(st, "s1").find((s) => s.entry.id === routineOld.id);
-  assert.equal(ana.faltaAlert, true);
+  const anaFalta = () => E.suggest(st, "s1").find((s) => s.entry.id === routineOld.id).faltaAlert;
+  const ana = st.patients.find((p) => p.id === "ana");
+  ana.faltas = [NOW - 10 * DAY];
+  assert.equal(anaFalta(), false);
+  ana.faltas = [NOW - 10 * DAY, NOW - 91 * DAY];
+  assert.equal(anaFalta(), false);
+  ana.faltas = [NOW - 10 * DAY, NOW - 89 * DAY];
+  assert.equal(anaFalta(), true);
+  // 80+ vem antes de 60-79 com o mesmo risco, mesmo esperando há menos tempo.
+  st.patients.push({ id: "seu", name: "Seu Zé", sexo: "M", birth: "1956-01-01", faltas: [] }); // 70 anos
+  st.now = NOW - 90 * DAY;
+  const seventy = E.createEntry(st, { patientId: "seu", serviceId: "cli", answers: none }).entry;
+  st.now = NOW;
+  const order60 = E.suggest(st, "s1").map((s) => s.entry.id);
+  assert.ok(order60.indexOf(elderly.id) < order60.indexOf(seventy.id));
+  assert.ok(order60.indexOf(seventy.id) < order60.indexOf(routineOld.id));
 });
 
 test("allocation: never exceeds slots", () => {
@@ -178,9 +194,19 @@ test("allocation: never exceeds slots", () => {
   );
   assert.equal(ok.ok, true);
   assert.equal(E.occupied(st, "s1"), 3);
-  const stale = E.allocate(st, "s1", [entries[3].id], { version: st.sessions[0].version - 1 });
+  // Dois agendadores leem a mesma versão; o segundo a gravar recebe conflito.
+  const st2 = baseState();
+  st2.sessions[0].slots = 5;
+  const [x, y] = ["ana", "joao"].map(
+    (pid) => E.createEntry(st2, { patientId: pid, serviceId: "cli", answers: none }).entry,
+  );
+  const seen = st2.sessions[0].version;
+  assert.equal(E.allocate(st2, "s1", [x.id], { version: seen }).ok, true);
+  const stale = E.allocate(st2, "s1", [y.id], { version: seen });
   assert.equal(stale.ok, false);
   assert.equal(stale.error, "conflito");
+  assert.equal(y.status, "aguardando");
+  assert.equal(E.allocate(st2, "s1", [y.id], { version: st2.sessions[0].version }).ok, true);
   assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("24 h")));
 });
 
@@ -197,7 +223,35 @@ test("allocation: refusal keeps original date", () => {
   assert.equal(e.sessionId, null);
   assert.equal(e.createdAt, original);
   assert.equal(E.occupied(st, "s1"), 0);
-  assert.equal(E.suggest(st, "s1")[0].entry.id, e.id);
+  // O refused volta à lista, mas não é sugerido de novo para a mesma sessão.
+  st.sessions.push({
+    id: "s9",
+    serviceId: "cli",
+    start: NOW + 9 * DAY,
+    slots: 3,
+    visibility: "privada",
+    state: "planejada",
+    version: 1,
+    queue: [],
+    nextNumber: 1,
+    maxCalledNumber: 0,
+    secret: "s9",
+  });
+  assert.equal(E.suggest(st, "s9")[0].entry.id, e.id);
+  assert.equal(E.suggest(st, "s1").length, 0);
+  const other = E.createEntry(st, {
+    patientId: "joao",
+    serviceId: "cli",
+    answers: answers({ motivo: "novo", gravidade: "forte" }),
+  }).entry;
+  E.allocate(st, "s1", [other.id], { version: st.sessions[0].version });
+  const r = E.refuseAllocation(st, other.id);
+  assert.equal(r.next, null); // ninguém além dos dois que recusaram
+  const third = E.createEntry(st, { patientId: "bruno", serviceId: "cli", answers: none }).entry;
+  assert.deepEqual(
+    E.suggest(st, "s1").map((s) => s.entry.id),
+    [third.id],
+  );
 });
 
 // ---------- Fila do dia ----------
@@ -234,6 +288,9 @@ test("queue: eta and position", () => {
   assert.deepEqual(E.eta(st, "s1", item(st, "bruno").id), { position: 4, minutes: 23 });
   for (const s of st.stations) s.open = false;
   assert.deepEqual(E.eta(st, "s1", item(st, "bruno").id), { position: 4, minutes: null });
+  assert.equal(E.etaText({ position: 4, minutes: 12 }), "você é o 4º · ~12 min");
+  assert.equal(E.etaText({ position: 1, minutes: 0 }), "você é o 1º · ~0 min");
+  assert.equal(E.etaText({ position: 4, minutes: null }), "você é o 4º · aguardando início do atendimento");
 });
 
 test("queue: qr current and previous only", () => {
@@ -288,6 +345,9 @@ test("order: confirmed urgency jumps window", () => {
   checkIn(st, "joao");
   E.confirmRisk(st, "s1", item(st, "bruno").id, "urgente");
   assert.ok(st.notifications.some((n) => n.patientId === "bruno" && n.text.includes("Venha agora")));
+  E.confirmRisk(st, "s1", item(st, "ana").id, "urgente"); // presente: não recebe "venha agora"
+  assert.ok(!st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Venha agora")));
+  E.confirmRisk(st, "s1", item(st, "ana").id, "rotina");
   checkIn(st, "bruno");
   assert.deepEqual(order(st), ["bruno", "ana", "joao"]);
   assert.equal(E.callNext(st, "s1", "st1").item.patientId, "bruno");
@@ -371,6 +431,10 @@ test("queue: front desk entry is present", () => {
   const full = E.frontDesk(st, "s1", { name: "Outra", birth: "1990-01-01", answers: none });
   assert.equal(full.ok, false);
   assert.equal(full.error, "sem_vagas");
+  // Atendidos deixam de ocupar vaga, venham da lista ou do balcão (INV-02: entradas não finais).
+  assert.equal(E.callNext(st, "s1", "st1").item.senha, "C-003");
+  E.finish(st, "s1", "st1");
+  assert.equal(E.occupied(st, "s1"), 2);
   st.sessions[0].slots = 5;
   const emerg = E.frontDesk(st, "s1", { name: "X", birth: "1990-01-01", answers: answers({ alarms: ["convulsao"] }) });
   assert.equal(emerg.ok, false);

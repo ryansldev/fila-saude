@@ -187,13 +187,13 @@ Proof: run engine | ✔ allocation: suggestion order and reasons
 **C7** - Alocação além das vagas é recusada; alocar com a lista desatualizada dá conflito (PROTO-03, AC 3 e AC 4)
 Proof: run engine | ✔ allocation: never exceeds slots
 
-**C8** - Recusa libera a vaga e devolve a entrada com a data original (PROTO-03, AC 7)
+**C8** - Recusa libera a vaga e devolve a entrada com a data original; quem recusou não é sugerido de novo para a mesma sessão (PROTO-03, AC 7)
 Proof: run engine | ✔ allocation: refusal keeps original date
 
 **C9** - Abertura numera confirmados pela data original e libera pendentes (PROTO-04, AC 1)
 Proof: run engine | ✔ queue: open numbers by original date
 
-**C10** - Posição e tempo estimado por RN-ETA-01; sem estação, sem tempo (PROTO-04, AC 2)
+**C10** - Posição e tempo estimado por RN-ETA-01, mostrados como "você é o Nº · ~X min"; sem estação, "aguardando início do atendimento" (PROTO-04, AC 2)
 Proof: run engine | ✔ queue: eta and position
 
 **C11** - QR atual e anterior aceitos; mais antigo recusado; "Vou sair" mantém o número (PROTO-04, AC 4 e AC 5)
@@ -220,7 +220,7 @@ Proof: run engine | ✔ call: three skips
 **C18** - "Saia de casa" sai uma vez quando o tempo do remoto chega a 30 min (PROTO-04, AC 3)
 Proof: run engine | ✔ queue: leave home notice once
 
-**C19** - Balcão entra presente com o próximo número; vagas respeitadas (PROTO-04, AC 10)
+**C19** - Balcão entra presente com o próximo número; vagas respeitadas, e atendidos deixam de ocupar vaga por qualquer caminho (PROTO-04, AC 10)
 Proof: run engine | ✔ queue: front desk entry is present
 
 **C20** - "Nenhum destes" e "Nenhuma" desmarcam as outras opções (PROTO-02, AC 7)
@@ -253,7 +253,7 @@ Proof: walk
 ## Handoff
 
 **Settled mid-build:** none
-**Dispatched:** none
+**Dispatched:** Verifier at `0a2c9df` (proofs.md at `0a2c9df`, same code) - returned (FAIL, 9 findings)
 **Walked:** 2026-11-04, Chrome headless via CDP, `prototype/index.html` por file://, sem login.
 - Simulador (PROTO-01): a 1280 e 1440 px as quatro visões ficam lado a lado sem rolagem horizontal (colunas 20..392, 412..845, 865..1245 a 1280). Os três botões de cenário trocam dados e passos. "+5 min" pula o chamado.
 - Lista de espera (PROTO-02), cenário "Lista de espera e risco": pin UBS Vila Nova mostra "Terça, 17/11 · Clínico geral · privada · 19 vagas". Maria em Clínico (nenhum, novo, moderado) dá "Atenção · sugerido". Segunda tentativa mostra "Você já está nesta lista". Em Cardiologia pede a foto; o agendador rejeita "Fora da validade" e o aviso aparece no celular. Antônio com dor no peito vê "Ligar 192 · SAMU" sem entrada. Lúcia com autolesão vê CVV 188 e SAMU 192, segue e entra como "Urgente · sugerido", com alerta no Agendador.

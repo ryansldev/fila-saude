@@ -145,6 +145,7 @@
       legal,
       remanejado: false,
       refusals: 0,
+      refusedSessions: [],
       sessionId: null,
       status: svc.requiresReferral ? "aguardando_encaminhamento" : "aguardando",
       referral: svc.requiresReferral ? { status: "pendente", photo: referralPhoto || null, reason: null } : null,
@@ -210,7 +211,7 @@
   function suggest(st, sessionId) {
     const s = session(st, sessionId);
     return st.entries
-      .filter((e) => e.serviceId === s.serviceId && e.status === "aguardando")
+      .filter((e) => e.serviceId === s.serviceId && e.status === "aguardando" && !e.refusedSessions.includes(sessionId))
       .sort(allocCompare)
       .map((e) => ({
         entry: e,
@@ -224,7 +225,9 @@
     const fromList = st.entries.filter(
       (e) => e.sessionId === sessionId && ["alocada", "confirmada", "na_fila"].includes(e.status),
     ).length;
-    const desk = session(st, sessionId).queue.filter((q) => q.origin === "balcao" && q.status !== "saiu").length;
+    const desk = session(st, sessionId).queue.filter(
+      (q) => q.origin === "balcao" && !["saiu", "atendido"].includes(q.status),
+    ).length;
     return fromList + desk;
   }
 
@@ -274,6 +277,7 @@
     const e = byId(st.entries, entryId);
     if (e.status !== "alocada") return { ok: false, error: "estado" };
     const sessionId = e.sessionId;
+    e.refusedSessions.push(sessionId); // quem recusou não volta a ser sugerido para a mesma sessão
     if (e.remanejado && e.refusals === 0) e.refusals++;
     else e.remanejado = false;
     release(st, e);
@@ -677,6 +681,13 @@
     };
   }
 
+  // RN-ETA-04: "você é o 4º · ~12 min"; sem estação aberta, sem tempo (RN-ETA-02).
+  function etaText(eta) {
+    if (!eta) return "";
+    if (eta.minutes === null) return `você é o ${eta.position}º · aguardando início do atendimento`;
+    return `você é o ${eta.position}º · ~${eta.minutes} min`;
+  }
+
   function advance(st, ms) {
     st.now += ms;
     tick(st);
@@ -722,6 +733,7 @@
     tvView,
     patientView,
     advance,
+    etaText,
     activeEntry,
     findItem,
   };

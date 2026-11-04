@@ -718,12 +718,7 @@
     </div>`;
   }
 
-  function etaText(eta) {
-    if (!eta) return "";
-    if (eta.minutes === null) return `você é o ${eta.position}º · aguardando início do atendimento`;
-    if (eta.position === 1) return "você é o próximo";
-    return `você é o ${eta.position}º · ~${eta.minutes} min`;
-  }
+  const etaText = E.etaText;
 
   function mapSvg() {
     const pins = st.units
