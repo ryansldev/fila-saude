@@ -1,9 +1,9 @@
 # prototipo proofs
 
-**HEAD**: a3a7a3a
-**Tree**: dirty - .agents/.skill-lock.json, .agents/.skill-lock.json.backup, .claude/skills/tlc-spec-driven/.skill-meta.json, .claude/skills/tlc-spec-driven/SKILL.md, .claude/skills/tlc-spec-driven/references/coding-principles.md
+**HEAD**: e9afbba
+**Tree**: clean
 **Shell**: /bin/sh
-**Result**: 35 pass, 0 fail
+**Result**: 46 pass, 0 fail
 
 | Check | Proof | Result |
 | --- | --- | --- |
@@ -40,6 +40,17 @@
 | C31 | `run engine / ✔ priority: municipal rule switches legal before risk` | pass |
 | C32 | `walk` | pass (Walked) |
 | C34 | `run engine / ✔ order: leaving and coming back never deadlocks` | pass |
+| C35 | `run engine / ✔ call: tolerance never skips on its own` | pass |
+| C36 | `run engine / ✔ triage: admin enables triage and creates a station` | pass |
+| C37 | `run engine / ✔ triage: two stages with the same ticket` | pass |
+| C38 | `run engine / ✔ triage: eta sums both stages` | pass |
+| C39 | `walk` | pass (Walked) |
+| C40 | `run engine / ✔ flow: admin creates a public or private session` | pass |
+| C41 | `run engine / ✔ triage: leave home notice per stage` | pass |
+| C42 | `run engine / ✔ presence: time at the unit is tracked` | pass |
+| C43 | `run engine / ✔ simulate: others move, protagonist acts alone` | pass |
+| C44 | `run engine / ✔ order: coming back loses the turn only if it passed in the order` | pass |
+| C45 | `run engine / ✔ station: cannot close while someone is called` | pass |
 | C33 | `! grep -rnE "animation/transition/@keyframes" prototype/css` | pass |
 | Build | `node --check prototype/js/engine.js && node --check prototype/js/scenarios.js && node --check prototype/js/app` | pass |
 
@@ -48,21 +59,21 @@
 `Run engine` - exit 0
 
 ```
-✔ privacy: patient view holds only own data (0.294678ms)
-✔ calllist: pending allocation highlighted after 24 h (0.190229ms)
-✔ clock: advancing re-evaluates tolerance (0.127359ms)
-✔ eta: present patient sees real call order (0.248538ms)
-✔ eta: remote first sees come now (0.232419ms)
-✔ priority: municipal rule switches legal before risk (0.398027ms)
-✔ order: leaving and coming back never deadlocks (0.383548ms)
-ℹ tests 30
+✔ triage: eta sums both stages (0.378828ms)
+✔ flow: admin creates a public or private session (0.236379ms)
+✔ triage: leave home notice per stage (0.470787ms)
+✔ presence: time at the unit is tracked (0.236499ms)
+✔ simulate: others move, protagonist acts alone (0.866125ms)
+✔ order: coming back loses the turn only if it passed in the order (0.175259ms)
+✔ station: cannot close while someone is called (0.13712ms)
+ℹ tests 40
 ℹ suites 0
-ℹ pass 30
+ℹ pass 40
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 73.814395
+ℹ duration_ms 82.015428
 ```
 
 `! grep -rnE "animation/transition/@keyframes" prototype/css` - exit 0
