@@ -162,13 +162,18 @@
       triLevel: {},
       tvCode: "",
       tvMsg: null,
-      tvStarted: false,
+      tvStarted: !!sc.tvReady,
       tvCur: null,
       tvPending: [],
       tvSeen: new Set(),
       tvShown: [],
       stationId: "st1",
       stationMsg: null,
+      stLevel: null,
+      newSession: { serviceId: "cli", day: 1, slots: 15, visibility: "privada" },
+      simMsg: null,
+      travelDone: new Set(),
+      newStation: { name: "Triagem 1", stage: "triagem" },
       events: new Set(),
       done: new Set(),
       audio: ui?.audio || null,
@@ -378,11 +383,18 @@
           break;
         }
         const svc = service(sessionOf(q.sessionId).serviceId);
+        const stageTag = q.stage === "triagem" ? " · triagem" : svc.requiresTriage ? " · consultório" : "";
         if (q.status === "chamado") {
           body = `<div class="ticket called"><div class="svc">É a sua vez!</div><div class="senha">${q.senha}</div><div class="pos">${esc(svc.name)} → ${esc(q.station)}</div></div>
           <p class="muted">Vá até a sala agora. Você tem ${st.config.toleranceMin} minutos.</p>`;
         } else if (q.status === "atendido") {
-          body = `<div class="ticket"><div class="senha">${q.senha}</div><div class="pos">Atendimento concluído</div></div>`;
+          const h = (ms) => {
+            const m = Math.round(ms / MIN);
+            return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
+          };
+          body = `<div class="ticket come"><div class="svc">${esc(svc.name)}</div><div class="senha">${q.senha}</div><div class="pos">Atendimento concluído</div></div>
+            <div class="result"><h4>Tudo certo, ${esc(first(p.name))}!</h4><p>Você foi atendida sem enfrentar fila.</p></div>
+            <div class="stat-grid"><div class="stat"><b>${h(q.presentMs)}</b><span>na unidade</span></div><div class="stat"><b>${q.awayMs === null ? "—" : h(q.awayMs)}</b><span>esperando em casa</span></div></div>`;
         } else if (q.status === "saiu") {
           body = `<div class="banner error">Você saiu da fila por não comparecer à chamada 3 vezes. Para outro dia, entre de novo na lista de espera.</div>`;
         } else {
@@ -395,7 +407,7 @@
                 : `Espere em casa. Avisamos com “saia de casa” quando faltar cerca de ${st.config.leaveHomeMin} min. Só é chamado quem leu o QR na unidade.`;
           body = `
             <div class="ticket ${d.comeNow ? "come" : ""}">
-              <div class="svc">${esc(svc.name)}</div>
+              <div class="svc">${esc(svc.name)}${stageTag}</div>
               <div class="senha">${q.senha}</div>
               <div class="pos">${E.etaText(d)}</div>
               <div class="presence"><span class="chip">${q.presence === "presente" ? "você está na unidade" : "você está em casa"}</span>${q.skips ? `<span class="chip urgente">${q.skips} pulo${q.skips > 1 ? "s" : ""}</span>` : ""}</div>
@@ -623,7 +635,7 @@
         }[q.status];
         return `<tr class="${q.status === "atendido" || q.status === "saiu" ? "off" : ""}">
           <td class="mono">${q.senha}</td><td>${esc(q.name)}${q.origin === "balcao" ? ` <span class="chip">balcão</span>` : ""}${q.legal.label ? `<div class="reasons">${esc(q.legal.label)}</div>` : ""}</td>
-          <td><span class="chip ${q.presence === "presente" ? "ok" : ""}">${sit}</span>${q.skips ? `<div class="reasons">${q.skips} pulo(s)</div>` : ""}</td>
+          <td><span class="chip ${q.presence === "presente" ? "ok" : ""}">${sit}</span>${q.stage === "triagem" && q.status !== "saiu" ? ` <span class="chip atencao">triagem</span>` : ""}${q.skips ? `<div class="reasons">${q.skips} pulo(s)</div>` : ""}</td>
           <td>${withAction(q)}</td></tr>`;
       })
       .join("");
@@ -686,9 +698,36 @@
       })}`;
   }
 
+  const STAGE_LABEL = { triagem: "triagem", atendimento: "atendimento" };
+
+  // 07:00 em Brasília, N dias depois do dia atual do relógio da demo.
+  function dayStart(days) {
+    const local = st.now - 3 * 60 * MIN;
+    return Math.floor(local / DAY) * DAY + days * DAY + 10 * 60 * MIN;
+  }
+
+  function newSessionForm(services) {
+    const ns = ui.newSession;
+    const vis = (id, label) =>
+      `<button data-act="ns-vis" data-id="${id}" aria-pressed="${ns.visibility === id}">${label}</button>`;
+    return `<div class="surface rule-box">
+      <div class="grid2">
+        <div class="field"><label for="ns-svc">Serviço</label><select id="ns-svc" data-change="ns-svc">${services.map((x) => `<option value="${x.id}" ${ns.serviceId === x.id ? "selected" : ""}>${esc(x.name)}${x.requiresTriage ? " (com triagem)" : ""}</option>`).join("")}</select></div>
+        <div class="field"><label for="ns-day">Dia, às 07:00</label><select id="ns-day" data-change="ns-day">${[1, 2, 7].map((d) => `<option value="${d}" ${ns.day === d ? "selected" : ""}>${E.dayLabel(dayStart(d))}</option>`).join("")}</select></div>
+        <div class="field"><label for="ns-slots">Vagas</label><input id="ns-slots" type="number" min="1" data-bind-ns="slots" value="${ns.slots}"></div>
+        <div class="field"><span class="label">Visibilidade</span><div class="segmented" role="group" aria-label="Visibilidade">${vis("privada", "Privada")}${vis("pública", "Pública")}</div></div>
+      </div>
+      <p>${ns.visibility === "privada" ? "Privada: o agendador escolhe quem entra, pela lista de espera e pelo risco." : "Pública: o paciente se inscreve direto pelo app até acabarem as vagas, sem alocação."}</p>
+      <p></p>
+      <button class="btn sm" data-act="session-create">Criar sessão</button>
+    </div>`;
+  }
+
   function unitAdminHTML() {
     const sessions = st.sessions.filter((s) => service(s.serviceId).unitId === "u1");
+    const services = st.services.filter((x) => x.unitId === "u1");
     const tv = st.tv;
+    const ns = ui.newStation;
     return `<h3>UBS Vila Nova</h3>
       <h4>TV da sala de espera</h4>
       ${
@@ -699,6 +738,18 @@
             <button class="btn sm" data-act="tv-pair">Parear</button></div>`
       }
       ${ui.tvMsg ? `<div class="banner error" style="margin-top:8px">${ui.tvMsg}</div>` : ""}
+      <h4>Serviços</h4>
+      <table><tr><th>Serviço</th><th>Triagem</th><th></th></tr>
+      ${services
+        .map((x) => {
+          const locked = st.sessions.some((ss) => ss.serviceId === x.id && ss.state === "aberta");
+          return `<tr><td><strong>${esc(x.name)}</strong><div class="reasons">senha ${x.prefix}-000${x.requiresReferral ? " · exige encaminhamento" : ""}</div></td>
+            <td><span class="chip ${x.requiresTriage ? "ok" : ""}">${x.requiresTriage ? "exige triagem" : "sem triagem"}</span></td>
+            <td><button class="btn sm secondary" data-act="svc-triage" data-id="${x.id}" ${locked ? "disabled" : ""}>${x.requiresTriage ? "Dispensar triagem" : "Exigir triagem"}</button>${locked ? `<div class="reasons">sessão aberta: não muda hoje</div>` : ""}</td></tr>`;
+        })
+        .join("")}</table>
+      <h4>Nova sessão</h4>
+      ${newSessionForm(services)}
       <h4>Sessões</h4>
       <table><tr><th>Serviço</th><th>Quando</th><th>Vagas</th><th></th></tr>
       ${sessions
@@ -715,11 +766,21 @@
         .map(
           (
             x,
-          ) => `<tr><td><strong>${esc(x.name)}</strong><div class="reasons">atendimento · ${x.services.map((id) => esc(service(id).name)).join(", ")}</div></td>
+          ) => `<tr><td><strong>${esc(x.name)}</strong><div class="reasons">${STAGE_LABEL[x.stage]} · ${x.services.map((id) => esc(service(id).name)).join(", ")}</div></td>
           <td><span class="chip ${x.open ? "ok" : ""}">${x.open ? "aberta · profissional logado" : "fechada"}</span></td>
           <td><button class="btn sm secondary" data-act="station-toggle" data-id="${x.id}">${x.open ? "Fechar" : "Abrir"}</button></td></tr>`,
         )
-        .join("")}</table>`;
+        .join("")}</table>
+      <div class="surface rule-box" style="margin-top:12px">
+        <strong>Nova estação</strong>
+        <div class="grid2" style="margin-top:8px">
+          <div class="field"><label for="st-name">Nome</label><input id="st-name" data-bind-st="name" value="${esc(ns.name)}"></div>
+          <div class="field"><label for="st-stage">Etapa</label><select id="st-stage" data-change="st-stage">${["triagem", "atendimento"].map((k) => `<option value="${k}" ${ns.stage === k ? "selected" : ""}>${STAGE_LABEL[k]}</option>`).join("")}</select></div>
+        </div>
+        <p>Atende: Clínico geral. Uma estação de triagem confirma o risco antes do consultório.</p>
+        <p></p>
+        <button class="btn sm" data-act="station-create" ${ns.name.trim() ? "" : "disabled"}>Criar estação</button>
+      </div>`;
   }
 
   // ---------- Estação ----------
@@ -727,8 +788,12 @@
   function stationHTML() {
     const station = byId(st.stations, ui.stationId);
     const s = openSession();
+    const tri = station.stage === "triagem";
     const select = `<div class="row between"><select data-change="station" aria-label="Estação">${st.stations
-      .map((x) => `<option value="${x.id}" ${x.id === station.id ? "selected" : ""}>${esc(x.name)}</option>`)
+      .map(
+        (x) =>
+          `<option value="${x.id}" ${x.id === station.id ? "selected" : ""}>${esc(x.name)} · ${STAGE_LABEL[x.stage]}</option>`,
+      )
       .join(
         "",
       )}</select><span class="chip ${station.open ? "ok" : ""}">${station.open ? "aberta" : "fechada"}</span></div>`;
@@ -736,24 +801,36 @@
       return `${select}<p class="muted" style="margin-top:10px">Nenhuma sessão aberta. A estação chama quando o admin abrir a sessão.</p>`;
     const cur = station.current && byId(s.queue, station.current);
     const next = E.callOrder(st, s.id, station.id)[0];
-    let now = `<div class="station-now"><div><div class="muted">Em atendimento</div><div class="senha">—</div></div></div>`;
+    const tol = E.tolerance(st, s.id, station.id);
+    let now = `<div class="station-now"><div><div class="muted">${tri ? "Em triagem" : "Em atendimento"}</div><div class="senha">—</div></div></div>`;
+    let risk = "";
     if (cur) {
-      const left = Math.max(0, st.config.toleranceMin * MIN - (st.now - cur.calledAt));
-      const mm = Math.floor(left / MIN);
-      const ss = String(Math.floor((left % MIN) / 1000)).padStart(2, "0");
+      const mm = Math.floor(tol.leftMs / MIN);
+      const ss = String(Math.floor((tol.leftMs % MIN) / 1000)).padStart(2, "0");
       now = `<div class="station-now"><div><div class="muted">Chamado</div><div class="senha">${cur.senha}</div><div>${esc(cur.name)}</div></div>
-        <div style="text-align:right"><div class="muted">tolerância</div><div class="tolerance">${mm}:${ss}</div></div></div>`;
+        <div style="text-align:right"><div class="muted">tolerância</div>${
+          tol.expired
+            ? `<div class="tolerance">esgotada</div><div class="reasons">veio? siga. não veio? “Não compareceu”</div>`
+            : `<div class="tolerance">${mm}:${ss}</div>`
+        }</div></div>`;
+      if (tri) {
+        const lvl = ui.stLevel || cur.confirmedLevel || cur.suggested;
+        risk = `<div class="surface rule-box"><div class="row between wrap"><strong>Classificação de risco</strong>${levelChip(cur.confirmedLevel || cur.suggested, !!cur.confirmedLevel)}</div>
+          <div class="row" style="margin-top:8px"><select data-change="st-level" aria-label="Classificação de risco">${["urgente", "atencao", "rotina"].map((l) => `<option value="${l}" ${l === lvl ? "selected" : ""}>${E.RISK_LABEL[l]}</option>`).join("")}</select>
+          <button class="btn sm" data-act="st-risk">Confirmar risco</button></div></div>`;
+      }
     }
     const dis = station.open ? "" : "disabled";
     return `${select}
       ${now}
-      <div class="row between" style="margin-bottom:12px"><span class="muted">Próximo da fila:</span><strong>${next ? `${next.senha} · ${esc(next.name)}` : "ninguém na sala"}</strong></div>
+      ${risk}
+      <div class="row between" style="margin-bottom:12px"><span class="muted">Próximo da fila${tri ? " de triagem" : ""}:</span><strong>${next ? `${next.senha} · ${esc(next.name)}` : "ninguém na sala"}</strong></div>
       ${ui.stationMsg ? `<div class="banner">${ui.stationMsg}</div>` : ""}
       <div class="station-actions">
         <button class="btn lg primary" data-act="st-next" ${dis}>Chamar próximo</button>
         <button class="btn secondary" data-act="st-recall" ${cur ? dis : "disabled"}>Rechamar</button>
-        <button class="btn secondary" data-act="st-finish" ${cur ? dis : "disabled"}>Finalizar</button>
-        <button class="btn ghost wide" data-act="st-skip" ${cur ? dis : "disabled"}>Pular (não compareceu)</button>
+        <button class="btn secondary" data-act="st-finish" ${cur ? dis : "disabled"}>${tri ? "Finalizar triagem" : "Finalizar"}</button>
+        <button class="btn ${tol?.expired ? "danger" : "secondary"} wide" data-act="st-skip" ${cur ? dis : "disabled"}>Não compareceu</button>
       </div>
       ${station.open ? "" : `<p class="muted">Abra a estação no Admin da unidade.</p>`}`;
   }
@@ -838,20 +915,16 @@
         </li>`;
       })
       .join("");
-    const nextStory = Object.values(SCENARIOS).find((x) => x.story.num === story.num + 1);
     const finished =
       cur === null
-        ? `<div class="surface finished"><b>história concluída!</b><p>Você viu na prática o que essa parte da fila resolve.</p>${
-            nextStory
-              ? `<a class="btn" href="${nextStory.story.file}">Próxima história</a>`
-              : `<a class="btn" href="simulador.html">Explorar o modo livre</a>`
-          }</div>`
+        ? `<div class="surface finished"><b>Maria foi para casa feliz!</b><p>Ela se inscreveu pelo app, esperou em casa e só foi à unidade na hora certa, duas vezes.</p><a class="btn" href="simulador.html">Explorar o modo livre</a></div>`
         : "";
-    return `<span class="tag">história ${story.num} de 3</span>
+    return `<span class="tag">fluxo principal</span>
       <h1>${story.headline}</h1>
       <p class="intro">${story.intro}</p>
       <div class="progress"><span style="width:${pct}%"></span></div>
       <div class="progress-label">${doneN} de ${steps.length} passos</div>
+      ${ui.simMsg ? `<div class="banner info">⏩ ${ui.simMsg}</div>` : ""}
       <ol class="steps">${items}</ol>
       ${finished}
       <button class="btn secondary sm restart" data-act="restart">Recomeçar história</button>`;
@@ -862,7 +935,8 @@
       <button data-act="adv" data-ms="${MIN}">+1 min</button>
       <button data-act="adv" data-ms="${5 * MIN}">+5 min</button>
       <button data-act="adv" data-ms="${60 * MIN}">+1 h</button>
-      <button data-act="adv" data-ms="${DAY}">+1 dia</button>`;
+      <button data-act="adv" data-ms="${DAY}">+1 dia</button>
+      ${scenario().protagonist && openSession() ? `<button class="sim" data-act="sim">⏩ Esperar até o próximo aviso</button>` : ""}`;
   }
 
   function personasHTML() {
@@ -935,7 +1009,14 @@
     for (const el of document.querySelectorAll(".hint")) el.classList.remove("hint");
     if (PAGE !== "story") return;
     const i = currentStep();
-    if (i === null) return;
+    if (i === null) {
+      if (!ui.endShown) {
+        ui.endShown = true;
+        const ph = document.getElementById("phone");
+        if (ph) window.scrollBy(0, ph.getBoundingClientRect().top - 76);
+      }
+      return;
+    }
     for (const sel of stepTargets(scenario().story.steps[i])) {
       const el = document.querySelector(sel);
       if (el) {
@@ -943,8 +1024,15 @@
         const key = `${i}:${sel}`;
         if (ui.hintKey !== key) {
           ui.hintKey = key;
-          const r = el.getBoundingClientRect();
-          if (r.top < 70 || r.bottom > window.innerHeight) el.scrollIntoView({ block: "center" });
+          // No celular, mostra o aparelho inteiro: o contexto importa tanto quanto o botão.
+          const box = el.closest(".phone, .view") || el;
+          const r = box.getBoundingClientRect();
+          const er = el.getBoundingClientRect();
+          if (r.top < 70 || r.bottom > window.innerHeight) {
+            const fits = r.height < window.innerHeight - 80;
+            if (fits) window.scrollBy(0, r.top - 76);
+            else if (er.top < 70 || er.bottom > window.innerHeight) el.scrollIntoView({ block: "center" });
+          }
           document.querySelector(".steps li.current")?.scrollIntoView({ block: "nearest" });
         }
         return;
@@ -1027,11 +1115,30 @@
   function scan(old) {
     const s = openSession();
     if (!s) return;
+    // Demonstração: depois de um "saia de casa", a protagonista leva o tempo do trajeto para chegar,
+    // e a unidade segue trabalhando nesse meio-tempo.
+    const sc = scenario();
+    let travelled = 0;
+    if (!old && sc.travelMin && ui.persona === sc.protagonist) {
+      const last = st.notifications.filter((n) => n.patientId === ui.persona && n.text.includes("Saia de casa")).at(-1);
+      const left = last ? sc.travelMin * MIN - (st.now - last.at) : 0;
+      if (left > 0 && !ui.travelDone.has(last.id)) {
+        ui.travelDone.add(last.id);
+        E.simulate(st, s.id, { protagonist: ui.persona, maxMs: left });
+        travelled = Math.round(left / MIN);
+        const all = E.tvView(st).announcements || [];
+        for (const a of all) ui.tvSeen.add(a.id);
+        ui.tvShown = all.slice(-5).reverse();
+      }
+    }
     const token = E.qrToken(s, old ? st.now - 2 * MIN : st.now);
     const r = E.checkIn(st, s.id, ui.persona, token);
     ui.sheet = null;
     ui.qrMsg = r.ok
-      ? { ok: true, text: "Check-in feito. Você está na unidade e já pode ser chamado." }
+      ? {
+          ok: true,
+          text: `${travelled ? `Trajeto de ${travelled} min até a UBS. ` : ""}Check-in feito. Você está na unidade e já pode ser chamado.`,
+        }
       : {
           ok: false,
           text:
@@ -1047,6 +1154,7 @@
     adv: (d) => {
       E.advance(st, Number(d.ms));
       if (Number(d.ms) === DAY) ui.events.add("adv:day");
+      ui.events.add(`adv:${d.ms}`);
     },
     persona: (d) => {
       ui.persona = d.persona;
@@ -1103,6 +1211,7 @@
     "scan-old": () => scan(true),
     leave: () => {
       E.leave(st, openSession().id, ui.persona);
+      ui.events.add("leave");
       ui.qrMsg = { ok: true, text: "Você está em casa de novo. Sua posição foi mantida." };
     },
     tab: (d) => {
@@ -1120,6 +1229,11 @@
     "ag-alloc": () => {
       const n = ui.agSel.size;
       const r = E.allocate(st, ui.agSessionId, [...ui.agSel], { version: ui.agVersion });
+      if (r.ok && scenario().autoConfirm) {
+        // Demonstração: os outros pacientes confirmam pelo app; só a protagonista confirma com o seu clique.
+        for (const e of st.entries)
+          if (e.status === "alocada" && e.patientId !== scenario().protagonist) E.confirmAllocation(st, e.id);
+      }
       if (r.ok)
         ui.agMsg = {
           ok: true,
@@ -1231,6 +1345,67 @@
       ui.stationMsg = null;
     },
     "st-skip": () => E.skip(st, openSession().id, ui.stationId),
+    "st-risk": () => {
+      const s = openSession();
+      const station = byId(st.stations, ui.stationId);
+      const q = station.current && byId(s.queue, station.current);
+      if (q) E.confirmRisk(st, s.id, q.id, ui.stLevel || q.confirmedLevel || q.suggested);
+      ui.stLevel = null;
+    },
+    "ns-vis": (d) => {
+      ui.newSession.visibility = d.id;
+    },
+    "session-create": () => {
+      const ns = ui.newSession;
+      const created = E.createSession(st, {
+        serviceId: ns.serviceId,
+        start: dayStart(ns.day),
+        slots: Number(ns.slots),
+        visibility: ns.visibility,
+        professional: "Dra. Marta",
+      });
+      if (created && created.visibility === "privada") {
+        ui.agSessionId = created.id;
+        ui.agSel = null;
+        ui.agVersion = created.version;
+      }
+    },
+    sim: () => {
+      const s = openSession();
+      if (!s) return;
+      const pid = scenario().protagonist;
+      const r = E.simulate(st, s.id, { protagonist: pid });
+      // A TV não reprisa horas de chamadas: mostra a mais recente e as anteriores em "últimas chamadas".
+      const all = E.tvView(st).announcements || [];
+      for (const a of all) ui.tvSeen.add(a.id);
+      ui.tvPending = [];
+      if (ui.tvStarted && all.length) {
+        ui.tvShown = all.slice(-6, -1).reverse();
+        ui.tvCur = { a: all.at(-1), until: Date.now() + 10000 };
+        beep();
+      }
+      const name = first(patient(pid).name);
+      if (r.reason === "called" || r.reason === "busy") {
+        const station = st.stations.find((x) => x.current && byId(s.queue, x.current)?.patientId === pid);
+        if (station) ui.stationId = station.id;
+      }
+      ui.simMsg = {
+        notified: `Chegou um aviso no celular da ${name}.`,
+        called: `${name} foi chamada! Veja a TV e a estação.`,
+        busy: `${name} está sendo atendida agora: finalize na estação.`,
+        timeout: "Passaram 4 horas sem aviso novo.",
+      }[r.reason];
+    },
+    "svc-triage": (d) => {
+      const x = service(d.id);
+      E.setServiceTriage(st, d.id, !x.requiresTriage);
+    },
+    "station-create": () => {
+      const ns = ui.newStation;
+      if (!ns.name.trim()) return;
+      E.createStation(st, { name: ns.name.trim(), stage: ns.stage, services: ["cli"] });
+      ui.newStation = { name: "", stage: "atendimento" };
+    },
   };
 
   document.addEventListener("click", (ev) => {
@@ -1239,6 +1414,7 @@
     const fn = actions[el.dataset.act];
     if (!fn) return;
     if (el.tagName !== "INPUT") ev.preventDefault();
+    if (el.dataset.act !== "sim") ui.simMsg = null;
     fn(el.dataset);
     update(true);
   });
@@ -1255,6 +1431,15 @@
     } else if (c === "station") {
       ui.stationId = el.value;
       ui.stationMsg = null;
+      ui.stLevel = null;
+    } else if (c === "ns-svc") {
+      ui.newSession.serviceId = el.value;
+    } else if (c === "ns-day") {
+      ui.newSession.day = Number(el.value);
+    } else if (c === "st-level") {
+      ui.stLevel = el.value;
+    } else if (c === "st-stage") {
+      ui.newStation.stage = el.value;
     } else if (c === "tri-level") {
       ui.triLevel[el.dataset.id] = el.value;
     } else if (el.dataset.bind === "motivo" || el.dataset.bind === "gravidade") {
@@ -1269,6 +1454,12 @@
     const el = ev.target;
     if (el.dataset.bind === "name" || el.dataset.bind === "birth") ui.desk[el.dataset.bind] = el.value;
     if (el.dataset.bindTv) ui.tvCode = el.value;
+    if (el.dataset.bindNs) ui.newSession[el.dataset.bindNs] = el.value;
+    if (el.dataset.bindSt) {
+      ui.newStation.name = el.value;
+      const btn = document.querySelector('[data-act="station-create"]');
+      if (btn) btn.disabled = !el.value.trim();
+    }
     applyHint();
   });
 
@@ -1277,5 +1468,5 @@
     update(false);
   }, 1000);
 
-  load(PAGE === "story" ? STORY : "fila");
+  load(PAGE === "story" ? STORY : "principal");
 })();

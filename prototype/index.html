@@ -13,7 +13,7 @@
     <header class="site-header">
       <div class="inner">
         <a class="brand" href="index.html"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path fill="currentColor" d="M5.127 23.609C6.564 36.242 20.52 48.093 29.33 54.212a4.673 4.673 0 0 0 5.34 0c8.81-6.119 22.767-17.97 24.203-30.603C60.863 6.099 38.967 3.972 32 13.977 25.033 3.972 3.137 6.1 5.127 23.61Z"/><path fill="#fff" d="M28.704 21.09a2.583 2.583 0 0 1 2.583-2.584h2.583a2.583 2.583 0 0 1 2.583 2.583v20.665a2.583 2.583 0 0 1-2.583 2.583h-2.583a2.583 2.583 0 0 1-2.583-2.583V21.09Z"/><path fill="#fff" d="M19.663 30.13a2.583 2.583 0 0 1 2.583-2.583H42.91a2.583 2.583 0 0 1 2.583 2.583v2.583a2.583 2.583 0 0 1-2.583 2.583H22.246a2.583 2.583 0 0 1-2.583-2.583V30.13Z"/></svg>Fila Saúde <span class="tag">protótipo</span></a>
-        <nav class="nav" aria-label="Páginas do protótipo"><a href="index.html" aria-current="page">Apresentação</a><a href="historia-lista.html"><span class="num">1</span>lista e risco</a><a href="historia-alocacao.html"><span class="num">2</span>alocação</a><a href="historia-fila.html"><span class="num">3</span>fila do dia</a><a href="simulador.html">Modo livre</a></nav>
+        <nav class="nav" aria-label="Páginas do protótipo"><a href="index.html" aria-current="page">Apresentação</a><a href="fluxo.html">Fluxo principal</a><a href="simulador.html">Modo livre</a></nav>
         
       </div>
     </header>
@@ -23,9 +23,9 @@
         <div>
           <h1>chega de esperar <span class="accent">horas no postinho.</span></h1>
           <p class="lead">O paciente entra na fila pelo celular, espera em casa e só vai à unidade quando a vez estiver perto.</p>
-          <div class="surface speech">Este é um protótipo navegável, com dados fictícios. Escolha uma história: o roteiro ao lado diz o que fazer, marca onde clicar e explica por que cada passo importa. Cada uma leva uns 3 minutos.</div>
+          <div class="surface speech">Este é um protótipo navegável, com dados fictícios. O fluxo completo leva uns 8 minutos: um roteiro ao lado diz o que fazer, marca onde clicar e explica por que cada passo importa.</div>
           <div class="row wrap">
-            <a class="btn lg" href="historia-lista.html">Começar pela história 1</a>
+            <a class="btn lg" href="fluxo.html">Ver o fluxo completo</a>
             <a class="btn lg secondary" href="simulador.html">Modo livre</a>
           </div>
         </div>
@@ -86,32 +86,26 @@
         </article>
       </section>
 
-      <section class="section" aria-labelledby="historias">
+      <section class="section" aria-labelledby="fluxo">
         <div class="section-head">
-          <h2 id="historias">veja funcionando</h2>
-          <p>Cada história mostra só as telas que importam e guia você passo a passo.</p>
+          <h2 id="fluxo">veja a Maria ser atendida</h2>
+          <p>Uma história do começo ao fim, com todas as telas funcionando juntas.</p>
         </div>
-        <div class="stories">
-          <div class="surface story-card">
-            <span class="tag">história 1 · ~3 min</span>
-            <h3>o paciente diz o que sente</h3>
-            <div class="who-row"><span class="chip rotina">celular do paciente</span><span class="chip">agendador</span></div>
-            <ul><li>Mapa e agenda da unidade</li><li>Questionário de risco</li><li>Encaminhamento por foto</li><li>Emergência e apoio (192 e 188)</li></ul>
-            <a class="btn block" href="historia-lista.html">Abrir história</a>
-          </div>
-          <div class="surface story-card">
-            <span class="tag">história 2 · ~3 min</span>
-            <h3>a unidade organiza as vagas</h3>
-            <div class="who-row"><span class="chip">agendador</span><span class="chip">lista de ligação</span><span class="chip rotina">celular</span></div>
-            <ul><li>Sugestão com motivos</li><li>Confirmação em 24 h</li><li>Recusa e próximo da lista</li><li>Regra de prioridade do município</li></ul>
-            <a class="btn block" href="historia-alocacao.html">Abrir história</a>
-          </div>
-          <div class="surface story-card">
-            <span class="tag">história 3 · ~4 min</span>
-            <h3>espera em casa, chega na hora</h3>
-            <div class="who-row"><span class="chip rotina">celular</span><span class="chip">estação</span><span class="chip">TV</span><span class="chip">recepção</span></div>
-            <ul><li>Fila remota e “venha agora”</li><li>Check-in pelo QR da TV</li><li>Quem chegou antes é chamado antes</li><li>Urgência, pulos e balcão</li></ul>
-            <a class="btn block" href="historia-fila.html">Abrir história</a>
+        <div class="surface flow-card">
+          <ol class="timeline">
+            <li><span class="step-num">1</span><div><b>a unidade cadastra o atendimento</b>Sessão pública ou privada, com dia e vagas.</div></li>
+            <li><span class="step-num">2</span><div><b>Maria se inscreve pelo app</b>Questionário de toques, sem sair de casa.</div></li>
+            <li><span class="step-num">3</span><div><b>o agendador aprova</b>A sugestão explica a ordem; ele decide.</div></li>
+            <li><span class="step-num">4</span><div><b>no dia, ela espera em casa</b>Acompanha a posição e o tempo no celular.</div></li>
+            <li><span class="step-num">5</span><div><b>perto da vez, lê o QR</b>O “saia de casa” chega na hora certa.</div></li>
+            <li><span class="step-num">6</span><div><b>passa pela triagem</b>A enfermeira confirma o risco.</div></li>
+            <li><span class="step-num">7</span><div><b>a fila do consultório está grande</b>Ela toca “Vou sair” e mantém o lugar.</div></li>
+            <li><span class="step-num">8</span><div><b>volta quando é avisada</b>Lê o QR de novo e entra na fila normal.</div></li>
+            <li><span class="step-num">9</span><div><b>é atendida e vai feliz para casa</b>Quase sem tempo de espera na unidade.</div></li>
+          </ol>
+          <div class="row wrap">
+            <a class="btn lg" href="fluxo.html">Ver o fluxo completo</a>
+            <a class="btn lg secondary" href="simulador.html">Explorar o modo livre</a>
           </div>
         </div>
       </section>
@@ -133,7 +127,7 @@
 
       <section class="surface cta">
         <h2>pronto para ver?</h2>
-        <a class="btn lg" href="historia-lista.html">Começar pela história 1</a>
+        <a class="btn lg" href="fluxo.html">Ver o fluxo completo</a>
       </section>
       <p class="footer">Protótipo com dados fictícios · feito com 💙 por quem usa o SUS.</p>
     </main>

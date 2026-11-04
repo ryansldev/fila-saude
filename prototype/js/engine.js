@@ -835,6 +835,8 @@
     return q.stage === "triagem" ? { ...rem, stage: "triagem", consultMinutes: e.consultMinutes } : rem;
   }
 
+  const fmtMin = (m) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`);
+
   function etaText(eta) {
     if (!eta) return "";
     const tri = eta.stage === "triagem";
@@ -842,9 +844,9 @@
     if (eta.comeNow)
       return `Sua vez${tri ? " na triagem" : ""} está chegando: venha agora. Você só é chamado depois de ler o QR na unidade.`;
     if (eta.minutes === null) return `${pre}você é o ${eta.position}º · aguardando início do atendimento`;
-    if (eta.mode === "presente") return `${pre}você é o ${eta.position}º a ser chamado · ~${eta.minutes} min`;
-    const consult = tri && eta.consultMinutes != null ? ` · consulta em ~${eta.consultMinutes} min` : "";
-    return `${pre}você é o ${eta.position}º · ~${eta.minutes} min${consult}`;
+    if (eta.mode === "presente") return `${pre}você é o ${eta.position}º a ser chamado · ~${fmtMin(eta.minutes)}`;
+    const consult = tri && eta.consultMinutes != null ? ` · consulta em ~${fmtMin(eta.consultMinutes)}` : "";
+    return `${pre}você é o ${eta.position}º · ~${fmtMin(eta.minutes)}${consult}`;
   }
 
   function advance(st, ms) {

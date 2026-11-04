@@ -607,7 +607,7 @@ a {
 
 .stories {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
 }
 
@@ -1857,5 +1857,59 @@ tr.off td {
   .nav a {
     padding: 6px 8px;
     font-size: 14px;
+  }
+}
+
+.clock button.sim {
+  background: var(--orange-500);
+  border-color: var(--orange-700);
+  color: var(--gray-900);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  background: #fff;
+  border: 1px solid var(--gray-100);
+  border-bottom-width: 3px;
+  border-radius: 14px;
+  padding: 12px;
+  line-height: 1.45;
+  color: var(--gray-700);
+}
+
+.timeline li .step-num {
+  margin: 0;
+}
+
+.timeline li b {
+  display: block;
+  color: var(--gray-900);
+}
+
+.flow-card {
+  padding: 24px;
+}
+
+.flow-card .row {
+  margin-top: 18px;
+}
+
+@media (width < 900px) {
+  .timeline {
+    grid-template-columns: 1fr;
   }
 }

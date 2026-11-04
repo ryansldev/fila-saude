@@ -212,95 +212,6 @@
         seed(st, "gil", "cli", 60, ans({ motivo: "receita" }));
         return st;
       },
-      story: {
-        num: 1,
-        file: "historia-lista.html",
-        headline: "o paciente diz o que sente, de casa",
-        intro:
-          "Maria acha a unidade no mapa e entra na lista respondendo 5 perguntas de toque. Sinais de alarme nunca esperam na fila.",
-        steps: [
-          {
-            html: "No celular da <b>Maria</b>, toque na <b>UBS Vila Nova</b> no mapa.",
-            why: "O paciente vê horário, sessões e vagas de cada unidade. Nunca vê quem está na lista.",
-            where: "celular › mapa",
-            persona: "maria",
-            targets: ['.pin[data-id="u1"]', HOME],
-            done: (_st, ui) => ui.events.has("unit:u1"),
-          },
-          {
-            html: "Toque em <b>Entrar na lista</b> de Clínico geral. Responda: <b>nenhum destes</b> · <b>problema novo</b> · <b>moderado</b> · <b>nenhuma</b> · <b>nenhuma</b>.",
-            why: "São 5 telas de toque, sem texto livre, em menos de 1 minuto. O nível é uma sugestão: a equipe confirma.",
-            where: "celular › questionário",
-            persona: "maria",
-            targets: [
-              ...quizOpts(["nenhum", "novo", "moderado", "nenhuma"]),
-              NEXT,
-              '[data-act="join"][data-id="cli"]',
-              '.pin[data-id="u1"]',
-              HOME,
-            ],
-            done: (st) => !!entryOf(st, "maria", "cli"),
-          },
-          {
-            html: "Volte ao mapa e tente <b>entrar de novo</b> em Clínico geral.",
-            why: "Uma entrada por serviço: ninguém ocupa dois lugares na mesma lista. O app mostra a que já existe.",
-            where: "celular › UBS Vila Nova",
-            persona: "maria",
-            targets: ['[data-act="join"][data-id="cli"]', '.pin[data-id="u1"]', HOME],
-            done: (_st, ui) => ui.events.has("dup"),
-          },
-          {
-            html: "Abra a <b>Policlínica Centro</b>, entre em <b>Cardiologia</b> (motivo: exame) e tire a <b>foto do encaminhamento</b>.",
-            why: "Especialidade pede encaminhamento. A foto vai para o agendador conferir, sem papel.",
-            where: "celular › Policlínica Centro",
-            persona: "maria",
-            targets: [
-              '[data-act="photo"][data-taken="false"]',
-              ...quizOpts(["nenhum", "exame", "nenhuma"]),
-              NEXT,
-              '[data-act="join"][data-id="car"]',
-              '.pin[data-id="u2"]',
-              HOME,
-            ],
-            done: (st) => !!entryOf(st, "maria", "car"),
-          },
-          {
-            html: "No painel do agendador, <b>aceite</b> ou <b>rejeite</b> o encaminhamento da Maria.",
-            why: "O agendador confere validade e serviço. A Maria recebe o aviso no celular na mesma hora.",
-            where: "painel › agendador",
-            tab: "agendador",
-            targets: ['[data-act="ref-accept"]'],
-            done: (st) => {
-              const e = entryOf(st, "maria", "car");
-              return !!e && e.referral.status !== "pendente";
-            },
-          },
-          {
-            html: "Troque para o <b>Antônio</b>. Entre em Clínico geral e marque <b>Dor ou aperto forte no peito</b>.",
-            why: "Sinal de alarme não entra em fila nenhuma: o app manda ligar 192 na hora.",
-            where: "celular › questionário",
-            persona: "antonio",
-            targets: [...quizOpts(["dor_peito"]), NEXT, '[data-act="join"][data-id="cli"]', '.pin[data-id="u1"]', HOME],
-            done: (_st, ui) => ui.events.has("emergencia:antonio"),
-          },
-          {
-            html: "Troque para a <b>Lúcia</b>. Entre em Clínico geral, marque <b>Pensamentos de tirar a própria vida</b> e siga até o fim.",
-            why: "CVV 188 e SAMU 192 aparecem em destaque. Ela pode seguir: entra como urgente e o agendador recebe um alerta.",
-            where: "celular › questionário",
-            persona: "lucia",
-            targets: [
-              ...quizOpts(["autolesao"]),
-              '[data-act="support-continue"]',
-              ...quizOpts(["receita", "nenhuma"]),
-              NEXT,
-              '[data-act="join"][data-id="cli"]',
-              '.pin[data-id="u1"]',
-              HOME,
-            ],
-            done: (st) => !!entryOf(st, "lucia", "cli"),
-          },
-        ],
-      },
     },
 
     alocacao: {
@@ -338,68 +249,6 @@
         seed(st, "helena", "cli", 8, ans({ motivo: "novo", gravidade: "leve", grupos: ["gestante"] }));
         return st;
       },
-      story: {
-        num: 2,
-        file: "historia-alocacao.html",
-        headline: "a unidade organiza as vagas",
-        intro:
-          "Sexta tem 4 vagas de Clínico geral e uma já é do Ivo. O agendador preenche as outras 3 com a ajuda do sistema, e ninguém é alocado sozinho.",
-        steps: [
-          {
-            html: "Veja a sugestão para sexta: a <b>Dora</b>, 82 anos, ficou fora das 3 vagas. Troque a <b>regra do município</b> para <b>Prioridade legal antes</b>.",
-            why: "A Dora entra e o Carlos, urgente ainda não confirmado, sai. Esse é o dilema da área técnica: cada município escolhe a regra, e o protótipo mostra o efeito na hora.",
-            where: "painel › agendador › regra do município",
-            tab: "agendador",
-            targets: ['[data-act="rule"][data-id="legal"]'],
-            done: (st) => st.config.priorityOrder === "legal",
-          },
-          {
-            html: "Escolha a regra que preferir, deixe as 3 vagas marcadas e clique <b>Alocar</b>.",
-            why: "O sistema sugere e explica. O agendador decide: urgência confirmada, remanejados, risco, prioridade legal e tempo de espera.",
-            where: "painel › agendador",
-            tab: "agendador",
-            targets: ['[data-act="ag-alloc"]:not(:disabled)'],
-            done: (st) => st.entries.filter((e) => e.status === "alocada" && e.patientId !== "ivo").length > 0,
-          },
-          {
-            html: "No celular da <b>Helena</b>, abra a vaga e toque em <b>Confirmar</b>.",
-            why: "O paciente tem 24 h para confirmar pelo app. O push avisa, mas muita gente não vê.",
-            where: "celular › minhas solicitações",
-            persona: "helena",
-            targets: ['[data-act="confirm-alloc"]', '[data-act="entry"]', HOME],
-            done: (st) => st.entries.some((e) => e.patientId === "helena" && e.status === "confirmada"),
-          },
-          {
-            html: "Na <b>Lista de ligação</b>, o Ivo está destacado: mais de 24 h sem resposta. Ligue e registre <b>Recusou</b> em alguém.",
-            why: "Na prática, a ligação é o caminho principal. A recusa libera a vaga na hora e o próximo é sugerido.",
-            where: "painel › lista de ligação",
-            tab: "ligacao",
-            targets: ['[data-act="call-refuse"]'],
-            done: (_st, ui) => ui.events.has("refuse"),
-          },
-          {
-            html: "No agendador, clique <b>Simular outro agendador</b> e depois <b>Alocar</b>.",
-            why: "Dois agendadores nunca ocupam a mesma vaga. Quem chega segundo recebe um erro e a lista atualizada.",
-            where: "painel › agendador",
-            tab: "agendador",
-            targets: (_st, ui) =>
-              ui.events.has("other")
-                ? ['[data-act="ag-alloc"]:not(:disabled)']
-                : ['[data-act="ag-other"]:not(:disabled)'],
-            done: (_st, ui) => ui.events.has("conflict"),
-          },
-          {
-            html: "Avance <b>+1 dia</b> no relógio da demo e abra a <b>Lista de ligação</b>.",
-            why: "Quem não respondeu em 24 h fica destacado para o agendador ligar primeiro.",
-            where: "topo › relógio da demo",
-            targets: (_st, ui) =>
-              ui.events.has("adv:day")
-                ? ['[data-act="tab"][data-id="ligacao"]']
-                : [`[data-act="adv"][data-ms="${DAY}"]`],
-            done: (_st, ui) => ui.events.has("adv:day") && ui.tab === "ligacao",
-          },
-        ],
-      },
     },
 
     fila: {
@@ -431,103 +280,223 @@
         allocateAt(st, "s-hoje", [seed(st, "sergio", "cli", 3, ans({ motivo: "exame" }))], BASE - 2 * 60 * MIN);
         return st;
       },
+    },
+
+    triagem: {
+      title: "Triagem",
+      personas: ["joao", "ana"],
+      tabs: ["admin"],
+      tab: "admin",
+      tvReady: true,
+      setup() {
+        const st = baseState([
+          {
+            id: "s-tri",
+            serviceId: "cli",
+            start: at(0, 7),
+            slots: 10,
+            visibility: "privada",
+            professional: "Dra. Marta",
+          },
+        ]);
+        st.services.find((x) => x.id === "cli").avgTriageMin = 5;
+        const confirmed = [
+          seed(st, "ana", "cli", 30, ans({ motivo: "acompanhamento" })),
+          seed(st, "joao", "cli", 20, ans({ motivo: "novo", gravidade: "leve" })),
+        ];
+        allocateAt(st, "s-tri", confirmed, BASE - 3 * DAY);
+        for (const e of confirmed) E.confirmAllocation(st, e.id);
+        st.tv.paired = true;
+        return st;
+      },
+    },
+
+    principal: {
+      title: "Fluxo principal",
+      personas: ["maria"],
+      tabs: ["admin", "agendador"],
+      tab: "admin",
+      tvReady: true,
+      protagonist: "maria",
+      autoConfirm: true,
+      travelMin: 20,
+      setup() {
+        const st = baseState([]);
+        const cli = st.services.find((x) => x.id === "cli");
+        cli.requiresTriage = true;
+        cli.avgTriageMin = 5;
+        E.createStation(st, { name: "Triagem 1", stage: "triagem", services: ["cli"] });
+        // 12 pessoas já esperam na lista de Clínico geral, todas de rotina e sem prioridade legal.
+        const others = [
+          "ana",
+          "joao",
+          "bruno",
+          "paulo",
+          "sergio",
+          "carlos",
+          "edu",
+          "gil",
+          "helena",
+          "lucia",
+          "ivo",
+          "fatima",
+        ];
+        others.forEach((pid, i) => {
+          seed(st, pid, "cli", 60 - i * 4, ans({ motivo: "exame" }));
+        });
+        st.tv.paired = true;
+        return st;
+      },
       story: {
-        num: 3,
-        file: "historia-fila.html",
-        headline: "espera em casa, chega na hora",
+        headline: "da inscrição à consulta, sem enfrentar fila",
         intro:
-          "Hoje é dia de Clínico geral na UBS Vila Nova. Seis pacientes confirmados esperam em casa. Só vai à unidade quem está perto da vez.",
+          "Maria precisa de um clínico geral na UBS Vila Nova. Siga a história inteira: a unidade cadastra o atendimento, Maria se inscreve pelo app, espera em casa e só vai à unidade quando é a vez dela.",
         steps: [
           {
-            html: "Pareie a TV: digite no Admin o <b>código que aparece na TV</b> e clique <b>Parear</b>.",
-            why: "Sem pareamento a TV não mostra nada da unidade. Isso protege o QR de entrada.",
-            where: "painel › admin da unidade",
+            html: "<b>Cadastre o atendimento.</b> Em <b>Nova sessão</b>: Clínico geral, amanhã, visibilidade <b>privada</b>. Clique <b>Criar sessão</b>.",
+            why: "Pública: o paciente se inscreve sozinho até lotar. Privada: o agendador escolhe quem entra, pela lista de espera e pelo risco. Aqui usamos privada.",
+            where: "painel › admin da unidade › nova sessão",
             tab: "admin",
-            targets: ['[data-bind-tv="code"]'],
-            done: (st) => st.tv.paired,
+            targets: (_st, ui) =>
+              ui.newSession.visibility === "privada"
+                ? ['[data-act="session-create"]']
+                : ['[data-act="ns-vis"][data-id="privada"]'],
+            done: (st) => st.sessions.some((x) => x.serviceId === "cli" && x.visibility === "privada"),
           },
           {
-            html: "Na TV, toque em <b>Iniciar painel</b>.",
-            why: "O toque libera o som do aviso de chamada no navegador da TV.",
-            where: "TV da sala de espera",
-            targets: ['[data-act="tv-start"]'],
-            done: (_st, ui) => ui.tvStarted,
+            html: "<b>Maria se inscreve.</b> No celular, toque na <b>UBS Vila Nova</b>, em <b>Entrar na lista</b> do Clínico geral e responda: <b>nenhum destes</b> · <b>exame, check-up ou rotina</b> · <b>nenhuma</b> · <b>nenhuma</b>.",
+            why: "Ela já vê a sessão nova na agenda da unidade. Cinco toques, sem texto livre. Sinal de alarme nunca entra em fila: o app manda ligar 192.",
+            where: "celular da Maria",
+            persona: "maria",
+            targets: [
+              ...quizOpts(["nenhum", "exame", "nenhuma"]),
+              NEXT,
+              '[data-act="join"][data-id="cli"]',
+              '.pin[data-id="u1"]',
+              HOME,
+            ],
+            done: (st) => !!entryOf(st, "maria", "cli"),
           },
           {
-            html: "No Admin, clique <b>Abrir sessão</b>.",
-            why: "Os confirmados entram na fila remota com senha e recebem um push. A vaga de quem não confirmou (Sérgio) é liberada.",
-            where: "painel › admin da unidade",
+            html: "<b>O agendador aprova.</b> Na aba <b>Agendador</b>, Maria aparece na sugestão. Deixe-a marcada e clique <b>Alocar</b>.",
+            why: "Nada é alocado sozinho: quem o agendador não marcar continua na lista, com a data original. Os outros 12 pacientes confirmam pelo app.",
+            where: "painel › agendador",
+            tab: "agendador",
+            targets: ['[data-act="ag-alloc"]:not(:disabled)'],
+            done: (st) => ["alocada", "confirmada", "na_fila"].includes(entryOf(st, "maria", "cli")?.status),
+          },
+          {
+            html: "<b>Maria confirma.</b> No celular, abra a solicitação e toque em <b>Confirmar</b>.",
+            why: "Ela tem 24 h para confirmar. Quem não vê o push aparece na lista de ligação do agendador.",
+            where: "celular › minhas solicitações",
+            persona: "maria",
+            targets: ['[data-act="confirm-alloc"]', '[data-act="entry"]', HOME],
+            done: (st) => ["confirmada", "na_fila"].includes(entryOf(st, "maria", "cli")?.status),
+          },
+          {
+            html: "<b>Chegou o dia.</b> Avance <b>+1 dia</b> no relógio da demo.",
+            why: "No protótipo o relógio é seu: o resto da demonstração acontece no dia da consulta.",
+            where: "topo › relógio da demo",
+            targets: [`[data-act="adv"][data-ms="${DAY}"]`],
+            done: (_st, ui) => ui.events.has("adv:day"),
+          },
+          {
+            html: "<b>A unidade abre a sessão.</b> No Admin, clique <b>Abrir sessão</b>.",
+            why: "Os 13 confirmados entram na fila remota, primeiro a da triagem. Maria vê a posição e o tempo sem sair de casa.",
+            where: "painel › admin da unidade › sessões",
             tab: "admin",
             targets: ['[data-act="open-session"]'],
             done: (st) => !!openSession(st),
           },
           {
-            html: "Veja o celular da <b>Dora</b>: ela é a 1ª da fila e ainda está em casa.",
-            why: "Dora tem 82 anos e prioridade legal. O app diz “venha agora”: ela só é chamada depois de ler o QR, e ninguém presente espera por ela.",
-            where: "celular › Dora",
-            persona: "dora",
-            targets: [],
-            done: (_st, ui) => ui.events.has("see:dora"),
+            html: "<b>Maria espera em casa.</b> Clique <b>Esperar até o próximo aviso</b>.",
+            why: "O relógio anda e a unidade trabalha: os outros chegam, passam pela triagem e pelo consultório. Quando a triagem da Maria se aproxima, chega o “saia de casa”.",
+            where: "topo › esperar até o próximo aviso",
+            targets: ['[data-act="sim"]'],
+            done: (st) => st.notifications.some((n) => n.patientId === "maria" && n.text.includes("Saia de casa")),
           },
           {
-            html: "Troque para o <b>João</b>: toque em <b>Cheguei: ler QR da TV</b> e leia o QR.",
-            why: "Só é chamado quem está na unidade. O QR troca a cada 30 s: foto antiga não vale.",
+            html: "<b>Maria chega e lê o QR.</b> No celular, toque em <b>Cheguei: ler QR da TV</b>.",
+            why: "O aviso chega uns 30 min antes, tempo de ir até a unidade (aqui, 20 min de trajeto). Só é chamado quem está lá: o QR da TV troca a cada 30 s e foto antiga não vale.",
             where: "celular › fila de hoje",
-            persona: "joao",
+            persona: "maria",
             targets: ['[data-act="scan"]', '[data-act="sheet"][data-id="qr"]', '[data-act="go"][data-screen="queue"]'],
-            done: (st) => itemOf(st, "joao")?.presence === "presente",
+            done: (st) => !!itemOf(st, "maria")?.presentSince || itemOf(st, "maria")?.stage === "atendimento",
           },
           {
-            html: "Agora a <b>Ana</b> chega e lê o QR. Veja a posição dela.",
-            why: "Ana tem número melhor, mas João já estava na sala: ele é chamado primeiro (janela protegida). O app dela mostra “2º a ser chamado”.",
-            where: "celular › Ana",
-            persona: "ana",
+            html: "<b>A triagem chama.</b> Clique <b>Esperar até o próximo aviso</b> até a Triagem 1 chamar a Maria.",
+            why: "A TV mostra a senha dela com destino na triagem. Quem chegou antes dela na sala é chamado antes.",
+            where: "topo › esperar até o próximo aviso",
+            targets: ['[data-act="sim"]'],
+            done: (st) => {
+              const q = itemOf(st, "maria");
+              return !!q && (q.stage === "atendimento" || q.status === "chamado");
+            },
+          },
+          {
+            html: "<b>A enfermeira atende.</b> Na estação <b>Triagem 1</b>, clique <b>Finalizar triagem</b>.",
+            why: "Na triagem, a enfermeira pode confirmar ou mudar o risco (palavra final). Depois, Maria vai para a fila do consultório com a mesma senha.",
+            where: "estação › Triagem 1",
+            targets: (st, ui) =>
+              st.stations.find((x) => x.id === ui.stationId)?.stage === "triagem"
+                ? ['[data-act="st-finish"]:not(:disabled)']
+                : ['[data-change="station"]'],
+            done: (st) => itemOf(st, "maria")?.stage === "atendimento",
+          },
+          {
+            html: "<b>A fila do consultório está grande.</b> Veja no celular quanto falta e toque em <b>Vou sair</b>.",
+            why: "Depois da triagem ninguém precisa ficar na sala. Maria mantém o lugar e será avisada de novo quando a consulta se aproximar.",
+            where: "celular › fila de hoje",
+            persona: "maria",
+            targets: ['[data-act="leave"]', '[data-act="go"][data-screen="queue"]'],
+            done: (st, ui) =>
+              ui.events.has("leave") ||
+              ((itemOf(st, "maria")?.presentMs || 0) > 0 && itemOf(st, "maria")?.presence === "remoto"),
+          },
+          {
+            html: "<b>Maria passeia, almoça, resolve a vida.</b> Clique <b>Esperar até o próximo aviso</b>.",
+            why: "Enquanto isso o consultório atende quem está na frente. Quando faltar uns 30 minutos, chega o novo “saia de casa”.",
+            where: "topo › esperar até o próximo aviso",
+            targets: ['[data-act="sim"]'],
+            done: (st) =>
+              st.notifications.filter((n) => n.patientId === "maria" && n.text.includes("Saia de casa")).length >= 2,
+          },
+          {
+            html: "<b>Maria volta</b> e lê o QR de novo.",
+            why: "Ela não perdeu a vez: ninguém com número maior que o dela foi chamado enquanto estava fora.",
+            where: "celular › fila de hoje",
+            persona: "maria",
             targets: ['[data-act="scan"]', '[data-act="sheet"][data-id="qr"]', '[data-act="go"][data-screen="queue"]'],
-            done: (st) => itemOf(st, "ana")?.presence === "presente",
-          },
-          {
-            html: "Na estação do consultório, clique <b>Chamar próximo</b>.",
-            why: "A TV mostra a senha e a sala com um bipe, e o paciente recebe “sua vez”. Na TV aparecem só senhas, nunca nomes.",
-            where: "estação de chamada",
-            targets: ['[data-act="st-next"]:not(:disabled)'],
-            done: (st) => st.tv.announcements.length > 0,
-          },
-          {
-            html: "Na <b>Triagem</b>, mude o nível do <b>Paulo</b> para <b>Urgente</b> e clique <b>Confirmar</b>.",
-            why: "Urgência confirmada por um profissional passa na frente de todos. Paulo está em casa: recebe “venha agora” na hora.",
-            where: "painel › triagem",
-            tab: "triagem",
-            targets: (st, ui) => {
-              const q = itemOf(st, "paulo");
-              const picked = q && ui.triLevel[q.id] === "urgente";
-              return picked
-                ? ['[data-act="tri-confirm"][data-pid="paulo"]']
-                : ['[data-change="tri-level"][data-pid="paulo"]'];
+            done: (st, ui) => {
+              const q = itemOf(st, "maria");
+              return (
+                ui.events.has("leave") &&
+                !!q &&
+                q.stage === "atendimento" &&
+                (q.presence === "presente" || q.status !== "fila")
+              );
             },
-            done: (st) => itemOf(st, "paulo")?.confirmedLevel === "urgente",
           },
           {
-            html: "Finja que o chamado não apareceu: avance <b>+5 min</b> no relógio.",
-            why: "Passou a tolerância, ele é pulado e continua presente, logo atrás do próximo. No 2º pulo volta para casa; no 3º sai da fila.",
-            where: "topo › relógio da demo",
-            targets: (st) => {
-              const s = openSession(st);
-              const calling = s && st.stations.some((x) => x.current);
-              return calling ? ['[data-act="adv"][data-ms="300000"]'] : ['[data-act="st-next"]:not(:disabled)'];
+            html: "<b>A vez dela.</b> Clique <b>Esperar até o próximo aviso</b> até o Consultório 3 chamar a Maria.",
+            why: "A TV chama a mesma senha, agora para o consultório. Maria recebe “sua vez” no celular.",
+            where: "topo › esperar até o próximo aviso",
+            targets: ['[data-act="sim"]'],
+            done: (st) => {
+              const q = st.sessions.flatMap((x) => x.queue).find((x) => x.patientId === "maria");
+              return !!q && q.stage === "atendimento" && ["chamado", "atendido"].includes(q.status);
             },
-            done: (st) => !!openSession(st)?.queue.some((q) => q.skips > 0),
           },
           {
-            html: "Na <b>Recepção</b>, inclua no balcão alguém sem celular: nome, motivo e <b>Incluir no balcão</b>.",
-            why: "Ninguém fica de fora. Quem não tem app entra presente, na mesma fila, e recebe a senha no papel.",
-            where: "painel › recepção",
-            tab: "recepcao",
-            targets: (_st, ui) => {
-              if (!ui.desk.name.trim()) return ["#desk-name"];
-              if (!ui.desk.answers.motivo) return ["#desk-motivo"];
-              return ['[data-act="desk-submit"]'];
-            },
-            done: (st) => !!openSession(st)?.queue.some((q) => q.origin === "balcao"),
+            html: "<b>Consulta feita.</b> Na estação <b>Consultório 3</b>, clique <b>Finalizar</b>. Veja o resumo no celular da Maria.",
+            why: "Maria foi atendida e passou pouco tempo na unidade: o resto da espera foi em casa.",
+            where: "estação › Consultório 3",
+            targets: (st, ui) =>
+              st.stations.find((x) => x.id === ui.stationId)?.stage === "atendimento"
+                ? ['[data-act="st-finish"]:not(:disabled)']
+                : ['[data-change="station"]'],
+            done: (st) =>
+              st.sessions.flatMap((x) => x.queue).some((x) => x.patientId === "maria" && x.status === "atendido"),
           },
         ],
       },

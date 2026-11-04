@@ -566,6 +566,11 @@ test("eta: present patient sees real call order", () => {
   const ana = E.patientEta(st, "s1", item(st, "ana").id);
   assert.deepEqual(ana, { mode: "presente", position: 2, minutes: 15, comeNow: false });
   assert.equal(E.etaText(ana), "você é o 2º a ser chamado · ~15 min");
+  assert.equal(
+    E.etaText({ mode: "presente", position: 9, minutes: 120, comeNow: false }),
+    "você é o 9º a ser chamado · ~2 h",
+  );
+  assert.equal(E.etaText({ mode: "remoto", position: 7, minutes: 90, comeNow: false }), "você é o 7º · ~1 h 30 min");
   st.stations[0].open = true;
   st.stations.push({ id: "st2", name: "Consultório 4", services: ["cli"], open: true, current: null });
   assert.equal(E.patientEta(st, "s1", item(st, "ana").id).minutes, 8);
