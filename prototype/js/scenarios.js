@@ -449,17 +449,18 @@
             where: "celular › fila de hoje",
             persona: "maria",
             targets: ['[data-act="leave"]', '[data-act="go"][data-screen="queue"]'],
-            done: (st, ui) =>
-              ui.events.has("leave") ||
-              ((itemOf(st, "maria")?.presentMs || 0) > 0 && itemOf(st, "maria")?.presence === "remoto"),
+            done: (_st, ui) => ui.events.has("leave:atendimento"),
           },
           {
             html: "<b>Maria passeia, almoça, resolve a vida.</b> Clique <b>Esperar até o próximo aviso</b>.",
             why: "Enquanto isso o consultório atende quem está na frente. Quando faltar uns 30 minutos, chega o novo “saia de casa”.",
             where: "topo › esperar até o próximo aviso",
             targets: ['[data-act="sim"]'],
-            done: (st) =>
-              st.notifications.filter((n) => n.patientId === "maria" && n.text.includes("Saia de casa")).length >= 2,
+            done: (st, ui) =>
+              ui.events.has("leave:atendimento") &&
+              st.notifications.some(
+                (n) => n.patientId === "maria" && n.text.includes("Saia de casa") && n.at >= ui.leaveAt,
+              ),
           },
           {
             html: "<b>Maria volta</b> e lê o QR de novo.",
@@ -470,7 +471,7 @@
             done: (st, ui) => {
               const q = itemOf(st, "maria");
               return (
-                ui.events.has("leave") &&
+                ui.events.has("leave:atendimento") &&
                 !!q &&
                 q.stage === "atendimento" &&
                 (q.presence === "presente" || q.status !== "fila")

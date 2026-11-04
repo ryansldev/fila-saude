@@ -725,6 +725,24 @@ test("triage: two stages with the same ticket", () => {
   assert.deepEqual(order(st), ["ana", "joao"]);
   assert.equal(E.callNext(st, "s1", "st1").item.patientId, "ana");
   assert.ok(st.tv.announcements.some((a) => a.senha === "C-001" && a.dest === "Consultório 3"));
+  assert.equal(item(st, "joao").number, 2); // terminar a triagem não renumera
+  // Janela protegida dentro da triagem.
+  const w = confirmedSession(["ana", "joao"], { triage: true });
+  const wt = w.stations.find((x) => x.stage === "triagem");
+  checkIn(w, "joao");
+  checkIn(w, "ana"); // número melhor, mas João já estava na sala
+  assert.equal(E.callNext(w, "s1", wt.id).item.patientId, "joao");
+  // Chamadas da triagem não fazem ninguém perder a vez no consultório.
+  const x = confirmedSession(["ana", "joao"], { triage: true });
+  const xt = x.stations.find((y) => y.stage === "triagem");
+  checkIn(x, "ana");
+  checkIn(x, "joao");
+  E.callNext(x, "s1", xt.id); // Ana
+  E.finish(x, "s1", xt.id);
+  E.leave(x, "s1", "ana"); // Ana em casa, já no consultório
+  E.callNext(x, "s1", xt.id); // João chamado na triagem
+  checkIn(x, "ana");
+  assert.equal(item(x, "ana").number, 1);
 });
 
 test("triage: eta sums both stages", () => {
@@ -746,6 +764,34 @@ test("triage: eta sums both stages", () => {
   assert.equal(E.patientEta(st, "s1", item(st, "ana").id).comeNow, true);
   st.stations.find((x) => x.stage === "triagem").open = false;
   assert.equal(E.patientEta(st, "s1", item(st, "joao").id).minutes, null);
+  // A consulta conta quem está à frente no serviço, inclusive quem já foi triado.
+  const s2 = confirmedSession(["ana", "joao"], { triage: true });
+  const tri = s2.stations.find((x) => x.stage === "triagem");
+  checkIn(s2, "ana");
+  E.callNext(s2, "s1", tri.id);
+  E.finish(s2, "s1", tri.id); // Ana triada, no consultório
+  assert.deepEqual(E.patientEta(s2, "s1", item(s2, "joao").id), {
+    mode: "remoto",
+    position: 1,
+    minutes: 0,
+    comeNow: true,
+    stage: "triagem",
+    consultMinutes: 15,
+  });
+  // Presente e ainda não triado: vê a vez na triagem e a previsão da consulta.
+  const s3 = confirmedSession(["ana", "joao"], { triage: true });
+  checkIn(s3, "ana");
+  checkIn(s3, "joao");
+  const pj = E.patientEta(s3, "s1", item(s3, "joao").id);
+  assert.deepEqual(pj, {
+    mode: "presente",
+    position: 2,
+    minutes: 5,
+    comeNow: false,
+    stage: "triagem",
+    consultMinutes: 20,
+  });
+  assert.equal(E.etaText(pj), "triagem: você é o 2º a ser chamado · ~5 min · consulta em ~20 min");
 });
 
 // ---------- Revisão 4: fluxo principal (AD-008, AD-009) ----------
@@ -762,7 +808,14 @@ test("flow: admin creates a public or private session", () => {
     E.unitAgenda(st, "u1").sessions.map((x) => x.text),
     ["Terça, 17/11 · Clínico geral · privada · 15 vagas", "Quarta, 18/11 · Clínico geral · pública · 8 vagas"],
   );
-  assert.equal(E.createSession(st, { serviceId: "cli", start, slots: 0, visibility: "privada" }), null);
+  for (const bad of [0, -3, 2.5, Number.NaN, Number.POSITIVE_INFINITY, ""]) {
+    assert.equal(
+      E.createSession(st, { serviceId: "cli", start, slots: bad, visibility: "privada" }),
+      null,
+      String(bad),
+    );
+  }
+  assert.equal(st.sessions.length, 2);
 });
 
 test("triage: leave home notice per stage", () => {
@@ -801,6 +854,23 @@ test("presence: time at the unit is tracked", () => {
   assert.equal(v.status, "atendido");
   assert.equal(v.presentMs, 30 * MIN);
   assert.equal(v.awayMs, 60 * MIN);
+  // Através da triagem (não zera) e de um 2º "não compareceu" (para de contar em casa).
+  const t = confirmedSession(["ana", "joao"], { triage: true });
+  const tri = t.stations.find((x) => x.stage === "triagem");
+  checkIn(t, "ana");
+  E.advance(t, 5 * MIN);
+  E.callNext(t, "s1", tri.id);
+  E.advance(t, 5 * MIN);
+  E.finish(t, "s1", tri.id);
+  E.advance(t, 10 * MIN);
+  assert.equal(E.patientView(t, "ana").queue.presentMs, 20 * MIN);
+  E.callNext(t, "s1", "st1");
+  E.skip(t, "s1", "st1"); // 1º: continua na sala
+  E.advance(t, 5 * MIN);
+  E.callNext(t, "s1", "st1");
+  E.skip(t, "s1", "st1"); // 2º: vai para casa
+  E.advance(t, 30 * MIN);
+  assert.equal(E.patientView(t, "ana").queue.presentMs, 25 * MIN);
 });
 
 test("simulate: others move, protagonist acts alone", () => {
@@ -826,4 +896,44 @@ test("simulate: others move, protagonist acts alone", () => {
   assert.equal(r4.reason, "notified");
   assert.ok(st.notifications.filter((n) => n.patientId === "bruno").length > before + 1);
   assert.match(st.notifications.at(-1).text, /Saia de casa/);
+  // Ninguém chega sem ter recebido "saia de casa".
+  const quiet = confirmedSession(["ana", "joao"], { leaveHomeMin: -1 });
+  E.simulate(quiet, "s1", { protagonist: "ana", maxMs: 30 * MIN });
+  assert.equal(item(quiet, "joao").presence, "remoto");
+  // Estação fechada não chama.
+  const closed = confirmedSession(["ana", "joao"]);
+  checkIn(closed, "joao");
+  closed.stations[0].open = false;
+  E.simulate(closed, "s1", { protagonist: "ana", maxMs: 30 * MIN });
+  assert.equal(item(closed, "joao").status, "fila");
+});
+
+// ---------- Achados da verificação das revisões 3 e 4 (AD-010) ----------
+
+test("order: coming back loses the turn only if it passed in the order", () => {
+  const st = confirmedSession(["ana", "joao", "bruno"]);
+  for (const p of ["ana", "joao", "bruno"]) checkIn(st, p);
+  E.leave(st, "s1", "ana");
+  E.confirmRisk(st, "s1", item(st, "bruno").id, "urgente");
+  assert.equal(E.callNext(st, "s1", "st1").item.patientId, "bruno"); // número maior, mas vinha antes por ser urgente
+  checkIn(st, "ana");
+  assert.equal(item(st, "ana").number, 1); // não perdeu a vez
+  E.leave(st, "s1", "ana");
+  assert.equal(E.callNext(st, "s1", "st1").item.patientId, "joao"); // vinha depois dela: agora a vez passou
+  checkIn(st, "ana");
+  assert.equal(item(st, "ana").number, 4);
+});
+
+test("station: cannot close while someone is called", () => {
+  const st = confirmedSession(["ana"]);
+  checkIn(st, "ana");
+  E.callNext(st, "s1", "st1");
+  const r = E.setStationOpen(st, "st1", false);
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "chamado");
+  assert.equal(st.stations[0].open, true);
+  E.finish(st, "s1", "st1");
+  assert.equal(E.setStationOpen(st, "st1", false).ok, true);
+  assert.equal(st.stations[0].open, false);
+  assert.equal(E.setStationOpen(st, "st1", true).ok, true);
 });

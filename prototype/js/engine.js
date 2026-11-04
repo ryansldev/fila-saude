@@ -55,7 +55,7 @@
       s.version = s.version || 1;
       s.queue = s.queue || [];
       s.nextNumber = s.nextNumber || 1;
-      s.maxCalled = s.maxCalled || {}; // maior número já chamado, por etapa
+      s.called = s.called || {}; // quem já foi chamado, por etapa (AD-010)
       s.secret = s.secret || `q${s.id}`;
     });
     return st;
@@ -388,7 +388,9 @@
   }
 
   function becomeEligible(st, s, q, { applyLate }) {
-    if (applyLate && !urgConf(q) && (s.maxCalled[q.stage] || 0) > q.number) {
+    // AD-010: perde a vez só se foi chamado, nesta etapa, alguém que vinha depois dele na ordem.
+    const passed = (s.called[q.stage] || []).some((c) => orderCompare(st, q, c) < 0);
+    if (applyLate && !urgConf(q) && passed) {
       q.number = s.nextNumber++; // atraso: perdeu a vez, vai para o fim
     }
     q.blockers = urgConf(q)
@@ -532,7 +534,13 @@
     q.calledAt = st.now;
     q.stationId = stationId;
     station.current = q.id;
-    s.maxCalled[q.stage] = Math.max(s.maxCalled[q.stage] || 0, q.number);
+    s.called[q.stage] = s.called[q.stage] || [];
+    s.called[q.stage].push({
+      number: q.number,
+      confirmedLevel: q.confirmedLevel,
+      suggested: q.suggested,
+      legal: q.legal,
+    });
     s.queue.forEach((x) => {
       x.blockers = x.blockers.filter((b) => b !== q.id); // a trava acaba quando o travador é chamado
     });
@@ -629,6 +637,14 @@
     return { ok: true };
   }
 
+  // PROTO-07: não fecha a estação com alguém chamado; antes, finalize ou marque "Não compareceu".
+  function setStationOpen(st, stationId, open) {
+    const station = byId(st.stations, stationId);
+    if (!open && station.current) return { ok: false, error: "chamado" };
+    station.open = !!open;
+    return { ok: true };
+  }
+
   function createStation(st, { name, stage, services }) {
     const station = { id: nextId(st, "est"), name, stage, services, open: true, current: null };
     st.stations.push(station);
@@ -637,7 +653,7 @@
 
   // Cadastro da sessão pelo admin (seção 6): pública ou privada.
   function createSession(st, { serviceId, start, slots, visibility, professional }) {
-    if (!(slots >= 1)) return null;
+    if (!Number.isInteger(slots) || slots < 1) return null;
     const s = {
       id: nextId(st, "s"),
       serviceId,
@@ -649,7 +665,7 @@
       version: 1,
       queue: [],
       nextNumber: 1,
-      maxCalled: {},
+      called: {},
       secret: `q${st.seq}`,
     };
     st.sessions.push(s);
@@ -823,7 +839,18 @@
       const position = order.indexOf(q) + 1;
       const minutes = n ? Math.ceil(((position - 1) * avgFor(st, q.serviceId, q.stage)) / n) : null;
       const pres = { mode: "presente", position, minutes, comeNow: false };
-      return q.stage === "triagem" ? { ...pres, stage: "triagem" } : pres;
+      if (q.stage !== "triagem") return pres;
+      // PROTO-08 AC 7: também para quem já está na sala, a previsão da consulta vem separada.
+      const nA = openStations(st, q.serviceId, "atendimento");
+      const aheadAll = session(st, sessionId)
+        .queue.filter((x) => x.status === "fila" && x.serviceId === q.serviceId)
+        .sort((a, b) => orderCompare(st, a, b))
+        .indexOf(q);
+      const consultMinutes =
+        n && nA
+          ? Math.ceil(((position - 1) * avgFor(st, q.serviceId, "triagem")) / n + (aheadAll * st.config.avgMin) / nA)
+          : null;
+      return { ...pres, stage: "triagem", consultMinutes };
     }
     const e = eta(st, sessionId, itemId);
     const rem = {
@@ -844,7 +871,9 @@
     if (eta.comeNow)
       return `Sua vez${tri ? " na triagem" : ""} está chegando: venha agora. Você só é chamado depois de ler o QR na unidade.`;
     if (eta.minutes === null) return `${pre}você é o ${eta.position}º · aguardando início do atendimento`;
-    if (eta.mode === "presente") return `${pre}você é o ${eta.position}º a ser chamado · ~${fmtMin(eta.minutes)}`;
+    const consultTxt = tri && eta.consultMinutes != null ? ` · consulta em ~${fmtMin(eta.consultMinutes)}` : "";
+    if (eta.mode === "presente")
+      return `${pre}você é o ${eta.position}º a ser chamado · ~${fmtMin(eta.minutes)}${consultTxt}`;
     const consult = tri && eta.consultMinutes != null ? ` · consulta em ~${fmtMin(eta.consultMinutes)}` : "";
     return `${pre}você é o ${eta.position}º · ~${fmtMin(eta.minutes)}${consult}`;
   }
@@ -899,6 +928,7 @@
     tolerance,
     setServiceTriage,
     createStation,
+    setStationOpen,
     etaText,
     patientEta,
     activeEntry,

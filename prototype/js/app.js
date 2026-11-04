@@ -719,6 +719,7 @@
       </div>
       <p>${ns.visibility === "privada" ? "Privada: o agendador escolhe quem entra, pela lista de espera e pelo risco." : "Pública: o paciente se inscreve direto pelo app até acabarem as vagas, sem alocação."}</p>
       <p></p>
+      ${ui.nsMsg ? `<div class="banner error">${ui.nsMsg}</div>` : ""}
       <button class="btn sm" data-act="session-create">Criar sessão</button>
     </div>`;
   }
@@ -762,6 +763,7 @@
         )
         .join("")}</table>
       <h4>Estações</h4>
+      ${ui.stationAdminMsg ? `<div class="banner error">${ui.stationAdminMsg}</div>` : ""}
       <table>${st.stations
         .map(
           (
@@ -1210,8 +1212,13 @@
     scan: () => scan(false),
     "scan-old": () => scan(true),
     leave: () => {
-      E.leave(st, openSession().id, ui.persona);
-      ui.events.add("leave");
+      const s = openSession();
+      const q = E.findItem(s, ui.persona);
+      E.leave(st, s.id, ui.persona);
+      if (q) {
+        ui.events.add(`leave:${q.stage}`);
+        ui.leaveAt = st.now;
+      }
       ui.qrMsg = { ok: true, text: "Você está em casa de novo. Sua posição foi mantida." };
     },
     tab: (d) => {
@@ -1309,7 +1316,10 @@
     },
     "station-toggle": (d) => {
       const x = byId(st.stations, d.id);
-      x.open = !x.open;
+      const r = E.setStationOpen(st, d.id, !x.open);
+      ui.stationAdminMsg = r.ok
+        ? null
+        : `${x.name} tem um paciente chamado: finalize ou marque “Não compareceu” antes de fechar.`;
     },
     "tv-pair": () => {
       const r = E.pairTv(st, ui.tvCode.trim());
@@ -1364,6 +1374,7 @@
         visibility: ns.visibility,
         professional: "Dra. Marta",
       });
+      ui.nsMsg = created ? null : "Vagas precisa ser um número inteiro, a partir de 1.";
       if (created && created.visibility === "privada") {
         ui.agSessionId = created.id;
         ui.agSel = null;
@@ -1374,12 +1385,13 @@
       const s = openSession();
       if (!s) return;
       const pid = scenario().protagonist;
+      const before = st.tv.announcements.length;
       const r = E.simulate(st, s.id, { protagonist: pid });
       // A TV não reprisa horas de chamadas: mostra a mais recente e as anteriores em "últimas chamadas".
       const all = E.tvView(st).announcements || [];
       for (const a of all) ui.tvSeen.add(a.id);
       ui.tvPending = [];
-      if (ui.tvStarted && all.length) {
+      if (ui.tvStarted && all.length > before) {
         ui.tvShown = all.slice(-6, -1).reverse();
         ui.tvCur = { a: all.at(-1), until: Date.now() + 10000 };
         beep();

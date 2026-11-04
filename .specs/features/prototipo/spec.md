@@ -216,6 +216,9 @@ Antes de qualquer código do MVP (AD-001), a equipe precisa validar a ideia com 
 5. WHEN a paciente triada toca "Vou sair" THEN ela SHALL manter o lugar na fila do consultório e receber novo "saia de casa" quando a consulta se aproximar (RN-TRI-05).
 6. WHEN a paciente é atendida THEN o app SHALL mostrar quanto tempo ela passou na unidade e quanto esperou fora dela.
 7. The protótipo SHALL ter só a apresentação, o fluxo principal e o modo livre.
+8. WHEN a paciente volta e lê o QR THEN ela SHALL perder a vez só se foi chamado, na mesma etapa, alguém que vinha depois dela na ordem (AD-010).
+9. IF o admin informa vagas que não são um número inteiro a partir de 1 THEN o sistema SHALL recusar a sessão e mostrar "Vagas precisa ser um número inteiro, a partir de 1.".
+10. IF a estação tem um paciente chamado THEN o sistema SHALL recusar fechá-la e pedir para finalizar ou marcar "Não compareceu" antes.
 
 **Independent Test**: Abrir `fluxo.html` e seguir o roteiro até a Maria ser atendida, vendo o resumo do tempo na unidade.
 
@@ -380,7 +383,7 @@ Proof: run engine | ✔ triage: eta sums both stages
 **C39** - Estação mostra contador, "tolerância esgotada" e "Não compareceu" sempre habilitado; o fluxo principal vai do início ao fim pelo roteiro e termina com o resumo do tempo (PROTO-07, AC 1 e AC 3; PROTO-08; PROTO-09)
 Proof: walk
 
-**C40** - O admin cadastra sessão pública ou privada, e ela aparece na agenda da unidade (PROTO-09, AC 1)
+**C40** - O admin cadastra sessão pública ou privada, ela aparece na agenda, e vagas inválidas (0, negativas, fracionadas, NaN, infinito, vazio) são recusadas (PROTO-09, AC 1 e AC 9)
 Proof: run engine | ✔ flow: admin creates a public or private session
 
 **C41** - Um "saia de casa" por etapa: antes da triagem pela vez na triagem, depois de "Vou sair" pela vez na consulta (PROTO-09, AC 4 e AC 5; PROTO-04, AC 3)
@@ -392,13 +395,19 @@ Proof: run engine | ✔ presence: time at the unit is tracked
 **C43** - "Esperar até o próximo aviso" move os outros pacientes e para quando a protagonista é avisada ou chamada, sem agir por ela (PROTO-09, AC 3)
 Proof: run engine | ✔ simulate: others move, protagonist acts alone
 
+**C44** - Quem volta perde a vez só se alguém que vinha depois na ordem foi chamado; urgente chamado antes não conta (PROTO-09, AC 5 e AC 8)
+Proof: run engine | ✔ order: coming back loses the turn only if it passed in the order
+
+**C45** - A estação com paciente chamado não fecha (PROTO-09, AC 10; PROTO-07, AC 1)
+Proof: run engine | ✔ station: cannot close while someone is called
+
 **C33** - Nenhuma animação ou transição CSS (PROTO-05, AC 4)
 Proof: `! grep -rnE "animation|transition|@keyframes" prototype/css`
 
 ## Handoff
 
 **Settled mid-build:** none
-**Dispatched:** Verifier at `0a2c9df` (proofs.md at `0a2c9df`, same code) - returned (FAIL, 9 findings); revisão 2: Verifier at `db2e302` - returned (FAIL, 3 findings); revisões 3 e 4: Verifier at `1d71a1a` - sent
+**Dispatched:** Verifier at `0a2c9df` (proofs.md at `0a2c9df`, same code) - returned (FAIL, 9 findings); revisão 2: Verifier at `db2e302` - returned (FAIL, 3 findings); revisões 3 e 4: Verifier at `1d71a1a` - returned (FAIL, 10 findings)
 **Walked (revisões 3 e 4):** 2026-11-04, Chrome headless via CDP por file://. O script que só clica no elemento marcado (`.hint`) terminou `fluxo.html` com 15/15 passos, sem erro de console. Na sequência: sessão privada criada no Admin; Maria entra na lista (exame → rotina); o Agendador aloca 13 (os outros 12 confirmam sozinhos) e Maria confirma; +1 dia; a sessão é aberta; a espera para no "saia de casa" da triagem; o QR leva 20 min de trajeto; a Triagem 1 a chama; "Finalizar triagem" a deixa como "você é o 9º a ser chamado · ~2 h"; "Vou sair"; a espera para no segundo "saia de casa"; ela volta e lê o QR; o Consultório 3 a chama; "Finalizar". O celular termina com "Tudo certo, Maria!" (40 min na unidade, 2 h 26 min esperando em casa). A estação mostra "Não compareceu" sempre habilitado e "esgotada" ao fim da tolerância. A TV mostra a chamada mais recente depois da espera. No modo livre, os cinco cenários abrem, trocam de aba e abrem sessão sem erro. Nenhuma página tem rolagem horizontal a 1280 e 1440 px.
 **Walked (revisão 2):** 2026-11-04, Chrome headless via CDP por file://. Um script que só clica no elemento com a marca do roteiro (`.hint`) terminou as três histórias: `historia-lista.html` 7/7, `historia-alocacao.html` 6/6, `historia-fila.html` 10/10 (também a 1280 px), sem erro de console. Apresentação, histórias e modo livre sem rolagem horizontal a 1280 e 1440 px, e o menu do topo sem transbordo. Na fila do dia, a Dora (remota, 1ª) vê "Sua vez está chegando: venha agora" no cartão verde. João presente vê "você é o 1º a ser chamado". Na alocação, "Prioridade legal antes" põe a Dora nas 3 vagas e tira o Carlos (urgente sugerido).
 **Walked:** 2026-11-04, Chrome headless via CDP, `prototype/index.html` por file://, sem login.
