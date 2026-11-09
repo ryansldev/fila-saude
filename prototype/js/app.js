@@ -1063,32 +1063,44 @@
     const sessions = st.sessions.filter((x) => x.visibility === "privada" && x.state === "planejada");
     if (!sessions.length) return `<div class="card-screen"><p class="muted">Nenhuma sessão para alocar.</p></div>`;
     const { s, sug, free } = allocState(sessions);
-    const n = ui.agSel.size;
-    const pct = Math.min(100, Math.round((n / Math.max(1, free)) * 100));
+    const me = scenario().protagonist;
+    const n = sug.filter((x) => ui.agSel.has(x.entry.id)).length;
+    const cap = (t) => t[0].toUpperCase() + t.slice(1);
     const rows = sug
       .map((x, i) => {
         const e = x.entry;
         const p = patient(e.patientId);
         const on = ui.agSel.has(e.id);
-        const me = e.patientId === scenario().protagonist;
+        const level = e.confirmedLevel || e.suggested;
         const days = Math.floor((st.now - e.createdAt) / DAY);
-        const wait = days === 0 ? "entrou hoje" : days === 1 ? "espera há 1 dia" : `espera há ${days} dias`;
-        return `<li><button class="pick ${on ? "on" : ""} ${me ? "me" : ""}" data-act="ag-toggle" data-id="${e.id}" aria-pressed="${on}">
-          <span class="check" aria-hidden="true">${on ? "✓" : ""}</span>
-          <span class="rank">${i + 1}º</span>
-          <span class="av" aria-hidden="true">${initials(p.name)}</span>
-          <span class="who"><b>${esc(p.name)}</b><small>${esc(wait)}</small></span>
-          <span class="tags">${(e.confirmedLevel || e.suggested) !== "rotina" ? levelChip(e.confirmedLevel || e.suggested) : ""}${e.legal.label ? `<span class="chip violet">${esc(e.legal.label)}</span>` : ""}</span>
-        </button></li>`;
+        return `<tr class="${on ? "on" : ""} ${e.patientId === me ? "me" : ""}" data-act="ag-toggle" data-id="${e.id}" aria-selected="${on}">
+          <td class="c-check"><span class="check" aria-hidden="true">${on ? "✓" : ""}</span></td>
+          <td class="c-rank">${i + 1}º</td>
+          <td><div class="c-who"><span class="av" aria-hidden="true">${initials(p.name)}</span><span><b>${esc(p.name)}</b><small>${age(p)} anos</small>${e.legal.label ? `<span class="pill legal m-only">${esc(cap(e.legal.label))}</span>` : ""}</span></div></td>
+          <td><span class="pill ${level}">${E.RISK_LABEL[level]}</span></td>
+          <td class="c-legal">${e.legal.label ? `<span class="pill legal">${esc(cap(e.legal.label))}</span>` : `<span class="none">—</span>`}</td>
+          <td class="c-wait">${days === 0 ? "hoje" : `${days} dias`}</td>
+        </tr>`;
       })
       .join("");
+    const pct = Math.round((n / Math.max(1, free)) * 100);
     return `<div class="card-screen alloc">
-      <div class="alloc-head">
-        <small>${esc(service(s.serviceId).name)} · ${E.dayLabel(s.start)}</small>
-        <div class="slot-meter" aria-hidden="true"><span style="width:${pct}%"></span></div>
-        <div class="slot-label"><b>${n}</b> de ${free} vagas${free - n > 0 ? ` · sobram ${free - n}` : ""}</div>
+      <div class="alloc-top">
+      <div class="alloc-session">
+        <div class="date-tile"><small>${fWeek.format(s.start).replace(".", "")}</small><b>${fDay.format(s.start)}</b><small>${fMonth.format(s.start).replace(".", "")}</small></div>
+        <div><b>${esc(service(s.serviceId).name)}</b><small>${fTime.format(s.start)} · ordem: risco › prioridade › tempo de espera</small></div>
       </div>
-      <ol class="pick-list">${rows}</ol>
+      <div class="alloc-count">
+        <div class="slot-label"><b>${n}</b> de ${free} vagas${free - n > 0 ? ` · sobram ${free - n}` : ""}</div>
+        <div class="slots-bar" aria-hidden="true"><span style="width:${pct}%"></span></div>
+      </div>
+      </div>
+      <div class="alloc-table-wrap">
+        <table class="alloc-table">
+          <thead><tr><th></th><th class="c-rank">#</th><th>Paciente</th><th>Risco</th><th class="c-legal">Prioridade</th><th>Espera</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
       <div class="sticky-action"><button class="btn lg block" data-act="ag-alloc" ${n ? "" : "disabled"}>Alocar ${n} ${n === 1 ? "pessoa" : "pessoas"}</button></div>
     </div>`;
   }
@@ -1478,7 +1490,7 @@
     },
     "lesson-show": () => {
       enterStep(lessonStep());
-      ui.scrollTo = ".pick.me";
+      ui.scrollTo = ".alloc-table tr.me";
       ui.lesson.view = "do";
       ui.hintKey = null;
       window.scrollTo(0, 0);

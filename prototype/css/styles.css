@@ -2538,113 +2538,149 @@ button.tile.on:hover {
 /* ---------- Seleção de quem entra na sessão ---------- */
 
 .card-screen.alloc {
-  max-width: 560px;
-  gap: 12px;
+  max-width: 700px;
+  gap: 14px;
 }
 
-.alloc-head {
+.alloc-session {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.alloc-session > div:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.alloc-session b {
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.alloc-session > div:last-child small {
+  color: var(--gray-600);
+  font-size: 15px;
+}
+
+.alloc-top {
   position: sticky;
   top: -24px;
   z-index: 4;
   background: #fff;
-  padding: 24px 0 8px;
+  padding: 24px 0 10px;
   margin-top: -24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.alloc-head small {
-  color: var(--gray-500);
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.alloc-table .m-only {
+  display: none;
 }
 
-.slot-meter {
-  height: 12px;
-  border-radius: 999px;
-  background: var(--gray-100);
-  overflow: hidden;
-  margin: 10px 0 6px;
-}
-
-.slot-meter span {
-  display: block;
-  height: 100%;
-  background: var(--primary-500);
-  border-radius: 999px;
-}
-
-.slot-label {
-  font-size: 15px;
+.alloc-count .slot-label {
   color: var(--gray-600);
+  margin-bottom: 6px;
 }
 
-.slot-label b {
-  font-size: 20px;
+.alloc-count .slot-label b {
+  font-size: 22px;
   color: var(--primary-700);
 }
 
-.pick-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pick {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 14px;
-  text-align: left;
-  background: #fff;
+.alloc-table-wrap {
   border: 2px solid var(--gray-100);
-  border-bottom-width: 4px;
   border-radius: 16px;
+  overflow: hidden;
 }
 
-.pick:hover {
+.alloc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.alloc-table th {
+  background: var(--gray-50);
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+  padding: 10px 8px;
+}
+
+.alloc-table td {
+  padding: 8px;
+  border-top: 2px solid var(--gray-100);
+  vertical-align: middle;
+}
+
+.alloc-table tbody tr {
+  cursor: pointer;
+}
+
+.alloc-table tbody tr:hover {
   background: var(--gray-50);
 }
 
-.pick.on {
-  border-color: var(--primary-200);
-}
-
-.pick.me {
-  border-color: var(--primary-500);
+.alloc-table tr.me,
+.alloc-table tr.me:hover {
   background: var(--primary-50);
 }
 
-.pick .check {
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border: 2px solid var(--gray-200);
+.alloc-table tr:not(.on) td:not(.c-check) {
+  opacity: 0.45;
+}
+
+.alloc-table .c-check {
+  width: 40px;
+  padding-left: 14px;
+}
+
+.alloc-table .check {
+  width: 24px;
+  height: 24px;
   border-radius: 8px;
+  border: 2px solid var(--gray-200);
   display: grid;
   place-items: center;
+  font-size: 13px;
   font-weight: 900;
-  font-size: 15px;
   color: #fff;
 }
 
-.pick.on .check {
+.alloc-table tr.on .check {
   background: var(--primary-500);
   border-color: var(--primary-500);
 }
 
-.pick .rank {
-  flex: none;
-  width: 30px;
+.alloc-table .c-rank {
+  width: 36px;
   font-weight: 900;
   color: var(--gray-400);
 }
 
-.pick .av {
+.alloc-table .c-who {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.alloc-table .c-who > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.alloc-table .c-who small {
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.alloc-table .av {
   flex: none;
   width: 32px;
   height: 32px;
@@ -2654,28 +2690,47 @@ button.tile.on:hover {
   display: grid;
   place-items: center;
   font-weight: 900;
-  font-size: 13px;
+  font-size: 12px;
 }
 
-.pick .who {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
+.alloc-table tr.me .av {
+  background: var(--primary-500);
+  color: #fff;
 }
 
-.pick .who b {
-  font-size: 16px;
+.alloc-table .pill {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 2px 10px;
+  background: var(--gray-50);
+  color: var(--gray-600);
 }
 
-.pick .who small {
-  color: var(--gray-500);
-  font-size: 13px;
+.alloc-table .pill.atencao {
+  background: var(--orange-50);
+  color: var(--orange-800);
 }
 
-.pick .tags {
-  display: flex;
-  gap: 4px;
+.alloc-table .pill.urgente {
+  background: var(--red-50);
+  color: var(--red-600);
+}
+
+.alloc-table .pill.legal {
+  background: var(--primary-50);
+  color: var(--primary-700);
+}
+
+.alloc-table .none {
+  color: var(--gray-300);
+}
+
+.alloc-table .c-wait {
+  font-weight: 700;
+  color: var(--gray-700);
+  white-space: nowrap;
 }
 
 .sticky-action {
@@ -2686,8 +2741,30 @@ button.tile.on:hover {
 }
 
 @media (width < 700px) {
-  .pick .rank {
+  .alloc-table .c-rank,
+  .alloc-table .c-who small {
     display: none;
+  }
+
+  .alloc-table td,
+  .alloc-table th {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .alloc-table .c-who .av,
+  .alloc-table .c-legal {
+    display: none;
+  }
+
+  .alloc-table .m-only {
+    display: inline-block;
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  .alloc-table {
+    font-size: 13px;
   }
 }
 
