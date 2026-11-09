@@ -147,6 +147,7 @@
       sheet: null,
       qrMsg: null,
       toast: null,
+      alerts: {},
       toasted: new Set(st.notifications.map((n) => n.id)),
       read: new Set(),
       tab: sc.tab,
@@ -176,10 +177,43 @@
       newStation: { name: "Triagem 1", stage: "triagem" },
       events: new Set(),
       done: new Set(),
+      lesson: { step: 0, view: "start" },
       audio: ui?.audio || null,
     };
     for (const el of Object.values(regions)) if (el) el._html = null;
     update(true);
+  }
+
+  // Tempo compacto para cartões: "30 min", "2 h", "2h45".
+  function hShort(ms) {
+    const m = Math.round(ms / MIN);
+    if (m < 60) return `${m} min`;
+    const r = m % 60;
+    return r ? `${Math.floor(m / 60)}h${String(r).padStart(2, "0")}` : `${m / 60} h`;
+  }
+
+  // Duração curta: "40 min", "2 h 26 min".
+  function h(ms) {
+    const m = Math.round(ms / MIN);
+    return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
+  }
+
+  const fWeek = fmt({ weekday: "short" });
+  const fDay = fmt({ day: "2-digit" });
+  const fMonth = fmt({ month: "short" });
+
+  // Cartão de sessão na agenda da unidade: bloco de data à esquerda, serviço e vagas à direita.
+  function sessionCard(x) {
+    const pct = x.slots ? Math.round((x.left / x.slots) * 100) : 0;
+    return `<div class="card session-card">
+      <div class="date-tile"><small>${fWeek.format(x.start).replace(".", "")}</small><b>${fDay.format(x.start)}</b><small>${fMonth.format(x.start).replace(".", "")}</small></div>
+      <div class="session-info">
+        <strong>${esc(service(x.serviceId).name)}</strong>
+        <div class="session-meta"><span class="chip ${x.visibility === "privada" ? "violet" : "rotina"}">${x.visibility}</span><span>${fTime.format(x.start)}</span></div>
+        <div class="slots-bar" aria-hidden="true"><span style="width:${pct}%"></span></div>
+        <small class="muted">${x.left} de ${x.slots} vagas livres</small>
+      </div>
+    </div>`;
   }
 
   // ---------- Celular ----------
@@ -246,15 +280,17 @@
           <div class="section-title">Horário</div>
           <div>${agenda.hours}</div>
           <div class="section-title">Próximas sessões</div>
-          ${agenda.sessions.map((s) => `<div class="card">${esc(s.text)}</div>`).join("") || `<p class="muted">Sem sessões futuras.</p>`}
+          ${agenda.sessions.map(sessionCard).join("") || `<p class="muted">Sem sessões futuras.</p>`}
           <div class="section-title">Serviços</div>
           ${st.services
             .filter((s) => s.unitId === unit.id)
-            .map(
-              (s) => `<div class="card row between">
-                <div><strong>${esc(s.name)}</strong>${s.requiresReferral ? `<div class="muted">exige encaminhamento</div>` : ""}</div>
-                <button class="btn sm" data-act="join" data-id="${s.id}">Entrar na lista</button>
-              </div>`,
+            .map((s) =>
+              s.appEntry === false
+                ? `<div class="card svc locked"><span class="svc-icon" aria-hidden="true">🔒</span>
+                    <div><strong>${esc(s.name)}</strong><div class="muted">Inscrição na recepção</div></div></div>`
+                : `<div class="card svc"><span class="svc-icon" aria-hidden="true">🩺</span>
+                    <div><strong>${esc(s.name)}</strong>${s.requiresReferral ? `<div class="muted">exige encaminhamento</div>` : ""}</div>
+                    <button class="btn sm" data-act="join" data-id="${s.id}">Entrar na lista</button></div>`,
             )
             .join("")}`;
         break;
@@ -332,7 +368,7 @@
         } else {
           const e = byId(st.entries, r.entryId);
           body = `<div class="result">
-            <div class="icon" style="background:var(--green-50);color:var(--green-500)">✓</div>
+            <div class="icon" style="background:var(--primary-50);color:var(--primary-500)">✓</div>
             <h4>Você entrou na lista</h4>
             <p>${esc(service(e.serviceId).name)} · ${esc(unitOf(e.serviceId).name)}</p>
             <p>${levelChip(e.suggested, false)}</p>
@@ -350,7 +386,7 @@
         title = esc(service(e.serviceId).name);
         let action = "";
         if (e.status === "alocada")
-          action = `<div class="card" style="border-color:var(--violet-600)">
+          action = `<div class="card" style="border-color:var(--primary-500)">
             <strong>Você tem uma vaga!</strong>
             <p>${E.dayLabel(s.start)} · ${fTime.format(s.start)} · ${esc(unitOf(s.serviceId).name)}</p>
             <p class="muted">Confirme até ${E.dayLabel(e.deadline)}, ${fTime.format(e.deadline)}.</p>
@@ -388,10 +424,6 @@
           body = `<div class="ticket called"><div class="svc">É a sua vez!</div><div class="senha">${q.senha}</div><div class="pos">${esc(svc.name)} → ${esc(q.station)}</div></div>
           <p class="muted">Vá até a sala agora. Você tem ${st.config.toleranceMin} minutos.</p>`;
         } else if (q.status === "atendido") {
-          const h = (ms) => {
-            const m = Math.round(ms / MIN);
-            return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
-          };
           body = `<div class="ticket come"><div class="svc">${esc(svc.name)}</div><div class="senha">${q.senha}</div><div class="pos">Atendimento concluído</div></div>
             <div class="result"><h4>Tudo certo, ${esc(first(p.name))}!</h4><p>Você foi atendida sem enfrentar fila.</p></div>
             <div class="stat-grid"><div class="stat"><b>${h(q.presentMs)}</b><span>na unidade</span></div><div class="stat"><b>${q.awayMs === null ? "—" : h(q.awayMs)}</b><span>esperando em casa</span></div></div>`;
@@ -399,21 +431,38 @@
           body = `<div class="banner error">Você saiu da fila por não comparecer à chamada 3 vezes. Para outro dia, entre de novo na lista de espera.</div>`;
         } else {
           const d = q.display;
-          const tip =
-            q.presence === "presente"
-              ? "Fique na sala de espera. Sua senha aparece na TV quando for a sua vez. Se precisar sair, toque em “Vou sair”: você mantém o número."
-              : d.comeNow
-                ? "Quem já está na sala é chamado antes de quem está a caminho. Ao chegar, leia o QR da TV."
-                : `Espere em casa. Avisamos com “saia de casa” quando faltar cerca de ${st.config.leaveHomeMin} min. Só é chamado quem leu o QR na unidade.`;
+          const here = q.presence === "presente";
+          const tri = q.stage === "triagem";
+          // Caminho do dia: casa → (triagem) → consulta.
+          const path = [["casa", "🏠", "Em casa"], ...(svc.requiresTriage ? [["triagem", "🩺", "Triagem"]] : []), ["consulta", "👩‍⚕️", "Consulta"]];
+          const cur = !here ? 0 : tri ? 1 : path.length - 1;
+          const triDone = svc.requiresTriage && !tri;
+          const pathHTML = path
+            .map(([id, icon, label], i) => {
+              const state = i === cur ? "now" : (id === "triagem" && triDone) || i < cur ? "done" : "";
+              return `<li class="${state}"><span class="dot" aria-hidden="true">${state === "done" ? "✓" : icon}</span><small>${label}</small></li>`;
+            })
+            .join("");
+          const tip = here
+            ? "Fique na sala. Sua senha aparece na TV."
+            : d.comeNow
+              ? "Pode vir. Ao chegar, leia o QR da TV."
+              : "Espere em casa. Avisamos a hora de sair.";
+          const stats = d.comeNow
+            ? `<div class="q-come">Venha agora</div>`
+            : `<div class="q-stats">
+                <div><small>${tri ? "Na triagem" : "Sua posição"}</small><b>${d.position}º</b></div>
+                <div><small>Tempo estimado</small><b>${d.minutes === null ? "—" : `~${hShort(d.minutes * MIN)}`}</b></div>
+              </div>`;
           body = `
-            <div class="ticket ${d.comeNow ? "come" : ""}">
-              <div class="svc">${esc(svc.name)}${stageTag}</div>
-              <div class="senha">${q.senha}</div>
-              <div class="pos">${E.etaText(d)}</div>
-              <div class="presence"><span class="chip">${q.presence === "presente" ? "você está na unidade" : "você está em casa"}</span>${q.skips ? `<span class="chip urgente">${q.skips} pulo${q.skips > 1 ? "s" : ""}</span>` : ""}</div>
-            </div>
-            ${ui.qrMsg ? `<div class="banner ${ui.qrMsg.ok ? "ok" : "error"}">${ui.qrMsg.text}</div>` : ""}
-            <p class="muted">${tip}</p>`;
+            <div class="q-ticket"><small>Sua senha</small><span class="senha">${q.senha}</span><span class="svc">${esc(svc.name)}</span></div>
+            ${stats}
+            ${d.minutes === null && !d.comeNow ? `<p class="q-tip">Aguardando o início do atendimento.</p>` : ""}
+            ${tri && d.consultMinutes != null ? `<div class="q-next">👩‍⚕️ Consulta prevista em ~${h(d.consultMinutes * MIN)}</div>` : ""}
+            <ol class="q-path">${pathHTML}</ol>
+            ${ui.qrMsg ? `<div class="q-msg ${ui.qrMsg.ok ? "" : "error"}">${ui.qrMsg.text}</div>` : ""}
+            <p class="q-tip">${tip}</p>
+            ${q.skips ? `<span class="chip urgente">${q.skips} pulo${q.skips > 1 ? "s" : ""}</span>` : ""}`;
           foot =
             q.presence === "remoto"
               ? `<button class="btn block" data-act="sheet" data-id="qr">Cheguei: ler QR da TV</button>`
@@ -453,6 +502,7 @@
       <div class="app-body">${body}</div>
       ${foot ? `<div class="app-foot">${foot}</div>` : ""}
       ${sheet}
+      ${alertScreenHTML(ui.persona)}
     </div>`;
   }
 
@@ -493,7 +543,7 @@
     return ALL_TABS.filter(([id]) => allow.includes(id));
   }
 
-  function adminHTML() {
+  function adminHTML(withTabs = true) {
     const pendingRef = st.entries.filter((e) => e.referral?.status === "pendente").length;
     const overdue = E.callList(st).filter((c) => c.overdue).length;
     const counts = { agendador: pendingRef + st.alerts.length, ligacao: overdue };
@@ -512,7 +562,7 @@
       triagem: triagemHTML,
       admin: unitAdminHTML,
     }[ui.tab]();
-    return `${tabsHTML}<div class="admin-body">${body}</div>`;
+    return `${withTabs ? tabsHTML : ""}<div class="admin-body">${body}</div>`;
   }
 
   function ruleBox() {
@@ -526,6 +576,21 @@
       </div>
       <p>Depois da urgência confirmada e dos remanejados, o que pesa mais: o nível de risco ou a prioridade legal (idosos, gestantes, PcD…)? Cada município decide. Vale para a sugestão e para a ordem de chamada.</p>
     </div>`;
+  }
+
+  // Sessão em alocação, sugestão e seleção atual (pré-marca as primeiras vagas livres).
+  function allocState(sessions) {
+    const s = sessionOf(ui.agSessionId) || sessions[0];
+    ui.agSessionId = s.id;
+    if (ui.agVersion === null) ui.agVersion = s.version;
+    const sug = E.suggest(st, s.id);
+    const free = s.slots - E.occupied(st, s.id);
+    const key = `${s.id}:${free}:${st.config.priorityOrder}:${sug.map((x) => x.entry.id).join(",")}`;
+    if (!ui.agStale && (ui.agSel === null || ui.agKey !== key)) {
+      ui.agSel = new Set(sug.slice(0, Math.max(0, free)).map((x) => x.entry.id));
+      ui.agKey = key;
+    }
+    return { s, sug, free };
   }
 
   function agendadorHTML() {
@@ -549,16 +614,7 @@
     const sessions = st.sessions.filter((s) => s.visibility === "privada" && s.state === "planejada");
     if (!sessions.length)
       return `${alerts}${refsHTML}<h4>Alocação</h4><p class="muted">Nenhuma sessão privada planejada.</p>`;
-    const s = sessionOf(ui.agSessionId) || sessions[0];
-    ui.agSessionId = s.id;
-    if (ui.agVersion === null) ui.agVersion = s.version;
-    const sug = E.suggest(st, s.id);
-    const free = s.slots - E.occupied(st, s.id);
-    const key = `${s.id}:${free}:${st.config.priorityOrder}:${sug.map((x) => x.entry.id).join(",")}`;
-    if (!ui.agStale && (ui.agSel === null || ui.agKey !== key)) {
-      ui.agSel = new Set(sug.slice(0, Math.max(0, free)).map((x) => x.entry.id));
-      ui.agKey = key;
-    }
+    const { s, sug, free } = allocState(sessions);
     const rows = sug
       .map((x, i) => {
         const e = x.entry;
@@ -885,12 +941,55 @@
     </div>`;
   }
 
-  // ---------- Roteiro, relógio, pessoas ----------
+  // ---------- Lição guiada (fluxo.html) ----------
+  // Cada passo: intro (o que vem a seguir) → tela sozinha com destaque → "muito bem" → próximo.
+
+  const SCREEN_LABEL = {
+    phone: "Celular da Maria",
+    "new-session": "Painel da unidade",
+    sessions: "Painel da unidade",
+    allocate: "Painel do agendador",
+    station: "Estação de chamada",
+    tv: "TV da sala de espera",
+  };
+
+  function lessonStep(i = ui.lesson.step) {
+    return i === null ? null : scenario().story.steps[i];
+  }
+
+  function enterStep(step) {
+    if (step.persona) ui.persona = step.persona;
+    if (step.tab) ui.tab = step.tab;
+    if (step.station) {
+      const target = st.stations.find((x) => x.stage === step.station);
+      if (target && ui.stationId !== target.id) {
+        ui.stationId = target.id;
+        ui.stationMsg = null;
+        ui.stLevel = null;
+      }
+    }
+  }
+
+  function runGuidedStep() {
+    const step = lessonStep();
+    if (!step) return;
+    enterStep(step);
+    const sels = stepTargets(step) || [];
+    for (const sel of sels) {
+      const el = document.querySelector(sel);
+      if (!el || el.disabled) continue;
+      const fn = actions[el.dataset.act];
+      if (!fn) continue;
+      if (el.dataset.act !== "sim") ui.simMsg = null;
+      fn(el.dataset);
+      return;
+    }
+  }
 
   function stepTargets(step) {
-    if (step.persona && ui.persona !== step.persona) return [`[data-persona="${step.persona}"]`];
-    if (step.tab && ui.tab !== step.tab) return [`[data-act="tab"][data-id="${step.tab}"]`];
-    return typeof step.targets === "function" ? step.targets(st, ui) : step.targets;
+    const t = typeof step.targets === "function" ? step.targets(st, ui) : step.targets;
+    if (step.screen === "phone" && activeAlert(ui.persona)) return [".alert-screen .alert-main", ...t];
+    return t;
   }
 
   function currentStep() {
@@ -899,41 +998,202 @@
     return i === -1 ? null : i;
   }
 
-  function roteiroHTML() {
-    const story = scenario().story;
-    const steps = story.steps;
-    const cur = currentStep();
-    const doneN = ui.done.size;
-    const pct = Math.round((doneN / steps.length) * 100);
-    const items = steps
-      .map((s, i) => {
-        const done = ui.done.has(i);
-        const isCur = i === cur;
-        return `<li class="${done ? "done" : ""} ${isCur ? "current" : ""}">
-          <span class="mark">${done ? "✓" : i + 1}</span>
-          <div>${s.html}
-            ${isCur ? `<div class="where">👉 ${s.where}</div><div class="why"><strong>por que isso importa</strong>${s.why}</div>` : ""}
-          </div>
-        </li>`;
+  function lessonTopHTML() {
+    const total = scenario().story.steps.length;
+    const pct = Math.round((ui.done.size / total) * 100);
+    return `<div class="lesson-top-inner">
+      <a class="lesson-x" href="index.html" aria-label="Sair do fluxo">✕</a>
+      <div class="lesson-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${ui.done.size}" aria-label="Progresso"><span style="width:${pct}%"></span></div>
+    </div>`;
+  }
+
+  function sayHTML(text) {
+    return `<div class="lesson-say"><img src="assets/mascote.svg" alt="" width="132" height="132" /><div class="bubble">${text}</div></div>`;
+  }
+
+  function stepClock(step) {
+    return typeof step.clock === "function" ? step.clock(st, ui) : step.clock;
+  }
+
+  function waitBarHTML(clock) {
+    const btn =
+      clock === "day"
+        ? `<button class="btn" data-act="adv" data-ms="${DAY}">Avançar 1 dia</button>`
+        : `<button class="btn" data-act="sim">Esperar até o próximo aviso</button>`;
+    return `<div class="lesson-clock"><time>🕒 ${fDate.format(st.now)} · ${fTime.format(st.now)}</time>${btn}</div>`;
+  }
+
+  // Telas da lição: só o necessário para o passo, em cartões grandes.
+
+  function newSessionScreen() {
+    const ns = ui.newSession;
+    const svc = service(ns.serviceId);
+    const tile = (id, icon, title, sub) =>
+      `<button class="tile ${ns.visibility === id ? "on" : ""}" data-act="ns-vis" data-id="${id}" aria-pressed="${ns.visibility === id}"><span class="tile-icon">${icon}</span><b>${title}</b><small>${sub}</small></button>`;
+    return `<div class="card-screen">
+      <div class="facts">
+        <div><small>Serviço</small><b>${esc(svc.name)}</b></div>
+        <div><small>Dia</small><b>${E.dayLabel(dayStart(ns.day))} · 07:00</b></div>
+        <div><small>Vagas</small><b>${esc(String(ns.slots))}</b></div>
+      </div>
+      <div class="tiles">
+        ${tile("privada", "🔒", "Privada", "o agendador escolhe quem entra")}
+        ${tile("pública", "🌐", "Pública", "o paciente se inscreve sozinho")}
+      </div>
+      ${ui.nsMsg ? `<div class="banner error">${ui.nsMsg}</div>` : ""}
+      <button class="btn lg block" data-act="session-create">Criar sessão</button>
+    </div>`;
+  }
+
+  function sessionsScreen() {
+    const list = st.sessions.filter((x) => x.state === "planejada" || x.state === "aberta");
+    return `<div class="card-screen">${list
+      .map(
+        (x) => `<div class="tile static">
+          <span class="tile-icon">📅</span>
+          <b>${esc(service(x.serviceId).name)}</b>
+          <small>${E.dayLabel(x.start)} · ${fTime.format(x.start)} · ${E.occupied(st, x.id)} de ${x.slots} vagas</small>
+        </div>
+        ${x.state === "planejada" ? `<button class="btn lg block" data-act="open-session" data-id="${x.id}">Abrir sessão</button>` : `<span class="chip ok">aberta</span>`}`,
+      )
+      .join("")}</div>`;
+  }
+
+  function allocateScreen() {
+    const sessions = st.sessions.filter((x) => x.visibility === "privada" && x.state === "planejada");
+    if (!sessions.length) return `<div class="card-screen"><p class="muted">Nenhuma sessão para alocar.</p></div>`;
+    const { s, sug, free } = allocState(sessions);
+    const n = ui.agSel.size;
+    const pct = Math.min(100, Math.round((n / Math.max(1, free)) * 100));
+    const rows = sug
+      .map((x, i) => {
+        const e = x.entry;
+        const p = patient(e.patientId);
+        const on = ui.agSel.has(e.id);
+        const me = e.patientId === scenario().protagonist;
+        const days = Math.floor((st.now - e.createdAt) / DAY);
+        const wait = days === 0 ? "entrou hoje" : days === 1 ? "espera há 1 dia" : `espera há ${days} dias`;
+        return `<li><button class="pick ${on ? "on" : ""} ${me ? "me" : ""}" data-act="ag-toggle" data-id="${e.id}" aria-pressed="${on}">
+          <span class="check" aria-hidden="true">${on ? "✓" : ""}</span>
+          <span class="rank">${i + 1}º</span>
+          <span class="av" aria-hidden="true">${initials(p.name)}</span>
+          <span class="who"><b>${esc(p.name)}</b><small>${esc(wait)}</small></span>
+          <span class="tags">${(e.confirmedLevel || e.suggested) !== "rotina" ? levelChip(e.confirmedLevel || e.suggested) : ""}${e.legal.label ? `<span class="chip violet">${esc(e.legal.label)}</span>` : ""}</span>
+        </button></li>`;
       })
       .join("");
-    const finished =
-      cur === null
-        ? `<div class="surface finished"><b>Maria foi para casa feliz!</b><p>Ela se inscreveu pelo app, esperou em casa e só foi à unidade na hora certa, duas vezes.</p><a class="btn" href="simulador.html">Explorar o modo livre</a></div>`
-        : "";
-    return `<span class="tag">fluxo principal</span>
-      <h1>${story.headline}</h1>
-      <p class="intro">${story.intro}</p>
-      <div class="progress"><span style="width:${pct}%"></span></div>
-      <div class="progress-label">${doneN} de ${steps.length} passos</div>
-      ${ui.simMsg ? `<div class="banner info">⏩ ${ui.simMsg}</div>` : ""}
-      <ol class="steps">${items}</ol>
-      ${finished}
-      <button class="btn secondary sm restart" data-act="restart">Recomeçar história</button>`;
+    return `<div class="card-screen alloc">
+      <div class="alloc-head">
+        <small>${esc(service(s.serviceId).name)} · ${E.dayLabel(s.start)}</small>
+        <div class="slot-meter" aria-hidden="true"><span style="width:${pct}%"></span></div>
+        <div class="slot-label"><b>${n}</b> de ${free} vagas${free - n > 0 ? ` · sobram ${free - n}` : ""}</div>
+      </div>
+      <ol class="pick-list">${rows}</ol>
+      <div class="sticky-action"><button class="btn lg block" data-act="ag-alloc" ${n ? "" : "disabled"}>Alocar ${n} ${n === 1 ? "pessoa" : "pessoas"}</button></div>
+    </div>`;
   }
+
+  function stationScreen() {
+    const station = byId(st.stations, ui.stationId);
+    const s = openSession();
+    const cur = s && station.current && byId(s.queue, station.current);
+    const tri = station.stage === "triagem";
+    // Na lição, só se finaliza o atendimento da protagonista: os outros a unidade atende sozinha.
+    const mine = cur && cur.patientId === scenario().protagonist;
+    return `<div class="card-screen">
+      <div class="facts"><div><small>Estação</small><b>${esc(station.name)}</b></div></div>
+      <div class="big-ticket ${cur ? "" : "empty"}">
+        <small>${tri ? "Em triagem" : "Em atendimento"}</small>
+        <span class="senha">${cur ? cur.senha : "—"}</span>
+        ${cur ? `<b>${esc(cur.name)}</b>` : ""}
+      </div>
+      <button class="btn lg block" data-act="st-finish" ${mine ? "" : "disabled"}>${tri ? "Finalizar triagem" : "Finalizar atendimento"}</button>
+    </div>`;
+  }
+
+  function tvScreen() {
+    const last = E.tvView(st).announcements?.at(-1);
+    return `<div class="tv-simple">
+      <small>CHAMANDO AGORA</small>
+      <span class="senha">${last ? last.senha : "—"}</span>
+      <b>${last ? `${esc(last.service)} → ${esc(last.dest)}` : "aguardando a primeira chamada"}</b>
+    </div>`;
+  }
+
+  function screenHTML(name) {
+    if (name === "phone") return `<div class="phone">${phoneHTML()}</div>`;
+    return {
+      "new-session": newSessionScreen,
+      sessions: sessionsScreen,
+      allocate: allocateScreen,
+      station: stationScreen,
+      tv: tvScreen,
+    }[name]();
+  }
+
+  function summaryHTML() {
+    const q = E.patientView(st, scenario().protagonist).queue;
+    const stat = (cls, label, value) =>
+      `<div class="stat-card ${cls}"><small>${label}</small><b>${value}</b></div>`;
+    return `<div class="stat-cards">
+      ${stat("home", "Esperando em casa", q?.awayMs ? h(q.awayMs) : "—")}
+      ${stat("unit", "Na unidade", q?.presentMs ? h(q.presentMs) : "—")}
+      ${stat("steps", "Passos", String(scenario().story.steps.length))}
+    </div>`;
+  }
+
+  function lessonMainHTML() {
+    const { view } = ui.lesson;
+    const story = scenario().story;
+    if (view === "start")
+      return `<div class="lesson-intro">
+        <span class="lesson-kicker">Fila Saúde</span>
+        <h1>${story.intro.title}</h1>
+        ${sayHTML(story.intro.text)}
+      </div>`;
+    if (view === "end")
+      return `<div class="lesson-intro center">
+        <img src="assets/mascote.svg" alt="" width="160" height="160" />
+        <h1>Maria foi atendida!</h1>
+        <p class="lesson-sub">Ela esperou em casa e só foi à unidade na hora certa.</p>
+        ${summaryHTML()}
+      </div>`;
+    const step = lessonStep();
+    if (view === "intro")
+      return `<div class="lesson-intro">
+        <span class="lesson-kicker">${SCREEN_LABEL[step.screen]}</span>
+        <h1>${step.title}</h1>
+        ${sayHTML(step.text)}
+      </div>`;
+    const clock = view === "do" ? stepClock(step) : null;
+    return `<div class="lesson-stage ${view === "ok" ? "locked" : ""}" data-screen="${step.screen}">
+      ${clock ? waitBarHTML(clock) : ""}
+      ${screenHTML(step.screen)}
+    </div>`;
+  }
+
+  function lessonFooterHTML() {
+    const { view } = ui.lesson;
+    const inner = {
+      start: `<span></span><button class="btn go" data-act="lesson-start">Começar</button>`,
+      intro: `<span></span><button class="btn go" data-act="lesson-show">Mostrar tela</button>`,
+      do: `<button class="btn secondary" data-act="lesson-skip">Pular</button>`,
+      ok: `<div class="lesson-ok"><span class="lesson-ok-icon" aria-hidden="true">✓</span><div><h2>Muito bem!</h2>${ui.simMsg ? `<p>${ui.simMsg}</p>` : ""}</div></div><button class="btn go" data-act="lesson-next">Continuar</button>`,
+      end: `<button class="btn secondary" data-act="restart">Ver de novo</button><a class="btn go" href="simulador.html">Modo livre</a>`,
+    }[view];
+    return `<div class="lesson-footer-inner">${inner}</div>`;
+  }
+
+  function lessonFooterClass() {
+    const el = regions.lessonFooter;
+    if (el) el.classList.toggle("ok", ui.lesson.view === "ok");
+  }
+
+  // ---------- Relógio, pessoas ----------
 
   function clockHTML() {
     return `<div class="now"><small>relógio da demo</small><time>${fClock.format(st.now)}</time></div>
+      <span class="clock-label">avançar:</span>
       <button data-act="adv" data-ms="${MIN}">+1 min</button>
       <button data-act="adv" data-ms="${5 * MIN}">+5 min</button>
       <button data-act="adv" data-ms="${60 * MIN}">+1 h</button>
@@ -942,13 +1202,13 @@
   }
 
   function personasHTML() {
-    return scenario()
+    return `<span class="personas-label">Ver como:</span>${scenario()
       .personas.map((id) => {
         const p = patient(id);
         const unread = st.notifications.filter((n) => n.patientId === id && !ui.read.has(n.id)).length;
         return `<button class="persona-btn" data-act="persona" data-persona="${id}" aria-pressed="${id === ui.persona}"><span class="av">${initials(p.name)}</span>${esc(first(p.name))}${unread ? `<span class="dot">${unread}</span>` : ""}</button>`;
       })
-      .join("");
+      .join("")}`;
   }
 
   function phoneCapHTML() {
@@ -957,10 +1217,10 @@
   }
 
   function switchHTML() {
-    return `<span class="muted">Cenário:</span>${Object.entries(SCENARIOS)
+    return `<span class="switch-label">Cenário</span>${Object.entries(SCENARIOS)
       .map(
         ([k, sc]) =>
-          `<button aria-pressed="${ui.scenario === k}" data-act="scenario" data-id="${k}">${sc.title}</button>`,
+          `<button aria-pressed="${ui.scenario === k}" data-act="scenario" data-id="${k}">${sc.title}<span class="switch-desc">${esc(sc.description || "")}</span></button>`,
       )
       .join("")}`;
   }
@@ -968,7 +1228,9 @@
   // ---------- Render ----------
 
   const regions = {
-    roteiro: document.getElementById("roteiro"),
+    lessonTop: document.getElementById("lesson-top"),
+    lessonMain: document.getElementById("lesson-main"),
+    lessonFooter: document.getElementById("lesson-footer"),
     clock: document.getElementById("clock"),
     personas: document.getElementById("personas"),
     phoneCap: document.getElementById("phone-cap"),
@@ -978,17 +1240,20 @@
     tv: document.getElementById("tv"),
     switcher: document.getElementById("scenario-switch"),
   };
-  const RENDER = {
-    roteiro: roteiroHTML,
-    clock: clockHTML,
-    personas: personasHTML,
-    phoneCap: phoneCapHTML,
-    phone: phoneHTML,
-    admin: adminHTML,
-    station: stationHTML,
-    tv: tvHTML,
-    switcher: switchHTML,
-  };
+
+  const RENDER =
+    PAGE === "story"
+      ? { lessonTop: lessonTopHTML, lessonMain: lessonMainHTML, lessonFooter: lessonFooterHTML }
+      : {
+          clock: clockHTML,
+          personas: personasHTML,
+          phoneCap: phoneCapHTML,
+          phone: phoneHTML,
+          admin: adminHTML,
+          station: stationHTML,
+          tv: tvHTML,
+          switcher: switchHTML,
+        };
 
   function put(el, html, force) {
     if (el._html === html) return;
@@ -1005,37 +1270,21 @@
     scenario().story.steps.forEach((s, i) => {
       if (!ui.done.has(i) && s.done(st, ui)) ui.done.add(i);
     });
+    if (ui.lesson.view === "do" && ui.done.has(ui.lesson.step)) ui.lesson.view = "ok";
   }
 
   function applyHint() {
     for (const el of document.querySelectorAll(".hint")) el.classList.remove("hint");
-    if (PAGE !== "story") return;
-    const i = currentStep();
-    if (i === null) {
-      if (!ui.endShown) {
-        ui.endShown = true;
-        const ph = document.getElementById("phone");
-        if (ph) window.scrollBy(0, ph.getBoundingClientRect().top - 76);
-      }
-      return;
-    }
-    for (const sel of stepTargets(scenario().story.steps[i])) {
+    if (PAGE !== "story" || ui.lesson.view !== "do") return;
+    for (const sel of stepTargets(lessonStep())) {
       const el = document.querySelector(sel);
       if (el) {
         el.classList.add("hint");
-        const key = `${i}:${sel}`;
+        const key = `${ui.lesson.step}:${sel}`;
         if (ui.hintKey !== key) {
           ui.hintKey = key;
-          // No celular, mostra o aparelho inteiro: o contexto importa tanto quanto o botão.
-          const box = el.closest(".phone, .view") || el;
-          const r = box.getBoundingClientRect();
-          const er = el.getBoundingClientRect();
-          if (r.top < 70 || r.bottom > window.innerHeight) {
-            const fits = r.height < window.innerHeight - 80;
-            if (fits) window.scrollBy(0, r.top - 76);
-            else if (er.top < 70 || er.bottom > window.innerHeight) el.scrollIntoView({ block: "center" });
-          }
-          document.querySelector(".steps li.current")?.scrollIntoView({ block: "nearest" });
+          const r = el.getBoundingClientRect();
+          if (r.top < 0 || r.bottom > window.innerHeight) el.scrollIntoView({ block: "center" });
         }
         return;
       }
@@ -1046,14 +1295,85 @@
     checkToast();
     trackSteps();
     for (const [k, el] of Object.entries(regions)) if (el) put(el, RENDER[k](), force);
+    if (PAGE === "story") lessonFooterClass();
+    if (ui.scrollTo) {
+      document.querySelector(ui.scrollTo)?.scrollIntoView({ block: "center" });
+      ui.scrollTo = null;
+    }
     applyHint();
   }
 
   function checkToast() {
     const fresh = st.notifications.filter((n) => !ui.toasted.has(n.id));
     for (const n of fresh) ui.toasted.add(n.id);
-    const mine = fresh.filter((n) => n.patientId === ui.persona);
+    for (const n of fresh) if (ALERT_RE.test(n.text)) ui.alerts[n.patientId] = n;
+    const mine = fresh.filter((n) => n.patientId === ui.persona && !ALERT_RE.test(n.text));
     if (mine.length) ui.toast = { pid: ui.persona, text: mine[mine.length - 1].text, until: Date.now() + 5000 };
+  }
+
+  // Avisos que pedem ação ocupam a tela inteira do celular até a pessoa responder.
+  const ALERT_RE = /^(Você foi alocado|Saia de casa|Venha agora|Sua vez)/;
+
+  function activeAlert(pid) {
+    const n = ui.alerts[pid];
+    if (!n) return null;
+    if (n.text.startsWith("Você foi alocado")) {
+      const e = st.entries.find((x) => x.patientId === pid && x.status === "alocada");
+      if (!e) delete ui.alerts[pid];
+      return e ? { n, e } : null;
+    }
+    const q = st.sessions.flatMap((x) => x.queue).find((x) => x.patientId === pid);
+    const ok =
+      q &&
+      (n.text.startsWith("Sua vez")
+        ? q.status === "chamado"
+        : q.status === "fila" && q.presence === "remoto");
+    if (!ok) {
+      delete ui.alerts[pid];
+      return null;
+    }
+    return { n, q };
+  }
+
+  function alertScreenHTML(pid) {
+    const a = activeAlert(pid);
+    if (!a) return "";
+    const { n, q, e } = a;
+    if (e) {
+      const s = sessionOf(e.sessionId);
+      return `<div class="alert-screen" role="alertdialog" aria-label="Você tem uma vaga!">
+        <span class="alert-icon" aria-hidden="true">🎉</span>
+        <h2>Você tem uma vaga!</h2>
+        <span class="alert-senha">${esc(service(e.serviceId).name)}</span>
+        <p>${E.dayLabel(s.start)}, às ${fTime.format(s.start)}. Confirme em até 24 h para garantir.</p>
+        <button class="btn lg block alert-ok alert-main" data-act="confirm-alloc" data-id="${e.id}">Confirmar presença</button>
+        <button class="btn ghost block alert-later" data-act="alert-ok">Agora não</button>
+      </div>`;
+    }
+    let icon = "🏃";
+    let title = "Hora de sair de casa!";
+    let sub = "Sua vez está chegando.";
+    let btn = "Estou indo";
+    const min = n.text.match(/~(\d+) min/);
+    if (n.text.startsWith("Saia de casa") && min) sub = `Faltam cerca de ${min[1]} min. Vá para a unidade e leia o QR da TV ao chegar.`;
+    if (n.text.startsWith("Venha agora")) {
+      icon = "⚡";
+      title = "Venha agora!";
+      sub = "Seu atendimento foi priorizado. Vá direto para a unidade.";
+    }
+    if (n.text.startsWith("Sua vez")) {
+      icon = "🔔";
+      title = "Sua vez!";
+      sub = `Vá para: ${esc(n.text.split(", ").at(-1).replace(/\.$/, ""))}`;
+      btn = "Ok, estou indo";
+    }
+    return `<div class="alert-screen" role="alertdialog" aria-label="${title}">
+      <span class="alert-icon" aria-hidden="true">${icon}</span>
+      <h2>${title}</h2>
+      <span class="alert-senha">${q.senha}</span>
+      <p>${sub}</p>
+      <button class="btn lg block alert-ok alert-main" data-act="alert-ok">${btn}</button>
+    </div>`;
   }
 
   // ---------- Ações ----------
@@ -1139,7 +1459,7 @@
     ui.qrMsg = r.ok
       ? {
           ok: true,
-          text: `${travelled ? `Trajeto de ${travelled} min até a UBS. ` : ""}Check-in feito. Você está na unidade e já pode ser chamado.`,
+          text: `✓ Check-in feito${travelled ? ` · trajeto de ${travelled} min` : ""}`,
         }
       : {
           ok: false,
@@ -1153,6 +1473,29 @@
   const actions = {
     scenario: (d) => load(d.id),
     restart: () => load(ui.scenario),
+    "lesson-start": () => {
+      ui.lesson.view = "intro";
+    },
+    "lesson-show": () => {
+      enterStep(lessonStep());
+      ui.scrollTo = ".pick.me";
+      ui.lesson.view = "do";
+      ui.hintKey = null;
+      window.scrollTo(0, 0);
+    },
+    "lesson-skip": () => {
+      const at = ui.lesson.step;
+      for (let k = 0; k < 80 && !ui.done.has(at); k++) {
+        runGuidedStep();
+        update(true);
+      }
+    },
+    "lesson-next": () => {
+      const i = currentStep();
+      ui.lesson = { step: i, view: i === null ? "end" : "intro" };
+      ui.simMsg = null;
+      window.scrollTo(0, 0);
+    },
     adv: (d) => {
       E.advance(st, Number(d.ms));
       if (Number(d.ms) === DAY) ui.events.add("adv:day");
@@ -1165,6 +1508,13 @@
       ui.qrMsg = null;
       ui.quiz = null;
       ui.toast = null;
+    },
+    "alert-ok": () => {
+      const n = ui.alerts[ui.persona];
+      if (n) ui.read.add(n.id);
+      delete ui.alerts[ui.persona];
+      ui.screen = n?.text.startsWith("Você foi alocado") ? "home" : "queue";
+      ui.sheet = null;
     },
     go: (d) => {
       ui.screen = d.screen;

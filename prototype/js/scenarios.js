@@ -117,7 +117,7 @@
       ],
       services: [
         { id: "cli", unitId: "u1", name: "Clínico geral", prefix: "C", requiresReferral: false },
-        { id: "odo", unitId: "u1", name: "Odontologia", prefix: "O", requiresReferral: false },
+        { id: "odo", unitId: "u1", name: "Odontologia", prefix: "O", requiresReferral: false, appEntry: false },
         { id: "car", unitId: "u2", name: "Cardiologia", prefix: "K", requiresReferral: true },
         { id: "der", unitId: "u2", name: "Dermatologia", prefix: "D", requiresReferral: true },
         { id: "cli3", unitId: "u3", name: "Clínico geral", prefix: "G", requiresReferral: false },
@@ -158,10 +158,18 @@
   const quizOpts = (ids) => ids.map((id) => `[data-act="quiz-opt"][data-id="${id}"][aria-pressed="false"]`);
   const NEXT = '[data-act="quiz-next"]:not(:disabled)';
   const HOME = '[data-act="go"][data-screen="home"]';
+  const queueItem = (st) => st.sessions.flatMap((x) => x.queue).find((x) => x.patientId === "maria");
+  const notifiedSince = (st, at) =>
+    st.notifications.some((n) => n.patientId === "maria" && n.text.startsWith("Saia de casa") && n.at >= at);
+  const calledAt = (st, stage) => {
+    const q = queueItem(st);
+    return !!q && q.stage === stage && q.status === "chamado";
+  };
 
   const SCENARIOS = {
     lista: {
-      title: "Lista de espera e risco",
+      title: "Entrada na lista e risco",
+      description: "Paciente entra na lista, responde o questionário e a unidade valida encaminhamentos.",
       personas: ["maria", "antonio", "lucia"],
       tabs: ["agendador"],
       tab: "agendador",
@@ -216,6 +224,7 @@
 
     alocacao: {
       title: "Alocação e confirmação",
+      description: "Agendador preenche vagas com sugestão explicada e acompanha confirmações.",
       personas: ["helena", "carlos", "edu", "dora", "ivo"],
       tabs: ["agendador", "ligacao"],
       tab: "agendador",
@@ -252,7 +261,8 @@
     },
 
     fila: {
-      title: "Fila do dia",
+      title: "Fila do dia na unidade",
+      description: "Sessão aberta, QR, chamada na TV/estação e regras de presença e pulos.",
       personas: ["joao", "ana", "dora", "paulo", "bruno", "sergio"],
       tabs: ["admin", "recepcao", "triagem"],
       tab: "admin",
@@ -283,7 +293,8 @@
     },
 
     triagem: {
-      title: "Triagem",
+      title: "Triagem em duas etapas",
+      description: "Triagem confirma o risco antes do consultório, com a mesma senha.",
       personas: ["joao", "ana"],
       tabs: ["admin"],
       tab: "admin",
@@ -312,7 +323,8 @@
     },
 
     principal: {
-      title: "Fluxo principal",
+      title: "Fluxo guiado",
+      description: "História completa da Maria, do cadastro da sessão à consulta, com roteiro.",
       personas: ["maria"],
       tabs: ["admin", "agendador"],
       tab: "admin",
@@ -326,7 +338,7 @@
         cli.requiresTriage = true;
         cli.avgTriageMin = 5;
         E.createStation(st, { name: "Triagem 1", stage: "triagem", services: ["cli"] });
-        // 12 pessoas já esperam na lista de Clínico geral, todas de rotina e sem prioridade legal.
+        // 12 pessoas já esperam na lista de Clínico geral.
         const others = [
           "ana",
           "joao",
@@ -341,21 +353,27 @@
           "ivo",
           "fatima",
         ];
+        // Dois casos fogem da rotina, para a ordem da sugestão ter motivo visível.
+        const special = {
+          fatima: ans({ motivo: "novo", gravidade: "moderado" }),
+          helena: ans({ motivo: "exame", grupos: ["gestante"] }),
+        };
         others.forEach((pid, i) => {
-          seed(st, pid, "cli", 60 - i * 4, ans({ motivo: "exame" }));
+          seed(st, pid, "cli", 60 - i * 4, special[pid] || ans({ motivo: "exame" }));
         });
         st.tv.paired = true;
         return st;
       },
       story: {
-        headline: "da inscrição à consulta, sem enfrentar fila",
-        intro:
-          "Maria precisa de um clínico geral na UBS Vila Nova. Siga a história inteira: a unidade cadastra o atendimento, Maria se inscreve pelo app, espera em casa e só vai à unidade quando é a vez dela.",
+        intro: {
+          title: "Conheça a Maria",
+          text: "Maria precisa de um clínico geral na UBS Vila Nova. Veja como ela é atendida esperando em casa, e não numa fila.",
+        },
         steps: [
           {
-            html: "<b>Cadastre o atendimento.</b> Em <b>Nova sessão</b>: Clínico geral, amanhã, visibilidade <b>privada</b>. Clique <b>Criar sessão</b>.",
-            why: "Pública: o paciente se inscreve sozinho até lotar. Privada: o agendador escolhe quem entra, pela lista de espera e pelo risco. Aqui usamos privada.",
-            where: "painel › admin da unidade › nova sessão",
+            title: "Crie o atendimento",
+            text: "A unidade abre vagas para um dia de Clínico geral. Na sessão privada, quem entra é escolhido pela equipe.",
+            screen: "new-session",
             tab: "admin",
             targets: (_st, ui) =>
               ui.newSession.visibility === "privada"
@@ -364,9 +382,9 @@
             done: (st) => st.sessions.some((x) => x.serviceId === "cli" && x.visibility === "privada"),
           },
           {
-            html: "<b>Maria se inscreve.</b> No celular, toque na <b>UBS Vila Nova</b>, em <b>Entrar na lista</b> do Clínico geral e responda: <b>nenhum destes</b> · <b>exame, check-up ou rotina</b> · <b>nenhuma</b> · <b>nenhuma</b>.",
-            why: "Ela já vê a sessão nova na agenda da unidade. Cinco toques, sem texto livre. Sinal de alarme nunca entra em fila: o app manda ligar 192.",
-            where: "celular da Maria",
+            title: "Maria entra na lista",
+            text: "Pelo app, ela escolhe a UBS e responde quatro perguntas sobre o que sente.",
+            screen: "phone",
             persona: "maria",
             targets: [
               ...quizOpts(["nenhum", "exame", "nenhuma"]),
@@ -378,96 +396,63 @@
             done: (st) => !!entryOf(st, "maria", "cli"),
           },
           {
-            html: "<b>O agendador aprova.</b> Na aba <b>Agendador</b>, Maria aparece na sugestão. Deixe-a marcada e clique <b>Alocar</b>.",
-            why: "Nada é alocado sozinho: quem o agendador não marcar continua na lista, com a data original. Os outros 12 pacientes confirmam pelo app.",
-            where: "painel › agendador",
+            title: "A equipe escolhe quem vai",
+            text: "O sistema sugere quem entra, por risco e tempo de espera. Quem decide é a equipe.",
+            screen: "allocate",
             tab: "agendador",
             targets: ['[data-act="ag-alloc"]:not(:disabled)'],
             done: (st) => ["alocada", "confirmada", "na_fila"].includes(entryOf(st, "maria", "cli")?.status),
           },
           {
-            html: "<b>Maria confirma.</b> No celular, abra a solicitação e toque em <b>Confirmar</b>.",
-            why: "Ela tem 24 h para confirmar. Quem não vê o push aparece na lista de ligação do agendador.",
-            where: "celular › minhas solicitações",
+            title: "Maria confirma",
+            text: "Ela recebe o aviso e confirma que vai.",
+            screen: "phone",
             persona: "maria",
             targets: ['[data-act="confirm-alloc"]', '[data-act="entry"]', HOME],
             done: (st) => ["confirmada", "na_fila"].includes(entryOf(st, "maria", "cli")?.status),
           },
           {
-            html: "<b>Chegou o dia.</b> Avance <b>+1 dia</b> no relógio da demo.",
-            why: "No protótipo o relógio é seu: o resto da demonstração acontece no dia da consulta.",
-            where: "topo › relógio da demo",
-            targets: [`[data-act="adv"][data-ms="${DAY}"]`],
-            done: (_st, ui) => ui.events.has("adv:day"),
-          },
-          {
-            html: "<b>A unidade abre a sessão.</b> No Admin, clique <b>Abrir sessão</b>.",
-            why: "Os 13 confirmados entram na fila remota, primeiro a da triagem. Maria vê a posição e o tempo sem sair de casa.",
-            where: "painel › admin da unidade › sessões",
+            title: "Chegou o dia",
+            text: "Avance até o dia da consulta e abra a sessão. Todos entram na fila sem sair de casa.",
+            screen: "sessions",
             tab: "admin",
-            targets: ['[data-act="open-session"]'],
+            clock: (_st, ui) => (ui.events.has("adv:day") ? null : "day"),
+            targets: (_st, ui) =>
+              ui.events.has("adv:day") ? ['[data-act="open-session"]'] : [`[data-act="adv"][data-ms="${DAY}"]`],
             done: (st) => !!openSession(st),
           },
           {
-            html: "<b>Maria espera em casa.</b> Clique <b>Esperar até o próximo aviso</b>.",
-            why: "O relógio anda e a unidade trabalha: os outros chegam, passam pela triagem e pelo consultório. Quando a triagem da Maria se aproxima, chega o “saia de casa”.",
-            where: "topo › esperar até o próximo aviso",
-            targets: ['[data-act="sim"]'],
-            done: (st) => st.notifications.some((n) => n.patientId === "maria" && n.text.includes("Saia de casa")),
-          },
-          {
-            html: "<b>Maria chega e lê o QR.</b> No celular, toque em <b>Cheguei: ler QR da TV</b>.",
-            why: "O aviso chega uns 30 min antes, tempo de ir até a unidade (aqui, 20 min de trajeto). Só é chamado quem está lá: o QR da TV troca a cada 30 s e foto antiga não vale.",
-            where: "celular › fila de hoje",
+            title: "Maria espera em casa",
+            text: "A fila anda sem ela. Quando a vez estiver perto, o app manda sair. Na unidade, ela lê o QR da TV.",
+            screen: "phone",
             persona: "maria",
-            targets: ['[data-act="scan"]', '[data-act="sheet"][data-id="qr"]', '[data-act="go"][data-screen="queue"]'],
+            clock: (st) => (notifiedSince(st, 0) ? null : "sim"),
+            targets: (st) =>
+              notifiedSince(st, 0)
+                ? ['[data-act="scan"]', '[data-act="sheet"][data-id="qr"]', '[data-act="go"][data-screen="queue"]']
+                : ['[data-act="sim"]'],
             done: (st) => !!itemOf(st, "maria")?.presentSince || itemOf(st, "maria")?.stage === "atendimento",
           },
           {
-            html: "<b>A triagem chama.</b> Clique <b>Esperar até o próximo aviso</b> até a Triagem 1 chamar a Maria.",
-            why: "A TV mostra a senha dela com destino na triagem. Quem chegou antes dela na sala é chamado antes.",
-            where: "topo › esperar até o próximo aviso",
-            targets: ['[data-act="sim"]'],
-            done: (st) => {
-              const q = itemOf(st, "maria");
-              return !!q && (q.stage === "atendimento" || q.status === "chamado");
-            },
-          },
-          {
-            html: "<b>A enfermeira atende.</b> Na estação <b>Triagem 1</b>, clique <b>Finalizar triagem</b>.",
-            why: "Na triagem, a enfermeira pode confirmar ou mudar o risco (palavra final). Depois, Maria vai para a fila do consultório com a mesma senha.",
-            where: "estação › Triagem 1",
-            targets: (st, ui) =>
-              st.stations.find((x) => x.id === ui.stationId)?.stage === "triagem"
-                ? ['[data-act="st-finish"]:not(:disabled)']
-                : ['[data-change="station"]'],
+            title: "Triagem",
+            text: "A enfermeira chama a Maria, confirma o risco e libera para o consultório. A senha é a mesma.",
+            screen: "station",
+            station: "triagem",
+            clock: (st) => (calledAt(st, "triagem") ? null : "sim"),
+            targets: (st) => (calledAt(st, "triagem") ? ['[data-act="st-finish"]:not(:disabled)'] : ['[data-act="sim"]']),
             done: (st) => itemOf(st, "maria")?.stage === "atendimento",
           },
           {
-            html: "<b>A fila do consultório está grande.</b> Veja no celular quanto falta e toque em <b>Vou sair</b>.",
-            why: "Depois da triagem ninguém precisa ficar na sala. Maria mantém o lugar e será avisada de novo quando a consulta se aproximar.",
-            where: "celular › fila de hoje",
+            title: "Maria sai e volta",
+            text: "O consultório ainda vai demorar. Ela sai sem perder o lugar e volta quando o app avisar.",
+            screen: "phone",
             persona: "maria",
-            targets: ['[data-act="leave"]', '[data-act="go"][data-screen="queue"]'],
-            done: (_st, ui) => ui.events.has("leave:atendimento"),
-          },
-          {
-            html: "<b>Maria passeia, almoça, resolve a vida.</b> Clique <b>Esperar até o próximo aviso</b>.",
-            why: "Enquanto isso o consultório atende quem está na frente. Quando faltar uns 30 minutos, chega o novo “saia de casa”.",
-            where: "topo › esperar até o próximo aviso",
-            targets: ['[data-act="sim"]'],
-            done: (st, ui) =>
-              ui.events.has("leave:atendimento") &&
-              st.notifications.some(
-                (n) => n.patientId === "maria" && n.text.includes("Saia de casa") && n.at >= ui.leaveAt,
-              ),
-          },
-          {
-            html: "<b>Maria volta</b> e lê o QR de novo.",
-            why: "Ela não perdeu a vez: ninguém com número maior que o dela foi chamado enquanto estava fora.",
-            where: "celular › fila de hoje",
-            persona: "maria",
-            targets: ['[data-act="scan"]', '[data-act="sheet"][data-id="qr"]', '[data-act="go"][data-screen="queue"]'],
+            clock: (st, ui) => (ui.events.has("leave:atendimento") && !notifiedSince(st, ui.leaveAt) ? "sim" : null),
+            targets: (st, ui) => {
+              if (!ui.events.has("leave:atendimento")) return ['[data-act="leave"]', '[data-act="go"][data-screen="queue"]'];
+              if (!notifiedSince(st, ui.leaveAt)) return ['[data-act="sim"]'];
+              return ['[data-act="scan"]', '[data-act="sheet"][data-id="qr"]', '[data-act="go"][data-screen="queue"]'];
+            },
             done: (st, ui) => {
               const q = itemOf(st, "maria");
               return (
@@ -479,25 +464,24 @@
             },
           },
           {
-            html: "<b>A vez dela.</b> Clique <b>Esperar até o próximo aviso</b> até o Consultório 3 chamar a Maria.",
-            why: "A TV chama a mesma senha, agora para o consultório. Maria recebe “sua vez” no celular.",
-            where: "topo › esperar até o próximo aviso",
+            title: "A vez dela",
+            text: "A TV chama a senha da Maria, nunca o nome.",
+            screen: "tv",
+            clock: "sim",
+            station: "atendimento",
             targets: ['[data-act="sim"]'],
             done: (st) => {
-              const q = st.sessions.flatMap((x) => x.queue).find((x) => x.patientId === "maria");
+              const q = queueItem(st);
               return !!q && q.stage === "atendimento" && ["chamado", "atendido"].includes(q.status);
             },
           },
           {
-            html: "<b>Consulta feita.</b> Na estação <b>Consultório 3</b>, clique <b>Finalizar</b>. Veja o resumo no celular da Maria.",
-            why: "Maria foi atendida e passou pouco tempo na unidade: o resto da espera foi em casa.",
-            where: "estação › Consultório 3",
-            targets: (st, ui) =>
-              st.stations.find((x) => x.id === ui.stationId)?.stage === "atendimento"
-                ? ['[data-act="st-finish"]:not(:disabled)']
-                : ['[data-change="station"]'],
-            done: (st) =>
-              st.sessions.flatMap((x) => x.queue).some((x) => x.patientId === "maria" && x.status === "atendido"),
+            title: "Consulta",
+            text: "O médico atende e finaliza na estação.",
+            screen: "station",
+            station: "atendimento",
+            targets: ['[data-act="st-finish"]:not(:disabled)'],
+            done: (st) => queueItem(st)?.status === "atendido",
           },
         ],
       },

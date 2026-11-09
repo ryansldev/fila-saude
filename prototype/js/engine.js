@@ -745,6 +745,9 @@
         return {
           sessionId: s.id,
           serviceId: s.serviceId,
+          start: s.start,
+          visibility: s.visibility,
+          slots: s.slots,
           left,
           text: `${dayLabel(s.start)} · ${service(st, s.serviceId).name} · ${s.visibility} · ${left} vagas`,
         };

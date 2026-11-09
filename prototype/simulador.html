@@ -13,12 +13,16 @@
     <header class="site-header">
       <div class="inner">
         <a class="brand" href="index.html"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path fill="currentColor" d="M5.127 23.609C6.564 36.242 20.52 48.093 29.33 54.212a4.673 4.673 0 0 0 5.34 0c8.81-6.119 22.767-17.97 24.203-30.603C60.863 6.099 38.967 3.972 32 13.977 25.033 3.972 3.137 6.1 5.127 23.61Z"/><path fill="#fff" d="M28.704 21.09a2.583 2.583 0 0 1 2.583-2.584h2.583a2.583 2.583 0 0 1 2.583 2.583v20.665a2.583 2.583 0 0 1-2.583 2.583h-2.583a2.583 2.583 0 0 1-2.583-2.583V21.09Z"/><path fill="#fff" d="M19.663 30.13a2.583 2.583 0 0 1 2.583-2.583H42.91a2.583 2.583 0 0 1 2.583 2.583v2.583a2.583 2.583 0 0 1-2.583 2.583H22.246a2.583 2.583 0 0 1-2.583-2.583V30.13Z"/></svg>Fila Saúde <span class="tag">protótipo</span></a>
-        <nav class="nav" aria-label="Páginas do protótipo"><a href="index.html">Apresentação</a><a href="fluxo.html">Fluxo principal</a><a href="simulador.html" aria-current="page">Modo livre</a></nav>
+        <nav class="nav" aria-label="Páginas do protótipo"><a href="index.html">Apresentação</a><a href="fluxo.html">Fluxo guiado</a><a href="simulador.html" aria-current="page">Modo livre</a></nav>
         <div class="clock" id="clock"></div>
       </div>
     </header>
     <main class="story-layout single">
       <div>
+        <div class="surface demo-note libre-note">
+          <b>Modo livre.</b> Explore as telas com cenários prontos. Escolha um cenário, troque a pessoa no celular e use o relógio da demo para avançar o tempo. Todas as telas compartilham o mesmo estado.
+          <span class="muted">Prefere ser guiado? <a href="fluxo.html">Abra o fluxo guiado</a>.</span>
+        </div>
         <div class="scenario-switch" id="scenario-switch"></div>
         <section class="views livre" aria-label="Telas">
           <div class="view">
@@ -27,7 +31,7 @@
             <div class="phone" id="phone"></div>
           </div>
           <div class="view"><div class="view-cap"><div class="who"><small>equipe da unidade</small><span>painel administrativo</span></div></div><div class="admin" id="admin"></div></div>
-          <div class="side"><div class="view"><div class="view-cap"><div class="who"><small>consultório</small><span>estação de chamada do profissional</span></div></div><div class="station" id="station"></div></div><div class="view"><div class="view-cap"><div class="who"><small>sala de espera</small><span>TV da unidade</span></div></div><div class="tv" id="tv"></div></div></div>
+          <div class="side"><div class="view"><div class="view-cap"><div class="who"><small>consultório / triagem</small><span>estação de chamada</span></div></div><div class="station" id="station"></div></div><div class="view"><div class="view-cap"><div class="who"><small>sala de espera</small><span>TV da unidade</span></div></div><div class="tv" id="tv"></div></div></div>
         </section>
       </div>
     </main>
