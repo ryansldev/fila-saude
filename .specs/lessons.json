@@ -12,14 +12,10 @@
       "signal": "ac_gap",
       "scope": "queue-rules",
       "status": "candidate",
-      "features": [
-        "prototipo"
-      ],
+      "features": ["prototipo"],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": [
-        "verification.md Revision 2 finding 1 (C34) (queue-rules)"
-      ],
+      "evidence": ["verification.md Revision 2 finding 1 (C34) (queue-rules)"],
       "created": "2026-11-04T18:49:34Z",
       "last_seen": "2026-11-04T18:49:34Z"
     },
@@ -30,14 +26,10 @@
       "signal": "ac_gap",
       "scope": "queue-rules",
       "status": "candidate",
-      "features": [
-        "prototipo"
-      ],
+      "features": ["prototipo"],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": [
-        "verification.md Revisions 3 and 4 finding 1 (C44) (queue-rules)"
-      ],
+      "evidence": ["verification.md Revisions 3 and 4 finding 1 (C44) (queue-rules)"],
       "created": "2026-11-04T18:49:34Z",
       "last_seen": "2026-11-04T18:49:34Z"
     },
@@ -48,14 +40,10 @@
       "signal": "weak_test",
       "scope": "tests",
       "status": "candidate",
-      "features": [
-        "prototipo"
-      ],
+      "features": ["prototipo"],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": [
-        "verification.md finding C7 (round 1) (tests)"
-      ],
+      "evidence": ["verification.md finding C7 (round 1) (tests)"],
       "created": "2026-11-04T18:49:34Z",
       "last_seen": "2026-11-04T18:49:34Z"
     },
@@ -66,14 +54,10 @@
       "signal": "weak_test",
       "scope": "tests",
       "status": "candidate",
-      "features": [
-        "prototipo"
-      ],
+      "features": ["prototipo"],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": [
-        "verification.md finding C3 (round 1) (tests)"
-      ],
+      "evidence": ["verification.md finding C3 (round 1) (tests)"],
       "created": "2026-11-04T18:49:34Z",
       "last_seen": "2026-11-04T18:49:34Z"
     },
@@ -84,14 +68,10 @@
       "signal": "weak_test",
       "scope": "tests",
       "status": "candidate",
-      "features": [
-        "prototipo"
-      ],
+      "features": ["prototipo"],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": [
-        "verification.md Revisions 3 and 4 finding 5 (C42) (tests)"
-      ],
+      "evidence": ["verification.md Revisions 3 and 4 finding 5 (C42) (tests)"],
       "created": "2026-11-04T18:49:34Z",
       "last_seen": "2026-11-04T18:49:34Z"
     },
@@ -102,14 +82,10 @@
       "signal": "ac_gap",
       "scope": "ui-guide",
       "status": "candidate",
-      "features": [
-        "prototipo"
-      ],
+      "features": ["prototipo"],
       "recurrence": 1,
       "harmful": 0,
-      "evidence": [
-        "verification.md Revisions 3 and 4 finding 7 (C39) (ui-guide)"
-      ],
+      "evidence": ["verification.md Revisions 3 and 4 finding 7 (C39) (ui-guide)"],
       "created": "2026-11-04T18:49:34Z",
       "last_seen": "2026-11-04T18:49:34Z"
     }
