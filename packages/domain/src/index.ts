@@ -1,3 +1,11 @@
+export {
+  chamarProximo,
+  fecharEstacao,
+  finalizar,
+  naoCompareceu,
+  rechamar,
+  toleranciaEsgotada,
+} from "./chamada.ts";
 export type { EstadoEntrada, EstadoItem, EstadoSessao, Transicao } from "./contratos.ts";
 export {
   TRANSICOES_ENTRADA,

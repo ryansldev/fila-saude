@@ -104,9 +104,11 @@ const emContingencia = (dia: DiaSessao, em: number): boolean =>
   dia.contingencias.some((c) => em >= c.inicio && em <= c.fim);
 
 /**
- * Atraso (AD-010, AD-033): já foi chamado nesta etapa alguém que vem depois de X em ordem;
- * depois de "Vou sair", só contam as chamadas feitas enquanto X estava fora. Quem fica elegível
- * agora estava remoto em todas as chamadas que contam, então as feitas em contingência saem.
+ * Atraso (AD-010, AD-033): já foi chamado nesta etapa alguém que vem depois de X em ordem.
+ * Só contam as chamadas feitas enquanto X estava remoto: depois de "Vou sair" ou do 2º pulo,
+ * as anteriores a `saiuEm` saem; sem `saiuEm`, X nunca esteve presente nesta etapa, e todas as
+ * chamadas dela foram feitas com ele fora. Das chamadas que contam, as feitas em contingência saem.
+ * Quem fica elegível estando na unidade (1º pulo, triagem → atendimento) não passa por aqui.
  */
 function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
   return dia.chamadas.some((c) => {
@@ -119,13 +121,20 @@ function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
 }
 
 /**
- * X fica elegível (check-in, presença pela recepção; a Task 6 usa no 1º pulo): aplica o atraso
- * e depois trava X atrás dos K primeiros da ordem de chamada real. Urgência confirmada escapa dos dois.
+ * X fica elegível: trava X atrás dos K primeiros da ordem de chamada real (janela protegida) e,
+ * com `aplicarAtraso`, aplica antes a regra de atraso. O atraso só vale para quem chega de fora
+ * (check-in, presença pela recepção); no 1º pulo e na passagem da triagem ao atendimento a pessoa
+ * estava na unidade, então não se aplica (RN-CHAM-03, RN-TRI-04). Urgência confirmada escapa dos dois.
  */
-export function ficarElegivel(dia: DiaSessao, itemId: string, agora: number): { estado: DiaSessao; eventos: Evento[] } {
+export function ficarElegivel(
+  dia: DiaSessao,
+  itemId: string,
+  agora: number,
+  opcoes: { aplicarAtraso: boolean },
+): { estado: DiaSessao; eventos: Evento[] } {
   const x = dia.itens.find((i) => i.id === itemId);
   if (!x) return { estado: dia, eventos: [] };
-  const perdeuAVez = !x.urgenciaConfirmada && aVezPassou(dia, x);
+  const perdeuAVez = opcoes.aplicarAtraso && !x.urgenciaConfirmada && aVezPassou(dia, x);
   const travadoAtras = x.urgenciaConfirmada
     ? []
     : ordemDeChamada(
@@ -183,7 +192,7 @@ function marcarPresenca(dia: DiaSessao, itemId: string, agora: number): Resultad
   if (!achado.ok) return falha(achado.erro);
   // Contrato: "QR válido" com pendência fica no mesmo estado; o check-in é recusado.
   if (pendenciasEfetivas(dia, achado.item, agora).length > 0) return falha("pendencia");
-  const { estado, eventos } = ficarElegivel(dia, itemId, agora);
+  const { estado, eventos } = ficarElegivel(dia, itemId, agora, { aplicarAtraso: true });
   return ok(estado, eventos);
 }
 
@@ -240,6 +249,7 @@ export function conferirEMarcar(
     { ...dia, itens: dia.itens.map((i) => (i.id === item.id ? conferido : i)) },
     item.id,
     agora,
+    { aplicarAtraso: true },
   );
   return ok(marcado.estado, [...eventos, ...marcado.eventos]);
 }

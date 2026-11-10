@@ -5,6 +5,7 @@ import {
   conferirEMarcar,
   type DiaSessao,
   elegiveis,
+  ficarElegivel,
   marcarPresencaSemApp,
   vouSair,
 } from "../src/fila.ts";
@@ -28,6 +29,21 @@ const item = (dia: DiaSessao, id: string) => {
 };
 const entrar = (dia: DiaSessao, id: string, agora = T) => aplicar(checkIn(dia, { itemId: id }, agora));
 const sair = (dia: DiaSessao, id: string, agora = T) => aplicar(vouSair(dia, { itemId: id }, agora));
+
+/**
+ * A ordem respeita toda trava viva: ninguém vem antes de quem ainda o trava. Se o recurso
+ * "sem candidato livre" de ordemDeChamada disparasse (ciclo de travas), isto falharia.
+ */
+function respeitaTravas(dia: DiaSessao): void {
+  const o = ordem(dia);
+  for (const [pos, id] of o.entries()) {
+    const x = item(dia, id);
+    if (x.urgenciaConfirmada) continue;
+    for (const t of x.travadoAtras) {
+      if (o.includes(t)) expect(o.indexOf(t), `${id} passou à frente de ${t}`).toBeLessThan(pos);
+    }
+  }
+}
 
 describe("janela protegida e atraso (portados do protótipo)", () => {
   it("order: RN-ORD-01 protected window", () => {
@@ -116,6 +132,20 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     d = sair(d, "ana", T + 6 * MIN);
     d = entrar(d, "ana", T + 26 * MIN);
     expect(item(d, "ana").numero).toBe(2); // manteve o lugar, como o app prometeu
+  });
+});
+
+describe("ficarElegivel: atraso opcional", () => {
+  it("RN-CHAM-03/RN-TRI-04: sem aplicarAtraso, mantém o número mesmo com a vez passada", () => {
+    let d = diaCom(["ana", "joao"]);
+    d = entrar(d, "joao");
+    d = chamar(d, "joao", T + MIN); // João vem depois de Ana em ordem
+    const sem = ficarElegivel(d, "ana", T + 2 * MIN, { aplicarAtraso: false });
+    expect(item(sem.estado, "ana")).toMatchObject({ estado: "presente", numero: 1, saiuEm: null });
+    expect(sem.estado.proximoNumero).toBe(3);
+    expect(sem.eventos[0]?.dados).toMatchObject({ numero: 1, perdeuAVez: false });
+    const com = ficarElegivel(d, "ana", T + 2 * MIN, { aplicarAtraso: true });
+    expect(item(com.estado, "ana").numero).toBe(3);
   });
 });
 
@@ -285,6 +315,7 @@ describe("Review Focus 3: sair e voltar repetidas vezes", () => {
       const e = ordem(d);
       expect(e.length).toBe(presentes().length);
       if (presentes().length > 0) expect(e.length).toBeGreaterThan(0);
+      respeitaTravas(d);
     };
     const quem = ["ana", "joao", "ana", "bruno", "joao"];
     for (const [ciclo, x] of quem.entries()) {
