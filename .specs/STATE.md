@@ -27,4 +27,4 @@
 - Adiado (após validar o protótipo): extensão SISREG, onde o risco vem do SISREG e o Fila Saúde não classifica. Entrada por registro do regulador, comprovante ou planilha; API depois. Decidir: entrada sem classificação, papel da triagem presencial, destino do questionário.
 - Validar depois: questionário v1 com enfermeiro/médico; LGPD, termo e contratação com o jurídico da primeira prefeitura.
 - Discoveries e spikes D1–D4 no `tasks.md` (SSE no app, notificação ao vivo, TV smart, operação da UBS e integrações).
-- `mvp-filas` aprovado; `plan.md` em rascunho para revisão (PD-01..PD-12; hospedagem em aberto). Próximo: `tasks.md`. `prototipo` revisões 1–4 construídas e verificadas (todos os findings fechados).
+- `mvp-filas` aprovado; `plan.md` (PD-01..PD-12, hospedagem do MVP decidida) e `tasks.md` (38 tasks em 8 fases, TDD, D1–D4) escritos em 2026-11-10, branch `docs/spec-mvp-ads` (sem push nem PR). **Próximo:** plano detalhado da fase 1, começando pela decisão do formato das funções do `packages/domain` (como a API chama as regras); alternativa: roteiro de visita do D4. `prototipo` revisões 1–4 construídas e verificadas (todos os findings fechados).
