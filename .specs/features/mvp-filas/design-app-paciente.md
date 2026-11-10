@@ -1,6 +1,6 @@
 # Design: app do paciente (1ª rodada)
 
-2026-11-10 · status: **aprovado em conversa; aguarda revisão deste documento**. Primeira superfície do design antes do código (decisão do usuário: design → backend). Próximas, em ciclos próprios: painel da recepção, estação, TV.
+2026-11-10 · status: **aprovado; 1ª versão do protótipo publicada**. Primeira superfície do design antes do código (decisão do usuário: design → backend). Próximas, em ciclos próprios: painel da recepção, estação, TV.
 
 ## Objetivo
 
@@ -69,5 +69,7 @@ O protótipo liga as telas na ordem do fluxo do D9 e tem um menu oculto do moder
 
 ## Links
 
-- Design system: _a preencher quando criado_
-- Protótipo clicável: _a preencher quando criado_
+- Design system: https://claude.ai/artifact/EsNjLWD3jRKx68Zti2HDP1 (cores, tipografia, espaçamento, raios, logo, mascote; componentes Botao, CartaoPosicao, FaixaAviso)
+- Protótipo clicável: https://claude.ai/artifact/VyccUij1Pr5GCaTcrwgGdP (uma tela de celular interativa com as 18 telas e suas variações; menu do moderador no ponto do canto superior esquerdo)
+
+Os dois são privados: para o sócio ou para o teste, compartilhar pelo menu Share de cada um.
