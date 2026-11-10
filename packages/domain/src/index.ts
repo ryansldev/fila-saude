@@ -5,6 +5,8 @@ export {
   TRANSICOES_SESSAO,
   transicionar,
 } from "./contratos.ts";
+export type { ChaveOrdem, ChaveSugestao } from "./ordem.ts";
+export { compararOrdem, compararSugestao } from "./ordem.ts";
 export type { Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
   expirada,
