@@ -29,6 +29,8 @@ Desvios confirmados (y) e propostas da fonte a validar antes do piloto (n).
 | Encaminhamento em sessão pública | Segura a vaga até aceito; liberada na abertura (AD-015) | Fonte não definia | y |
 | Pré-cadastro por sessão | Opção "dispensa pré-cadastro" (e vínculo), só em sessão pública (AD-016) | Plantão atende quem aparecer | y |
 | Prova de identidade | Nível de confiança; verificada pela recepção no 1º check-in; gov.br depois do piloto (AD-017) | Sem depender da prefeitura para lançar | y |
+| Inscrever outra pessoa | Responsável informa a pessoa atendida na inscrição, sem cadastro de dependentes (AD-018) | Pais marcam para filhos; familiares para idosos | y |
+| Recuperação de acesso | E-mail obrigatório + recepção como alternativa (AD-019) | Parte do público não lembra o e-mail | y |
 | Data da sessão | Recorrência RFC 5545 (AD-014) | Padrão de mercado (Google Calendar) | y |
 | Nome na TV | Nenhum; só senha. Presencial recebe papel com a senha (AD-012) | Primeiro nome repete; mais que isso fere a privacidade | y |
 | Questionário v1 (7.3) | Como na fonte | Validar com enfermeiro/médico | n |

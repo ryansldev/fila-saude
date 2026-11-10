@@ -159,6 +159,8 @@ Varredura a cada minuto, por tenant, com lock consultivo (`pg_try_advisory_lock`
 
 ## 11. Testes
 
+**Todo código é escrito em TDD** (vermelho → verde → refatorar), em toda camada. A regra completa está no [tasks.md](tasks.md#tasks-mvp-filas-ubspoliclínicas).
+
 | Camada | Ferramenta | O que cobre |
 | --- | --- | --- |
 | Domínio | Vitest | Os 46 casos do protótipo, mais as regras novas; cada INV-* vira teste |
@@ -168,7 +170,9 @@ Varredura a cada minuto, por tenant, com lock consultivo (`pg_try_advisory_lock`
 
 Lições candidatas a aplicar ([LESSONS.md](../../LESSONS.md)): L-001 (limpar referências ao sair de um estado), L-002 (precedência pela ordem real), L-003, L-004 (os dois lados de cada limite numérico) e L-005.
 
-## 12. Ordem de construção (insumo para o tasks.md)
+## 12. Ordem de construção
+
+Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (OpenTofu, VM, RDS, deploy) saiu da fundação e virou a fase 4, depois da fatia vertical rodando local. Ordem original abaixo, para referência.
 
 1. **Fundação:** infra (OpenTofu, VM, RDS, S3, DNS, Caddy) e deploy (GitHub Actions), banco central e do tenant, resolução do tenant, `tenant:create`, migrations multi-tenant, `packages/domain` com os testes portados, auth do paciente e do painel, auditoria.
 2. **Configuração:** município, unidades, serviços, estações, sessões e séries, pareamento da TV (US-13).

@@ -58,7 +58,8 @@ O MVP cobre UBS e policlínicas. UPA existe como tipo de unidade no modelo, mas 
 | Sessão pública | O paciente se inscreve sozinho até acabarem as vagas. |
 | Lista de espera | Pacientes aguardando uma sessão de um serviço. Nenhum paciente a vê. |
 | Lista de reserva | Inscritos que sobraram quando uma sessão pública lotou. Recebem as vagas liberadas, em ordem. |
-| Entrada | Inscrição de um paciente na lista de espera de um serviço. No máximo uma ativa por serviço. |
+| Entrada | Inscrição de um paciente na lista de espera de um serviço. No máximo uma ativa por serviço e por pessoa atendida. |
+| Pessoa atendida | Quem será atendido numa entrada: o dono da conta ou outra pessoa informada por ele (nome, nascimento, CPF se houver), sem conta própria. O dono da conta é o **responsável** pela entrada (AD-018). |
 | Data de entrada original | Momento em que a entrada foi criada. Serve de desempate e é preservada em recusas e remanejamentos. |
 | Alocação | Atribuição de uma entrada a uma sessão (um dia, sem horário), feita pelo agendador. |
 | Pré-cadastro | Cadastro do paciente numa unidade, com documentos, validado presencialmente pela recepção. Feito uma vez por unidade. |
@@ -114,7 +115,7 @@ A hierarquia é **Município → Unidade → Serviço → Sessão**. O paciente 
 | Paciente | Central | CPF, hash da senha, nome, e-mail, telefone, data de nascimento, consentimentos |
 | Cadastro na unidade | Paciente × Unidade | dados do formulário, Cartão SUS, foto do documento com foto, foto do Cartão SUS, ID de atendimento, estado de validação, validado por, validado em |
 | Encaminhamento | Paciente × Serviço | foto, data de emissão, validade, estado (pendente, aceito, rejeitado, vencido), motivo |
-| Entrada na lista de espera | Paciente × Serviço | data de entrada original, classificação de risco (sugerida e confirmada), prioridade legal, remanejado, recusas, estado |
+| Entrada na lista de espera | Paciente (responsável) × Serviço | pessoa atendida (o próprio paciente ou outra: nome, nascimento, CPF opcional), data de entrada original, classificação de risco (sugerida e confirmada), prioridade legal, remanejado, recusas, estado |
 | Questionário de risco | Entrada | respostas estruturadas, nível sugerido, data; histórico de versões |
 | Alocação | Entrada × Sessão | alocado por, motivos da sugestão, prazo de confirmação, estado da confirmação |
 | Entrada na fila | Sessão × Paciente | senha, origem (alocado, público, balcão), etapa atual, presença, posição original (número sequencial), pulos no dia, chamadas, estado |
@@ -169,7 +170,9 @@ O caminho de uma sessão privada é: **entrada na lista → questionário → (e
   - quando a unidade exige **vínculo**, ele já tem pré-cadastro **validado** nela;
   - quando a unidade exige **pré-cadastro** (sem vínculo), ele já **enviou** o pré-cadastro. A validação pode acontecer na primeira ida.
   - as duas exigências acima não valem para inscrição numa sessão pública que **dispensa pré-cadastro** (AD-016).
-- RN-LE-02: no máximo **uma entrada ativa por serviço** por paciente. Ele pode estar em serviços diferentes ao mesmo tempo.
+- RN-LE-02: no máximo **uma entrada ativa por serviço** por pessoa atendida (identificada pelo CPF ou, sem CPF, por nome + nascimento). Ela pode estar em serviços diferentes ao mesmo tempo.
+- RN-LE-05 (AD-018): ao entrar na lista ou se inscrever, o paciente escolhe **para quem é**: ele mesmo ou outra pessoa. Para outra pessoa, informa nome, nascimento e CPF (se houver) e responde o questionário por ela. Classificação, prioridade legal e faltas usam a pessoa atendida. O responsável recebe os pushes, vê a posição e lê o QR ao chegar com ela; o app mostra as inscrições de cada pessoa separadas.
+- RN-LE-06 (AD-018): no 1º check-in de uma pessoa atendida que não é o dono da conta, ela fica "presente, aguardando validação" até a recepção conferir o documento dela (RN-FILA-05). Conferida, vale para as próximas idas àquela unidade.
 - RN-LE-03: a entrada guarda a **data de entrada original**, que serve de desempate em todas as ordenações.
 - RN-LE-04: a recepção pode criar entradas pelo painel para quem não tem app.
 
@@ -258,7 +261,7 @@ Só é chamado quem está presente. Entre os presentes, vale a prioridade e depo
 - RN-FILA-02: quem entra depois da abertura (inscrição pública no dia, vaga da lista de reserva, balcão) recebe o próximo número livre, na hora em que entra.
 - RN-FILA-03: paciente incluído pela recepção já entra como **presente**.
 - RN-FILA-04: a senha tem o prefixo do serviço, é única na sessão e é a mesma em todas as etapas. O número também se mantém entre as etapas.
-- RN-FILA-05: o check-in deixa o paciente como **presente, aguardando validação** quando (a) a conta ainda não é verificada (AD-017), em qualquer sessão, inclusive com dispensa de pré-cadastro, ou (b) a unidade exige pré-cadastro, a sessão (pública) não o dispensa (AD-016) e o dele ainda não foi validado. Ele não é elegível até a recepção validar, e o app mostra "passe na recepção" (com o ID de atendimento, no caso b). Uma só passagem na recepção resolve os dois.
+- RN-FILA-05: o check-in deixa o paciente como **presente, aguardando validação** quando (a) a conta ainda não é verificada (AD-017), em qualquer sessão, inclusive com dispensa de pré-cadastro, ou a pessoa atendida não é o dono da conta e ainda não foi conferida na unidade (RN-LE-06), ou (b) a unidade exige pré-cadastro, a sessão (pública) não o dispensa (AD-016) e o dele ainda não foi validado. Ele não é elegível até a recepção validar, e o app mostra "passe na recepção" (com o ID de atendimento, no caso b). Uma só passagem na recepção resolve os dois.
 - RN-FILA-06: ao encerrar a sessão, o sistema separa quem faltou (RN-FALTA-01) de quem é remanejado (RN-SES-02).
 
 ### 8.2 Presença
@@ -443,7 +446,7 @@ As tabelas abaixo são a fonte da verdade para implementação e testes. Toda tr
 
 **Invariantes** (nunca podem ser violados; cada um vira teste)
 
-- INV-01: um paciente tem no máximo uma entrada ativa por serviço.
+- INV-01: uma pessoa atendida tem no máximo uma entrada ativa por serviço.
 - INV-02: entradas não finais numa sessão, somando alocadas, confirmadas, inscritas e do balcão, ≤ vagas.
 - INV-03: só elegíveis são chamados. Remoto nunca é chamado.
 - INV-04: um paciente está chamado em no máximo uma estação por vez.
@@ -483,7 +486,7 @@ O paciente tem **uma conta central** (CPF + senha), válida em qualquer municíp
 
 ### 10.1 Conta e login
 
-- RN-ID-01: login com CPF + senha. O CPF é validado pelos dígitos verificadores. Sem SMS e sem segundo fator no MVP. A recuperação de senha é feita por código enviado ao e-mail cadastrado.
+- RN-ID-01: login com CPF + senha. O CPF é validado pelos dígitos verificadores. Sem SMS e sem segundo fator no MVP. O e-mail é obrigatório na conta. A recuperação de senha é feita por código enviado ao e-mail cadastrado ou, como alternativa, pela recepção, que confere o documento e redefine o acesso (AD-019). WhatsApp fica fora do MVP.
 - RN-ID-02: um CPF só pode ter uma conta. Se alguém tentar criar conta com um CPF já usado, o app orienta procurar a recepção para contestar.
 - RN-ID-03: a recepção pode vincular a identidade à pessoa presencialmente (documento com foto) e bloquear uma conta usurpada.
 - RN-ID-04: senha com política mínima, armazenada com hash forte, e bloqueio temporário após tentativas seguidas de erro.
@@ -586,7 +589,7 @@ A regra geral: **quem desiste perde a vez; quem é prejudicado pela unidade ganh
 
 ### 13.2 Falta sem avisar
 
-- RN-FALTA-01: é **falta** quando, no encerramento da sessão, o paciente confirmado estava remoto e a vez dele já tinha passado: foi chamado, na primeira etapa, alguém que vinha depois dele na ordem real (AD-010). Se a sessão encerrar antes da vez dele, ele é remanejado, não faltoso.
+- RN-FALTA-01: é **falta** (da pessoa atendida, AD-018) quando, no encerramento da sessão, o paciente confirmado estava remoto e a vez dele já tinha passado: foi chamado, na primeira etapa, alguém que vinha depois dele na ordem real (AD-010). Se a sessão encerrar antes da vez dele, ele é remanejado, não faltoso.
 - RN-FALTA-02: sair da fila por 3 pulos no dia (RN-CHAM-03) também conta no mesmo limite.
 - RN-FALTA-03: **não há bloqueio automático**. Ao atingir o limite (padrão 2 em 90 dias), o paciente recebe um alerta e o agendador vê o aviso ao alocá-lo.
 
