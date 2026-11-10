@@ -86,18 +86,24 @@ a {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #fff;
+  background: rgb(255 255 255 / 0.92);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--gray-100);
 }
 
 .site-header .inner {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 16px;
   height: 64px;
   padding: 0 24px;
-  max-width: 1480px;
+  max-width: 1100px;
   margin: 0 auto;
+}
+
+.site-header .btn {
+  margin-bottom: 0;
 }
 
 .brand {
@@ -127,44 +133,6 @@ a {
   color: var(--orange-800);
   border-radius: 999px;
   padding: 3px 9px;
-}
-
-.nav {
-  display: flex;
-  gap: 4px;
-  flex: 1;
-  overflow-x: auto;
-}
-
-.nav a {
-  text-decoration: none;
-  color: var(--gray-700);
-  font-weight: 700;
-  padding: 7px 12px;
-  border-radius: 10px;
-  white-space: nowrap;
-}
-
-.nav a:hover {
-  background: var(--gray-50);
-}
-
-.nav a[aria-current="page"] {
-  background: var(--primary-50);
-  color: var(--primary-700);
-}
-
-.nav .num {
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--primary-100);
-  color: var(--primary-700);
-  font-size: 11px;
-  font-weight: 900;
-  margin-right: 6px;
 }
 
 .clock {
@@ -452,15 +420,15 @@ a {
 }
 
 .hero {
-  display: flex;
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
   align-items: center;
-  gap: 72px;
-  padding: 56px 0 40px;
+  gap: 64px;
+  padding: 64px 0 48px;
 }
 
 .hero img {
-  width: 300px;
-  flex: none;
+  width: 100%;
 }
 
 .hero h1 {
@@ -514,7 +482,26 @@ a {
 }
 
 .hero-actions {
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+
+.hero-note {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--gray-500);
+}
+
+.speech {
+  margin-top: 22px;
+  max-width: 520px;
+  padding-left: 14px;
+  border-left: 4px solid var(--primary-200);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--gray-600);
 }
 
 .section {
@@ -540,18 +527,19 @@ a {
 }
 
 .feature {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
   align-items: center;
-  gap: 56px;
-  padding: 28px 0;
+  gap: 64px;
+  padding: 32px 0;
 }
 
 .feature.reverse {
-  flex-direction: row-reverse;
+  grid-template-columns: 380px minmax(0, 1fr);
 }
 
-.feature .text {
-  flex: 1;
+.feature.reverse .visual {
+  order: -1;
 }
 
 .step-num {
@@ -582,8 +570,6 @@ a {
 }
 
 .feature .visual {
-  width: 380px;
-  flex: none;
   padding: 22px;
 }
 
@@ -1888,12 +1874,49 @@ tr.off td {
   .hero,
   .feature,
   .feature.reverse {
-    flex-direction: column;
-    text-align: center;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .hero {
+    padding: 32px 0 16px;
+  }
+
+  .hero img {
+    width: 160px;
   }
 
   .hero h1 {
     font-size: 40px;
+  }
+
+  .hero .lead {
+    font-size: 18px;
+  }
+
+  .feature.reverse .visual {
+    order: 0;
+  }
+
+  .feature h3 {
+    font-size: 26px;
+  }
+
+  .feature .text p {
+    font-size: 17px;
+  }
+
+  .section {
+    padding: 32px 0;
+  }
+
+  .section-head h2 {
+    font-size: 30px;
+  }
+
+  .page,
+  .site-header .inner {
+    padding: 0 16px;
   }
 
   .stories,
@@ -1925,19 +1948,8 @@ tr.off td {
 }
 
 @media (width < 1380px) {
-  .site-header .inner {
-    gap: 12px;
-    padding: 0 16px;
-  }
-
-  .brand .tag,
   .clock .now small {
     display: none;
-  }
-
-  .nav a {
-    padding: 6px 8px;
-    font-size: 14px;
   }
 }
 
