@@ -1,6 +1,28 @@
 # Pré-análise: hospedagem e custo
 
-2026-11-10 · status: **em aberto** (anexo do plan; decidir antes do piloto)
+2026-11-10 · status: **MVP e piloto decididos** (PD-12); provedor de longo prazo e cobrança seguem em aberto.
+
+## Decisão para o MVP e o piloto
+
+Objetivo: o mais barato possível sem abrir mão de backup, criptografia, isolamento por município e dados no Brasil.
+
+| Peça | Escolha | US$/mês |
+| --- | --- | --- |
+| Programas | 1 VM EC2 **t4g.small** (ARM) em sa-east-1, Docker Compose com Caddy (TLS automático, curinga por DNS), API (http + sse + worker) e painel | ~22–28 |
+| Banco | **RDS Postgres db.t4g.micro**, zona única, PITR de 7 dias, criptografado; **um banco por município** na mesma instância, mais o central e a homologação | ~28–32 |
+| Fotos | S3 com prefixo e chave KMS por município | ~3–5 |
+| Resto | Route 53, SES (e-mail), logs, tráfego | ~3–8 |
+| **Total** | | **~55–75 (R$ 300–410)** |
+
+- **Infra como código** (OpenTofu): VM, RDS, S3, DNS e regras de rede (o banco só aceita a VM e não fica exposto na internet). Alarme de gasto na conta.
+- **Deploy:** push na `main` → GitHub Actions (testes, imagens no GHCR) → `docker compose pull && up` na VM → migrations em todos os bancos. Rollback para a imagem anterior.
+- **Ferramentas gratuitas:** EAS Free, Sentry, Grafana Cloud, UptimeRobot.
+- **Homologação** na mesma VM e no mesmo RDS, em bancos separados.
+- **O que aceitamos:** sem alta disponibilidade; uma queda leva de minutos (reiniciar) a ~1 h (VM nova + restauração). Depende da contingência em papel (fonte §16).
+- **Descartado para o piloto:** Postgres dentro da VM ou VPS nacional (economiza R$ 150–300/mês, mas o backup e a restauração ficariam por nossa conta, com dado de saúde real).
+- **Quando subir de nível:** dezenas de municípios ou SLA em contrato → RDS Multi-AZ, 2 VMs + load balancer, instâncias reservadas, instância dedicada para quem contratar.
+
+## Análise original
 
 ## Restrições da spec
 

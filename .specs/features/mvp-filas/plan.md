@@ -19,7 +19,7 @@ Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisõe
 | PD-09 | **`apps/painel`**: Next com `/painel`, `/estacao` e `/tv` no subdomínio do tenant; a landing segue em `apps/web` | Separa a área autenticada do site público |
 | PD-10 | **Recorrência RFC 5545** (lib `rrule`): a série guarda DTSTART/DTEND/RRULE/EXDATE/RDATE; as ocorrências viram sessões numa janela móvel de 90 dias | Alocação, vagas e fila sempre apontam para uma linha real |
 | PD-11 | **Worker com varredura a cada minuto** por tenant, com consultas idempotentes; **push por tabela de saída** (outbox) | Não perde nada se cair; não reagenda quando um horário muda; ~8 consultas/s com 100 tenants |
-| PD-12 | Hospedagem **em aberto** ([hospedagem.md](hospedagem.md)); premissa: tudo em contêiner, Postgres padrão e armazenamento compatível com S3 | Portabilidade entre nuvens e para a infra da prefeitura |
+| PD-12 | **MVP e piloto na AWS sa-east-1, setup enxuto** ([hospedagem.md](hospedagem.md)): 1 VM t4g.small com Docker Compose (Caddy, API, painel) + RDS Postgres db.t4g.micro zona única com PITR (um banco por município na mesma instância) + S3/KMS; infra em OpenTofu; deploy por GitHub Actions. ~R$ 300–410/mês. Tudo em contêiner e Postgres padrão, para migrar ou instalar na prefeitura depois | Mais barato sem abrir mão de backup, criptografia, isolamento e dados no Brasil; sem alta disponibilidade no piloto |
 
 ## 2. Visão geral
 
@@ -170,7 +170,7 @@ Lições candidatas a aplicar ([LESSONS.md](../../LESSONS.md)): L-001 (limpar re
 
 ## 12. Ordem de construção (insumo para o tasks.md)
 
-1. **Fundação:** banco central e do tenant, resolução do tenant, `tenant:create`, migrations multi-tenant, `packages/domain` com os testes portados, auth do paciente e do painel, auditoria.
+1. **Fundação:** infra (OpenTofu, VM, RDS, S3, DNS, Caddy) e deploy (GitHub Actions), banco central e do tenant, resolução do tenant, `tenant:create`, migrations multi-tenant, `packages/domain` com os testes portados, auth do paciente e do painel, auditoria.
 2. **Configuração:** município, unidades, serviços, estações, sessões e séries, pareamento da TV (US-13).
 3. **Fatia vertical da sessão pública** (o fluxo principal do protótipo): agenda (US-01) → inscrição pública com questionário (US-02, US-16) → abertura → fila remota no app com SSE (US-06) → check-in pelo QR, "Vou sair" e verificação na recepção (US-07, AD-017) → chamada na estação e na TV (US-08..US-11).
 4. **Sessão privada:** lista de espera, encaminhamento, alocação, confirmação e lista de ligação (US-03..US-05).
@@ -190,6 +190,7 @@ Lições candidatas a aplicar ([LESSONS.md](../../LESSONS.md)): L-001 (limpar re
 
 ## Em aberto
 
-- Hospedagem e modelo de isolamento padrão ([hospedagem.md](hospedagem.md)).
+- Provedor de longo prazo, oferta "na infra da prefeitura" e modelo de cobrança ([hospedagem.md](hospedagem.md)).
+- Plano de contingência da unidade quando o sistema cair (fonte §16), necessário porque o piloto não tem alta disponibilidade.
 - Termo do app com o jurídico (RNF-LGPD-01) e o RIPD (RNF-LGPD-02).
 - Propostas da fonte §16 para validar no piloto (questionário, tempo médio, 30 dias, 3 pulos, 10 s na TV).
