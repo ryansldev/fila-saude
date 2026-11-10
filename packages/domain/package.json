@@ -1,0 +1,22 @@
+{
+  "name": "@fila-saude/domain",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Regras de domínio puras do Fila Saúde",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "check-types": "tsc --noEmit"
+  },
+  "license": "AGPL-3.0-only",
+  "engines": {
+    "node": "24.x"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.9"
+  }
+}

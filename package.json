@@ -29,7 +29,8 @@
     "db:migrate": "npm -w @fila-saude/api run db:migrate",
     "specs:check": "node scripts/specs-check.mjs",
     "prepare": "husky",
-    "commit": "cz"
+    "commit": "cz",
+    "test:domain": "npm -w @fila-saude/domain run test"
   },
   "engines": {
     "node": "24.x"
