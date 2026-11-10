@@ -5,7 +5,7 @@ Princípios que valem para todo o projeto, acima de qualquer feature. Toda spec,
 ## Produto
 
 1. **Somos só a fila.** Não guardamos prontuário. Depois da triagem e do atendimento, a responsabilidade é de outro sistema.
-2. **O humano decide.** O sistema sugere prioridade e alocação, sempre com justificativa. Agendador e triagem confirmam; o profissional confere pendências na chamada. Nada é alocado sem ação de um agendador.
+2. **O humano decide.** O sistema sugere prioridade e alocação, sempre com justificativa. Agendador e triagem confirmam. Quem está na sala só chama e atende; conferir documento é da recepção. Nada é alocado sem ação de um agendador.
 3. **Presente tem preferência.** Só é chamado quem está na unidade, e quem já está esperando não é ultrapassado por quem chega atrasado.
 4. **Saúde em primeiro lugar.** Urgência confirmada por um profissional passa na frente.
 5. **Ninguém fica de fora.** Quem não tem celular ou internet entra pela recepção, no mesmo fluxo. Todo fluxo do paciente tem equivalente no balcão.

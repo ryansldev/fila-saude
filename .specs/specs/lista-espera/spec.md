@@ -39,8 +39,8 @@ QUANDO o paciente entrar na lista ou se inscrever, O SISTEMA DEVE perguntar **pa
 *Decisões: AD-018.*
 
 **RN-LE-06 · Conferência da pessoa atendida**
-QUANDO uma pessoa atendida que não é o dono da conta fizer o 1º check-in numa unidade, O SISTEMA DEVE deixá-la **presente com pendência** (RN-FILA-05). Conferida uma vez, vale para as próximas idas àquela unidade.
-*Decisões: AD-018, AD-050.*
+QUANDO uma pessoa atendida que não é o dono da conta fizer o 1º check-in numa unidade, O SISTEMA DEVE recusar o check-in até a recepção conferir o documento dela (RN-FILA-05). Conferida uma vez, vale para as próximas idas àquela unidade.
+*Decisões: AD-018, AD-054.*
 
 ## Classificação de risco (Manchester reduzido)
 
@@ -61,19 +61,19 @@ O nível calculado pelo app é sempre **sugerido**. QUANDO o agendador alocar a 
 Em sessão pública e no balcão não há agendador: o nível fica sugerido até a triagem confirmar, e em serviço sem triagem permanece sugerido. No balcão, a recepção aplica o mesmo questionário com o paciente; QUANDO o resultado for emergência, O SISTEMA DEVE orientar encaminhá-lo à emergência.
 
 **RN-RISCO-03 · Refazer o questionário**
-O paciente PODE refazer o questionário enquanto espera. QUANDO subir para urgente, O SISTEMA DEVE alertar o agendador; QUANDO cair em emergência, orientar ligar para o SAMU (192). Prioridade legal nova declarada por quem já está presente vira pendência e é conferida (RN-FILA-05).
-*Decisões: AD-050.*
+O paciente PODE refazer o questionário enquanto espera. QUANDO subir para urgente, O SISTEMA DEVE alertar o agendador; QUANDO cair em emergência, orientar ligar para o SAMU (192). Prioridade legal nova declarada por quem já está presente só vale depois que a recepção conferir; até lá ele segue no lugar, sem ela.
+*Decisões: AD-054.*
 
 **RN-RISCO-04 · Prioridade legal**
 A **prioridade legal** é um campo separado, declarado pelo paciente. Grupos (lista fixa no código no MVP; Lei 10.048 com a redação da Lei 14.626/2023): idoso (60+, e 80+ com prioridade especial), gestante, lactante, pessoa com criança de colo, PcD, TEA, pessoa com mobilidade reduzida, doador de sangue, pessoa com obesidade. Grupos de leis estaduais ou municipais entram por mudança de código.
 - **Ordem:** segue a lei, sem regras próprias: maiores de 80 anos antes dos demais idosos; entre grupos diferentes não há hierarquia.
 - **Para outra pessoa:** conta a prioridade da pessoa atendida; se ela é criança de colo, vale "criança de colo"; a do acompanhante não passa para o atendido.
 - **Declaração:** QUANDO o paciente marcar uma prioridade, O SISTEMA DEVE avisar que ela será conferida na unidade com documento e que declaração falsa pode configurar crime (texto validado pelo jurídico). Não há foto de laudo no app.
-- **Conferência:** visual (gestante, criança de colo; idoso vem da data de nascimento) ou por documento (PcD, TEA), na recepção ou na chamada (RN-FILA-05). Conferida, vale nas próximas idas à unidade, exceto as que têm prazo (gestante, lactante, criança de colo), que expiram e são conferidas de novo.
+- **Conferência:** visual (gestante, criança de colo; idoso vem da data de nascimento) ou por documento (PcD, TEA), na recepção (RN-FILA-05). Conferida, vale nas próximas idas à unidade, exceto as que têm prazo (gestante, lactante, criança de colo), que expiram e são conferidas de novo.
 - **Recepção:** PODE tirar uma prioridade declarada errada a qualquer momento e PODE dar prioridade ao incluir alguém no balcão (registrando o documento visto), mas NÃO PODE dar prioridade a quem já está na lista ou na fila. Para paciente sem app, a 1ª marcação de presença vale como inclusão no balcão.
 - **A definir no D5:** forma de conferência e prazo de lactante, mobilidade reduzida, doador de sangue e obesidade; prazos de gestante e criança de colo; idade de "criança de colo"; regra do acompanhante.
 
-*Decisões: AD-023, AD-024, AD-025, AD-027, AD-050.*
+*Decisões: AD-023, AD-024, AD-025, AD-027, AD-054.*
 - *Dado* Pedro na fila sem prioridade, *quando* a recepção tenta marcá-lo como PcD, *então* o painel recusa (só o próprio paciente declara pelo app).
 - *Dado* uma mãe que marca a consulta do bebê de colo, *quando* a fila é ordenada, *então* a entrada tem a prioridade "criança de colo".
 

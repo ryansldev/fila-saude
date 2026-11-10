@@ -21,14 +21,14 @@ Uma tela principal, **"fila de hoje"**, e painéis laterais por cima dela (sem t
 | Área | O que mostra | Regras |
 | --- | --- | --- |
 | Topo | Unidade e data; busca por nome, CPF ou senha; "incluir no balcão"; "imprimir lista do dia" | RN-CONT-01 |
-| **Precisam de você agora** | Presentes com pendência, por ordem de leitura do QR e tempo de espera ("há 12 min"); tipo da pendência; "conferir" | RN-FILA-05, RN-LE-06, RN-RISCO-04 |
+| **Precisam de você agora** | Quem teve o check-in recusado por pendência, por ordem de tentativa e tempo de espera ("há 12 min"); tipo da pendência; "conferir" | RN-FILA-05, RN-LE-06, RN-RISCO-04 |
 | **Fila de hoje**, por serviço | Presentes e a caminho: senha, primeiro nome, prioridade, estado (presente, remoto, chamado, pulado 1 ou 2, atendido); selo "sem app" com "marcar presença" | RN-PRES-03, RN-CHAM-03 |
 
 A recepção vê nomes (é equipe da unidade), nunca as respostas do questionário; a da autolesão, só enquanto aplica o questionário no balcão (RN-RISCO-06).
 
 | Painel | O que faz | Regras |
 | --- | --- | --- |
-| Conferir | Pré-cadastro: as fotos do documento e do Cartão SUS lado a lado com os dados e o ID de atendimento, para comparar com a pessoa e o documento físico. Conta nova: documento físico × dados da conta em destaque. Botões "confere" · "não conferiu" (motivo obrigatório) · "prioridade não confere" | RN-FILA-05, RN-PRE-03, RN-CHAM-04, AD-053 |
+| Conferir | Pré-cadastro: as fotos do documento e do Cartão SUS lado a lado com os dados e o ID de atendimento, para comparar com a pessoa e o documento físico. Conta nova: documento físico × dados da conta em destaque. Botões "confere e marcar presença" · "não conferiu" (motivo obrigatório) · "prioridade não confere" (marca presença sem a prioridade) | RN-FILA-05, RN-PRE-03, AD-053, AD-054 |
 | Incluir no balcão | Pessoa local (nome, nascimento, CPF) → serviço e sessão de hoje → questionário com o paciente, prioridade com o documento visto → senha grande e "imprimir papel da senha"; serviço regulado bloqueado com orientação | RN-LE-04, RN-FILA-03, RN-RISCO-02, RN-RISCO-04, RN-ENC-05, RN-TV-05 |
 | Aguardando remarcação | Remanejados de sessão pública sem app, para remarcar por telefone | RN-REM-05 |
 | Contingência | Período, motivo, sinais de vida da TV e das estações, quem foi atendido no papel | RN-CONT-02, RN-CONT-03 |
@@ -38,7 +38,6 @@ A recepção vê nomes (é equipe da unidade), nunca as respostas do questionár
 
 - **Vazio:** "ninguém precisa de você agora"; antes da abertura, "a fila de hoje ainda não começou".
 - **Muitas pendências:** contador ("6 aguardando conferência"), lista rolável, quem espera há mais tempo no topo.
-- **Chamado com pendência:** "foi chamada · conferindo no consultório 3" (nada a fazer).
 - **Modo manual / sem sinal:** faixa amarela "TV e estações sem sinal há 3 min · imprima a lista do dia"; na volta, "registrar o que aconteceu na queda" (RN-SES-05, RN-CONT-02).
 - **Ajuste registrado:** "registrado · aparece no relatório do gestor" (RN-PERF-03).
 

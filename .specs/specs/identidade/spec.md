@@ -18,9 +18,9 @@ A recepção PODE vincular a identidade à pessoa presencialmente (documento com
 O SISTEMA DEVE exigir política mínima de senha, guardá-la com hash forte e bloquear temporariamente após tentativas seguidas de erro.
 
 **RN-ID-05 · Nível de confiança**
-A conta nasce **não verificada** e já pode entrar na lista de espera e se inscrever em sessão pública; o agendador vê "identidade não verificada" na ficha. QUANDO a recepção, ou o profissional na chamada, conferir o documento com foto, O SISTEMA DEVE marcar a conta como **verificada** para todas as unidades e para sempre, registrando quem verificou, quando e por qual método (presencial; gov.br depois do piloto, opcional por município).
-*Decisões: AD-017, AD-050.*
-- *Dado* Ana com conta não verificada e presente com pendência, *quando* o profissional a chama e confere o documento, *então* a conta fica verificada e a pendência some nas próximas idas a qualquer unidade.
+A conta nasce **não verificada** e já pode entrar na lista de espera e se inscrever em sessão pública; o agendador vê "identidade não verificada" na ficha. QUANDO a recepção conferir o documento com foto, O SISTEMA DEVE marcar a conta como **verificada** para todas as unidades e para sempre, registrando quem verificou, quando e por qual método (presencial; gov.br depois do piloto, opcional por município).
+*Decisões: AD-017, AD-054.*
+- *Dado* Ana com conta não verificada que teve o check-in recusado, *quando* a recepção confere o documento e marca a presença, *então* a conta fica verificada e ela não passa mais por isso em nenhuma unidade.
 
 **RN-ID-06 · Falta sem identidade comprovada**
 QUANDO uma falta for de conta não verificada, O SISTEMA NÃO DEVE registrá-la no CPF. QUANDO for de pessoa atendida ainda não conferida na unidade, O SISTEMA DEVE registrá-la no responsável que marcou, se a conta dele for verificada (senão, em ninguém). Exceção: paciente lançado de serviço regulado leva a falta na própria pessoa local, pelo CPF, porque o CPF veio da regulação.
@@ -41,8 +41,8 @@ Por padrão, toda unidade exige pré-cadastro; o município pode desligar por un
 O SISTEMA DEVE gerar um **ID de atendimento** de 6 caracteres, também em QR.
 
 **RN-PRE-03 · Validação**
-QUANDO o paciente mostrar o ID e o documento, a recepção (ou o profissional na chamada) confere a pessoa e O SISTEMA DEVE marcar o cadastro como **validado**.
-*Decisões: AD-050.*
+QUANDO o paciente mostrar o ID e o documento, a recepção confere a pessoa e O SISTEMA DEVE marcar o cadastro como **validado**.
+*Decisões: AD-054.*
 
 **RN-PRE-04 · Validade**
 O cadastro validado vale para todas as próximas idas àquela unidade, até ser revogado.

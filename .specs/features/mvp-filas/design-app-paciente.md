@@ -36,7 +36,8 @@ Duas abas fixas: **Minha fila** (principal) e **Unidades**. Perfil e ajuda no to
 | 11 | No dia, em casa: posição e tempo; "aguardando início" sem estação | RN-ETA-01..04 |
 | 12 | "Saia de casa agora" e "venha agora" | RN-ETA-03, RN-ORD-02 |
 | 13 | "Estou na unidade" → câmera para o QR da TV | RN-PRES-01 |
-| 14 | Presente: posição real; "passe na recepção" com pendência; "vou sair" | RN-ETA-01b, RN-FILA-05, RN-PRES-02 |
+| 14 | Presente: posição real; "vou sair" | RN-ETA-01b, RN-PRES-02 |
+| 14b | Check-in recusado: "passe na recepção para confirmar seus documentos · você ainda não entrou na fila da unidade"; aviso antes da chegada ("na sua primeira ida, passe na recepção antes de ler o QR") nas telas 11 e 12 | RN-FILA-05, AD-054 |
 | 15 | "Sua vez!" em tela cheia: senha e destino | RN-CHAM-01 |
 | 16 | Pulado; saiu da fila no 3º pulo | RN-CHAM-03 |
 | 17 | Atendido / fim | — |
@@ -64,7 +65,7 @@ O protótipo liga as telas na ordem do fluxo do D9 e tem um menu oculto do moder
 ## 4. Validação no D9
 
 - **Roteiro** (paciente sozinho com o celular): (1) se inscrever na sessão de terça; (2) dizer a posição e quanto falta; (3) reagir ao "saia de casa"; (4) fazer o check-in com um QR impresso; (5) sair e voltar; (6) ser chamado.
-- **Quem:** 5 a 8 pacientes, metade com 60+, e 2 ou 3 da recepção (telas de pendência e "sua vez").
+- **Quem:** 5 a 8 pacientes, metade com 60+, e 2 ou 3 da recepção (check-in recusado e "sua vez").
 - **Anotar por tarefa:** conseguiu sozinho? Onde travou? O que entendeu do texto (nas palavras da pessoa)?
 - **Critério:** 4 de 5 completam sozinhos as tarefas 1, 2 e 5, e todos entendem o "saia de casa" e o "sua vez". Abaixo disso, ajusta-se o design antes da fase 3; achados que mexem em regra viram decisões em `decisions.md`.
 

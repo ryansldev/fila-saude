@@ -44,10 +44,10 @@ P1 = sem ela o MVP não funciona; P2 = necessária para a operação real. Os cr
 | US-04 | P1 | Como agendador, quero preencher as vagas de uma sessão privada com a sugestão ordenada e seus motivos | RN-AL-01..06, RN-PERF-02 |
 | US-05 | P1 | Como paciente, quero confirmar a alocação; como agendador, quero ligar para quem não confirmou | RN-CONF-01..04 |
 | US-06 | P1 | Como paciente, quero entrar na fila remota ao abrir a sessão, ver posição e tempo, e receber "saia de casa" | RN-FILA-01..02, RN-ETA-01..05 |
-| US-07 | P1 | Como paciente, quero fazer check-in pelo QR e sair com "Vou sair" sem perder a posição | RN-PRES-01..04, RN-FILA-05 |
+| US-07 | P1 | Como paciente, quero fazer check-in pelo QR (ou ser orientado a passar na recepção na 1ª ida) e sair com "Vou sair" sem perder a posição | RN-PRES-01..04, RN-FILA-05 |
 | US-08 | P1 | Como paciente presente, não quero ser ultrapassado por quem acabou de chegar | RN-ORD-01, RN-ORD-03..05 |
 | US-09 | P1 | Como paciente com urgência confirmada, quero passar à frente e, remoto, receber "venha agora" | RN-ORD-02 |
-| US-10 | P1 | Como profissional, quero chamar o próximo na mini-janela e conferir pendências na hora | RN-CHAM-01, RN-CHAM-02, RN-CHAM-04, RN-EST-01..05 |
+| US-10 | P1 | Como profissional, quero chamar o próximo na mini-janela sem sair do prontuário | RN-CHAM-01, RN-CHAM-02, RN-EST-01..05 |
 | US-11 | P1 | Como profissional, quero pular quem não compareceu, sem pulo automático | RN-CHAM-03, RN-FALTA-02 |
 | US-12 | P1 | Como recepção, quero incluir quem não tem app e entregar o papel com a senha | RN-FILA-03, RN-LE-04, RN-PRES-03, RN-TV-05 |
 | US-13 | P1 | Como admin, quero parear e revogar a TV da unidade | RN-TV-01..07 |
@@ -66,6 +66,6 @@ Propostas a validar no piloto ou nos discoveries (lista completa em [tasks](task
 - Validade da requisição e quem a confere (D6).
 - Prazo de exclusão das fotos (RNF-LGPD-04), grupos e documentos de prioridade legal, texto do aviso de declaração falsa (D5).
 - Tempo médio (RN-ETA-05), triagem cadenciada (RN-TRI-06) e reativação em 30 dias (RN-PARADA-02): validar no piloto.
-- Conferência de documento pelo profissional na chamada (AD-050): confirmar no D4.
+- Quem chama em cada sala (o profissional, como assumido, ou alguém por ele): confirmar no D4.
 - Área de abrangência por endereço como critério de vínculo, além do cadastro validado: perguntar no D4 se a unidade atende só a população adscrita.
 - Hospedagem de longo prazo e cobrança (D7, [hospedagem](discovery-hospedagem.md)).

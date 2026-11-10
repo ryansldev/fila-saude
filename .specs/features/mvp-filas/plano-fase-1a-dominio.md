@@ -46,8 +46,8 @@ packages/domain/
     prioridade.ts       grupos de prioridade legal (AD-025), pessoa atendida (AD-027), conferência e prazo
     contratos.ts        transições como dados + transicionar()
     ordem.ts            RN-ORD e ordem da sugestão (RN-AL-02)
-    fila.ts             elegíveis, janela protegida, atraso, check-in com pendência, "Vou sair"
-    chamada.ts          chamar, rechamar, finalizar, não compareceu, conferência na chamada, etapas
+    fila.ts             elegíveis, janela protegida, atraso, check-in (recusado com pendência), conferência na recepção, "Vou sair"
+    chamada.ts          chamar, rechamar, finalizar, não compareceu, etapas
     estimativa.ts       posição, tempo, "venha agora", "saia de casa", tempo médio
     lista.ts            entrada na lista, sugestão, alocação, confirmação, lista parada
     sessao.ts           abertura, inscrição pública, reserva, vaga segura, balcão, lançamento regulado
@@ -107,7 +107,7 @@ scripts/specs-gen.mjs   gera as tabelas de transição e de permissões nas spec
 **Interfaces:**
 - Produces:
   - `type EstadoEntrada = "aguardando_encaminhamento" | "aguardando" | "alocada" | "confirmada" | "na_reserva" | "na_fila" | "remanejada" | "arquivada" | "concluida" | "cancelada" | "encerrada_sem_atendimento"`.
-  - `type EstadoItem = "remoto" | "presente" | "chamado" | "atendido_na_etapa" | "saiu_da_fila" | "remanejado"` (pendência é campo do item, não estado).
+  - `type EstadoItem = "remoto" | "presente" | "chamado" | "atendido_na_etapa" | "saiu_da_fila" | "remanejado"` (pendência fica na entrada: com ela o check-in é recusado).
   - `type EstadoSessao = "planejada" | "aberta" | "cancelada" | "encerrada"`.
   - `type Transicao<S extends string> = { de: S | "—"; evento: string; para: S | "(mesmo)" | "(não cria)"; condicao: string; efeitos: string; regra: string; spec: "lista-espera" | "marcacao" | "excecoes" | "fila-do-dia" | "chamada" | "contingencia" }`.
   - `TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[]`, `TRANSICOES_ITEM: Transicao<EstadoItem>[]`, `TRANSICOES_SESSAO: Transicao<EstadoSessao>[]` — uma linha por linha das tabelas "Transições" das specs, com os textos copiados delas.
@@ -131,7 +131,7 @@ scripts/specs-gen.mjs   gera as tabelas de transição e de permissões nas spec
 - [ ] **Step 1: Testes** portando `"priority: municipal rule switches legal before risk"`; `"RN-ORD: urgência confirmada sempre primeiro"`; `"RN-AL-02: urgência, remanejados, depois risco e prioridade, depois data"`; Review Focus 1: empates resolvem por `numero` e, na sugestão, por `dataEntradaOriginal` e depois `id`.
 - [ ] **Step 2:** FAIL. **Step 3:** implementar. **Step 4:** PASS. **Step 5:** commit `feat(domain): call order and suggestion order`.
 
-### Task 5: Fila do dia — presença, pendência, janela e atraso (T1.2, RN-FILA-05, RN-PRES, AD-010, AD-033, AD-050)
+### Task 5: Fila do dia — presença, conferência, janela e atraso (T1.2, RN-FILA-05, RN-PRES, AD-010, AD-033, AD-054)
 
 **Files:** Create `src/fila.ts`, `test/fila.test.ts`
 
@@ -139,21 +139,21 @@ scripts/specs-gen.mjs   gera as tabelas de transição e de permissões nas spec
 - Consumes: `compararOrdem`, `TRANSICOES_ITEM`, `transicionar`.
 - Produces:
   - `type Pendencia = "conta" | "pessoa_atendida" | "pre_cadastro" | "prioridade"`.
-  - `type ItemFila = { id: string; entradaId: string; senha: string; numero: number; etapa: "triagem" | "atendimento"; estado: EstadoItem; pendencias: Pendencia[]; urgenciaConfirmada: boolean; risco: …; prioridade: PrioridadeLegal; pulos: number; travadoAtras: string[]; saiuEm: number | null; atendidoEmEtapas: ("triagem" | "atendimento")[] }`.
+  - `type ItemFila = { id: string; entradaId: string; senha: string; numero: number; etapa: "triagem" | "atendimento"; estado: EstadoItem; pendencias: Pendencia[] /* bloqueiam o check-in */; urgenciaConfirmada: boolean; risco: …; prioridade: PrioridadeLegal; pulos: number; travadoAtras: string[]; saiuEm: number | null; atendidoEmEtapas: ("triagem" | "atendimento")[] }`.
   - `type DiaSessao = { sessaoId: string; estado: EstadoSessao; itens: ItemFila[]; chamadas: { itemId: string; etapa: …; em: number }[]; estacoes: Estacao[]; config: ConfigUnidade; contingencias: { inicio: number; fim: number }[]; proximoNumero: number }` e `Estacao = { id: string; etapa: …; servicos: string[]; aberta: boolean; chamadoItemId: string | null }`.
   - `elegiveis(dia: DiaSessao, estacaoId: string): ItemFila[]` (ordenados, já com a janela protegida).
-  - `checkIn(dia, cmd: { itemId: string; pendencias: Pendencia[] }, agora): Resultado<DiaSessao>`; `marcarPresencaSemApp(dia, { itemId }, agora)`; `vouSair(dia, { itemId }, agora)`; `conferirNaRecepcao(dia, { itemId; resultado: "confere" | "nao_confere" | "prioridade_nao_confere" }, agora)`.
-- [ ] **Step 1: Testes** portando `"order: RN-ORD-01 protected window"`, `"order: RN-ORD-03 consecutive check-ins"`, `"order: RN-ORD-04 late arrival"`, `"order: confirmed urgency jumps window"`, `"order: leaving and coming back never deadlocks"`, `"order: coming back loses the turn only if it passed in the order"`, `"leave: calls made while present do not cost the turn on return"`; novos: `"RN-FILA-05: check-in com pendência fica presente e elegível"` (evento `pendencia`), `"RN-FILA-05: recepção recusa identidade → saiu_da_fila sem falta"`, `"RN-FILA-05: prioridade não conferida é retirada e o item volta ao lugar sem ela"`, `"RN-CONT-03: chamadas no período de contingência não contam para o atraso de quem estava remoto"`; Review Focus 3: 5 ciclos "Vou sair"/check-in intercalados com chamadas nunca deixam `elegiveis` vazio quando há presentes.
+  - `checkIn(dia, cmd: { itemId: string }, agora): Resultado<DiaSessao>` (com pendência → `falha("pendencia")`, estado inalterado); `conferirEMarcar(dia, { itemId; resultado: "confere" | "nao_confere" | "prioridade_nao_confere"; motivo?: string }, agora)` (recepção; confere → presente; não confere → saiu da fila sem falta); `marcarPresencaSemApp(dia, { itemId }, agora)`; `vouSair(dia, { itemId }, agora)`.
+- [ ] **Step 1: Testes** portando `"order: RN-ORD-01 protected window"`, `"order: RN-ORD-03 consecutive check-ins"`, `"order: RN-ORD-04 late arrival"`, `"order: confirmed urgency jumps window"`, `"order: leaving and coming back never deadlocks"`, `"order: coming back loses the turn only if it passed in the order"`, `"leave: calls made while present do not cost the turn on return"`; novos: `"RN-FILA-05: check-in com pendência é recusado e o item segue remoto"`, `"RN-FILA-05: recepção confere e marca presença; atraso conta a partir daí"`, `"RN-FILA-05: recepção recusa identidade → saiu_da_fila sem falta"`, `"RN-FILA-05: prioridade não conferida é retirada e a pessoa entra sem ela"`, `"RN-CONT-03: chamadas no período de contingência não contam para o atraso de quem estava remoto"`; Review Focus 3: 5 ciclos "Vou sair"/check-in intercalados com chamadas nunca deixam `elegiveis` vazio quando há presentes.
 - [ ] **Step 2:** FAIL. **Step 3:** implementar (janela e atraso exatamente como o pseudocódigo de `specs/fila-do-dia`). **Step 4:** PASS. **Step 5:** commit `feat(domain): presence, pending checks, window and lateness`.
 
-### Task 6: Chamada (T1.3, RN-CHAM-01..04, RN-TRI, AD-006, AD-021, AD-039, AD-050)
+### Task 6: Chamada (T1.3, RN-CHAM-01..03, RN-TRI, AD-006, AD-021)
 
 **Files:** Create `src/chamada.ts`, `test/chamada.test.ts`
 
 **Interfaces:**
 - Consumes: `elegiveis`, `DiaSessao`, `transicionar`.
-- Produces: `chamarProximo(dia, { estacaoId }, agora)`, `rechamar(dia, { estacaoId }, agora)`, `finalizar(dia, { estacaoId }, agora)`, `naoCompareceu(dia, { estacaoId }, agora)`, `conferirNaChamada(dia, { estacaoId; resultado: "confere" | "nao_confere" | "prioridade_nao_confere" }, agora)`, `fecharEstacao(dia, { estacaoId })` — todas `Resultado<DiaSessao>`; `toleranciaEsgotada(dia, estacaoId, agora): boolean`.
-- [ ] **Step 1: Testes** portando `"call: next closes previous and skips remote"`, `"call: three skips"`, `"call: tolerance never skips on its own"`, `"clock: advancing re-evaluates tolerance"`, `"station: cannot close while someone is called"`, `"station: a call from another session is not dropped"`, `"triage: two stages with the same ticket"`; novos: `"RN-CHAM-04: pendência mostrada e resolvida ao conferir"`, `"RN-CHAM-04: não conferiu tira da fila sem falta"`, `"RN-CHAM-04: prioridade não conferida volta ao lugar sem contar pulo"`, `"RN-CHAM-03: 3 pulos somam as etapas"`; Review Focus 2: sem elegível → `falha("nenhum_elegivel")`; Review Focus 4: duas `chamarProximo` de estações diferentes em sequência sobre o mesmo serviço chamam pacientes diferentes.
+- Produces: `chamarProximo(dia, { estacaoId }, agora)`, `rechamar(dia, { estacaoId }, agora)`, `finalizar(dia, { estacaoId }, agora)`, `naoCompareceu(dia, { estacaoId }, agora)`, `fecharEstacao(dia, { estacaoId })` — todas `Resultado<DiaSessao>`; `toleranciaEsgotada(dia, estacaoId, agora): boolean`.
+- [ ] **Step 1: Testes** portando `"call: next closes previous and skips remote"`, `"call: three skips"`, `"call: tolerance never skips on its own"`, `"clock: advancing re-evaluates tolerance"`, `"station: cannot close while someone is called"`, `"station: a call from another session is not dropped"`, `"triage: two stages with the same ticket"`; novos: `"RN-CHAM-03: 3 pulos somam as etapas"`; Review Focus 2: sem elegível → `falha("nenhum_elegivel")`; Review Focus 4: duas `chamarProximo` de estações diferentes em sequência sobre o mesmo serviço chamam pacientes diferentes.
 - [ ] **Step 2:** FAIL. **Step 3:** implementar. **Step 4:** PASS. **Step 5:** commit `feat(domain): calling, skips and call-time checks`.
 
 ### Task 7: Estimativa (T1.4, RN-ETA-01..05, AD-002, AD-003, AD-009, AD-043)
@@ -216,7 +216,7 @@ scripts/specs-gen.mjs   gera as tabelas de transição e de permissões nas spec
 **Files:** Create `src/permissoes.ts`, `test/permissoes.test.ts`
 
 **Interfaces:**
-- Produces: `type Perfil = "paciente" | "gestor" | "admin" | "agendador" | "recepcao" | "triagem" | "profissional"`; `type Acao` = uma constante por linha da matriz (ex.: `"lancar_regulado"`, `"anular_falta"`, `"conferir_na_chamada"`…); `MATRIZ: { acao: Acao; texto: string; perfis: Partial<Record<Perfil, true | string>> }[]` (string = ressalva da célula, ex.: `"na chamada"`); `pode(perfis: Perfil[], acao: Acao): boolean`.
+- Produces: `type Perfil = "paciente" | "gestor" | "admin" | "agendador" | "recepcao" | "triagem" | "profissional"`; `type Acao` = uma constante por linha da matriz (ex.: `"lancar_regulado"`, `"anular_falta"`, `"conferir_e_marcar_presenca"`…); `MATRIZ: { acao: Acao; texto: string; perfis: Partial<Record<Perfil, true | string>> }[]` (string = ressalva da célula, ex.: `"na chamada"`); `pode(perfis: Perfil[], acao: Acao): boolean`.
 - [ ] **Step 1: Testes** `"permissoes: toda linha da matriz da spec está nos dados"` (lê `specs/permissoes/spec.md` e compara textos e células); `"permissoes: recepção não dá prioridade a quem já está na fila"` (ação `dar_prioridade` exige contexto; testar `pode` + regra em `prioridade.ts`); `"permissoes: perfil acumulado soma permissões"`.
 - [ ] **Step 2:** FAIL. **Step 3:** implementar. **Step 4:** PASS. **Step 5:** commit `feat(domain): permission matrix as data`.
 

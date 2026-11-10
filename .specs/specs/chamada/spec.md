@@ -8,7 +8,7 @@ Quem é chamado e em que ordem está em [fila-do-dia](../fila-do-dia/spec.md#ord
 Cada consultório e sala de triagem é uma **estação**, ligada a uma etapa e a um ou mais serviços. O profissional faz login com o usuário dele e escolhe a estação.
 
 **RN-EST-02 · Mini-janela**
-A estação roda no navegador (Chrome ou Edge) e pode ser destacada numa **mini-janela flutuante** por cima do prontuário (Document Picture-in-Picture). Ela mostra a próxima senha, o contador da tolerância, as pendências a conferir e os botões Finalizar, **Chamar próximo**, **Rechamar** e **Não compareceu**.
+A estação roda no navegador (Chrome ou Edge) e pode ser destacada numa **mini-janela flutuante** por cima do prontuário (Document Picture-in-Picture). Ela mostra a próxima senha, o contador da tolerância e os botões Finalizar, **Chamar próximo**, **Rechamar** e **Não compareceu**.
 
 **RN-EST-03 · Vários serviços**
 QUANDO a estação atender mais de um serviço, "Chamar próximo" DEVE juntar os elegíveis desses serviços numa só ordem (RN-ORD). O profissional não escolhe o serviço.
@@ -37,15 +37,6 @@ Não há pulo automático: a tolerância (padrão 5 min) é só um contador que 
 *Decisões: AD-006, AD-021.*
 - *Dado* Ana chamada com 0 pulos, *quando* o profissional toca "Não compareceu", *então* Ana fica presente atrás dos próximos K.
 - *Dado* Ana com 2 pulos (1 na triagem, 1 no consultório), *quando* é pulada de novo, *então* sai da fila com uma falta.
-
-**RN-CHAM-04 · Conferência na chamada**
-QUANDO o chamado tiver pendência (RN-FILA-05), a estação DEVE mostrar "conferir documento", "conferir prioridade" ou "conferir pré-cadastro", e o profissional:
-- **confere** → a chamada segue e a pendência sai (conta verificada, pessoa atendida conferida, prioridade conferida, pré-cadastro validado);
-- **"não conferiu"** (identidade não confere) → o paciente sai da fila sem remanejamento e sem falta, com motivo na auditoria;
-- **prioridade não confere** (identidade ok) → a prioridade é retirada e o paciente volta para o lugar que teria sem ela, sem contar pulo.
-
-*Decisões: AD-039, AD-050.*
-- *Dado* Pedro chamado por ter declarado PcD, *quando* o profissional não confere a prioridade, *então* Pedro volta para a posição que teria sem ela e o profissional pode chamar o próximo.
 
 ## Triagem
 
@@ -77,7 +68,7 @@ A sessão só encerra quando o admin a encerra. No horário de fim, o painel lem
 **RN-SES-02 · Faltas e remanejados**
 QUANDO a sessão for encerrada, O SISTEMA DEVE, para cada um ainda na fila:
 - vez **não passou** → remanejado;
-- estava **presente** (com ou sem pendência) → remanejado, nunca faltoso;
+- estava **presente** → remanejado, nunca faltoso;
 - estava **remoto** e a vez passou → falta, exceto se já foi atendido em alguma etapa do dia (remanejado) ou se a vez passou durante um período de contingência registrado (remanejado, RN-CONT-03).
 
 *Decisões: AD-041, AD-033.*
@@ -105,19 +96,15 @@ Entrada na fila do dia (por etapa):
 
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
-| Presente (sem pendência) | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado | TV com som; push; inicia tolerância |
-| Presente com pendência | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado (com pendência) | TV com som; push; estação mostra o que conferir |
-| Chamado (com pendência) | Profissional confere | Confere | Chamado | Pendência resolvida; auditoria |
-| Chamado (com pendência) | Profissional: "não conferiu" | Identidade não confere | Saiu da fila | Entrada Cancelada; sem remanejamento e sem falta; auditoria |
-| Chamado (com pendência) | Profissional: prioridade não confere | Identidade ok | Presente | Prioridade retirada; volta ao lugar que teria sem ela; não conta pulo |
+| Presente | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado | TV com som; push; inicia tolerância |
 | Chamado | Rechamar | — | (mesmo) | Novo anúncio; tolerância não reinicia |
 | Chamado | Estação chama o próximo ou toca Finalizar | — | Atendido na etapa | Há outra etapa: Presente nela, mesmo número. Senão: entrada Concluída |
 | Chamado | "Não compareceu" | Pulos no dia = 0 | Presente | Pulos = 1; aplica janela protegida |
 | Chamado | "Não compareceu" | Pulos no dia = 1 | Remoto | Pulos = 2; push |
 | Chamado | "Não compareceu" | Pulos no dia = 2 | Saiu da fila | Pulos = 3; falta; entrada Encerrada sem atendimento; push |
 | Qualquer não final | Sessão cancelada | — | Remanejado | Push |
-| Remoto ou Presente (com ou sem pendência) | Sessão encerrada | A vez não passou | Remanejado | Push |
-| Presente (com ou sem pendência) | Sessão encerrada | A vez passou | Remanejado | Push (estava na unidade) |
+| Remoto ou Presente | Sessão encerrada | A vez não passou | Remanejado | Push |
+| Presente | Sessão encerrada | A vez passou | Remanejado | Push (estava na unidade) |
 | Remoto | Sessão encerrada | A vez passou; nunca atendido no dia; fora de contingência | Saiu da fila | Falta; entrada Encerrada sem atendimento |
 | Remoto | Sessão encerrada | Já atendido em etapa anterior | Remanejado | Push; não é falta |
 
@@ -127,4 +114,4 @@ Entrada (lista):
 | --- | --- | --- | --- | --- |
 | Na fila | Sessão encerrada com o paciente presente, já atendido em etapa anterior ou com a vez passada em contingência | — | Remanejada | Push |
 | Na fila | 3º pulo, ou falta no encerramento | — | Encerrada sem atendimento | Registra ocorrência de falta |
-| Na fila | Identidade não confere (recepção ou chamada) | — | Cancelada | Sem falta; motivo na auditoria |
+| Na fila | Recepção: identidade não confere (RN-FILA-05) | — | Cancelada | Sem falta; motivo na auditoria |

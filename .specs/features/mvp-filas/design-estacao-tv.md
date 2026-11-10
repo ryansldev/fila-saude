@@ -11,7 +11,6 @@
 | Topo | "consultório 3 · clínico geral" e o sinal de online | RN-EST-01, RN-EST-05 |
 | Ninguém chamado | "próximo: C-014" e "chamar próximo" grande; fila vazia: "ninguém presente agora · 3 a caminho" | RN-CHAM-01, RN-EST-03 |
 | Chamado | Senha grande, primeiro nome, contador "chamado há 2:40"; aos 5:00, "tolerância esgotada" em amarelo, sem pular sozinho | RN-CHAM-03, AD-006 |
-| Chamado com pendência | Faixa "conferir documento / prioridade / pré-cadastro" com "confere", "não conferiu" e "prioridade não confere" | RN-CHAM-04, AD-050 |
 | Botões | "chamar próximo" (fecha como atendido) · "rechamar" · "não compareceu" (diz qual pulo) · "finalizar" | RN-CHAM-02, RN-CHAM-03 |
 | Triagem | Mais "confirmar risco": nível sugerido, com opção de trocar | RN-TRI-03 |
 

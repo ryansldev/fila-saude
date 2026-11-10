@@ -27,9 +27,9 @@ Termos usados em todas as specs. Toda regra é obrigatória no MVP, exceto as ma
 | Fila do dia | Fila de uma sessão aberta. Tem uma etapa (atendimento) ou duas (triagem e atendimento). |
 | Etapa | Triagem ou atendimento. Cada etapa tem sua própria ordem e suas chamadas. |
 | Remoto / Presente | Estado de presença na fila do dia: fora ou dentro da unidade. |
-| Pendência | Algo a conferir de quem está presente: conta não verificada, pessoa atendida não conferida, pré-cadastro não validado ou prioridade declarada não conferida. Não tira a vez; é conferida na recepção ou na chamada. |
-| Elegível | Presente (com ou sem pendência), na etapa e num serviço atendido pela estação que chama. |
-| Conta verificada | Conta cujo dono do CPF foi confirmado: a recepção ou o profissional conferiu o documento com foto (MVP) ou, depois do piloto, gov.br prata/ouro. Antes disso a conta é **não verificada**. |
+| Pendência | Algo a conferir antes de entrar na fila presencial: conta não verificada, pessoa atendida não conferida, pré-cadastro não validado ou prioridade declarada não conferida. Com pendência, o check-in pelo QR é recusado até a recepção conferir. |
+| Elegível | Presente, na etapa e num serviço atendido pela estação que chama. |
+| Conta verificada | Conta cujo dono do CPF foi confirmado: a recepção conferiu o documento com foto (MVP) ou, depois do piloto, gov.br prata/ouro. Antes disso a conta é **não verificada**. |
 | Posição original | Número sequencial do paciente na fila do dia, dado ao entrar. Não muda quando ele sai e volta; só muda pela regra de atraso. |
 | Estação | Ponto de chamada (consultório ou sala de triagem), ligado a uma etapa e a um ou mais serviços. Está aberta enquanto houver um profissional logado nela. |
 | Senha | Código do paciente na fila do dia, com prefixo do serviço (ex.: C-012). É a mesma na triagem e no atendimento. |

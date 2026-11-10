@@ -22,14 +22,14 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-014 | Recorrência RFC 5545 | ativa |
 | AD-015 | Vaga segura em sessão pública com requisição | ativa |
 | AD-016 | Dispensa pré-cadastro | ativa |
-| AD-017 | Identidade por nível de confiança | ativa (efeito no check-in pela AD-050) |
-| AD-018 | Inscrever outra pessoa | ativa (efeito no check-in pela AD-050) |
+| AD-017 | Identidade por nível de confiança | ativa (efeito no check-in pela AD-054) |
+| AD-018 | Inscrever outra pessoa | ativa (efeito no check-in pela AD-054) |
 | AD-019 | E-mail obrigatório; recepção redefine acesso | ativa |
 | AD-020 | Contingência | ativa |
 | AD-021 | 3º pulo sempre gera falta, anulável | ativa |
 | AD-022 | Destaque da TV configurável | ativa |
 | AD-023 | Limite da recepção sobre a prioridade | ativa |
-| AD-024 | Prioridade autodeclarada é conferida | ativa (efeito no check-in pela AD-050) |
+| AD-024 | Prioridade autodeclarada é conferida | ativa (efeito no check-in pela AD-054) |
 | AD-025 | Grupos de prioridade fixos no código | ativa |
 | AD-026 | Dois modos de marcação de especialidade | ativa |
 | AD-027 | Prioridade da pessoa atendida | ativa (a confirmar no D5) |
@@ -55,10 +55,11 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-047 | Reserva troca por vaga | ativa |
 | AD-048 | Sem balcão em serviço regulado | ativa |
 | AD-049 | Lançamento só liga a conta verificada | ativa |
-| AD-050 | Pendência não tira a vez | ativa |
+| AD-050 | Pendência não tira a vez | substituída por AD-054 |
 | AD-051 | Estrutura das specs | ativa |
 | AD-052 | Licença AGPL-3.0 e receita por município | ativa |
 | AD-053 | Pré-cadastro com foto ligado por padrão | ativa |
+| AD-054 | Conferência antes de entrar na fila presencial | ativa |
 | PD-01..PD-13 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md)) |
 
 ## Produto
@@ -215,8 +216,8 @@ Lançar com sessão aberta entra direto na fila; agendador remove lançamento n�
 Serviço regulado não tem sessão pública; privada perde a dispensa; troca para regulado bloqueada com entradas ativas e converte o resto.
 
 ### AD-039 · "Não conferiu"
-2026-11-10 · ativa · Muda: RN-CHAM-04, RN-FILA-05
-Identidade que não confere tira da fila sem remanejamento nem falta; prioridade que não confere só é retirada.
+2026-11-10 · ativa · Muda: RN-FILA-05
+Identidade que não confere tira da fila sem remanejamento nem falta; prioridade que não confere só é retirada. (A conferência é só na recepção desde a AD-054.)
 
 ### AD-040 · Falta antes da conferência vai ao responsável
 2026-11-10 · ativa · Muda: RN-ID-06, RN-FALTA-01
@@ -258,7 +259,7 @@ Vale para remanejamento, reserva e troca.
 **Por quê:** quem criou conta com CPF alheio receberia dado de saúde e poderia desmarcar.
 
 ### AD-050 · Pendência não tira a vez
-2026-11-10 · ativa · Muda: RN-FILA-05, RN-CHAM-04, RN-ID-05, RN-LE-06, RN-RISCO-03 · Substitui: AD-030, AD-034
+2026-11-10 · **substituída por AD-054** · Substituía: AD-030, AD-034
 Presente com pendência é elegível; o app manda passar na recepção; se chamado antes, o profissional confere. **Por quê:** o prazo do perdão punia quem esperava no balcão e exigia vigilância da recepção; os pulos já resolvem quem foi embora.
 
 ### AD-051 · Estrutura das specs
@@ -272,6 +273,10 @@ O código passa de MIT para **AGPL-3.0** daqui em diante (o já publicado segue 
 ### AD-053 · Pré-cadastro com foto ligado por padrão
 2026-11-10 · ativa · Muda: configuração da unidade (specs/modelo), RN-PRE-01
 Toda unidade começa exigindo o pré-cadastro (foto do documento com foto e do Cartão SUS); o município pode desligar por unidade. Para a adesão de quem tem dificuldade com o celular, a implantação inclui uma **campanha de cadastro**: sessões públicas na unidade em que a recepção faz o pré-cadastro no balcão (RN-PRE-06). **Por quê:** conferência mais rápida e segura (foto × rosto × documento) e dados prontos na primeira ida; o atrito para o público de 60+ é compensado pela campanha. Plantão e sessões com dispensa seguem dispensando (RN-PUB-04).
+
+### AD-054 · Conferência antes de entrar na fila presencial
+2026-11-10 · ativa · Muda: RN-FILA-05, RN-ID-05, RN-PRE-03, RN-LE-06, RN-RISCO-03, RN-RISCO-04, permissões · Substitui: AD-050
+Com pendência, o check-in pelo QR é **recusado** ("passe na recepção"); a pessoa segue remota, com o lugar que tinha. A recepção confere e **marca a presença na mesma ação**; a regra de atraso conta a partir dela. O app avisa antes da chegada para passar na recepção primeiro. O profissional só chama e atende; a estação não confere nada. Prioridade nova declarada por quem já está presente só vale depois de conferida. **Por quê:** na rotina real quem está na sala controla a fila e não confere documento; tira o estado "presente com pendência" e a conferência na estação; a brecha de "congelar" o lugar continua fechada (quem nunca entrou presencialmente não tem lugar presencial). Custo: num balcão lento, quem leu o QR antes de passar na recepção pode ser ultrapassado; acontece uma vez por pessoa e a campanha de cadastro (AD-053) reduz.
 
 ## Arquitetura
 

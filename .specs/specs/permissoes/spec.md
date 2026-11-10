@@ -29,11 +29,11 @@ QUANDO a recepção dar ou tirar prioridade, informar risco alto no balcão, anu
 | Lançar paciente de serviço regulado, inclusive no dia; remover lançamento não chamado (RN-ENC-06) |  |  |  | ✓ |  |  |  |
 | Confirmar nível de risco |  |  |  | ✓ (na alocação ou lançamento) |  | ✓ |  |
 | Incluir paciente no balcão; marcar presença |  |  |  |  | ✓ |  |  |
-| Verificar conta; conferir pessoa atendida; validar pré-cadastro |  |  |  |  | ✓ | ✓ (na chamada) | ✓ (na chamada) |
+| Verificar conta; conferir pessoa atendida; validar pré-cadastro; marcar presença na mesma ação (RN-FILA-05) |  |  |  |  | ✓ |  |  |
 | Redefinir acesso com documento conferido (RN-ID-01) |  |  |  |  | ✓ |  |  |
-| Conferir ou tirar prioridade legal |  |  |  |  | ✓ | ✓ (na chamada) | ✓ (na chamada) |
+| Conferir ou tirar prioridade legal |  |  |  |  | ✓ |  |  |
 | Dar prioridade legal, só na inclusão pelo balcão ou na 1ª presença de paciente sem app (RN-RISCO-04) |  |  |  |  | ✓ |  |  |
-| "Não conferiu" (identidade não confere) (RN-CHAM-04) |  |  |  |  | ✓ | ✓ | ✓ |
+| "Não conferiu" (identidade não confere) (RN-FILA-05) |  |  |  |  | ✓ |  |  |
 | Bloquear conta usurpada (RN-ID-03) |  |  |  |  | ✓ |  |  |
 | Anular falta por 3 pulos, com motivo (RN-FALTA-02) |  |  |  |  | ✓ |  |  |
 | Registrar período de contingência e atendidos na volta (RN-CONT-02) |  |  |  |  | ✓ |  |  |

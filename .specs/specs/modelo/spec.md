@@ -13,8 +13,8 @@ Uma pessoa pode acumular perfis (ex.: agendador e recepção). Cada perfil é co
 | Admin da unidade | Unidade | Configura serviços, sessões, TV e estações; abre, cancela e encerra sessões |
 | Agendador | Unidade | Valida requisições, aloca pacientes, lança pacientes de serviço regulado, liga e registra confirmações |
 | Recepção | Unidade | Balcão, conferência de documentos e prioridade, presença, ajustes, contingência |
-| Triagem | Unidade | Chama para triagem, confirma ou reclassifica o risco, confere pendências na chamada |
-| Profissional | Unidade | Chama, rechama, pula e finaliza na estação; confere pendências na chamada |
+| Triagem | Unidade | Chama para triagem, confirma ou reclassifica o risco |
+| Profissional | Unidade | Chama, rechama, pula e finaliza na estação |
 | TV (dispositivo) | Unidade | Exibe chamadas e QR. Não é um usuário; é um dispositivo pareado |
 
 ## Entidades
@@ -33,7 +33,7 @@ Uma pessoa pode acumular perfis (ex.: agendador e recepção). Cada perfil é co
 | Entrada | Responsável (Paciente) ou Pessoa local × Serviço | pessoa atendida, data de entrada original, classificação de risco (sugerida e confirmada), prioridade legal (declarada, conferida, expira em), remanejada (origem), recusas, estado |
 | Questionário de risco | Entrada | respostas estruturadas, nível sugerido, data; histórico de versões |
 | Alocação | Entrada × Sessão | alocado por, motivos da sugestão, prazo de confirmação, estado da confirmação |
-| Entrada na fila | Sessão × Entrada | senha, origem (alocado, público, balcão, lançado), etapa atual, presença, pendências, posição original, pulos no dia, chamadas, estado |
+| Entrada na fila | Sessão × Entrada | senha, origem (alocado, público, balcão, lançado), etapa atual, presença, posição original, pulos no dia, chamadas, estado |
 | Chamada | Entrada na fila × Estação | horário, rechamadas, resultado (compareceu, pulado) |
 | Estação | Unidade | nome (ex.: Consultório 3), etapa, serviços atendidos, profissional logado (aberta ou fechada), último sinal de vida |
 | Dispositivo TV | Unidade | nome, token de pareamento, último sinal de vida, revogado |
@@ -117,4 +117,4 @@ Estados da entrada:
 | Cancelada | Desistiu, foi removida ou recusada na conferência | Sim |
 | Encerrada sem atendimento | Saiu por 3 pulos, ou faltou | Sim (revertida só pela contingência registrada depois) |
 
-Estados da entrada na fila do dia: **Remoto**, **Presente** (com ou sem pendência), **Chamado** (com ou sem pendência), **Atendido na etapa**, **Saiu da fila**, **Remanejado**.
+Estados da entrada na fila do dia: **Remoto**, **Presente**, **Chamado**, **Atendido na etapa**, **Saiu da fila**, **Remanejado**.

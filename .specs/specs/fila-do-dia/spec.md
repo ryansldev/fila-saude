@@ -30,16 +30,16 @@ Paciente incluído pela recepção já entra como **presente**.
 **RN-FILA-04 · Senha**
 A senha tem o prefixo do serviço, é única na sessão (INV-05) e é a mesma em todas as etapas. O número também se mantém entre as etapas.
 
-**RN-FILA-05 · Pendência não tira a vez**
-QUANDO o check-in acontecer com pendência, O SISTEMA DEVE deixar o paciente **presente com pendência**, que é **elegível** e entra na ordem normalmente, e o app DEVE orientar "passe na recepção para confirmar seus documentos" (com o ID de atendimento, se for pré-cadastro). Pendências:
+**RN-FILA-05 · Conferência antes de entrar na fila presencial**
+QUANDO alguém com pendência ler o QR, O SISTEMA DEVE **recusar o check-in** e o app DEVE dizer "passe na recepção para confirmar seus documentos · você ainda não entrou na fila da unidade" (com o ID de atendimento, se for pré-cadastro). A pessoa continua **remota**, com o lugar que tinha. Pendências:
 - (a) conta não verificada (em qualquer sessão, inclusive com dispensa de pré-cadastro), ou pessoa atendida que não é o dono da conta e ainda não foi conferida na unidade;
 - (b) a unidade exige pré-cadastro, a sessão não o dispensa e o dele não foi validado;
 - (c) prioridade legal declarada e não conferida.
 
-A recepção confere quando a pessoa passa por ela. Se o paciente for chamado antes, a conferência acontece na chamada (RN-CHAM-04). Não há prazo nem perdão de atraso para a espera no balcão: quem foi embora com pendência é chamado e pulado como qualquer ausente.
-*Decisões: AD-017, AD-018, AD-024, AD-050.*
-- *Dado* Ana com conta nova que leu o QR às 7:00 e está na fila do balcão, *quando* é a vez dela na ordem, *então* ela é chamada na TV e o profissional confere o documento na porta.
-- *Dado* Pedro com pendência que foi embora sem tocar "Vou sair", *quando* chega a vez dele, *então* é chamado, não aparece e é pulado (RN-CHAM-03).
+A recepção confere a qualquer momento e, na mesma ação, **marca a presença** (ou a pessoa lê o QR de novo). A regra de atraso conta a partir dessa presença. Antes da chegada, o app avisa quem tem pendência: "na sua primeira ida, passe na recepção antes de ler o QR". Só a recepção confere; o profissional nunca confere documento.
+*Decisões: AD-017, AD-018, AD-024, AD-054.*
+- *Dado* Ana com conta nova que leu o QR, *quando* o check-in é recusado e ela vai ao balcão, *então* a recepção confere o documento e marca a presença num clique, e ela entra na fila presencial.
+- *Dado* Pedro com pendência que foi embora depois de ter o check-in recusado, *quando* volta horas depois e é conferido, *então* a regra de atraso conta a partir de agora e ele vai para o fim se já chamaram quem vinha depois dele.
 
 **RN-FILA-06 · Encerramento separa faltas e remanejados**
 Ao encerrar, O SISTEMA DEVE separar quem faltou (RN-FALTA-01) de quem é remanejado (RN-SES-02).
@@ -62,7 +62,7 @@ Quem esqueceu de marcar a saída e não aparece à chamada é pulado pelo profis
 ## Ordem de chamada
 
 ```
-elegiveis = entradas da etapa, com presenca = PRESENTE (com ou sem pendencia),
+elegiveis = entradas da etapa, com presenca = PRESENTE,
             dos servicos atendidos pela estacao que chama
 
 ordem (RN-ORD), aplicada a qualquer conjunto de entradas:
@@ -96,7 +96,7 @@ atraso (pela ordem real, nunca pelo numero):
 "a vez passou" (falta e remanejamento) =
   ja foi chamado, na etapa atual de X, alguem que vem depois de X em ordem
 ```
-*Decisões: AD-004, AD-010, AD-033, AD-041, AD-050.*
+*Decisões: AD-004, AD-010, AD-033, AD-041.*
 
 **RN-ORD-01 · Exemplo: janela protegida**
 João está presente e é o próximo. Ana, que estava remota com posição igual ou melhor, faz check-in agora. João é chamado primeiro; Ana vem logo depois.
@@ -153,10 +153,9 @@ Entrada na fila do dia (por etapa):
 | — | Sessão abre | Entrada confirmada | Remoto | Senha; número por RN-FILA-01 |
 | — | Recepção inclui no balcão | Vaga livre; serviço não regulado | Presente | Senha anotada ou impressa; próximo número |
 | Remoto | QR válido ou recepção marca | Sem pendência | Presente | Aplica janela protegida e regra de atraso |
-| Remoto | QR válido | Com pendência (RN-FILA-05) | Presente com pendência | Elegível; janela protegida e atraso; app orienta "passe na recepção" |
-| Remoto | Recepção marca presença de pessoa sem app, conferindo o documento | — | Presente | Aplica janela protegida e regra de atraso |
-| Presente com pendência | Recepção confere | Confere | Presente | Pendência resolvida |
-| Presente com pendência | Recepção recusa ("não conferiu"), com motivo | Identidade não confere | Saiu da fila | Sem remanejamento e sem falta; entrada Cancelada; pode bloquear a conta (RN-ID-03) |
-| Presente com pendência | Recepção confere a identidade, mas não a prioridade | — | Presente | Prioridade retirada; volta ao lugar que teria sem ela |
-| Presente (com ou sem pendência) | Paciente toca "Vou sair" | — | Remoto | Mantém o número |
-| Remoto ou Presente (com ou sem pendência) | Paciente cancela | — | Saiu da fila | Vaga vai para a reserva, se houver |
+| Remoto | QR válido | Com pendência (RN-FILA-05) | (mesmo) | Check-in recusado; app orienta "passe na recepção" |
+| Remoto | Recepção confere e marca presença (inclui pessoa sem app) | Confere | Presente | Pendência resolvida; aplica janela protegida e regra de atraso |
+| Remoto | Recepção confere a identidade, mas não a prioridade, e marca presença | — | Presente | Prioridade retirada; aplica janela protegida e regra de atraso |
+| Remoto | Recepção recusa ("não conferiu"), com motivo | Identidade não confere | Saiu da fila | Sem remanejamento e sem falta; entrada Cancelada; pode bloquear a conta (RN-ID-03) |
+| Presente | Paciente toca "Vou sair" | — | Remoto | Mantém o número |
+| Remoto ou Presente | Paciente cancela | — | Saiu da fila | Vaga vai para a reserva, se houver |
