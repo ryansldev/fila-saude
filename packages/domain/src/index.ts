@@ -1,3 +1,10 @@
+export type { EstadoEntrada, EstadoItem, EstadoSessao, Transicao } from "./contratos.ts";
+export {
+  TRANSICOES_ENTRADA,
+  TRANSICOES_ITEM,
+  TRANSICOES_SESSAO,
+  transicionar,
+} from "./contratos.ts";
 export type { Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
   expirada,
