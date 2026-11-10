@@ -1,82 +1,71 @@
 # MVP Filas UBS/Policlínicas
 
-**Approved**: 2026-11-04 - user: "essa é a spec MVP já ok"
+**Aprovada:** 2026-11-04 (usuário: "essa é a spec MVP já ok"). Reorganizada em 2026-11-10 (AD-051): as regras vivem nas [specs por capacidade](../../specs/); esta página diz o que o MVP entrega e com quais histórias.
 
-Regras detalhadas: [source.md](source.md) (RN-*, INV-*, RNF-*, contratos 9.3, questionário 7.3, TV 12.1). Esta spec só registra escopo e desvios da fonte.
+## Problema e meta
 
-## Problem Statement
+Trocar a fila física de UBS e policlínicas por uma fila remota: o paciente espera em casa e só vai à unidade quando a vez estiver perto. Meta de produto: **espera presencial abaixo de 10 minutos**. O MVP cobre UBS e policlínicas; UPA existe como tipo de unidade, sem fluxo próprio. Princípios: [constituição](../../constitution.md).
 
-Trocar a fila física de UBS/policlínicas por fila remota: paciente espera em casa e vai quando a vez está perto. Meta: espera presencial < 10 min.
+## Escopo
 
-## Out of Scope
+**Dentro do MVP**
+- **App do paciente** (Android e iOS): mapa e agenda das unidades, lista de espera, questionário de risco, requisição pelo app, pré-cadastro, fila do dia, check-in e saída, cancelamento.
+- **Painel** (web): configuração de município, unidades, serviços e sessões; alocação e lançamento regulado; lista de ligação; recepção; conferências; remanejamento; contingência; relatório de ajustes e CSV de métricas.
+- **Estação de chamada** (web, Chrome ou Edge) e **painel da TV** (web, pareado por código).
+- **Push** no app.
 
-Igual à fonte §2, mais: migrar entradas entre unidades na transferência.
+**Fora do MVP**
 
-## Assumptions & Open Questions
+| Item | Motivo / quando |
+| --- | --- |
+| WhatsApp | Custo e burocracia; depois, com API oficial da própria prefeitura |
+| SMS e segundo fator de login | Custo; login é CPF + senha |
+| Dashboard de métricas | Fase seguinte; no MVP, CSV (RNF-MET-01) |
+| Estimativa de tempo com IA | Fase seguinte; MVP usa tempo médio |
+| Voz lendo a chamada na TV | Só som de aviso |
+| Botão físico USB | Descartado |
+| Integração com e-SUS PEC, SISREG ou e-SUS Regulação | Depende de terceiros; regulação avaliada no D6 para depois do piloto |
+| Prontuário e dados clínicos além do questionário | Não é nossa responsabilidade |
+| Fluxo de UPA | Fase seguinte |
+| Página pública da fila (fora da TV) | O app já cobre |
+| Painel offline com sincronização | Contingência por papel (RN-CONT-01) |
+| Migrar entradas entre unidades na transferência | Reavaliar com uso real |
+| gov.br e biometria comercial | Depois do piloto (AD-017) |
 
-Desvios confirmados (y) e propostas da fonte a validar antes do piloto (n).
+## Histórias de usuário
 
-| Assumption / decision | Chosen default | Rationale | Confirmed? |
+P1 = sem ela o MVP não funciona; P2 = necessária para a operação real. Os critérios de aceite são as regras e os cenários citados.
+
+| ID | Prioridade | História | Regras |
 | --- | --- | --- | --- |
-| Risco × prioridade legal | Config do município (AD-004) | Decisão local | y |
-| Posição do presente | Ordem real (AD-002) | RN-ETA-01 enganava | y |
-| Remoto já 1º | "venha agora" (AD-003) | "1º · ~0 min" engana | y |
-| Pulo automático | Removido (AD-006) | Pulava quem estava em consulta | y |
-| "Saia de casa" com triagem | Por etapa (AD-009) | RN-TRI-05 não acontecia | y |
-| Atraso | Por ordem, não por número (AD-010) | Urgente com nº maior tirava a vez | y |
-| Visibilidade | Por sessão; privada só sinaliza interesse (AD-011) | Nem toda unidade tem os mesmos serviços | y |
-| Confirmação da inscrição pública | Já entra confirmada (AD-013) | Paciente escolheu o dia | y |
-| Encaminhamento em sessão pública | Segura a vaga até aceito; liberada na abertura (AD-015) | Fonte não definia | y |
-| Pré-cadastro por sessão | Opção "dispensa pré-cadastro" (e vínculo), só em sessão pública (AD-016) | Plantão atende quem aparecer | y |
-| Prova de identidade | Nível de confiança; verificada pela recepção no 1º check-in; gov.br depois do piloto (AD-017) | Sem depender da prefeitura para lançar | y |
-| Inscrever outra pessoa | Responsável informa a pessoa atendida na inscrição, sem cadastro de dependentes (AD-018) | Pais marcam para filhos; familiares para idosos | y |
-| Recuperação de acesso | E-mail obrigatório + recepção como alternativa (AD-019) | Parte do público não lembra o e-mail | y |
-| Data da sessão | Recorrência RFC 5545 (AD-014) | Padrão de mercado (Google Calendar) | y |
-| Nome na TV | Nenhum; só senha. Presencial recebe papel com a senha (AD-012) | Primeiro nome repete; mais que isso fere a privacidade | y |
-| Questionário v1 (7.3) | Como na fonte | Validar com enfermeiro/médico no D8, antes do piloto | n |
-| Marcação de especialidade | Dois modos por serviço: requisição pelo app (paciente marca de casa) ou regulado pela central (agendador lança); integração com a regulação depois do piloto (AD-026) | Municípios diferem; integração depende da secretaria e do DATASUS | y |
-| Validade da requisição | Levantar no D6: não há prazo nacional e a guia muitas vezes não traz data | Depende do município | n |
-| Exclusão de fotos (RNF-LGPD-04) | Retidas enquanto cadastro ativo | Depende do jurídico | n |
-| Tempo médio (RN-ETA-05), triagem cadenciada (RN-TRI-06), reativação 30 d (RN-PARADA-02) | Valores da fonte | Propostas | n |
-| 3 pulos = falta | Sempre, com ou sem check-in; recepção anula com motivo (AD-021) | Quem sai sem avisar não escapa; o caso injusto se resolve no balcão | y |
-| Destaque da chamada na TV | Configurável por unidade, padrão 10 s (AD-022) | Unidades de tamanhos diferentes | y |
-| Poder da recepção sobre a prioridade legal | Dá só na inclusão pelo balcão, tira a qualquer momento; relatório ao gestor (AD-023) | Evita subir quem já está na fila | y |
-| Prioridade legal declarada | Aviso ao declarar; conferida pela recepção ou na chamada pelo profissional; pendência não tira a vez (AD-024, AD-050); vale nas próximas idas, exceto as com prazo | Autodeclaração aberta demais | y |
-| Grupos de prioridade legal | Lei 10.048 + Lei 14.626/2023 (inclui mobilidade reduzida e doador de sangue), lista fixa no código (AD-025) | Sem tela de edição antes de saber se algum município precisa | y |
-| Prioridade ao marcar para outra pessoa | Da pessoa atendida; criança de colo atendida mantém a prioridade; a do acompanhante não passa (AD-027) | Padrão até o D5 | n |
-| Contingência | Lista do dia impressa + reconciliação na volta; sem falta no período da queda, registrado com motivo e cruzado com o sinal de vida da TV e das estações; app avisa indisponibilidade (AD-020) | Piloto sem alta disponibilidade | y |
-| Abrangência por endereço | Fora do MVP | Fonte em aberto | n |
-| Hospedagem municipal | MVP e piloto na AWS sa-east-1, setup enxuto (PD-12); longo prazo e cobrança no D7 | Arquitetura | y |
+| US-01 | P1 | Como paciente, quero ver as unidades próximas e o que cada uma oferece, sem ver dados de outros pacientes | RN-AG-01, RN-AG-02 |
+| US-02 | P1 | Como paciente, quero entrar na lista de um serviço informando o que sinto (para mim ou para outra pessoa) | RN-LE-01..06, RN-RISCO-01..06 |
+| US-03 | P1 | Como paciente, quero enviar de casa a foto da requisição e ser avisado do aceite ou da recusa | RN-ENC-01..04 |
+| US-04 | P1 | Como agendador, quero preencher as vagas de uma sessão privada com a sugestão ordenada e seus motivos | RN-AL-01..06, RN-PERF-02 |
+| US-05 | P1 | Como paciente, quero confirmar a alocação; como agendador, quero ligar para quem não confirmou | RN-CONF-01..04 |
+| US-06 | P1 | Como paciente, quero entrar na fila remota ao abrir a sessão, ver posição e tempo, e receber "saia de casa" | RN-FILA-01..02, RN-ETA-01..05 |
+| US-07 | P1 | Como paciente, quero fazer check-in pelo QR e sair com "Vou sair" sem perder a posição | RN-PRES-01..04, RN-FILA-05 |
+| US-08 | P1 | Como paciente presente, não quero ser ultrapassado por quem acabou de chegar | RN-ORD-01, RN-ORD-03..05 |
+| US-09 | P1 | Como paciente com urgência confirmada, quero passar à frente e, remoto, receber "venha agora" | RN-ORD-02 |
+| US-10 | P1 | Como profissional, quero chamar o próximo na mini-janela e conferir pendências na hora | RN-CHAM-01, RN-CHAM-02, RN-CHAM-04, RN-EST-01..05 |
+| US-11 | P1 | Como profissional, quero pular quem não compareceu, sem pulo automático | RN-CHAM-03, RN-FALTA-02 |
+| US-12 | P1 | Como recepção, quero incluir quem não tem app e entregar o papel com a senha | RN-FILA-03, RN-LE-04, RN-PRES-03, RN-TV-05 |
+| US-13 | P1 | Como admin, quero parear e revogar a TV da unidade | RN-TV-01..07 |
+| US-14 | P2 | Como paciente, quero fazer o pré-cadastro uma vez e validá-lo na unidade | RN-PRE-01..06 |
+| US-15 | P2 | Como admin, quero cancelar uma sessão criando a reposição ou deixando os pacientes aguardando remarcação | RN-REM-01..05 |
+| US-16 | P2 | Como paciente, quero me inscrever numa sessão pública ou entrar na reserva | RN-PUB-01..04 |
+| US-17 | P2 | Como paciente, quero cancelar minha vaga | RN-CANC-01..03 |
+| US-18 | P2 | Como agendador, quero lançar os pacientes que a regulação mandou; como paciente, quero entender que o serviço é regulado | RN-ENC-05..07 |
+| US-19 | P2 | Como recepção, quero operar pelo papel quando o sistema cai e reconciliar na volta, sem punir ninguém | RN-CONT-01..04, RN-SES-04, RN-SES-05 |
 
-**Open questions:** none.
+## Em aberto
 
-## User Stories
+Propostas a validar no piloto ou nos discoveries (lista completa em [tasks](tasks.md#discoveries-e-spikes)):
 
-US-01..US-13 (P1) e US-14..US-19 (P2) conforme fonte §14, com os desvios acima.
-
-## Requirement Traceability
-
-| Requirement ID | Story | Phase | Status |
-| --- | --- | --- | --- |
-| AG-01 | US-01 | Design | Pending |
-| LE-01 | US-02 | Design | Pending |
-| RISCO-01 | US-02 | Design | Pending |
-| ENC-01 | US-03 | Design | Pending |
-| AL-01 | US-04 | Design | Pending |
-| CONF-01 | US-05 | Design | Pending |
-| FILA-01 | US-06 | Design | Pending |
-| PRES-01 | US-07 | Design | Pending |
-| ORD-01 | US-08 | Design | Pending |
-| ORD-02 | US-09 | Design | Pending |
-| CHAM-01 | US-10 | Design | Pending |
-| CHAM-02 | US-11 | Design | Pending |
-| BAL-01 | US-12 | Design | Pending |
-| TV-01 | US-13 | Design | Pending |
-| PRE-01 | US-14 | - | Pending |
-| SES-01 | US-15 | - | Pending |
-| PUB-01 | US-16 | - | Pending |
-| CANC-01 | US-17 | - | Pending |
-| ENC-05 | US-18 | - | Pending |
-| SES-04/05 | US-19 | - | Pending |
-
-ID = grupo de regras `RN-<ID>-NN` da fonte.
+- Questionário v1 e regras de classificação: validar com enfermeiro ou médico (D8).
+- Validade da requisição e quem a confere (D6).
+- Prazo de exclusão das fotos (RNF-LGPD-04), grupos e documentos de prioridade legal, texto do aviso de declaração falsa (D5).
+- Tempo médio (RN-ETA-05), triagem cadenciada (RN-TRI-06) e reativação em 30 dias (RN-PARADA-02): validar no piloto.
+- Conferência de documento pelo profissional na chamada (AD-050): confirmar no D4.
+- Área de abrangência por endereço como critério de vínculo, além do cadastro validado: perguntar no D4 se a unidade atende só a população adscrita.
+- Hospedagem de longo prazo e cobrança (D7, [hospedagem](hospedagem.md)).

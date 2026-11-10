@@ -2,7 +2,7 @@
 
 2026-11-10 · status: **rascunho para revisão**
 
-Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisões de produto: AD-001..AD-048 em [`.specs/STATE.md`](../../STATE.md). Anexos: [discovery-identidade.md](discovery-identidade.md) (decidido), [hospedagem.md](hospedagem.md) (MVP e piloto decididos, PD-12; longo prazo no D7) e [discovery-regulacao.md](discovery-regulacao.md) (MVP decidido, AD-026; piloto a confirmar).
+Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../../specs/) (RN-*, INV-*, RNF-*, transições, permissões). Decisões de produto em [decisions.md](../../decisions.md); princípios na [constituição](../../constitution.md). Anexos: [discovery-identidade.md](discovery-identidade.md) (decidido), [hospedagem.md](hospedagem.md) (MVP e piloto decididos, PD-12; longo prazo no D7) e [discovery-regulacao.md](discovery-regulacao.md) (MVP decidido, AD-026; piloto a confirmar).
 
 ## 1. Decisões de arquitetura
 
@@ -51,7 +51,7 @@ Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisõe
 | `apps/painel` | Next 16, React 19, Tailwind 4, shadcn; design da landing |
 | `apps/mobile` | Expo, Expo Router, expo-camera, expo-notifications, `@better-auth/expo` |
 | `apps/web` | Landing (sem mudança) |
-| `packages/domain` | Regras puras (§6) |
+| `packages/domain` | Regras puras (§6 deste plan) |
 | `packages/schemas` | Contratos Zod da API, compartilhados por api, painel e mobile |
 | `packages/configs` | Configurações compartilhadas (existente) |
 
@@ -64,7 +64,7 @@ Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisõe
 - `dispositivo_push` (token Expo por paciente);
 - tabelas do better-auth dos pacientes.
 
-**Banco do município**: todas as entidades do §5 da fonte, exceto as acima, mais `usuario_painel` e `perfil` (escopo por unidade), `auditoria`, `outbox_push` e as tabelas do better-auth do painel.
+**Banco do município**: todas as entidades de [specs/modelo](../../specs/modelo/spec.md#entidades), exceto as acima, mais `usuario_painel` e `perfil` (escopo por unidade), `auditoria`, `outbox_push` e as tabelas do better-auth do painel.
 
 **Resolução do tenant por requisição:**
 - **Web** (painel, estação, TV): pelo `Host` → slug → `municipio`.
@@ -84,7 +84,7 @@ Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisõe
 
 - **Paciente:** better-auth central; username = CPF validado pelos dígitos; recuperação por código no e-mail (RN-ID-01); hash forte e bloqueio após tentativas (RN-ID-04). No app, sessão por token via plugin Expo.
 - **Painel:** better-auth por tenant (cache de instâncias por slug). O login é usuário + senha do município.
-- **Autorização:** a matriz de permissões (9.3) vira uma tabela de ações × perfis em `packages/domain`. Um guard do Fastify confere perfil e escopo de unidade em cada rota do painel. Toda ação do painel grava em `auditoria` na mesma transação (INV-12).
+- **Autorização:** a matriz de [specs/permissoes](../../specs/permissoes/spec.md) vira uma tabela de ações × perfis em `packages/domain`. Um guard do Fastify confere perfil e escopo de unidade em cada rota do painel. Toda ação do painel grava em `auditoria` na mesma transação (INV-12).
 - **Estação:** token vinculado ao usuário logado e à estação escolhida (RNF-SEG-02).
 - **TV:** dispositivo pareado por código de 6 dígitos (RN-TV-01); token revogável guardado no navegador da TV.
 - **Nível de confiança** (AD-017): `paciente.verificado_em/metodo` no central. A recepção verifica pelo painel do tenant, que grava no central (só o fato, sem o documento) e na auditoria local.
@@ -100,10 +100,10 @@ Funções puras sobre dados explícitos (entradas, configuração, chamadas já 
 | `fila` | Elegibilidade (inclusive prioridade não conferida, AD-024), janela protegida, atraso pela ordem (AD-010), ordem de chamada | `callOrder`, `becomeEligible`, `releaseLocks` |
 | `chamada` | Chamar próximo, rechamar, finalizar, "Não compareceu" com 1º/2º/3º pulo (AD-006), passagem de etapa da triagem | `callNext`, `skip`, `finishCurrent` |
 | `estimativa` | Posição e tempo do remoto/presente, "venha agora", aviso por etapa, média RN-ETA-05 | `eta`, `patientEta`, `tick` |
-| `sessao` | Contratos de estado 9.3 (transição não listada = erro), vagas (INV-02), lançamento de serviço regulado (AD-026), encerramento (falta × remanejado; falta anulável, AD-021; sem falta no período de contingência, AD-020) | vários |
+| `sessao` | Contratos de estado das specs (transição não listada = erro), vagas (INV-02), lançamento de serviço regulado (AD-026), encerramento (falta × remanejado; falta anulável, AD-021; sem falta no período de contingência, AD-020) | vários |
 | `qr` | Token HMAC por sessão, janela de 30 s, aceita o atual e o anterior | `qrToken`, `checkIn` |
 | `recorrencia` | Expansão RRULE/EXDATE/RDATE em ocorrências, divisão de série | novo |
-| `permissoes` | Matriz 9.3 | novo |
+| `permissoes` | Matriz de specs/permissoes | novo |
 
 **Porte:**
 1. Os 51 testes de `prototype/tests/engine.test.js` (casos C1..C45 de `.specs/features/prototipo/proofs.md`) são reescritos em Vitest contra a nova API do pacote **antes** da implementação.
@@ -118,7 +118,7 @@ Funções puras sobre dados explícitos (entradas, configuração, chamadas já 
 - **Concorrência:**
   - "Chamar próximo", "Não compareceu", check-in e saída travam a linha da sessão (`SELECT … FOR UPDATE`), o que serializa as mudanças de ordem de uma fila (RN-CHAM-01, INV-04);
   - alocação e inscrição usam um contador de versão da sessão; uma tentativa com versão velha recebe `409` e a lista atualizada (RN-PERF-02, INV-02).
-- **Erros:** uma transição proibida pelos contratos 9.3 responde `409` com um código estável (ex.: `sessao_aberta`, `lotada`, `duplicada`).
+- **Erros:** uma transição proibida pelos contratos de estado responde `409` com um código estável (ex.: `sessao_aberta`, `lotada`, `duplicada`).
 
 ## 8. Tempo real (SSE)
 
@@ -146,7 +146,7 @@ Varredura a cada minuto, por tenant, com lock consultivo (`pg_try_advisory_lock`
 | "Ainda precisa?" (30 dias) e arquivamento (7 dias) | RN-PARADA |
 | Lembrar o admin no horário de fim | RN-SES-01 |
 | Materializar ocorrências das séries (janela de 90 dias) | PD-10 |
-| Projetar o catálogo público no banco central | §4 |
+| Projetar o catálogo público no banco central | §4 deste plan |
 | Enviar a outbox de push (com nova tentativa e backoff) | RN-NOT |
 
 - **Push:** a outbox do tenant guarda o paciente e o texto, sem dado clínico (RN-NOT-01). O worker busca os tokens no central e envia pelo Expo; os recibos marcam os tokens inválidos.
@@ -168,7 +168,7 @@ Varredura a cada minuto, por tenant, com lock consultivo (`pg_try_advisory_lock`
 | Camada | Ferramenta | O que cobre |
 | --- | --- | --- |
 | Domínio | Vitest | Os 46 casos do protótipo, mais as regras novas; cada INV-* vira teste |
-| API | Vitest + Postgres de teste (padrão atual de `tests/integration`) | Contratos 9.3 pelas rotas, isolamento entre dois tenants, concorrência real com dois escritores (L-003), permissões |
+| API | Vitest + Postgres de teste (padrão atual de `tests/integration`) | Contratos de estado pelas rotas, isolamento entre dois tenants, concorrência real com dois escritores (L-003), permissões |
 | Painel / app | Testes de componente onde houver lógica | — |
 | Ponta a ponta | Depois do MVP (Playwright no painel, Maestro no app) | Fluxo principal do protótipo |
 
@@ -204,4 +204,4 @@ Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (OpenT
 - Regulação (D6, [discovery-regulacao.md](discovery-regulacao.md)): configuração dos serviços do piloto, validade da requisição e integração pós-piloto com e-SUS Regulação/SISREG (AD-026).
 - Validação clínica do questionário v1 (D8), antes do piloto.
 - Números-alvo dos critérios de sucesso do piloto (AD-029), depois da entrevista do D4.
-- Propostas da fonte §16 para validar no piloto (tempo médio, triagem cadenciada, 30 dias).
+- Propostas a validar no piloto (RN-ETA-05 tempo médio, RN-TRI-06 triagem cadenciada, RN-PARADA-02 30 dias).
