@@ -6,7 +6,7 @@ const MIN = 60_000;
 
 export type Estimativa =
   | { tipo: "posicao"; posicao: number; minutos: number; consulta?: { minutos: number } }
-  | { tipo: "venha_agora" }
+  | { tipo: "venha_agora"; consulta?: { minutos: number } }
   | { tipo: "aguardando_inicio" }
   | { tipo: "modo_manual" };
 
@@ -87,20 +87,20 @@ export function estimar(dia: DiaSessao, itemId: string, agora: number, opcoes: O
       ? elegiveis(dia, primeira.id).findIndex((i) => i.id === item.id)
       : naEtapa.filter((i) => ordem(dia, i, item) < 0).length;
   if (aFrente < 0) return { tipo: "aguardando_inicio" };
-  if (item.estado === "remoto" && aFrente === 0) return { tipo: "venha_agora" };
-
+  const comeNow = item.estado === "remoto" && aFrente === 0;
   const minutos = Math.ceil((aFrente * tempoMedio(dia, item.etapa, dia.servicoId, agora)) / n);
-  const base = { tipo: "posicao" as const, posicao: aFrente + 1, minutos };
-  if (item.etapa !== "triagem") return base;
+  const principal: Estimativa = comeNow ? { tipo: "venha_agora" } : { tipo: "posicao", posicao: aFrente + 1, minutos };
+  if (item.etapa !== "triagem") return principal;
 
+  // RN-ETA-01c/AD-009: na triagem, a previsão da consulta vai à parte (inclusive com "venha agora").
   const nA = abertas(dia, "atendimento").length;
-  if (nA === 0) return base;
+  if (nA === 0) return principal;
   const antesNaConsulta = dia.itens.filter((i) => naFila(i) && ordem(dia, i, item) < 0).length;
   const pesoTriagem = (aFrente * tempoMedio(dia, "triagem", dia.servicoId, agora)) / n;
   const consulta = Math.ceil(
     pesoTriagem + (antesNaConsulta * tempoMedio(dia, "atendimento", dia.servicoId, agora)) / nA,
   );
-  return { ...base, consulta: { minutos: consulta } };
+  return { ...principal, consulta: { minutos: consulta } };
 }
 
 /**

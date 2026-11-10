@@ -62,17 +62,44 @@ describe("RN-ETA-01/01b/04: posição e tempo", () => {
     expect(estimar(d, "dora", T, AUTO)).toEqual({ tipo: "posicao", posicao: 1, minutos: 0 });
   });
 
-  it("RN-ETA-01c/AD-009 triage: eta sums both stages (tempo até a triagem, consulta à parte)", () => {
+  const diaTriagem = (): DiaSessao => {
     const d = diaCom(["ana", "joao"], {
       estacoes: [estacao("tri", "triagem"), estacao("e1", "atendimento")],
       tempoInicialMin: { triagem: 5 },
     });
-    const tri = congelar({
-      ...d,
-      itens: d.itens.map((i) => ({ ...i, etapa: "triagem" as const })),
-    });
+    return congelar({ ...d, itens: d.itens.map((i) => ({ ...i, etapa: "triagem" as const })) });
+  };
+
+  it("RN-ETA-01c/AD-009 triage: eta sums both stages (tempo até a triagem, consulta à parte)", () => {
+    const tri = diaTriagem();
     // 1 à frente × 5 min na triagem; consulta: 5 + 1 à frente × 15 min.
     expect(estimar(tri, "joao", T, AUTO)).toEqual({
+      tipo: "posicao",
+      posicao: 2,
+      minutos: 5,
+      consulta: { minutos: 20 },
+    });
+    // Ana é a 1ª da triagem: venha agora, e a consulta dela segue à parte (0 + 0 à frente).
+    expect(estimar(tri, "ana", T, AUTO)).toEqual({ tipo: "venha_agora", consulta: { minutos: 0 } });
+    // Triagem fechada: sem tempo.
+    const fechada = congelar({
+      ...tri,
+      estacoes: tri.estacoes.map((e) => (e.etapa === "triagem" ? { ...e, aberta: false } : e)),
+    });
+    expect(estimar(fechada, "joao", T, AUTO)).toEqual({ tipo: "aguardando_inicio" });
+  });
+
+  it("RN-ETA-01c/AD-009 triage: a consulta conta quem já foi triado; remoto 1º na triagem vê venha agora com consulta", () => {
+    let d = entrar(diaTriagem(), "ana");
+    d = chamar(d, "tri");
+    d = aplicar(finalizar(d, { estacaoId: "tri" }, T)); // Ana triada, presente no consultório
+    expect(estimar(d, "joao", T, AUTO)).toEqual({ tipo: "venha_agora", consulta: { minutos: 15 } });
+  });
+
+  it("RN-ETA-01c/AD-009 triage: presente ainda não triado vê posição, tempo e consulta", () => {
+    let d = entrar(diaTriagem(), "ana");
+    d = entrar(d, "joao");
+    expect(estimar(d, "joao", T, AUTO)).toEqual({
       tipo: "posicao",
       posicao: 2,
       minutos: 5,
@@ -91,7 +118,7 @@ describe("RN-ETA-02: sem estação aberta", () => {
     expect(estimar(parado, "dora", T, AUTO)).toEqual({ tipo: "aguardando_inicio" });
   });
 
-  it("RN-ETA-02: estação aberta de outra etapa não conta; sem elegíveis a etapa fica aguardando", () => {
+  it("RN-ETA-02: estação aberta de outra etapa não conta; estação fechada na etapa fica aguardando", () => {
     const d = diaCom(["ana", "joao"], { estacoes: [estacao("e1", "atendimento", false), estacao("tri", "triagem")] });
     expect(estimar(d, "ana", T, AUTO)).toEqual({ tipo: "aguardando_inicio" });
   });
@@ -192,17 +219,26 @@ describe("RN-ETA-05: tempo médio", () => {
   });
 
   it("RN-ETA-05: média dos últimos 10, a última chamada da estação não entra", () => {
-    // 12 durações: as 2 mais antigas (100) ficam fora; a última chamada (sem sucessora) não é duração.
-    const gaps = [100, 100, 10, 12, 8, 10, 10, 10, 11, 9, 10, 10];
+    // 12 durações: as 2 mais antigas (20, não fora da curva) ficam fora da janela; a última chamada não é duração.
+    // Com a janela: 10 de 10 min = 10. Sem a janela: (2 x 20 + 10 x 10) / 12 = 11,67.
+    const gaps = [20, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10];
     expect(tempoMedio(comIntervalos(gaps), "atendimento", "cli", fim)).toBe(10);
   });
 
   it("RN-ETA-05: descarta fora da curva (< 1/3 ou > 3× a mediana)", () => {
     const gaps = [10, 10, 10, 10, 10, 10, 10, 10, 2, 40]; // mediana 10: 2 < 3,33 e 40 > 30 saem
     expect(tempoMedio(comIntervalos(gaps), "atendimento", "cli", fim)).toBe(10);
-    // 30 min exatos (3×) e 10/3 min não são "fora".
+    // 30 min exatos (3×) não é "fora".
     const borda = [10, 10, 10, 10, 10, 10, 10, 10, 30, 10];
     expect(tempoMedio(comIntervalos(borda), "atendimento", "cli", fim)).toBe(12);
+  });
+
+  it("RN-ETA-05: o limite inferior é 1/3 da mediana, inclusive (10/3 min não é fora da curva)", () => {
+    // mediana 10; 10/3 min = 200 s exatos fica; (10/3 - 1/60) sai.
+    const dentro = comIntervalos([10, 10, 10, 10, 10, 10, 10, 10 / 3, 10, 10]);
+    expect(tempoMedio(dentro, "atendimento", "cli", fim)).toBeCloseTo((9 * 10 + 10 / 3) / 10, 9);
+    const fora = comIntervalos([10, 10, 10, 10, 10, 10, 10, 10 / 3 - 1 / 60, 10, 10]);
+    expect(tempoMedio(fora, "atendimento", "cli", fim)).toBe(10);
   });
 
   it("RN-ETA-05: o tempo médio calculado alimenta a estimativa", () => {
