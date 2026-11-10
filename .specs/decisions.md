@@ -58,6 +58,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-050 | Pendência não tira a vez | ativa |
 | AD-051 | Estrutura das specs | ativa |
 | AD-052 | Licença AGPL-3.0 e receita por município | ativa |
+| AD-053 | Pré-cadastro com foto ligado por padrão | ativa |
 | PD-01..PD-13 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md)) |
 
 ## Produto
@@ -267,6 +268,10 @@ Specs por capacidade com só a verdade atual, regras "QUANDO … O SISTEMA DEVE 
 ### AD-052 · Licença AGPL-3.0 e receita por município
 2026-11-10 · ativa · Muda: constituição (produto)
 O código passa de MIT para **AGPL-3.0** daqui em diante (o já publicado segue MIT). A receita é mensal por município: **hospedagem completa** (VPS do município, central e app; mínimo R$ 1.500) ou **taxa de conexão** à central e ao app para quem roda o backend por conta própria (valor no D7). Quem quiser operar sem a central e sem o app precisa de outro app com outro nome; a quem fizer isso, vende-se licença comercial. Pendências: CLA para contribuições e revisão do advogado (D5/D7). **Por quê:** código aberto para portfólio e comunidade, sem permitir fork fechado; o que gera receita (central, app publicado, marca e operação) não se copia do repositório. Discovery: [preço](features/mvp-filas/discovery-preco.md).
+
+### AD-053 · Pré-cadastro com foto ligado por padrão
+2026-11-10 · ativa · Muda: configuração da unidade (specs/modelo), RN-PRE-01
+Toda unidade começa exigindo o pré-cadastro (foto do documento com foto e do Cartão SUS); o município pode desligar por unidade. Para a adesão de quem tem dificuldade com o celular, a implantação inclui uma **campanha de cadastro**: sessões públicas na unidade em que a recepção faz o pré-cadastro no balcão (RN-PRE-06). **Por quê:** conferência mais rápida e segura (foto × rosto × documento) e dados prontos na primeira ida; o atrito para o público de 60+ é compensado pela campanha. Plantão e sessões com dispensa seguem dispensando (RN-PUB-04).
 
 ## Arquitetura
 

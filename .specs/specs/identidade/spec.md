@@ -35,7 +35,7 @@ O SISTEMA DEVE limitar tentativas e exigir captcha na inscrição em sessão pú
 ## Pré-cadastro na unidade
 
 **RN-PRE-01 · Dados**
-QUANDO a unidade exigir pré-cadastro, O SISTEMA DEVE pedir: nome completo, data de nascimento, telefone, endereço, número do Cartão SUS, foto de **documento com foto** e foto do **Cartão SUS**.
+Por padrão, toda unidade exige pré-cadastro; o município pode desligar por unidade (AD-053). QUANDO a unidade exigir pré-cadastro, O SISTEMA DEVE pedir: nome completo, data de nascimento, telefone, endereço, número do Cartão SUS, foto de **documento com foto** e foto do **Cartão SUS**.
 
 **RN-PRE-02 · ID de atendimento**
 O SISTEMA DEVE gerar um **ID de atendimento** de 6 caracteres, também em QR.

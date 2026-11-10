@@ -28,7 +28,7 @@ A recepção vê nomes (é equipe da unidade), nunca as respostas do questionár
 
 | Painel | O que faz | Regras |
 | --- | --- | --- |
-| Conferir | "confere" · "não conferiu" (motivo obrigatório) · "prioridade não confere" | RN-FILA-05, RN-CHAM-04 |
+| Conferir | Pré-cadastro: as fotos do documento e do Cartão SUS lado a lado com os dados e o ID de atendimento, para comparar com a pessoa e o documento físico. Conta nova: documento físico × dados da conta em destaque. Botões "confere" · "não conferiu" (motivo obrigatório) · "prioridade não confere" | RN-FILA-05, RN-PRE-03, RN-CHAM-04, AD-053 |
 | Incluir no balcão | Pessoa local (nome, nascimento, CPF) → serviço e sessão de hoje → questionário com o paciente, prioridade com o documento visto → senha grande e "imprimir papel da senha"; serviço regulado bloqueado com orientação | RN-LE-04, RN-FILA-03, RN-RISCO-02, RN-RISCO-04, RN-ENC-05, RN-TV-05 |
 | Aguardando remarcação | Remanejados de sessão pública sem app, para remarcar por telefone | RN-REM-05 |
 | Contingência | Período, motivo, sinais de vida da TV e das estações, quem foi atendido no papel | RN-CONT-02, RN-CONT-03 |

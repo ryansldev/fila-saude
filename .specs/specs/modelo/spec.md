@@ -56,7 +56,7 @@ Cada nível herda o padrão do nível acima quando não define o seu.
 | Município | Ordem entre risco e prioridade legal | Risco antes |
 | Unidade | Tipo | UBS |
 | Unidade | Endereço, coordenadas, fuso horário e horário de funcionamento | — (obrigatório) |
-| Unidade | Exige pré-cadastro | Desligado |
+| Unidade | Exige pré-cadastro (com foto do documento e do Cartão SUS) | Ligado (AD-053) |
 | Unidade | Só atende pacientes com cadastro validado na unidade (vínculo) | Desligado |
 | Unidade | Aviso "saia de casa": tempo estimado até a chamada | 30 min |
 | Unidade | Tolerância de chamada | 5 min |

@@ -26,6 +26,7 @@ Duas abas fixas: **Minha fila** (principal) e **Unidades**. Perfil e ajuda no to
 | 2 | Criar conta: CPF, senha, e-mail, um campo por vez | RN-ID-01, RN-ID-02, RN-ID-04 |
 | 3 | Avisos: por que o push importa, depois a permissão | tv-e-avisos (onboarding) |
 | 4 | Entrar e esqueci a senha (código por e-mail ou recepção) | RN-ID-01 |
+| 4b | **Pré-cadastro na unidade** (padrão ligado, AD-053): dados (nome, nascimento, telefone, endereço, Cartão SUS), foto do documento com foto, foto do Cartão SUS, e o ID de atendimento com QR; aparece antes da 1ª inscrição numa unidade que exige | RN-PRE-01..04, AD-053 |
 | 5 | Unidades próximas: lista primeiro, mapa depois | RN-AG-01 |
 | 6 | Agenda da unidade (serviço regulado mostra "marcado pela regulação") | RN-AG-01, RN-ENC-05 |
 | 7 | Para quem é? | RN-LE-05 |
@@ -43,7 +44,7 @@ Duas abas fixas: **Minha fila** (principal) e **Unidades**. Perfil e ajuda no to
 
 O protótipo liga as telas na ordem do fluxo do D9 e tem um menu oculto do moderador para pular direto a qualquer estado.
 
-**Fica para a 2ª rodada** (antes da fase 5): lista de espera de sessão privada, confirmação de alocação, requisição com foto, remanejado ("outra data", "desistir", escolher data), "ainda precisa?", pré-cadastro.
+**Fica para a 2ª rodada** (antes da fase 5): lista de espera de sessão privada, confirmação de alocação, requisição com foto, remanejado ("outra data", "desistir", escolher data), "ainda precisa?".
 
 ## 3. Conteúdo e regras de tela
 
