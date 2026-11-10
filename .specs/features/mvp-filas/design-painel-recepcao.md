@@ -1,6 +1,6 @@
 # Design: painel da recepção (1ª rodada)
 
-2026-11-10 · status: **aprovado em conversa**. Segunda superfície do design antes do código. Mesmo design system do [app do paciente](design-app-paciente.md). Agendador, admin e gestor ficam para a 2ª rodada do painel; depois, estação e TV.
+2026-11-10 · status: **aprovado; 1ª versão do protótipo publicada**. Segunda superfície do design antes do código. Mesmo design system do [app do paciente](design-app-paciente.md). Agendador, admin e gestor ficam para a 2ª rodada do painel; depois, estação e TV.
 
 ## Objetivo
 
@@ -57,4 +57,6 @@ Tarefas: (1) conferir um paciente com pendência; (2) recusar um documento que n
 ## Links
 
 - Design system: https://claude.ai/artifact/EsNjLWD3jRKx68Zti2HDP1
-- Protótipo clicável: _a preencher quando criado_
+- Protótipo clicável: https://claude.ai/artifact/WHGYKwPRZGuuHrqznkdkma (tela 1366×768 interativa; o tweak "situação" alterna entre dia normal, fila vazia e TV/estações sem sinal)
+
+Os links são privados: compartilhar pelo menu Share de cada um.
