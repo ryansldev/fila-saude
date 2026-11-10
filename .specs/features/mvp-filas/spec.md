@@ -24,7 +24,11 @@ Desvios confirmados (y) e propostas da fonte a validar antes do piloto (n).
 | Pulo automático | Removido (AD-006) | Pulava quem estava em consulta | y |
 | "Saia de casa" com triagem | Por etapa (AD-009) | RN-TRI-05 não acontecia | y |
 | Atraso | Por ordem, não por número (AD-010) | Urgente com nº maior tirava a vez | y |
-| Visibilidade por serviço | Clínico geral sempre pública; privada só sinaliza interesse (AD-011) | Volume do dia inviabiliza aprovação humana | y |
+| Visibilidade | Por sessão; privada só sinaliza interesse (AD-011) | Nem toda unidade tem os mesmos serviços | y |
+| Confirmação da inscrição pública | Já entra confirmada (AD-013) | Paciente escolheu o dia | y |
+| Encaminhamento em sessão pública | Segura a vaga até aceito; liberada na abertura (AD-015) | Fonte não definia | y |
+| Pré-cadastro por sessão | Opção "dispensa pré-cadastro" (e vínculo), pública ou privada (AD-016) | Plantão atende quem aparecer | y |
+| Data da sessão | Recorrência RFC 5545 (AD-014) | Padrão de mercado (Google Calendar) | y |
 | Nome na TV | Nenhum; só senha. Presencial recebe papel com a senha (AD-012) | Primeiro nome repete; mais que isso fere a privacidade | y |
 | Questionário v1 (7.3) | Como na fonte | Validar com enfermeiro/médico | n |
 | Validade do encaminhamento | Agendador informa ao aceitar | Fonte em aberto | n |
