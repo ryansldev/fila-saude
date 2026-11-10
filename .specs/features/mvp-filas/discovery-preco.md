@@ -73,11 +73,20 @@ Nos cenários B e C o fator R fica acima de 28% (o pró-labore é 50–60% do fa
 - **Sem pró-labore no início:** num contrato desse tamanho o pró-labore custa mais (~R$ 1.600) do que o fator R economiza de imposto (~R$ 140). Os dois sócios recebem por distribuição de lucro. Reavaliar a partir do 2º município.
 - Com R$ 1.500 e custos de ~R$ 725, o imposto de 15,5% deixa **~R$ 540/mês de lucro (~36%)**. O piloto prova o produto; a renda vem com os próximos municípios, que só somam a VPS de cada um.
 
+**Modelo de receita e licença (AD-052):** código em AGPL-3.0; todo município que usa o app paga por mês:
+
+| Como o município usa | Mensalidade |
+| --- | --- |
+| Tudo com a gente (VPS do município, central e app) | R$ 1.500+ |
+| Backend próprio, conectado à nossa central e ao nosso app | Taxa de conexão (ex.: R$ 500–800, a fechar no D7): cobre tráfego da central, push, lojas e suporte básico |
+| Sem a nossa central e o nosso app | Precisa de outro app com outro nome; licença comercial sob consulta |
+
 ## Decisões em aberto
 
 1. ~~Infra~~: decidida, duas VPS nossas no Brasil (PD-12 revista).
 2. **Modelo de preço para os próximos municípios:** por habitante ou por unidade, com piso de R$ 1.500 (D7).
-3. Confirmar com o contador: enquadramento (Anexo III ou V), distribuição de lucro e abertura da empresa com dois sócios.
+3. Valor da taxa de conexão (D7); CLA para contribuições; registro da marca "Fila Saúde" no INPI; revisão da licença e do contrato pelo advogado (D5/D7); trocar o "totalmente gratuito" do site.
+4. Confirmar com o contador: enquadramento (Anexo III ou V), distribuição de lucro e abertura da empresa com dois sócios.
 
 ## Fontes
 

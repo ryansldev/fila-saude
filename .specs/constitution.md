@@ -13,6 +13,7 @@ Princípios que valem para todo o projeto, acima de qualquer feature. Toda spec,
 7. **Quem é prejudicado pela unidade ganha preferência; quem desiste perde a vez.**
 8. **Um app só, da empresa, para todos os municípios.** O Fila Saúde é uma central de filas para atendimento público. Cada prefeitura tem seus dados isolados; nunca há um app por prefeitura.
 9. **A prefeitura é dona dos dados** (controladora); a empresa é a operadora. Dados no Brasil.
+10. **Código aberto, serviço pago.** O código é AGPL-3.0; todo município que usa o app paga mensalidade, pela hospedagem completa ou pela conexão à central e ao app. A marca é da empresa.
 
 ## Processo
 

@@ -180,4 +180,4 @@ Em pull requests, o GitHub Actions executa:
 
 ## Licença
 
-[MIT](LICENSE)
+[AGPL-3.0](LICENSE). O código é aberto; a central, o app publicado e a marca "Fila Saúde" são operados pela empresa, e cada município contrata o serviço. Versões até o commit `687d0d9` foram publicadas sob MIT.

@@ -16,7 +16,7 @@
     "test:watch": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest watch\"",
     "test:coverage": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run --coverage\""
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
     "node": "24.x"

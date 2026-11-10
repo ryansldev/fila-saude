@@ -57,6 +57,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-049 | Lançamento só liga a conta verificada | ativa |
 | AD-050 | Pendência não tira a vez | ativa |
 | AD-051 | Estrutura das specs | ativa |
+| AD-052 | Licença AGPL-3.0 e receita por município | ativa |
 | PD-01..PD-13 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md)) |
 
 ## Produto
@@ -262,6 +263,10 @@ Presente com pendência é elegível; o app manda passar na recepção; se chama
 ### AD-051 · Estrutura das specs
 2026-11-10 · ativa · Muda: constituição
 Specs por capacidade com só a verdade atual, regras "QUANDO … O SISTEMA DEVE …" com cenários, este registro curto de decisões, `changes/` para mudança grande, núcleo executável na fase 1 e checagem automática. Discovery: [estrutura](discovery-estrutura-specs.md).
+
+### AD-052 · Licença AGPL-3.0 e receita por município
+2026-11-10 · ativa · Muda: constituição (produto)
+O código passa de MIT para **AGPL-3.0** daqui em diante (o já publicado segue MIT). A receita é mensal por município: **hospedagem completa** (VPS do município, central e app; mínimo R$ 1.500) ou **taxa de conexão** à central e ao app para quem roda o backend por conta própria (valor no D7). Quem quiser operar sem a central e sem o app precisa de outro app com outro nome; a quem fizer isso, vende-se licença comercial. Pendências: CLA para contribuições, marca "Fila Saúde" no INPI, revisão do advogado (D5/D7), texto do site ("gratuito"). **Por quê:** código aberto para portfólio e comunidade, sem permitir fork fechado; o que gera receita (central, app publicado, marca e operação) não se copia do repositório. Discovery: [preço](features/mvp-filas/discovery-preco.md).
 
 ## Arquitetura
 

@@ -38,7 +38,7 @@
     "type": "git",
     "url": "git+https://github.com/ryansldev/fila-saude.git"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/ryansldev/fila-saude/issues"
