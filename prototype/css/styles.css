@@ -2034,6 +2034,15 @@ body.lesson {
   color: var(--gray-600);
 }
 
+.lesson-sound {
+  border: 0;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+}
+
 .lesson-bar {
   flex: 1;
   height: 16px;
@@ -2368,8 +2377,8 @@ button.tile.on:hover {
   }
 
   .lesson-say img {
-    width: 88px;
-    height: 88px;
+    width: 130px;
+    height: 130px;
   }
 
   .lesson-say .bubble {

@@ -107,6 +107,51 @@
     }
   }
 
+  // Efeitos sonoros da lição, no estilo Duolingo (Web Audio, sem arquivos).
+  const SFX = {
+    tap: [[["triangle", 520, 0, 0.06, 0.12]]],
+    correct: [[["triangle", 1047, 0, 0.12, 0.22], ["triangle", 1319, 0.11, 0.26, 0.22], ["sine", 2637, 0.11, 0.2, 0.05]]],
+    alert: [[["sine", 988, 0, 0.14, 0.3], ["sine", 1319, 0.16, 0.14, 0.3], ["sine", 988, 0.32, 0.14, 0.3], ["sine", 1319, 0.48, 0.3, 0.3]]],
+    fanfare: [[["triangle", 523, 0, 0.14, 0.22], ["triangle", 659, 0.13, 0.14, 0.22], ["triangle", 784, 0.26, 0.14, 0.22], ["triangle", 1047, 0.39, 0.5, 0.25], ["sine", 1319, 0.39, 0.5, 0.12], ["sine", 1568, 0.39, 0.5, 0.1]]],
+  };
+  let soundOn = true;
+  try {
+    soundOn = localStorage.getItem("fila-som") !== "off";
+  } catch {
+    // sem storage, som ligado
+  }
+
+  function sfxInit() {
+    try {
+      ui.sfx = ui.sfx || new (window.AudioContext || window.webkitAudioContext)();
+      if (ui.sfx.state === "suspended") ui.sfx.resume();
+    } catch {
+      ui.sfx = null;
+    }
+  }
+
+  function sfx(name) {
+    const ctx = ui.sfx;
+    if (!soundOn || !ctx || ui.skipping) return;
+    try {
+      const now = ctx.currentTime + 0.01;
+      for (const [type, f, t, d, vol] of SFX[name][0]) {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type;
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, now + t);
+        g.gain.exponentialRampToValueAtTime(vol, now + t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + t + d);
+        o.connect(g).connect(ctx.destination);
+        o.start(now + t);
+        o.stop(now + t + d + 0.05);
+      }
+    } catch {
+      // sem som, a demo segue
+    }
+  }
+
   // QR ilustrativo: o desenho muda junto com o token.
   function qrSvg(token) {
     let h = 2166136261;
@@ -1004,11 +1049,12 @@
     return `<div class="lesson-top-inner">
       <a class="lesson-x" href="index.html" aria-label="Sair do fluxo">✕</a>
       <div class="lesson-bar" role="progressbar" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${ui.done.size}" aria-label="Progresso"><span style="width:${pct}%"></span></div>
+      <button class="lesson-sound" data-act="lesson-sound" aria-pressed="${soundOn}" aria-label="${soundOn ? "Desligar som" : "Ligar som"}">${soundOn ? "🔊" : "🔇"}</button>
     </div>`;
   }
 
   function sayHTML(text) {
-    return `<div class="lesson-say"><img src="assets/mascote.svg" alt="" width="132" height="132" /><div class="bubble">${text}</div></div>`;
+    return `<div class="lesson-say"><img src="assets/mascote.svg" alt="" width="200" height="200" /><div class="bubble">${text}</div></div>`;
   }
 
   function stepClock(step) {
@@ -1282,7 +1328,10 @@
     scenario().story.steps.forEach((s, i) => {
       if (!ui.done.has(i) && s.done(st, ui)) ui.done.add(i);
     });
-    if (ui.lesson.view === "do" && ui.done.has(ui.lesson.step)) ui.lesson.view = "ok";
+    if (ui.lesson.view === "do" && ui.done.has(ui.lesson.step)) {
+      ui.lesson.view = "ok";
+      sfx("correct");
+    }
   }
 
   function applyHint() {
@@ -1319,6 +1368,7 @@
     const fresh = st.notifications.filter((n) => !ui.toasted.has(n.id));
     for (const n of fresh) ui.toasted.add(n.id);
     for (const n of fresh) if (ALERT_RE.test(n.text)) ui.alerts[n.patientId] = n;
+    if (PAGE === "story" && fresh.some((n) => n.patientId === ui.persona && ALERT_RE.test(n.text))) sfx("alert");
     const mine = fresh.filter((n) => n.patientId === ui.persona && !ALERT_RE.test(n.text));
     if (mine.length) ui.toast = { pid: ui.persona, text: mine[mine.length - 1].text, until: Date.now() + 5000 };
   }
@@ -1497,14 +1547,27 @@
     },
     "lesson-skip": () => {
       const at = ui.lesson.step;
+      ui.skipping = true;
       for (let k = 0; k < 80 && !ui.done.has(at); k++) {
         runGuidedStep();
         update(true);
       }
+      ui.skipping = false;
+      if (ui.lesson.view === "ok") sfx("correct");
+    },
+    "lesson-sound": () => {
+      soundOn = !soundOn;
+      try {
+        localStorage.setItem("fila-som", soundOn ? "on" : "off");
+      } catch {
+        // preferência só nesta aba
+      }
+      if (soundOn) sfx("tap");
     },
     "lesson-next": () => {
       const i = currentStep();
       ui.lesson = { step: i, view: i === null ? "end" : "intro" };
+      sfx(i === null ? "fanfare" : "tap");
       ui.simMsg = null;
       window.scrollTo(0, 0);
     },
@@ -1789,6 +1852,8 @@
     if (!fn) return;
     if (el.tagName !== "INPUT") ev.preventDefault();
     if (el.dataset.act !== "sim") ui.simMsg = null;
+    if (PAGE === "story") sfxInit();
+    if (el.dataset.act === "lesson-start" || el.dataset.act === "lesson-show") sfx("tap");
     fn(el.dataset);
     update(true);
   });
