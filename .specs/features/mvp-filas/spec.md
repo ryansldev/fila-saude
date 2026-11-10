@@ -24,6 +24,8 @@ Desvios confirmados (y) e propostas da fonte a validar antes do piloto (n).
 | Pulo automático | Removido (AD-006) | Pulava quem estava em consulta | y |
 | "Saia de casa" com triagem | Por etapa (AD-009) | RN-TRI-05 não acontecia | y |
 | Atraso | Por ordem, não por número (AD-010) | Urgente com nº maior tirava a vez | y |
+| Visibilidade por serviço | Clínico geral sempre pública; privada só sinaliza interesse (AD-011) | Volume do dia inviabiliza aprovação humana | y |
+| Nome na TV | Nenhum; só senha. Presencial recebe papel com a senha (AD-012) | Primeiro nome repete; mais que isso fere a privacidade | y |
 | Questionário v1 (7.3) | Como na fonte | Validar com enfermeiro/médico | n |
 | Validade do encaminhamento | Agendador informa ao aceitar | Fonte em aberto | n |
 | Exclusão de fotos (RNF-LGPD-04) | Retidas enquanto cadastro ativo | Depende do jurídico | n |

@@ -80,6 +80,11 @@ a {
   color: var(--gray-600);
 }
 
+/* O jaleco do mascote é transparente (erro na vetorização): ele sempre vai sobre fundo branco. */
+.mascot {
+  background: #fff;
+}
+
 /* ---------- Header ---------- */
 
 .site-header {
@@ -1069,7 +1074,7 @@ a {
 }
 
 .app-head h3 {
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 900;
   flex: 1;
 }
@@ -1106,7 +1111,15 @@ a {
 .app-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0 16px 20px;
+  padding: 0 14px 20px;
+  font-size: 14px;
+}
+
+/* Dentro do celular os títulos dos cartões seguem a escala da tela, não a do desktop. */
+.app-body .card strong,
+.session-info strong {
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .map {
@@ -1123,15 +1136,80 @@ a {
   height: auto;
 }
 
-.map-hint {
-  font-size: 12px;
-  color: var(--gray-500);
-  font-weight: 700;
-  text-align: center;
-}
-
 .pin {
   cursor: pointer;
+}
+
+/* Lista de unidades próximas na tela inicial (estilo Uber). */
+.card.nearby {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  color: inherit;
+}
+
+.nearby-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-50);
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+}
+
+.nearby-icon {
+  color: var(--primary-500);
+}
+
+.nearby-icon.poli {
+  background: var(--violet-50);
+  color: var(--violet-600);
+}
+
+.nearby-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nearby-info b {
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nearby-info small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nearby-dist {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.nearby-dist b {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.nearby-dist small {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gray-500);
 }
 
 .section-title {
@@ -1185,7 +1263,7 @@ a {
 }
 
 .quiz-q {
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 900;
   line-height: 1.25;
   margin-bottom: 4px;
@@ -1242,7 +1320,7 @@ a {
 }
 
 .result h4 {
-  font-size: 23px;
+  font-size: 20px;
   font-weight: 900;
   margin-bottom: 8px;
 }
@@ -1251,6 +1329,127 @@ a {
   color: var(--gray-600);
   line-height: 1.5;
   margin-bottom: 8px;
+}
+
+/* Comprovante da inscrição em sessão pública. */
+.booked {
+  padding: 8px 0 4px;
+}
+
+.booked-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.booked-check {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--green-500);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.booked-head h4 {
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.booked-head p {
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.booked-card {
+  border: 1px solid var(--gray-100);
+  border-bottom-width: 4px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.booked-when {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--primary-50);
+}
+
+.booked-when > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.booked-when b {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.booked-when span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary-700);
+}
+
+.booked-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--gray-100);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.booked-row small {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gray-500);
+  padding-top: 2px;
+}
+
+.booked-row em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--gray-500);
+}
+
+.booked-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.booked-steps li {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--gray-700);
+}
+
+.booked-steps li span {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--gray-50);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
 }
 
 .emergency {
@@ -2205,8 +2404,7 @@ body.lesson {
 }
 
 .facts small,
-.big-ticket small,
-.tv-simple small {
+.big-ticket small {
   color: var(--gray-500);
   font-size: 12px;
   font-weight: 800;
@@ -2288,33 +2486,234 @@ button.tile.on:hover {
   font-size: 18px;
 }
 
-.tv-simple {
+/* TV da sala de espera (16:9). Tamanhos em cqw: o texto acompanha a largura da TV. */
+.tv-frame {
   width: 100%;
-  max-width: 640px;
-  background: var(--primary-900);
-  color: #fff;
-  border: 10px solid var(--gray-900);
-  border-radius: 20px;
-  padding: 40px 24px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  max-width: 1000px;
+  container-type: inline-size;
+  background: var(--gray-900);
+  border-radius: 18px;
+  padding: 10px 10px 18px;
+  position: relative;
 }
 
-.tv-simple small {
+.tv-frame::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -26px;
+  width: 22%;
+  height: 26px;
+  transform: translateX(-50%);
+  background: linear-gradient(var(--gray-800), var(--gray-900));
+  border-radius: 0 0 10px 10px;
+}
+
+.tv-screen {
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0b2340;
+  color: #fff;
+  display: grid;
+  grid-template-columns: 1.75fr 1fr;
+  grid-template-rows: auto 1fr auto auto;
+  grid-template-areas:
+    "top top"
+    "call hist"
+    "bottom bottom"
+    "ticker ticker";
+}
+
+.tv-top {
+  grid-area: top;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4cqw 2.4cqw;
+  background: #081a30;
+  font-size: 1.9cqw;
+}
+
+.tv-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8cqw;
+  font-weight: 900;
+}
+
+.tv-brand svg {
+  width: 2.8cqw;
+  height: 2.8cqw;
+  color: var(--primary-300);
+}
+
+.tv-top time {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-call {
+  grid-area: call;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2cqw;
+  background: var(--primary-700);
+}
+
+.tv-call.live {
+  background: var(--primary-600);
+}
+
+.tv-call small,
+.tv-history small {
+  font-size: 1.4cqw;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--primary-200);
 }
 
-.tv-simple .senha {
-  font-size: clamp(64px, 14vw, 112px);
+.tv-senha {
+  font-size: 13cqw;
   font-weight: 900;
   line-height: 1;
+  margin: 1cqw 0 0.6cqw;
+  font-variant-numeric: tabular-nums;
 }
 
-.tv-simple b {
-  font-size: 22px;
+.tv-dest {
+  font-size: 3.6cqw;
+  font-weight: 900;
   color: var(--orange-500);
+}
+
+.tv-svc {
+  font-size: 1.8cqw;
+  font-weight: 700;
+  color: var(--primary-100);
+  margin-top: 0.4cqw;
+}
+
+.tv-history {
+  grid-area: hist;
+  padding: 2cqw 2.2cqw;
+  border-left: 1px solid rgb(255 255 255 / 0.08);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tv-history ul {
+  list-style: none;
+  margin: 1.2cqw 0 0;
+  padding: 0;
+}
+
+.tv-history li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 1.2cqw;
+  padding: 0.9cqw 0;
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  font-size: 1.6cqw;
+  color: var(--primary-100);
+}
+
+.tv-history li b {
+  font-size: 2.4cqw;
+  font-weight: 900;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-history li time {
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-200);
+}
+
+.tv-history li.empty {
+  display: block;
+  color: var(--primary-200);
+}
+
+.tv-bottom {
+  grid-area: bottom;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+  padding: 1.4cqw 2.4cqw;
+  background: #081a30;
+}
+
+.tv-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6cqw;
+}
+
+.tv-counts div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8cqw;
+  font-size: 1.5cqw;
+  color: var(--primary-200);
+}
+
+.tv-counts span {
+  font-weight: 900;
+  color: #fff;
+  margin-right: 1cqw;
+}
+
+.tv-counts b {
+  font-size: 2.6cqw;
+  font-weight: 900;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-counts small {
+  margin-right: 1.4cqw;
+}
+
+.tv-qrbox {
+  display: flex;
+  align-items: center;
+  gap: 1.4cqw;
+  max-width: 46%;
+}
+
+.tv-qrbox svg {
+  flex: none;
+  width: 9cqw;
+  height: 9cqw;
+  border-radius: 0.6cqw;
+}
+
+.tv-qrbox p {
+  font-size: 1.5cqw;
+  line-height: 1.4;
+  color: var(--primary-100);
+}
+
+.tv-qrbox p b {
+  display: block;
+  font-size: 2cqw;
+  color: #fff;
+}
+
+.tv-ticker {
+  grid-area: ticker;
+  padding: 0.8cqw 2.4cqw;
+  background: var(--orange-500);
+  color: var(--gray-900);
+  font-size: 1.5cqw;
+  font-weight: 800;
 }
 
 .lesson-footer {
@@ -2792,14 +3191,30 @@ button.tile.on:hover {
 /* ---------- Agenda da unidade no celular ---------- */
 
 .session-card {
-  display: flex;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 10px 12px;
   align-items: center;
+}
+
+/* Ação da sessão ou do serviço numa linha própria, para não espremer o texto. */
+.session-card .card-action {
+  grid-column: 1 / -1;
+}
+
+.session-card .card-action .btn {
+  width: 100%;
+  margin-bottom: 3px;
+}
+
+.session-card .card-action .chip {
+  display: block;
+  text-align: center;
 }
 
 .date-tile {
   flex: none;
-  width: 56px;
+  width: 48px;
   border-radius: 12px;
   background: var(--primary-500);
   color: #fff;
@@ -2811,13 +3226,13 @@ button.tile.on:hover {
 }
 
 .date-tile small {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
 }
 
 .date-tile b {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 900;
 }
 
@@ -2833,7 +3248,7 @@ button.tile.on:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--gray-600);
 }
 
@@ -2852,25 +3267,38 @@ button.tile.on:hover {
 }
 
 .card.svc {
-  display: flex;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 10px 12px;
 }
 
-.card.svc > div {
-  flex: 1;
-  min-width: 0;
+.card.svc .muted {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.card.svc .card-action {
+  grid-column: 2;
+}
+
+.card.svc.no-icon {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.session-info .lock {
+  font-size: 0.85em;
 }
 
 .svc-icon {
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--primary-50);
   display: grid;
   place-items: center;
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .card.svc.locked {

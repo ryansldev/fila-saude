@@ -116,11 +116,19 @@
         },
       ],
       services: [
-        { id: "cli", unitId: "u1", name: "Clínico geral", prefix: "C", requiresReferral: false },
-        { id: "odo", unitId: "u1", name: "Odontologia", prefix: "O", requiresReferral: false, appEntry: false },
+        // AD-011: clínico geral é sempre público; odontologia é privada (o paciente só sinaliza interesse).
+        { id: "cli", unitId: "u1", name: "Clínico geral", prefix: "C", requiresReferral: false, visibility: "pública" },
+        { id: "odo", unitId: "u1", name: "Odontologia", prefix: "O", requiresReferral: false, visibility: "privada" },
         { id: "car", unitId: "u2", name: "Cardiologia", prefix: "K", requiresReferral: true },
         { id: "der", unitId: "u2", name: "Dermatologia", prefix: "D", requiresReferral: true },
-        { id: "cli3", unitId: "u3", name: "Clínico geral", prefix: "G", requiresReferral: false },
+        {
+          id: "cli3",
+          unitId: "u3",
+          name: "Clínico geral",
+          prefix: "G",
+          requiresReferral: false,
+          visibility: "pública",
+        },
       ],
       patients: PATIENTS.map((p) => ({ ...p, faltas: [] })),
       sessions,
@@ -136,6 +144,12 @@
     const r = E.createEntry(st, { patientId: pid, serviceId, answers, referralPhoto: "foto.jpg" });
     st.now = BASE;
     return r.entry;
+  }
+
+  function enrollAt(st, pid, sessionId, hoursAgo, answers) {
+    st.now = BASE - hoursAgo * 60 * MIN;
+    E.enroll(st, sessionId, { patientId: pid, answers });
+    st.now = BASE;
   }
 
   function allocateAt(st, sessionId, entries, when = BASE) {
@@ -172,7 +186,7 @@
       description: "História completa da Maria, do cadastro da sessão à consulta, com roteiro.",
       personas: ["maria"],
       tabs: ["admin", "agendador"],
-      tab: "admin",
+      tab: "agendador",
       tvReady: true,
       protagonist: "maria",
       autoConfirm: true,
@@ -183,29 +197,37 @@
         cli.requiresTriage = true;
         cli.avgTriageMin = 5;
         E.createStation(st, { name: "Triagem 1", stage: "triagem", services: ["cli"] });
-        // 12 pessoas já esperam na lista de Clínico geral.
-        const others = [
-          "ana",
-          "joao",
-          "bruno",
-          "paulo",
-          "sergio",
-          "carlos",
-          "edu",
-          "gil",
-          "helena",
-          "lucia",
-          "ivo",
-          "fatima",
-        ];
-        // Dois casos fogem da rotina, para a ordem da sugestão ter motivo visível.
+        // Clínico geral de amanhã é público: 12 pessoas já se inscreveram sozinhas, cada uma numa hora.
+        const pub = E.createSession(st, {
+          serviceId: "cli",
+          start: at(1, 7),
+          slots: 20,
+          visibility: "pública",
+          professional: "Dra. Marta",
+        });
         const special = {
           fatima: ans({ motivo: "novo", gravidade: "moderado" }),
           helena: ans({ motivo: "exame", grupos: ["gestante"] }),
         };
-        others.forEach((pid, i) => {
-          seed(st, pid, "cli", 60 - i * 4, special[pid] || ans({ motivo: "exame" }));
+        ["ana", "joao", "bruno", "paulo", "sergio", "carlos", "edu", "gil", "helena", "lucia", "ivo", "fatima"].forEach(
+          (pid, i) => {
+            enrollAt(st, pid, pub.id, 30 - i * 2, special[pid] || ans({ motivo: "exame" }));
+          },
+        );
+        // Odontologia é privada: quem tem interesse entra na lista e o agendador escolhe quem vai.
+        E.createSession(st, {
+          serviceId: "odo",
+          start: at(4, 8),
+          slots: 3,
+          visibility: "privada",
+          professional: "Dr. Caio",
         });
+        seed(st, "dora", "odo", 41, ans({ motivo: "acompanhamento" }));
+        seed(st, "rita", "odo", 25, ans({ motivo: "exame" }));
+        seed(st, "carlos", "odo", 3, ans({ motivo: "novo", gravidade: "forte" }));
+        seed(st, "antonio", "odo", 12, ans({ motivo: "exame" }));
+        seed(st, "helena", "odo", 8, ans({ motivo: "exame", grupos: ["gestante"] }));
+        seed(st, "ivo", "odo", 30, ans({ motivo: "exame" }));
         st.tv.paired = true;
         return st;
       },
@@ -216,49 +238,30 @@
         },
         steps: [
           {
-            title: "Crie o atendimento",
-            text: "A unidade abre vagas para um dia de Clínico geral. Na sessão privada, quem entra é escolhido pela equipe.",
-            screen: "new-session",
-            tab: "admin",
-            targets: (_st, ui) =>
-              ui.newSession.visibility === "privada"
-                ? ['[data-act="session-create"]']
-                : ['[data-act="ns-vis"][data-id="privada"]'],
-            done: (st) => st.sessions.some((x) => x.serviceId === "cli" && x.visibility === "privada"),
-          },
-          {
-            title: "Maria entra na lista",
-            text: "Pelo app, ela escolhe a UBS e responde quatro perguntas sobre o que sente.",
+            title: "Maria se inscreve",
+            text: "Clínico geral é sempre público: ela mesma escolhe o dia e pega a vaga, sem esperar aprovação. Antes, responde quatro perguntas de toque.",
             screen: "phone",
             persona: "maria",
             targets: [
               ...quizOpts(["nenhum", "exame", "nenhuma"]),
               NEXT,
-              '[data-act="join"][data-id="cli"]',
+              '[data-act="enroll"]',
               '.pin[data-id="u1"]',
               HOME,
             ],
-            done: (st) => !!entryOf(st, "maria", "cli"),
+            done: (st) => entryOf(st, "maria", "cli")?.status === "confirmada",
           },
           {
-            title: "A equipe escolhe quem vai",
-            text: "O sistema sugere quem entra, por risco e tempo de espera. Quem decide é a equipe.",
+            title: "Na odontologia é diferente",
+            text: "Odontologia é privada: o paciente só sinaliza interesse. O sistema sugere quem vai, com o motivo de cada um, e o agendador escolhe quem marcar.",
             screen: "allocate",
             tab: "agendador",
             targets: ['[data-act="ag-alloc"]:not(:disabled)'],
-            done: (st) => ["alocada", "confirmada", "na_fila"].includes(entryOf(st, "maria", "cli")?.status),
-          },
-          {
-            title: "Maria confirma",
-            text: "Ela recebe o aviso e confirma que vai.",
-            screen: "phone",
-            persona: "maria",
-            targets: ['[data-act="confirm-alloc"]', '[data-act="entry"]', HOME],
-            done: (st) => ["confirmada", "na_fila"].includes(entryOf(st, "maria", "cli")?.status),
+            done: (st) => st.entries.some((e) => e.serviceId === "odo" && ["alocada", "confirmada"].includes(e.status)),
           },
           {
             title: "Chegou o dia",
-            text: "Avance até o dia da consulta e abra a sessão. Todos entram na fila sem sair de casa.",
+            text: "Avance até o dia da consulta e abra a sessão. Os inscritos entram na fila pela ordem de inscrição, sem sair de casa.",
             screen: "sessions",
             tab: "admin",
             clock: (_st, ui) => (ui.events.has("adv:day") ? null : "day"),
@@ -284,7 +287,8 @@
             screen: "station",
             station: "triagem",
             clock: (st) => (calledAt(st, "triagem") ? null : "sim"),
-            targets: (st) => (calledAt(st, "triagem") ? ['[data-act="st-finish"]:not(:disabled)'] : ['[data-act="sim"]']),
+            targets: (st) =>
+              calledAt(st, "triagem") ? ['[data-act="st-finish"]:not(:disabled)'] : ['[data-act="sim"]'],
             done: (st) => itemOf(st, "maria")?.stage === "atendimento",
           },
           {
@@ -294,7 +298,8 @@
             persona: "maria",
             clock: (st, ui) => (ui.events.has("leave:atendimento") && !notifiedSince(st, ui.leaveAt) ? "sim" : null),
             targets: (st, ui) => {
-              if (!ui.events.has("leave:atendimento")) return ['[data-act="leave"]', '[data-act="go"][data-screen="queue"]'];
+              if (!ui.events.has("leave:atendimento"))
+                return ['[data-act="leave"]', '[data-act="go"][data-screen="queue"]'];
               if (!notifiedSince(st, ui.leaveAt)) return ['[data-act="sim"]'];
               return ['[data-act="scan"]', '[data-act="sheet"][data-id="qr"]', '[data-act="go"][data-screen="queue"]'];
             },

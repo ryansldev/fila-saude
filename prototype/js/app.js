@@ -72,9 +72,31 @@
   // Efeitos sonoros da lição, no estilo Duolingo (Web Audio, sem arquivos).
   const SFX = {
     tap: [[["triangle", 520, 0, 0.06, 0.12]]],
-    correct: [[["triangle", 1047, 0, 0.12, 0.22], ["triangle", 1319, 0.11, 0.26, 0.22], ["sine", 2637, 0.11, 0.2, 0.05]]],
-    alert: [[["sine", 988, 0, 0.14, 0.3], ["sine", 1319, 0.16, 0.14, 0.3], ["sine", 988, 0.32, 0.14, 0.3], ["sine", 1319, 0.48, 0.3, 0.3]]],
-    fanfare: [[["triangle", 523, 0, 0.14, 0.22], ["triangle", 659, 0.13, 0.14, 0.22], ["triangle", 784, 0.26, 0.14, 0.22], ["triangle", 1047, 0.39, 0.5, 0.25], ["sine", 1319, 0.39, 0.5, 0.12], ["sine", 1568, 0.39, 0.5, 0.1]]],
+    correct: [
+      [
+        ["triangle", 1047, 0, 0.12, 0.22],
+        ["triangle", 1319, 0.11, 0.26, 0.22],
+        ["sine", 2637, 0.11, 0.2, 0.05],
+      ],
+    ],
+    alert: [
+      [
+        ["sine", 988, 0, 0.14, 0.3],
+        ["sine", 1319, 0.16, 0.14, 0.3],
+        ["sine", 988, 0.32, 0.14, 0.3],
+        ["sine", 1319, 0.48, 0.3, 0.3],
+      ],
+    ],
+    fanfare: [
+      [
+        ["triangle", 523, 0, 0.14, 0.22],
+        ["triangle", 659, 0.13, 0.14, 0.22],
+        ["triangle", 784, 0.26, 0.14, 0.22],
+        ["triangle", 1047, 0.39, 0.5, 0.25],
+        ["sine", 1319, 0.39, 0.5, 0.12],
+        ["sine", 1568, 0.39, 0.5, 0.1],
+      ],
+    ],
   };
   let soundOn = true;
   try {
@@ -154,7 +176,7 @@
       stationId: "st1",
       stationMsg: null,
       stLevel: null,
-      newSession: { serviceId: "cli", day: 1, slots: 15, visibility: "privada" },
+      newSession: { serviceId: "cli", day: 1, slots: 15, visibility: "pública" },
       simMsg: null,
       travelDone: new Set(),
       newStation: { name: "Triagem 1", stage: "triagem" },
@@ -191,11 +213,20 @@
     return `<div class="card session-card">
       <div class="date-tile"><small>${fWeek.format(x.start).replace(".", "")}</small><b>${fDay.format(x.start)}</b><small>${fMonth.format(x.start).replace(".", "")}</small></div>
       <div class="session-info">
-        <strong>${esc(service(x.serviceId).name)}</strong>
-        <div class="session-meta"><span class="chip ${x.visibility === "privada" ? "violet" : "rotina"}">${x.visibility}</span><span>${fTime.format(x.start)}</span></div>
+        <strong>${x.visibility === "privada" ? `<span class="lock" role="img" aria-label="Privada">🔒</span> ` : ""}${esc(service(x.serviceId).name)}</strong>
+        <div class="session-meta"><span>${fTime.format(x.start)}</span></div>
         <div class="slots-bar" aria-hidden="true"><span style="width:${pct}%"></span></div>
         <small class="muted">${x.left} de ${x.slots} vagas livres</small>
       </div>
+      ${
+        x.visibility === "pública"
+          ? `<div class="card-action">${
+              x.left > 0
+                ? `<button class="btn sm" data-act="enroll" data-id="${x.sessionId}">Inscrever-se</button>`
+                : `<span class="chip">Lotada · escolha outro dia</span>`
+            }</div>`
+          : ""
+      }
     </div>`;
   }
 
@@ -238,7 +269,8 @@
         body = `
           ${today}
           <div class="map">${mapSvg()}</div>
-          <p class="map-hint">Toque numa unidade para ver horários e vagas</p>
+          <div class="section-title">Unidades perto de você</div>
+          ${nearbyHTML()}
           <div class="section-title">Minhas solicitações</div>
           ${
             entries.length
@@ -268,12 +300,12 @@
           ${st.services
             .filter((s) => s.unitId === unit.id)
             .map((s) =>
-              s.appEntry === false
-                ? `<div class="card svc locked"><span class="svc-icon" aria-hidden="true">🔒</span>
-                    <div><strong>${esc(s.name)}</strong><div class="muted">Inscrição na recepção</div></div></div>`
-                : `<div class="card svc"><span class="svc-icon" aria-hidden="true">🩺</span>
-                    <div><strong>${esc(s.name)}</strong>${s.requiresReferral ? `<div class="muted">exige encaminhamento</div>` : ""}</div>
-                    <button class="btn sm" data-act="join" data-id="${s.id}">Entrar na lista</button></div>`,
+              s.visibility === "pública"
+                ? `<div class="card svc no-icon">
+                    <div><strong>${esc(s.name)}</strong><div class="muted">Inscreva-se numa sessão acima</div></div></div>`
+                : `<div class="card svc"><span class="svc-icon" role="img" aria-label="Privado">🔒</span>
+                    <div><strong>${esc(s.name)}</strong><div class="muted">${s.requiresReferral ? "Exige encaminhamento · " : ""}A equipe escolhe quem vai</div></div>
+                    <div class="card-action"><button class="btn sm secondary" data-act="join" data-id="${s.id}">Tenho interesse</button></div></div>`,
             )
             .join("")}`;
         break;
@@ -348,16 +380,48 @@
             <div class="row between"><strong>${esc(service(e.serviceId).name)}</strong>${statusChip(e.status)}</div>
             <div class="muted">desde ${fDate.format(e.createdAt)}</div>
           </button>`;
+        } else if (r.kind === "lotada") {
+          back = "unit";
+          body = `<div class="result">
+            <div class="icon" style="background:var(--orange-50);color:var(--orange-700)">!</div>
+            <h4>Esta sessão lotou</h4>
+            <p>As vagas acabaram enquanto você respondia. Escolha outro dia na agenda da unidade.</p>
+          </div>`;
+        } else if (byId(st.entries, r.entryId).sessionId) {
+          const e = byId(st.entries, r.entryId);
+          const s = sessionOf(e.sessionId);
+          const unit = unitOf(e.serviceId);
+          body = `<div class="booked">
+            <div class="booked-head">
+              <span class="booked-check" aria-hidden="true">✓</span>
+              <div><h4>Vaga garantida!</h4><p>Ninguém precisa aprovar.</p></div>
+            </div>
+            <div class="booked-card">
+              <div class="booked-when">
+                <div class="date-tile"><small>${fWeek.format(s.start).replace(".", "")}</small><b>${fDay.format(s.start)}</b><small>${fMonth.format(s.start).replace(".", "")}</small></div>
+                <div><b>${esc(service(e.serviceId).name)}</b><span>${E.dayLabel(s.start)} · ${fTime.format(s.start)}</span></div>
+              </div>
+              <div class="booked-row"><small>Unidade</small><span>${esc(unit.name)}<br><em>${esc(unit.address)}</em></span></div>
+              <div class="booked-row"><small>Risco</small><span>${levelChip(e.suggested, false)}</span></div>
+            </div>
+            <div class="section-title">E agora?</div>
+            <ol class="booked-steps">
+              <li><span aria-hidden="true">🏠</span>No dia, acompanhe a fila de casa. A ordem segue a hora da inscrição, e quem precisa mais passa na frente.</li>
+              <li><span aria-hidden="true">🔔</span>A gente avisa quando for hora de sair de casa.</li>
+              <li><span aria-hidden="true">📷</span>Na unidade, leia o QR da TV. A enfermeira confirma o risco na triagem.</li>
+            </ol>
+          </div>`;
+          foot = `<button class="btn block" data-act="go" data-screen="home">Voltar ao início</button>`;
         } else {
           const e = byId(st.entries, r.entryId);
           body = `<div class="result">
             <div class="icon" style="background:var(--primary-50);color:var(--primary-500)">✓</div>
-            <h4>Você entrou na lista</h4>
+            <h4>Interesse registrado</h4>
             <p>${esc(service(e.serviceId).name)} · ${esc(unitOf(e.serviceId).name)}</p>
             <p>${levelChip(e.suggested, false)}</p>
             <p>A classificação é uma sugestão. A equipe da unidade confirma.${
               e.status === "aguardando_encaminhamento" ? " O agendador vai conferir seu encaminhamento." : ""
-            } Você recebe um aviso quando tiver vaga.</p>
+            } O agendador escolhe quem vai em cada sessão, e você recebe um aviso se for marcado.</p>
           </div>`;
           foot = `<button class="btn block" data-act="go" data-screen="home">Voltar ao início</button>`;
         }
@@ -417,7 +481,11 @@
           const here = q.presence === "presente";
           const tri = q.stage === "triagem";
           // Caminho do dia: casa → (triagem) → consulta.
-          const path = [["casa", "🏠", "Em casa"], ...(svc.requiresTriage ? [["triagem", "🩺", "Triagem"]] : []), ["consulta", "👩‍⚕️", "Consulta"]];
+          const path = [
+            ["casa", "🏠", "Em casa"],
+            ...(svc.requiresTriage ? [["triagem", "🩺", "Triagem"]] : []),
+            ["consulta", "👩‍⚕️", "Consulta"],
+          ];
           const cur = !here ? 0 : tri ? 1 : path.length - 1;
           const triDone = svc.requiresTriage && !tri;
           const pathHTML = path
@@ -489,6 +557,30 @@
     </div>`;
   }
 
+  // Localização atual da pessoa no mapa da demo. 1 unidade do mapa = 20 m.
+  const HERE = { x: 165, y: 160 };
+  const KM_PER_UNIT = 0.02;
+  const fKm = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+  // Como no Uber: as unidades integradas, da mais perto para a mais longe, com a distância.
+  function nearbyHTML() {
+    return st.units
+      .map((u) => ({ u, km: Math.hypot(u.x - HERE.x, u.y - HERE.y) * KM_PER_UNIT }))
+      .sort((a, b) => a.km - b.km)
+      .map(({ u, km }) => {
+        const walk = Math.round((km / 5) * 60); // 5 km/h a pé
+        return `<button class="card tap nearby" data-act="unit" data-id="${u.id}">
+          <span class="nearby-icon ${u.type === "UBS" ? "" : "poli"}" aria-hidden="true"><svg viewBox="-12 -34 24 36" width="16" height="22"><path d="M0 0c-8-10-12-15-12-21a12 12 0 0 1 24 0c0 6-4 11-12 21z" fill="currentColor"/><circle cy="-21" r="4.5" fill="#fff"/></svg></span>
+          <span class="nearby-info">
+            <b>${esc(u.name)}</b>
+            <small>${esc(u.type)} · ${esc(u.address)}</small>
+          </span>
+          <span class="nearby-dist"><b>${fKm.format(km)} km</b><small>${walk} min a pé</small></span>
+        </button>`;
+      })
+      .join("");
+  }
+
   function mapSvg() {
     const pins = st.units
       .map(
@@ -508,8 +600,9 @@
       <rect x="20" y="170" width="60" height="45" rx="8" fill="#dcebdc"/>
       <rect x="260" y="140" width="48" height="40" rx="8" fill="#dcebdc"/>
       <path d="M200 -10 Q230 40 330 30 L330 -10z" fill="#d6e6f2"/>
-      <circle cx="165" cy="160" r="22" fill="oklch(0.6124 0.1566 252.06)" opacity=".12"/>
-      <circle cx="165" cy="160" r="6" fill="oklch(0.6124 0.1566 252.06)" stroke="#fff" stroke-width="2.5"/>
+      <circle cx="${HERE.x}" cy="${HERE.y}" r="22" fill="oklch(0.6124 0.1566 252.06)" opacity=".12"/>
+      <circle cx="${HERE.x}" cy="${HERE.y}" r="6" fill="oklch(0.6124 0.1566 252.06)" stroke="#fff" stroke-width="2.5"/>
+      <text x="${HERE.x}" y="${HERE.y + 20}" text-anchor="middle" font-size="8" font-weight="800" fill="oklch(0.4646 0.121 251.33)">você está aqui</text>
       ${pins}
     </svg>`;
   }
@@ -614,7 +707,7 @@
   }
 
   function sayHTML(text) {
-    return `<div class="lesson-say"><img src="assets/mascote.svg" alt="" width="200" height="200" /><div class="bubble">${text}</div></div>`;
+    return `<div class="lesson-say"><img class="mascot" src="assets/mascote.svg" alt="" width="200" height="200" /><div class="bubble">${text}</div></div>`;
   }
 
   function stepClock(step) {
@@ -635,7 +728,7 @@
     const ns = ui.newSession;
     const svc = service(ns.serviceId);
     const tile = (id, icon, title, sub) =>
-      `<button class="tile ${ns.visibility === id ? "on" : ""}" data-act="ns-vis" data-id="${id}" aria-pressed="${ns.visibility === id}"><span class="tile-icon">${icon}</span><b>${title}</b><small>${sub}</small></button>`;
+      `<button class="tile ${ns.visibility === id ? "on" : ""}" data-act="ns-vis" data-id="${id}" aria-pressed="${ns.visibility === id}">${icon ? `<span class="tile-icon">${icon}</span>` : ""}<b>${title}</b><small>${sub}</small></button>`;
     return `<div class="card-screen">
       <div class="facts">
         <div><small>Serviço</small><b>${esc(svc.name)}</b></div>
@@ -643,9 +736,10 @@
         <div><small>Vagas</small><b>${esc(String(ns.slots))}</b></div>
       </div>
       <div class="tiles">
-        ${tile("privada", "🔒", "Privada", "o agendador escolhe quem entra")}
-        ${tile("pública", "🌐", "Pública", "o paciente se inscreve sozinho")}
+        ${svc.visibility === "pública" ? "" : tile("privada", "🔒", "Privada", "o agendador escolhe quem entra")}
+        ${svc.visibility === "privada" ? "" : tile("pública", "", "Pública", "o paciente se inscreve sozinho")}
       </div>
+      ${svc.visibility ? `<p class="muted">${esc(svc.name)} é sempre ${svc.visibility}.</p>` : ""}
       ${ui.nsMsg ? `<div class="banner error">${ui.nsMsg}</div>` : ""}
       <button class="btn lg block" data-act="session-create">Criar sessão</button>
     </div>`;
@@ -729,13 +823,72 @@
     </div>`;
   }
 
+  // QR de demonstração: padrão determinístico a partir do token rotativo (RN-PRES-01), com os 3 quadrados de canto.
+  function qrSvg(token) {
+    const n = 25;
+    let h = 2166136261;
+    for (const c of String(token)) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+    const rnd = () => {
+      h ^= h << 13;
+      h ^= h >>> 17;
+      h ^= h << 5;
+      return (h >>> 0) / 4294967296;
+    };
+    const finder = (x, y) =>
+      `<rect x="${x}" y="${y}" width="7" height="7" fill="#0b2340"/><rect x="${x + 1}" y="${y + 1}" width="5" height="5" fill="#fff"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#0b2340"/>`;
+    const inFinder = (x, y) => (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
+    let cells = "";
+    for (let y = 0; y < n; y++)
+      for (let x = 0; x < n; x++)
+        if (!inFinder(x, y) && rnd() < 0.5) cells += `<rect x="${x}" y="${y}" width="1" height="1" fill="#0b2340"/>`;
+    return `<svg viewBox="-1 -1 ${n + 2} ${n + 2}" shape-rendering="crispEdges" role="img" aria-label="QR de presença"><rect x="-1" y="-1" width="${n + 2}" height="${n + 2}" fill="#fff"/>${cells}${finder(0, 0)}${finder(n - 7, 0)}${finder(0, n - 7)}</svg>`;
+  }
+
+  // TV da sala de espera em 16:9: chamada atual, últimas chamadas, contadores e QR. Só senhas, nunca nomes (RN-TV-05).
   function tvScreen() {
-    const last = E.tvView(st).announcements?.at(-1);
-    return `<div class="tv-simple">
-      <small>CHAMANDO AGORA</small>
-      <span class="senha">${last ? last.senha : "—"}</span>
-      <b>${last ? `${esc(last.service)} → ${esc(last.dest)}` : "aguardando a primeira chamada"}</b>
-    </div>`;
+    const tv = E.tvView(st);
+    const all = tv.announcements || [];
+    const last = all.at(-1);
+    const prev = all.slice(-6, -1).reverse();
+    const s = openSession();
+    const unit = s ? unitOf(s.serviceId) : st.units[0];
+    const fresh = last && st.now - last.at < 5 * MIN;
+    return `<div class="tv-frame"><div class="tv-screen">
+      <header class="tv-top">
+        <span class="tv-brand"><svg viewBox="0 0 64 64" aria-hidden="true"><path fill="currentColor" d="M5.127 23.609C6.564 36.242 20.52 48.093 29.33 54.212a4.673 4.673 0 0 0 5.34 0c8.81-6.119 22.767-17.97 24.203-30.603C60.863 6.099 38.967 3.972 32 13.977 25.033 3.972 3.137 6.1 5.127 23.61Z"/><path fill="#081a30" d="M28.704 21.09a2.583 2.583 0 0 1 2.583-2.584h2.583a2.583 2.583 0 0 1 2.583 2.583v20.665a2.583 2.583 0 0 1-2.583 2.583h-2.583a2.583 2.583 0 0 1-2.583-2.583V21.09Z"/><path fill="#081a30" d="M19.663 30.13a2.583 2.583 0 0 1 2.583-2.583H42.91a2.583 2.583 0 0 1 2.583 2.583v2.583a2.583 2.583 0 0 1-2.583 2.583H22.246a2.583 2.583 0 0 1-2.583-2.583V30.13Z"/></svg>Fila Saúde</span>
+        <b>${esc(unit.name)}</b>
+        <time>${fTime.format(st.now)}</time>
+      </header>
+      <section class="tv-call ${fresh ? "live" : ""}">
+        <small>Chamando agora</small>
+        <span class="tv-senha">${last ? last.senha : "—"}</span>
+        <span class="tv-dest">${last ? `→ ${esc(last.dest)}` : "aguardando a primeira chamada"}</span>
+        <span class="tv-svc">${last ? esc(last.service) : ""}</span>
+      </section>
+      <aside class="tv-history">
+        <small>Últimas chamadas</small>
+        <ul>${
+          prev.length
+            ? prev
+                .map((a) => `<li><b>${a.senha}</b><span>${esc(a.dest)}</span><time>${fTime.format(a.at)}</time></li>`)
+                .join("")
+            : `<li class="empty">Nenhuma ainda</li>`
+        }</ul>
+      </aside>
+      <footer class="tv-bottom">
+        <div class="tv-counts">${(tv.counters || [])
+          .map(
+            (c) =>
+              `<div><span>${esc(c.name)}</span><b>${c.aguardando}</b><small>esperando aqui</small><b>${c.caminho}</b><small>vindo de casa</small></div>`,
+          )
+          .join("")}</div>
+        <div class="tv-qrbox">
+          ${tv.qr ? qrSvg(tv.qr) : ""}
+          <p><b>Usa o app Fila Saúde?</b> Ao chegar, leia este QR pelo app para confirmar que está aqui. Sem app, é só falar com a recepção.</p>
+        </div>
+      </footer>
+      <div class="tv-ticker">Fique de olho na sua senha: está no app ou no papel que a recepção entregou. Quando ela aparecer, vá até a sala indicada.</div>
+    </div></div>`;
   }
 
   function screenHTML(name) {
@@ -751,8 +904,7 @@
 
   function summaryHTML() {
     const q = E.patientView(st, scenario().protagonist).queue;
-    const stat = (cls, label, value) =>
-      `<div class="stat-card ${cls}"><small>${label}</small><b>${value}</b></div>`;
+    const stat = (cls, label, value) => `<div class="stat-card ${cls}"><small>${label}</small><b>${value}</b></div>`;
     return `<div class="stat-cards">
       ${stat("home", "Esperando em casa", q?.awayMs ? h(q.awayMs) : "—")}
       ${stat("unit", "Na unidade", q?.presentMs ? h(q.presentMs) : "—")}
@@ -771,7 +923,7 @@
       </div>`;
     if (view === "end")
       return `<div class="lesson-intro center">
-        <img src="assets/mascote.svg" alt="" width="160" height="160" />
+        <img class="mascot" src="assets/mascote.svg" alt="" width="160" height="160" />
         <h1>Maria foi atendida!</h1>
         <p class="lesson-sub">Ela esperou em casa e só foi à unidade na hora certa.</p>
         ${summaryHTML()}
@@ -889,10 +1041,7 @@
     }
     const q = st.sessions.flatMap((x) => x.queue).find((x) => x.patientId === pid);
     const ok =
-      q &&
-      (n.text.startsWith("Sua vez")
-        ? q.status === "chamado"
-        : q.status === "fila" && q.presence === "remoto");
+      q && (n.text.startsWith("Sua vez") ? q.status === "chamado" : q.status === "fila" && q.presence === "remoto");
     if (!ok) {
       delete ui.alerts[pid];
       return null;
@@ -920,7 +1069,8 @@
     let sub = "Sua vez está chegando.";
     let btn = "Estou indo";
     const min = n.text.match(/~(\d+) min/);
-    if (n.text.startsWith("Saia de casa") && min) sub = `Faltam cerca de ${min[1]} min. Vá para a unidade e leia o QR da TV ao chegar.`;
+    if (n.text.startsWith("Saia de casa") && min)
+      sub = `Faltam cerca de ${min[1]} min. Vá para a unidade e leia o QR da TV ao chegar.`;
     if (n.text.startsWith("Venha agora")) {
       icon = "⚡";
       title = "Venha agora!";
@@ -943,7 +1093,7 @@
 
   // ---------- Ações ----------
 
-  function startQuiz(serviceId) {
+  function startQuiz(serviceId, sessionId = null) {
     const dup = E.activeEntry(st, ui.persona, serviceId);
     if (dup) {
       ui.result = { kind: "dup", entryId: dup.id };
@@ -954,6 +1104,7 @@
     const prev = st.entries.filter((e) => e.patientId === ui.persona).pop();
     ui.quiz = {
       serviceId,
+      sessionId,
       step: 0,
       answers: emptyAnswers(prev ? [...prev.answers.grupos] : []),
       photo: false,
@@ -984,15 +1135,25 @@
       qz.step++;
       return;
     }
-    const r = E.createEntry(st, {
-      patientId: ui.persona,
-      serviceId: qz.serviceId,
-      answers: qz.answers,
-      referralPhoto: qz.photo ? "requisicao.jpg" : null,
-    });
+    const r = qz.sessionId
+      ? E.enroll(st, qz.sessionId, { patientId: ui.persona, answers: qz.answers })
+      : E.createEntry(st, {
+          patientId: ui.persona,
+          serviceId: qz.serviceId,
+          answers: qz.answers,
+          referralPhoto: qz.photo ? "requisicao.jpg" : null,
+        });
     ui.quiz = null;
     ui.screen = "result";
-    if (r.ok) ui.result = { kind: "ok", entryId: r.entry.id };
+    if (r.ok) {
+      ui.result = { kind: "ok", entryId: r.entry.id };
+      // A tela de resultado já diz o mesmo que o aviso de inscrição: não cobre com o toast.
+      if (qz.sessionId)
+        for (const n of st.notifications.filter((x) => x.patientId === ui.persona)) {
+          ui.toasted.add(n.id);
+          ui.read.add(n.id);
+        }
+    } else if (r.error === "lotada") ui.result = { kind: "lotada" };
     else if (r.error === "duplicada") {
       ui.result = { kind: "dup", entryId: r.existing.id };
       ui.events.add("dup");
@@ -1107,6 +1268,7 @@
       ui.events.add(`unit:${d.id}`);
     },
     join: (d) => startQuiz(d.id),
+    enroll: (d) => startQuiz(sessionOf(d.id).serviceId, d.id),
     "quiz-opt": (d) => {
       const qz = ui.quiz;
       const stepDef = quizSteps(qz)[qz.step];
@@ -1291,7 +1453,7 @@
       ui.stLevel = null;
     },
     "ns-vis": (d) => {
-      ui.newSession.visibility = d.id;
+      if (!service(ui.newSession.serviceId).visibility) ui.newSession.visibility = d.id;
     },
     "session-create": () => {
       const ns = ui.newSession;
@@ -1299,7 +1461,7 @@
         serviceId: ns.serviceId,
         start: dayStart(ns.day),
         slots: Number(ns.slots),
-        visibility: ns.visibility,
+        visibility: service(ns.serviceId).visibility || ns.visibility,
         professional: "Dra. Marta",
       });
       ui.nsMsg = created ? null : "Vagas precisa ser um número inteiro, a partir de 1.";

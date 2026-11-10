@@ -133,11 +133,28 @@
     if (c.level === "emergencia") return { ok: false, error: "emergencia", classification: c };
     const existing = activeEntry(st, patientId, serviceId);
     if (existing) return { ok: false, error: "duplicada", existing, classification: c };
+    const entry = buildEntry(st, { p, svc, answers, referralPhoto, c, age });
+    st.entries.push(entry);
+    urgentAlert(st, entry, p, c);
+    return { ok: true, entry, classification: c };
+  }
+
+  function urgentAlert(st, entry, p, c) {
+    if (c.level === "urgente")
+      st.alerts.push({
+        id: nextId(st, "a"),
+        entryId: entry.id,
+        text: `${p.name}: urgente sugerido (${c.rule})`,
+        at: st.now,
+      });
+  }
+
+  function buildEntry(st, { p, svc, answers, referralPhoto, c, age }) {
     const legal = legalPriority(age, answers.grupos, p.sexo);
-    const entry = {
+    return {
       id: nextId(st, "e"),
-      patientId,
-      serviceId,
+      patientId: p.id,
+      serviceId: svc.id,
       createdAt: st.now,
       suggested: c.level,
       rule: c.rule,
@@ -152,15 +169,6 @@
       status: svc.requiresReferral ? "aguardando_encaminhamento" : "aguardando",
       referral: svc.requiresReferral ? { status: "pendente", photo: referralPhoto || null, reason: null } : null,
     };
-    st.entries.push(entry);
-    if (c.level === "urgente")
-      st.alerts.push({
-        id: nextId(st, "a"),
-        entryId: entry.id,
-        text: `${p.name}: urgente sugerido (${c.rule})`,
-        at: st.now,
-      });
-    return { ok: true, entry, classification: c };
   }
 
   function acceptReferral(st, entryId) {
@@ -289,6 +297,52 @@
     return { ok: true, next: suggest(st, sessionId)[0] || null };
   }
 
+  // ---------- Sessão pública (RN-PUB, AD-011) ----------
+
+  // O paciente se inscreve direto na sessão, sem agendador. A inscrição já é a confirmação: ele escolheu
+  // o dia. A ordem do dia segue a hora da inscrição, com prioridade e risco por cima (RN-FILA-01, RN-ORD).
+  function enroll(st, sessionId, { patientId, answers }) {
+    const s = session(st, sessionId);
+    if (s?.visibility !== "pública") return { ok: false, error: "privada" };
+    if (!["planejada", "aberta"].includes(s.state)) return { ok: false, error: "encerrada" };
+    const p = patient(st, patientId);
+    const svc = service(st, s.serviceId);
+    const age = ageAt(p.birth, st.now);
+    const c = classify(answers, age);
+    if (c.level === "emergencia") return { ok: false, error: "emergencia", classification: c };
+    const existing = activeEntry(st, patientId, svc.id);
+    if (existing) return { ok: false, error: "duplicada", existing, classification: c };
+    if (occupied(st, sessionId) >= s.slots) return { ok: false, error: "lotada", classification: c }; // RN-AL-06
+    const entry = buildEntry(st, { p, svc, answers, c, age });
+    entry.sessionId = sessionId;
+    entry.status = "confirmada";
+    st.entries.push(entry);
+    urgentAlert(st, entry, p, c);
+    s.version++;
+    if (s.state === "aberta") {
+      entry.status = "na_fila"; // RN-PUB-01: sessão aberta, entra direto com o próximo número (RN-FILA-02)
+      const it = newItem(st, s, queueFields(st, entry, "inscrito"));
+      notify(st, patientId, `Inscrição feita: você está na fila remota com a senha ${it.senha}.`);
+      tick(st);
+    } else
+      notify(
+        st,
+        patientId,
+        `Inscrição feita em ${svc.name}, ${dayLabel(s.start)}. Quando a sessão abrir, você entra na fila.`,
+      );
+    return { ok: true, entry, classification: c };
+  }
+
+  const queueFields = (st, e, origin) => ({
+    entryId: e.id,
+    patientId: e.patientId,
+    name: patient(st, e.patientId).name,
+    suggested: e.suggested,
+    confirmedLevel: e.confirmedLevel,
+    legal: e.legal,
+    origin,
+  });
+
   // ---------- Fila do dia ----------
 
   function qrToken(s, now) {
@@ -324,7 +378,8 @@
     return it;
   }
 
-  // RN-FILA-01: confirmados entram remotos, numerados pela data de entrada original.
+  // RN-FILA-01: confirmados entram remotos, numerados pela data de entrada original (alocados) ou pela hora
+  // da inscrição (sessão pública): nos dois casos, createdAt.
   function openSession(st, sessionId) {
     const s = session(st, sessionId);
     s.state = "aberta";
@@ -339,15 +394,7 @@
       .sort((a, b) => a.createdAt - b.createdAt)
       .forEach((e) => {
         e.status = "na_fila";
-        const it = newItem(st, s, {
-          entryId: e.id,
-          patientId: e.patientId,
-          name: patient(st, e.patientId).name,
-          suggested: e.suggested,
-          confirmedLevel: e.confirmedLevel,
-          legal: e.legal,
-          origin: "alocado",
-        });
+        const it = newItem(st, s, queueFields(st, e, s.visibility === "pública" ? "inscrito" : "alocado"));
         notify(st, e.patientId, `Sessão aberta: você está na fila remota com a senha ${it.senha}.`);
       });
     tick(st);
@@ -896,6 +943,7 @@
     classify,
     legalPriority,
     createEntry,
+    enroll,
     acceptReferral,
     rejectReferral,
     suggest,

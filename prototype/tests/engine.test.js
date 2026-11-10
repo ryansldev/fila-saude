@@ -937,3 +937,71 @@ test("station: cannot close while someone is called", () => {
   assert.equal(st.stations[0].open, false);
   assert.equal(E.setStationOpen(st, "st1", true).ok, true);
 });
+
+// ---------- Sessão pública (RN-PUB, AD-011) ----------
+
+function publicSession(slots = 3) {
+  const st = baseState();
+  Object.assign(st.sessions[0], { visibility: "pública", slots });
+  return st;
+}
+
+test("public: patient enrolls without the scheduler and is confirmed", () => {
+  const st = publicSession();
+  const r = E.enroll(st, "s1", { patientId: "ana", answers: answers() });
+  assert.equal(r.ok, true);
+  assert.equal(r.entry.status, "confirmada");
+  assert.equal(r.entry.sessionId, "s1");
+  assert.equal(r.entry.confirmedLevel, null); // RN-RISCO-02: fica sugerido até a triagem
+  assert.equal(E.suggest(st, "s1").length, 0); // nada para o agendador alocar
+  assert.equal(E.callList(st).length, 0); // nem para ligar
+});
+
+test("public: private session, emergency, duplicate and full are refused", () => {
+  const st = baseState();
+  assert.equal(E.enroll(st, "s1", { patientId: "ana", answers: answers() }).error, "privada");
+  const pub = publicSession(2);
+  assert.equal(
+    E.enroll(pub, "s1", { patientId: "ana", answers: answers({ alarms: ["dor_peito"] }) }).error,
+    "emergencia",
+  );
+  assert.equal(E.enroll(pub, "s1", { patientId: "ana", answers: answers() }).ok, true);
+  assert.equal(E.enroll(pub, "s1", { patientId: "ana", answers: answers() }).error, "duplicada");
+  assert.equal(E.enroll(pub, "s1", { patientId: "joao", answers: answers() }).ok, true);
+  assert.equal(E.enroll(pub, "s1", { patientId: "bruno", answers: answers() }).error, "lotada"); // RN-AL-06
+  assert.equal(E.occupied(pub, "s1"), 2);
+});
+
+test("public: day order follows enrollment time, with priority on top", () => {
+  const st = publicSession(5);
+  for (const pid of ["joao", "bruno", "dora"]) {
+    E.enroll(st, "s1", { patientId: pid, answers: answers() });
+    E.advance(st, MIN);
+  }
+  st.now = st.sessions[0].start;
+  E.openSession(st, "s1");
+  const q = st.sessions[0].queue;
+  assert.deepEqual(
+    q.map((x) => [x.patientId, x.number, x.origin]),
+    [
+      ["joao", 1, "inscrito"],
+      ["bruno", 2, "inscrito"],
+      ["dora", 3, "inscrito"],
+    ],
+  );
+  st.config.K = 0; // sem janela protegida, para isolar a ordem
+  for (const x of q) E.markPresent(st, "s1", x.patientId);
+  assert.equal(E.callNext(st, "s1", "st1").item.patientId, "dora"); // idosa passa na frente de quem chegou antes
+});
+
+test("public: enrolling on the day of an open session enters the queue", () => {
+  const st = publicSession(5);
+  E.enroll(st, "s1", { patientId: "joao", answers: answers() });
+  st.now = st.sessions[0].start;
+  E.openSession(st, "s1");
+  const r = E.enroll(st, "s1", { patientId: "ana", answers: answers() });
+  assert.equal(r.entry.status, "na_fila");
+  const it = st.sessions[0].queue.find((x) => x.patientId === "ana");
+  assert.equal(it.number, 2); // RN-FILA-02: próximo número livre
+  assert.equal(it.presence, "remoto");
+});
