@@ -56,12 +56,18 @@
       s.queue = s.queue || [];
       s.nextNumber = s.nextNumber || 1;
       s.called = s.called || {}; // quem já foi chamado, por etapa (AD-010)
-      s.secret = s.secret || `q${s.id}`;
+      s.secret = s.secret || newSecret();
     });
     return st;
   }
 
   const nextId = (st, p) => `${p}${++st.seq}`;
+  // Segredo do QR rotativo: aleatório, para o token não ser derivável do id da sessão.
+  const newSecret = () => {
+    const b = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(b);
+    return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  };
   const byId = (list, id) => list.find((x) => x.id === id);
   const service = (st, id) => byId(st.services, id);
   const session = (st, id) => byId(st.sessions, id);
@@ -174,6 +180,8 @@
   function acceptReferral(st, entryId) {
     const e = byId(st.entries, entryId);
     e.referral.status = "aceito";
+    const s = e.sessionId && session(st, e.sessionId);
+    if (s) return enterSession(st, s, e); // sessão pública: a vaga reservada vira inscrição confirmada
     e.status = "aguardando";
     notify(
       st,
@@ -236,7 +244,9 @@
   // INV-02: entradas não finais numa sessão, somando todos os caminhos.
   function occupied(st, sessionId) {
     const fromList = st.entries.filter(
-      (e) => e.sessionId === sessionId && ["alocada", "confirmada", "na_fila"].includes(e.status),
+      (e) =>
+        e.sessionId === sessionId &&
+        ["alocada", "confirmada", "na_fila", "aguardando_encaminhamento"].includes(e.status),
     ).length;
     const desk = session(st, sessionId).queue.filter(
       (q) => q.origin === "balcao" && !["saiu", "atendido"].includes(q.status),
@@ -258,7 +268,11 @@
       e.allocatedAt = st.now;
       e.deadline = deadline;
       if (!e.confirmedLevel) e.confirmedLevel = e.suggested; // RN-RISCO-01: confirmado na alocação
-      notify(st, e.patientId, `Você foi alocado em ${service(st, s.serviceId).name}. Confirme em 24 h.`);
+      notify(
+        st,
+        e.patientId,
+        `Você foi alocado em ${service(st, s.serviceId).name}. Confirme até ${dayLabel(deadline)}, ${HM.format(deadline)}.`,
+      );
     }
     s.version++;
     return { ok: true };
@@ -267,7 +281,7 @@
   function callList(st) {
     return st.entries
       .filter((e) => e.status === "alocada")
-      .map((e) => ({ entry: e, overdue: st.now - e.allocatedAt >= st.config.confirmHours * 60 * MIN }))
+      .map((e) => ({ entry: e, overdue: st.now >= e.deadline })) // deadline = min(24 h, início da sessão)
       .sort((a, b) => session(st, a.entry.sessionId).start - session(st, b.entry.sessionId).start);
   }
 
@@ -301,7 +315,7 @@
 
   // O paciente se inscreve direto na sessão, sem agendador. A inscrição já é a confirmação: ele escolheu
   // o dia. A ordem do dia segue a hora da inscrição, com prioridade e risco por cima (RN-FILA-01, RN-ORD).
-  function enroll(st, sessionId, { patientId, answers }) {
+  function enroll(st, sessionId, { patientId, answers, referralPhoto }) {
     const s = session(st, sessionId);
     if (s?.visibility !== "pública") return { ok: false, error: "privada" };
     if (!["planejada", "aberta"].includes(s.state)) return { ok: false, error: "encerrada" };
@@ -313,24 +327,38 @@
     const existing = activeEntry(st, patientId, svc.id);
     if (existing) return { ok: false, error: "duplicada", existing, classification: c };
     if (occupied(st, sessionId) >= s.slots) return { ok: false, error: "lotada", classification: c }; // RN-AL-06
-    const entry = buildEntry(st, { p, svc, answers, c, age });
+    const entry = buildEntry(st, { p, svc, answers, referralPhoto, c, age });
     entry.sessionId = sessionId;
-    entry.status = "confirmada";
     st.entries.push(entry);
     urgentAlert(st, entry, p, c);
     s.version++;
+    // RN-ENC-01: com encaminhamento, a vaga fica reservada até a unidade aceitar a foto (acceptReferral).
+    if (svc.requiresReferral) {
+      notify(
+        st,
+        patientId,
+        `Vaga reservada em ${svc.name}, ${dayLabel(s.start)}. Falta a unidade conferir o encaminhamento.`,
+      );
+      return { ok: true, entry, classification: c };
+    }
+    enterSession(st, s, entry);
+    return { ok: true, entry, classification: c };
+  }
+
+  // Inscrito confirmado: antes da abertura, espera a sessão abrir; com ela aberta, entra direto (RN-PUB-01).
+  function enterSession(st, s, entry) {
+    entry.status = "confirmada";
     if (s.state === "aberta") {
-      entry.status = "na_fila"; // RN-PUB-01: sessão aberta, entra direto com o próximo número (RN-FILA-02)
+      entry.status = "na_fila"; // entra com o próximo número (RN-FILA-02)
       const it = newItem(st, s, queueFields(st, entry, "inscrito"));
-      notify(st, patientId, `Inscrição feita: você está na fila remota com a senha ${it.senha}.`);
+      notify(st, entry.patientId, `Inscrição feita: você está na fila remota com a senha ${it.senha}.`);
       tick(st);
     } else
       notify(
         st,
-        patientId,
-        `Inscrição feita em ${svc.name}, ${dayLabel(s.start)}. Quando a sessão abrir, você entra na fila.`,
+        entry.patientId,
+        `Inscrição feita em ${service(st, s.serviceId).name}, ${dayLabel(s.start)}. Quando a sessão abrir, você entra na fila.`,
       );
-    return { ok: true, entry, classification: c };
   }
 
   const queueFields = (st, e, origin) => ({
@@ -390,6 +418,12 @@
         release(st, e);
       });
     st.entries
+      .filter((e) => e.sessionId === sessionId && e.status === "aguardando_encaminhamento")
+      .forEach((e) => {
+        e.sessionId = null;
+        notify(st, e.patientId, "A sessão abriu sem o encaminhamento aceito, e a vaga foi liberada.");
+      });
+    st.entries
       .filter((e) => e.sessionId === sessionId && e.status === "confirmada")
       .sort((a, b) => a.createdAt - b.createdAt)
       .forEach((e) => {
@@ -436,7 +470,11 @@
 
   function becomeEligible(st, s, q, { applyLate }) {
     // AD-010: perde a vez só se foi chamado, nesta etapa, alguém que vinha depois dele na ordem.
-    const passed = (s.called[q.stage] || []).some((c) => orderCompare(st, q, c) < 0);
+    // Depois de "Vou sair", só contam as chamadas feitas enquanto ela estava fora.
+    const passed = (s.called[q.stage] || []).some(
+      (c) => (q.awaySince == null || c.at >= q.awaySince) && orderCompare(st, q, c) < 0,
+    );
+    q.awaySince = null;
     if (applyLate && !urgConf(q) && passed) {
       q.number = s.nextNumber++; // atraso: perdeu a vez, vai para o fim
     }
@@ -461,7 +499,11 @@
 
   function checkIn(st, sessionId, patientId, token) {
     const s = session(st, sessionId);
-    const valid = [qrToken(s, st.now), qrToken(s, st.now - QR_STEP)];
+    // A TV é uma por unidade (RN-TV-03): vale o QR de qualquer sessão aberta da mesma unidade.
+    const unitId = service(st, s.serviceId).unitId;
+    const valid = st.sessions
+      .filter((x) => x.state === "aberta" && service(st, x.serviceId).unitId === unitId)
+      .flatMap((x) => [qrToken(x, st.now), qrToken(x, st.now - QR_STEP)]);
     if (!valid.includes(token)) return { ok: false, error: "qr_invalido" };
     return markPresent(st, sessionId, patientId);
   }
@@ -488,6 +530,7 @@
     const q = findItem(s, patientId);
     if (q?.status !== "fila") return { ok: false, error: "estado" };
     q.presence = "remoto";
+    q.awaySince = st.now;
     markAway(st, q);
     releaseLocks(s, q);
     return { ok: true };
@@ -548,8 +591,8 @@
 
   function finishCurrent(st, s, station) {
     const q = station.current && byId(s.queue, station.current);
+    if (!q) return; // nada desta sessão na estação (um chamado de outra sessão continua lá)
     station.current = null;
-    if (!q) return;
     if (station.stage === "triagem") {
       // RN-TRI-04: o triado entra presente na fila do consultório, mesma senha e número.
       q.stage = "atendimento";
@@ -572,6 +615,7 @@
     const s = session(st, sessionId);
     const station = byId(st.stations, stationId);
     finishCurrent(st, s, station);
+    if (station.current) return { ok: false, error: "ocupada" }; // chamado de outra sessão em aberto
     const q = callOrder(st, sessionId, stationId)[0];
     if (!q) {
       tick(st);
@@ -583,6 +627,7 @@
     station.current = q.id;
     s.called[q.stage] = s.called[q.stage] || [];
     s.called[q.stage].push({
+      at: st.now,
       number: q.number,
       confirmedLevel: q.confirmedLevel,
       suggested: q.suggested,
@@ -713,7 +758,7 @@
       queue: [],
       nextNumber: 1,
       called: {},
-      secret: `q${st.seq}`,
+      secret: newSecret(),
     };
     st.sessions.push(s);
     return s;
@@ -769,6 +814,7 @@
   }
 
   const WEEKDAY = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: "America/Sao_Paulo" });
+  const HM = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
   const DAYMONTH = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -822,7 +868,12 @@
   // RN-TV-02 e RN-TV-05: sem pareamento, só o código; pareada, só senhas e contadores.
   function tvView(st) {
     if (!st.tv.paired) return { paired: false, code: st.tv.code };
-    const open = st.sessions.filter((s) => s.state === "aberta");
+    // Só a unidade da TV (st.tv.unitId); sem unidade definida, a da primeira sessão aberta.
+    const unitOfSession = (s) => service(st, s.serviceId).unitId;
+    const firstOpen = st.sessions.find((s) => s.state === "aberta");
+    const unitId = st.tv.unitId || (firstOpen && unitOfSession(firstOpen));
+    const open = st.sessions.filter((s) => s.state === "aberta" && unitOfSession(s) === unitId);
+    const unitServices = new Set(st.services.filter((x) => x.unitId === unitId).map((x) => x.id));
     const counters = open.map((s) => {
       const q = s.queue.filter((x) => x.status === "fila");
       return {
@@ -833,13 +884,15 @@
     });
     return {
       paired: true,
-      announcements: st.tv.announcements.map((a) => ({
-        id: a.id,
-        senha: a.senha,
-        dest: a.dest,
-        service: service(st, a.serviceId).name,
-        at: a.at,
-      })),
+      announcements: st.tv.announcements
+        .filter((a) => unitServices.has(a.serviceId))
+        .map((a) => ({
+          id: a.id,
+          senha: a.senha,
+          dest: a.dest,
+          service: service(st, a.serviceId).name,
+          at: a.at,
+        })),
       counters,
       qr: open.length ? qrToken(open[0], st.now) : null,
       qrSessionId: open.length ? open[0].id : null,
@@ -850,9 +903,12 @@
   function patientView(st, patientId) {
     const entries = st.entries.filter((e) => e.patientId === patientId);
     let queue = null;
-    for (const s of st.sessions) {
-      const q = [...s.queue].reverse().find((x) => x.patientId === patientId);
-      if (!q) continue;
+    // O item ativo (na fila ou chamado) vence um já encerrado em outra sessão; entre iguais, o mais recente.
+    const items = st.sessions.flatMap((s) => s.queue.filter((x) => x.patientId === patientId).map((q) => ({ s, q })));
+    const active = (x) => ["fila", "chamado"].includes(x.q.status);
+    const pick = items.filter(active).at(-1) || items.at(-1);
+    if (pick) {
+      const { s, q } = pick;
       const station = q.stationId && byId(st.stations, q.stationId);
       queue = {
         sessionId: s.id,
@@ -921,11 +977,9 @@
     if (eta.comeNow)
       return `Sua vez${tri ? " na triagem" : ""} está chegando: venha agora. Você só é chamado depois de ler o QR na unidade.`;
     if (eta.minutes === null) return `${pre}você é o ${eta.position}º · aguardando início do atendimento`;
-    const consultTxt = tri && eta.consultMinutes != null ? ` · consulta em ~${fmtMin(eta.consultMinutes)}` : "";
-    if (eta.mode === "presente")
-      return `${pre}você é o ${eta.position}º a ser chamado · ~${fmtMin(eta.minutes)}${consultTxt}`;
     const consult = tri && eta.consultMinutes != null ? ` · consulta em ~${fmtMin(eta.consultMinutes)}` : "";
-    return `${pre}você é o ${eta.position}º · ~${fmtMin(eta.minutes)}${consult}`;
+    const who = eta.mode === "presente" ? "a ser chamado " : "";
+    return `${pre}você é o ${eta.position}º ${who}· ~${fmtMin(eta.minutes)}${consult}`;
   }
 
   function advance(st, ms) {
@@ -981,6 +1035,7 @@
     createStation,
     setStationOpen,
     etaText,
+    fmtMin,
     patientEta,
     activeEntry,
     findItem,

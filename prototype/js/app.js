@@ -32,6 +32,12 @@
       .join("");
   const age = (p) => E.ageAt(p.birth, st.now);
   const openSession = () => st.sessions.find((s) => s.state === "aberta");
+  // Pode haver mais de uma sessão aberta: a da pessoa é a do item dela na fila de hoje.
+  const mySession = (pid) => sessionOf(E.patientView(st, pid).queue?.sessionId) || null;
+  // A da estação é a do chamado atual dela, ou a primeira aberta que ela atende.
+  const stationSession = (station) =>
+    st.sessions.find((s) => s.state === "aberta" && s.queue.some((q) => q.id === station.current)) ||
+    st.sessions.find((s) => s.state === "aberta" && station.services.includes(s.serviceId));
   const scenario = () => SCENARIOS[ui.scenario];
   const levelChip = (level, confirmed) =>
     `<span class="chip ${level}">${E.RISK_LABEL[level]}${confirmed === undefined ? "" : confirmed ? " · confirmado" : " · sugerido"}</span>`;
@@ -47,10 +53,11 @@
   };
   const statusChip = (s) => `<span class="chip ${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 
+  // RN-TV-04: som de aviso a cada chamada na TV (usa o áudio da lição e respeita o botão de som).
   function beep() {
     try {
-      const ctx = ui.audio;
-      if (!ctx) return;
+      const ctx = ui.sfx;
+      if (!soundOn || !ctx || ui.skipping) return;
       for (const [f, t] of [
         [880, 0],
         [660, 0.25],
@@ -159,49 +166,22 @@
       agSessionId: st.sessions.find((s) => s.visibility === "privada" && s.state === "planejada")?.id,
       agSel: null,
       agKey: null,
-      agStale: false,
       agVersion: null,
-      agMsg: null,
-      callMsg: null,
-      desk: { name: "", birth: "1960-01-01", answers: emptyAnswers() },
-      deskResult: null,
-      triLevel: {},
-      tvCode: "",
-      tvMsg: null,
-      tvStarted: !!sc.tvReady,
-      tvCur: null,
-      tvPending: [],
-      tvSeen: new Set(),
-      tvShown: [],
       stationId: "st1",
-      stationMsg: null,
-      stLevel: null,
       newSession: { serviceId: "cli", day: 1, slots: 15, visibility: "pública" },
       simMsg: null,
       travelDone: new Set(),
-      newStation: { name: "Triagem 1", stage: "triagem" },
       events: new Set(),
       done: new Set(),
       lesson: { step: 0, view: "start" },
-      audio: ui?.audio || null,
+      sfx: ui?.sfx || null,
     };
     for (const el of Object.values(regions)) if (el) el._html = null;
     update(true);
   }
 
-  // Tempo compacto para cartões: "30 min", "2 h", "2h45".
-  function hShort(ms) {
-    const m = Math.round(ms / MIN);
-    if (m < 60) return `${m} min`;
-    const r = m % 60;
-    return r ? `${Math.floor(m / 60)}h${String(r).padStart(2, "0")}` : `${m / 60} h`;
-  }
-
-  // Duração curta: "40 min", "2 h 26 min".
-  function h(ms) {
-    const m = Math.round(ms / MIN);
-    return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min` : `${m} min`;
-  }
+  // Duração: "40 min", "2 h 26 min" (mesma formatação do engine).
+  const h = (ms) => E.fmtMin(Math.round(ms / MIN));
 
   const fWeek = fmt({ weekday: "short" });
   const fDay = fmt({ day: "2-digit" });
@@ -380,6 +360,13 @@
             <div class="row between"><strong>${esc(service(e.serviceId).name)}</strong>${statusChip(e.status)}</div>
             <div class="muted">desde ${fDate.format(e.createdAt)}</div>
           </button>`;
+        } else if (r.kind === "fechada") {
+          back = "unit";
+          body = `<div class="result">
+            <div class="icon" style="background:var(--orange-50);color:var(--orange-700)">!</div>
+            <h4>Esta sessão não aceita mais inscrição</h4>
+            <p>Ela foi encerrada ou deixou de ser pública enquanto você respondia. Escolha outro dia na agenda da unidade.</p>
+          </div>`;
         } else if (r.kind === "lotada") {
           back = "unit";
           body = `<div class="result">
@@ -394,7 +381,11 @@
           body = `<div class="booked">
             <div class="booked-head">
               <span class="booked-check" aria-hidden="true">✓</span>
-              <div><h4>Vaga garantida!</h4><p>Ninguém precisa aprovar.</p></div>
+              ${
+                e.status === "aguardando_encaminhamento"
+                  ? `<div><h4>Vaga reservada</h4><p>A unidade confere seu encaminhamento e confirma.</p></div>`
+                  : `<div><h4>Vaga garantida!</h4><p>Ninguém precisa aprovar.</p></div>`
+              }
             </div>
             <div class="booked-card">
               <div class="booked-when">
@@ -466,7 +457,6 @@
           break;
         }
         const svc = service(sessionOf(q.sessionId).serviceId);
-        const stageTag = q.stage === "triagem" ? " · triagem" : svc.requiresTriage ? " · consultório" : "";
         if (q.status === "chamado") {
           body = `<div class="ticket called"><div class="svc">É a sua vez!</div><div class="senha">${q.senha}</div><div class="pos">${esc(svc.name)} → ${esc(q.station)}</div></div>
           <p class="muted">Vá até a sala agora. Você tem ${st.config.toleranceMin} minutos.</p>`;
@@ -503,7 +493,7 @@
             ? `<div class="q-come">Venha agora</div>`
             : `<div class="q-stats">
                 <div><small>${tri ? "Na triagem" : "Sua posição"}</small><b>${d.position}º</b></div>
-                <div><small>Tempo estimado</small><b>${d.minutes === null ? "—" : `~${hShort(d.minutes * MIN)}`}</b></div>
+                <div><small>Tempo estimado</small><b>${d.minutes === null ? "—" : `~${h(d.minutes * MIN)}`}</b></div>
               </div>`;
           body = `
             <div class="q-ticket"><small>Sua senha</small><span class="senha">${q.senha}</span><span class="svc">${esc(svc.name)}</span></div>
@@ -622,15 +612,11 @@
     const sug = E.suggest(st, s.id);
     const free = s.slots - E.occupied(st, s.id);
     const key = `${s.id}:${free}:${st.config.priorityOrder}:${sug.map((x) => x.entry.id).join(",")}`;
-    if (!ui.agStale && (ui.agSel === null || ui.agKey !== key)) {
+    if (ui.agSel === null || ui.agKey !== key) {
       ui.agSel = new Set(sug.slice(0, Math.max(0, free)).map((x) => x.entry.id));
       ui.agKey = key;
     }
     return { s, sug, free };
-  }
-
-  function checkbox(group, id, label, list) {
-    return `<label><input type="checkbox" data-act="desk-opt" data-group="${group}" data-id="${id}" ${list.includes(id) ? "checked" : ""}>${label}</label>`;
   }
 
   // 07:00 em Brasília, N dias depois do dia atual do relógio da demo.
@@ -662,8 +648,6 @@
       const target = st.stations.find((x) => x.stage === step.station);
       if (target && ui.stationId !== target.id) {
         ui.stationId = target.id;
-        ui.stationMsg = null;
-        ui.stLevel = null;
       }
     }
   }
@@ -807,7 +791,7 @@
 
   function stationScreen() {
     const station = byId(st.stations, ui.stationId);
-    const s = openSession();
+    const s = stationSession(station);
     const cur = s && station.current && byId(s.queue, station.current);
     const tri = station.stage === "triagem";
     // Na lição, só se finaliza o atendimento da protagonista: os outros a unidade atende sozinha.
@@ -1039,7 +1023,7 @@
       if (!e) delete ui.alerts[pid];
       return e ? { n, e } : null;
     }
-    const q = st.sessions.flatMap((x) => x.queue).find((x) => x.patientId === pid);
+    const q = E.patientView(st, pid).queue;
     const ok =
       q && (n.text.startsWith("Sua vez") ? q.status === "chamado" : q.status === "fila" && q.presence === "remoto");
     if (!ok) {
@@ -1059,7 +1043,7 @@
         <span class="alert-icon" aria-hidden="true">🎉</span>
         <h2>Você tem uma vaga!</h2>
         <span class="alert-senha">${esc(service(e.serviceId).name)}</span>
-        <p>${E.dayLabel(s.start)}, às ${fTime.format(s.start)}. Confirme em até 24 h para garantir.</p>
+        <p>${E.dayLabel(s.start)}, às ${fTime.format(s.start)}. Confirme até ${E.dayLabel(e.deadline)}, ${fTime.format(e.deadline)}.</p>
         <button class="btn lg block alert-ok alert-main" data-act="confirm-alloc" data-id="${e.id}">Confirmar presença</button>
         <button class="btn ghost block alert-later" data-act="alert-ok">Agora não</button>
       </div>`;
@@ -1136,7 +1120,11 @@
       return;
     }
     const r = qz.sessionId
-      ? E.enroll(st, qz.sessionId, { patientId: ui.persona, answers: qz.answers })
+      ? E.enroll(st, qz.sessionId, {
+          patientId: ui.persona,
+          answers: qz.answers,
+          referralPhoto: qz.photo ? "requisicao.jpg" : null,
+        })
       : E.createEntry(st, {
           patientId: ui.persona,
           serviceId: qz.serviceId,
@@ -1157,11 +1145,12 @@
     else if (r.error === "duplicada") {
       ui.result = { kind: "dup", entryId: r.existing.id };
       ui.events.add("dup");
-    } else ui.result = { kind: "emergencia" };
+    } else if (r.error === "emergencia") ui.result = { kind: "emergencia" };
+    else ui.result = { kind: "fechada" }; // sessão encerrada ou que deixou de ser pública
   }
 
   function scan(old) {
-    const s = openSession();
+    const s = mySession(ui.persona);
     if (!s) return;
     // Demonstração: depois de um "saia de casa", a protagonista leva o tempo do trajeto para chegar,
     // e a unidade segue trabalhando nesse meio-tempo.
@@ -1174,12 +1163,10 @@
         ui.travelDone.add(last.id);
         E.simulate(st, s.id, { protagonist: ui.persona, maxMs: left });
         travelled = Math.round(left / MIN);
-        const all = E.tvView(st).announcements || [];
-        for (const a of all) ui.tvSeen.add(a.id);
-        ui.tvShown = all.slice(-5).reverse();
       }
     }
-    const token = E.qrToken(s, old ? st.now - 2 * MIN : st.now);
+    // O código é o que a TV da unidade mostra agora (o "foto antiga" tem 2 min e já expirou).
+    const token = old ? E.qrToken(s, st.now - 2 * MIN) : E.tvView(st).qr || E.qrToken(s, st.now);
     const r = E.checkIn(st, s.id, ui.persona, token);
     ui.sheet = null;
     ui.qrMsg = r.ok
@@ -1240,14 +1227,6 @@
       if (Number(d.ms) === DAY) ui.events.add("adv:day");
       ui.events.add(`adv:${d.ms}`);
     },
-    persona: (d) => {
-      ui.persona = d.persona;
-      ui.screen = "home";
-      ui.sheet = null;
-      ui.qrMsg = null;
-      ui.quiz = null;
-      ui.toast = null;
-    },
     "alert-ok": () => {
       const n = ui.alerts[ui.persona];
       if (n) ui.read.add(n.id);
@@ -1302,7 +1281,8 @@
     scan: () => scan(false),
     "scan-old": () => scan(true),
     leave: () => {
-      const s = openSession();
+      const s = mySession(ui.persona);
+      if (!s) return;
       const q = E.findItem(s, ui.persona);
       E.leave(st, s.id, ui.persona);
       if (q) {
@@ -1311,146 +1291,27 @@
       }
       ui.qrMsg = { ok: true, text: "Você está em casa de novo. Sua posição foi mantida." };
     },
-    tab: (d) => {
-      ui.tab = d.id;
-    },
-    rule: (d) => {
-      st.config.priorityOrder = d.id;
-      ui.agSel = null;
-      ui.agStale = false;
-    },
     "ag-toggle": (d) => {
       if (ui.agSel.has(d.id)) ui.agSel.delete(d.id);
       else ui.agSel.add(d.id);
     },
     "ag-alloc": () => {
-      const n = ui.agSel.size;
       const r = E.allocate(st, ui.agSessionId, [...ui.agSel], { version: ui.agVersion });
       if (r.ok && scenario().autoConfirm) {
         // Demonstração: os outros pacientes confirmam pelo app; só a protagonista confirma com o seu clique.
         for (const e of st.entries)
           if (e.status === "alocada" && e.patientId !== scenario().protagonist) E.confirmAllocation(st, e.id);
       }
-      if (r.ok)
-        ui.agMsg = {
-          ok: true,
-          text: `${n} paciente(s) alocado(s). Cada um recebeu “confirme em 24 h” e entrou na lista de ligação.`,
-        };
-      else if (r.error === "conflito") {
-        ui.agMsg = {
-          ok: false,
-          text: "Outro agendador alocou vagas desta sessão agora há pouco. A lista foi atualizada: revise e aloque de novo.",
-        };
-        ui.events.add("conflict");
-      } else if (r.error === "sem_vagas") ui.agMsg = { ok: false, text: "A seleção passa das vagas livres da sessão." };
-      else ui.agMsg = { ok: false, text: "Há entradas que não podem ser alocadas." };
       ui.agVersion = sessionOf(ui.agSessionId).version;
       ui.agSel = null;
-      ui.agStale = false;
-    },
-    "ag-other": () => {
-      const s = sessionOf(ui.agSessionId);
-      const top = E.suggest(st, s.id)[0];
-      if (top && E.allocate(st, s.id, [top.entry.id], { version: s.version }).ok) {
-        ui.agStale = true; // a tela deste agendador continua com a lista antiga
-        ui.events.add("other");
-      }
-    },
-    "ref-accept": (d) => E.acceptReferral(st, d.id),
-    "ref-reject": (d) => E.rejectReferral(st, d.id, document.getElementById(`reason-${d.id}`).value),
-    "call-confirm": (d) => {
-      E.confirmAllocation(st, d.id);
-      ui.callMsg = {
-        ok: true,
-        text: `${esc(patient(byId(st.entries, d.id).patientId).name)}: confirmado pelo agendador.`,
-      };
-    },
-    "call-refuse": (d) => {
-      const r = E.refuseAllocation(st, d.id);
-      const nm = patient(byId(st.entries, d.id).patientId).name;
-      ui.callMsg = {
-        ok: false,
-        text: `${esc(nm)} recusou. A vaga foi liberada e ${esc(first(nm))} volta para a lista com a data original.${r.next ? ` Próximo sugerido: <b>${esc(patient(r.next.entry.patientId).name)}</b> (veja no Agendador).` : ""}`,
-      };
-      ui.events.add("refuse");
-    },
-    "call-none": (d) => {
-      const e = byId(st.entries, d.id);
-      e.calls = (e.calls || 0) + 1;
-    },
-    "desk-opt": (d) => {
-      const a = ui.desk.answers;
-      a[d.group] = E.toggleOption(a[d.group], d.id, "__none__");
-    },
-    "desk-submit": () => {
-      const d = ui.desk;
-      if (!d.name.trim() || !d.answers.motivo) {
-        ui.deskResult = { ok: false, error: "campos" };
-        return;
-      }
-      const r = E.frontDesk(st, openSession().id, { name: d.name.trim(), birth: d.birth, answers: d.answers });
-      ui.deskResult = r.ok
-        ? { ok: true, senha: r.item.senha, number: r.item.number, name: r.item.name, level: r.item.suggested }
-        : { ok: false, error: r.error };
-      if (r.ok) ui.desk = { name: "", birth: "1960-01-01", answers: emptyAnswers() };
-    },
-    "mark-present": (d) => E.markPresent(st, openSession().id, d.id),
-    "tri-confirm": (d) => {
-      const s = openSession();
-      const q = byId(s.queue, d.id);
-      E.confirmRisk(st, s.id, d.id, ui.triLevel[d.id] || q.confirmedLevel || q.suggested);
     },
     "open-session": (d) => {
       E.openSession(st, d.id);
       ui.agSel = null;
     },
-    "station-toggle": (d) => {
-      const x = byId(st.stations, d.id);
-      const r = E.setStationOpen(st, d.id, !x.open);
-      ui.stationAdminMsg = r.ok
-        ? null
-        : `${x.name} tem um paciente chamado: finalize ou marque “Não compareceu” antes de fechar.`;
-    },
-    "tv-pair": () => {
-      const r = E.pairTv(st, ui.tvCode.trim());
-      ui.tvMsg = r.ok ? null : "O código não confere com o que aparece na TV.";
-      if (r.ok) ui.tvCode = "";
-    },
-    "tv-revoke": () => {
-      E.revokeTv(st);
-      ui.tvStarted = false;
-      ui.tvCur = null;
-      ui.tvPending = [];
-      ui.tvShown = [];
-    },
-    "tv-start": () => {
-      ui.tvStarted = true;
-      for (const a of st.tv.announcements) ui.tvSeen.add(a.id);
-      try {
-        ui.audio = ui.audio || new (window.AudioContext || window.webkitAudioContext)();
-        ui.audio.resume();
-      } catch {
-        ui.audio = null;
-      }
-    },
-    "st-next": () => {
-      const r = E.callNext(st, openSession().id, ui.stationId);
-      ui.stationMsg = r.ok
-        ? null
-        : "Ninguém na sala para chamar. Só é chamado quem leu o QR ou foi marcado pela recepção.";
-    },
-    "st-recall": () => E.recall(st, openSession().id, ui.stationId),
     "st-finish": () => {
-      E.finish(st, openSession().id, ui.stationId);
-      ui.stationMsg = null;
-    },
-    "st-skip": () => E.skip(st, openSession().id, ui.stationId),
-    "st-risk": () => {
-      const s = openSession();
       const station = byId(st.stations, ui.stationId);
-      const q = station.current && byId(s.queue, station.current);
-      if (q) E.confirmRisk(st, s.id, q.id, ui.stLevel || q.confirmedLevel || q.suggested);
-      ui.stLevel = null;
+      E.finish(st, stationSession(station).id, ui.stationId);
     },
     "ns-vis": (d) => {
       if (!service(ui.newSession.serviceId).visibility) ui.newSession.visibility = d.id;
@@ -1472,20 +1333,12 @@
       }
     },
     sim: () => {
-      const s = openSession();
-      if (!s) return;
       const pid = scenario().protagonist;
+      const s = mySession(pid) || openSession();
+      if (!s) return;
       const before = st.tv.announcements.length;
       const r = E.simulate(st, s.id, { protagonist: pid });
-      // A TV não reprisa horas de chamadas: mostra a mais recente e as anteriores em "últimas chamadas".
-      const all = E.tvView(st).announcements || [];
-      for (const a of all) ui.tvSeen.add(a.id);
-      ui.tvPending = [];
-      if (ui.tvStarted && all.length > before) {
-        ui.tvShown = all.slice(-6, -1).reverse();
-        ui.tvCur = { a: all.at(-1), until: Date.now() + 10000 };
-        beep();
-      }
+      if (st.tv.announcements.length > before) beep(); // som de chamada na TV
       const name = first(patient(pid).name);
       if (r.reason === "called" || r.reason === "busy") {
         const station = st.stations.find((x) => x.current && byId(s.queue, x.current)?.patientId === pid);
@@ -1497,16 +1350,6 @@
         busy: `${name} está sendo atendida agora: finalize na estação.`,
         timeout: "Passaram 4 horas sem aviso novo.",
       }[r.reason];
-    },
-    "svc-triage": (d) => {
-      const x = service(d.id);
-      E.setServiceTriage(st, d.id, !x.requiresTriage);
-    },
-    "station-create": () => {
-      const ns = ui.newStation;
-      if (!ns.name.trim()) return;
-      E.createStation(st, { name: ns.name.trim(), stage: ns.stage, services: ["cli"] });
-      ui.newStation = { name: "", stage: "atendimento" };
     },
   };
 
@@ -1521,50 +1364,6 @@
     if (el.dataset.act === "lesson-start" || el.dataset.act === "lesson-show") sfx("tap");
     fn(el.dataset);
     update(true);
-  });
-
-  document.addEventListener("change", (ev) => {
-    const el = ev.target;
-    const c = el.dataset.change;
-    if (c === "ag-session") {
-      ui.agSessionId = el.value;
-      ui.agSel = null;
-      ui.agStale = false;
-      ui.agVersion = sessionOf(el.value).version;
-      ui.agMsg = null;
-    } else if (c === "station") {
-      ui.stationId = el.value;
-      ui.stationMsg = null;
-      ui.stLevel = null;
-    } else if (c === "ns-svc") {
-      ui.newSession.serviceId = el.value;
-    } else if (c === "ns-day") {
-      ui.newSession.day = Number(el.value);
-    } else if (c === "st-level") {
-      ui.stLevel = el.value;
-    } else if (c === "st-stage") {
-      ui.newStation.stage = el.value;
-    } else if (c === "tri-level") {
-      ui.triLevel[el.dataset.id] = el.value;
-    } else if (el.dataset.bind === "motivo" || el.dataset.bind === "gravidade") {
-      ui.desk.answers[el.dataset.bind] = el.value || null;
-      if (el.dataset.bind === "motivo" && el.value !== "novo") ui.desk.answers.gravidade = null;
-    } else return;
-    el.blur();
-    update(true);
-  });
-
-  document.addEventListener("input", (ev) => {
-    const el = ev.target;
-    if (el.dataset.bind === "name" || el.dataset.bind === "birth") ui.desk[el.dataset.bind] = el.value;
-    if (el.dataset.bindTv) ui.tvCode = el.value;
-    if (el.dataset.bindNs) ui.newSession[el.dataset.bindNs] = el.value;
-    if (el.dataset.bindSt) {
-      ui.newStation.name = el.value;
-      const btn = document.querySelector('[data-act="station-create"]');
-      if (btn) btn.disabled = !el.value.trim();
-    }
-    applyHint();
   });
 
   setInterval(() => {

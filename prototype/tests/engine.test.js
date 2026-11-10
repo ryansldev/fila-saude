@@ -214,7 +214,7 @@ test("allocation: never exceeds slots", () => {
   assert.equal(stale.error, "conflito");
   assert.equal(y.status, "aguardando");
   assert.equal(E.allocate(st2, "s1", [y.id], { version: st2.sessions[0].version }).ok, true);
-  assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("24 h")));
+  assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Confirme até")));
 });
 
 test("allocation: refusal keeps original date", () => {
@@ -528,7 +528,8 @@ test("calllist: pending allocation highlighted after 24 h", () => {
   const e = E.createEntry(st, { patientId: "ana", serviceId: "cli", answers: none }).entry;
   E.allocate(st, "s1", [e.id], { version: st.sessions[0].version });
   assert.equal(e.status, "alocada");
-  assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Confirme em 24 h")));
+  // Sessão daqui a 24 h: o prazo é 24 h, e o aviso mostra a data e a hora exatas.
+  assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("Confirme até Sexta, 13/11, 07:00")));
   assert.deepEqual(
     E.callList(st).map((c) => [c.entry.id, c.overdue]),
     [[e.id, false]],
@@ -540,6 +541,17 @@ test("calllist: pending allocation highlighted after 24 h", () => {
   assert.equal(E.confirmAllocation(st, e.id).ok, true);
   assert.equal(e.status, "confirmada");
   assert.equal(E.callList(st).length, 0);
+});
+
+test("calllist: deadline is the session start when it comes before 24 h", () => {
+  const st = baseState();
+  st.sessions[0].start = NOW + 3 * 60 * MIN;
+  const e = E.createEntry(st, { patientId: "ana", serviceId: "cli", answers: none }).entry;
+  E.allocate(st, "s1", [e.id], { version: st.sessions[0].version });
+  assert.equal(e.deadline, NOW + 3 * 60 * MIN);
+  assert.ok(st.notifications.some((n) => n.patientId === "ana" && n.text.includes("10:00")));
+  E.advance(st, 3 * 60 * MIN);
+  assert.equal(E.callList(st)[0].overdue, true);
 });
 
 test("clock: advancing re-evaluates tolerance", () => {
@@ -1004,4 +1016,97 @@ test("public: enrolling on the day of an open session enters the queue", () => {
   const it = st.sessions[0].queue.find((x) => x.patientId === "ana");
   assert.equal(it.number, 2); // RN-FILA-02: próximo número livre
   assert.equal(it.presence, "remoto");
+});
+
+// ---------- Correções do code review ----------
+
+test("public: referral service reserves the slot until the referral is accepted", () => {
+  const st = baseState();
+  Object.assign(st.sessions[0], { serviceId: "car", visibility: "pública", slots: 2 });
+  const r = E.enroll(st, "s1", { patientId: "ana", answers: answers(), referralPhoto: "req.jpg" });
+  assert.equal(r.entry.status, "aguardando_encaminhamento");
+  assert.equal(r.entry.referral.photo, "req.jpg");
+  assert.equal(E.occupied(st, "s1"), 1); // a vaga fica reservada
+  E.acceptReferral(st, r.entry.id);
+  assert.equal(r.entry.status, "confirmada");
+  // Sem aceite até a abertura, a reserva cai.
+  const other = E.enroll(st, "s1", { patientId: "joao", answers: answers(), referralPhoto: "req.jpg" }).entry;
+  st.now = st.sessions[0].start;
+  E.openSession(st, "s1");
+  assert.equal(other.sessionId, null);
+  assert.deepEqual(
+    st.sessions[0].queue.map((q) => q.patientId),
+    ["ana"],
+  );
+});
+
+test("leave: calls made while present do not cost the turn on return", () => {
+  const st = confirmedSession(["joao", "ana"]);
+  st.config.K = 0;
+  checkIn(st, "joao");
+  checkIn(st, "ana");
+  E.callNext(st, "s1", "st1"); // joão (nº 1) chamado com Ana na sala
+  E.finish(st, "s1", "st1");
+  E.confirmRisk(st, "s1", item(st, "ana").id, "atencao"); // agora Ana viria antes dele
+  E.advance(st, 5 * MIN);
+  E.leave(st, "s1", "ana");
+  E.advance(st, 20 * MIN);
+  checkIn(st, "ana");
+  assert.equal(item(st, "ana").number, 2); // manteve o lugar, como o app prometeu
+});
+
+test("qr: any open session of the same unit accepts the TV code", () => {
+  const st = confirmedSession(["ana"]);
+  const s2 = E.createSession(st, { serviceId: "car", start: st.now, slots: 5, visibility: "pública" });
+  E.openSession(st, s2.id);
+  E.enroll(st, s2.id, { patientId: "joao", answers: answers(), referralPhoto: "r.jpg" });
+  const e = st.entries.find((x) => x.patientId === "joao");
+  E.acceptReferral(st, e.id);
+  const tvToken = E.qrToken(st.sessions[0], st.now); // a TV mostra o QR da primeira sessão aberta
+  assert.equal(E.checkIn(st, s2.id, "joao", tvToken).ok, true);
+});
+
+test("tv: shows only its own unit", () => {
+  const st = confirmedSession(["ana"]);
+  st.services.push({ id: "x3", unitId: "u3", name: "Clínico geral", prefix: "G" });
+  st.stations.push({ id: "st9", name: "Sala 9", services: ["x3"], open: true, stage: "atendimento", current: null });
+  const far = E.createSession(st, { serviceId: "x3", start: st.now, slots: 5, visibility: "pública" });
+  E.openSession(st, far.id);
+  E.enroll(st, far.id, { patientId: "joao", answers: answers() });
+  E.markPresent(st, far.id, "joao");
+  E.callNext(st, far.id, "st9");
+  st.tv.paired = true;
+  st.tv.unitId = "u1";
+  const v = E.tvView(st);
+  assert.equal(v.announcements.length, 0); // a chamada da outra unidade não aparece
+  assert.deepEqual(
+    v.counters.map((c) => c.name),
+    ["Clínico geral"],
+  );
+});
+
+test("station: a call from another session is not dropped", () => {
+  const st = confirmedSession(["ana"]);
+  checkIn(st, "ana");
+  E.callNext(st, "s1", "st1");
+  const s2 = E.createSession(st, { serviceId: "cli", start: st.now, slots: 5, visibility: "pública" });
+  E.openSession(st, s2.id);
+  const r = E.callNext(st, s2.id, "st1");
+  assert.equal(r.ok, false);
+  assert.equal(r.error, "ocupada");
+  assert.equal(item(st, "ana").status, "chamado");
+  assert.equal(st.stations[0].current, item(st, "ana").id);
+});
+
+test("patient view: the active ticket wins over a finished one", () => {
+  const st = confirmedSession(["ana"]);
+  checkIn(st, "ana");
+  E.callNext(st, "s1", "st1");
+  const s2 = E.createSession(st, { serviceId: "car", start: st.now, slots: 5, visibility: "pública" });
+  E.openSession(st, s2.id);
+  const e = E.enroll(st, s2.id, { patientId: "ana", answers: answers(), referralPhoto: "r.jpg" }).entry;
+  E.acceptReferral(st, e.id);
+  E.finish(st, "s1", "st1"); // a de clínico geral termina depois
+  st.sessions.reverse(); // a sessão encerrada fica por último na lista
+  assert.equal(E.patientView(st, "ana").queue.status, "fila");
 });

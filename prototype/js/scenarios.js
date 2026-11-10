@@ -152,18 +152,6 @@
     st.now = BASE;
   }
 
-  function allocateAt(st, sessionId, entries, when = BASE) {
-    st.now = when;
-    const version = st.sessions.find((s) => s.id === sessionId).version;
-    E.allocate(
-      st,
-      sessionId,
-      entries.map((e) => e.id),
-      { version },
-    );
-    st.now = BASE;
-  }
-
   // ---------- Predicados usados pelos roteiros ----------
 
   const entryOf = (st, pid, sid) => st.entries.find((e) => e.patientId === pid && e.serviceId === sid);
@@ -187,7 +175,6 @@
       personas: ["maria"],
       tabs: ["admin", "agendador"],
       tab: "agendador",
-      tvReady: true,
       protagonist: "maria",
       autoConfirm: true,
       travelMin: 20,
