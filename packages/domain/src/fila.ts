@@ -28,7 +28,7 @@ export type ItemFila = {
 
 export type Estacao = { id: string; etapa: Etapa; servicos: string[]; aberta: boolean; chamadoItemId: string | null };
 
-export type Chamada = { itemId: string; etapa: Etapa; em: number };
+export type Chamada = { itemId: string; etapa: Etapa; estacaoId: string; em: number };
 
 export type DiaSessao = {
   sessaoId: string;
@@ -37,6 +37,10 @@ export type DiaSessao = {
   estado: EstadoSessao;
   itens: ItemFila[];
   chamadas: Chamada[];
+  /** "Saia de casa" já enviados (RN-ETA-03): um por item e etapa; o estado carrega, o domínio não memoriza. */
+  avisosSaiaDeCasa: { itemId: string; etapa: Etapa }[];
+  /** Tempo médio inicial por etapa (RN-ETA-05), quando difere do padrão da unidade (ex.: triagem mais curta). */
+  tempoInicialMin?: Partial<Record<Etapa, number>>;
   estacoes: Estacao[];
   config: ConfigUnidade;
   contingencias: { inicio: number; fim: number }[];

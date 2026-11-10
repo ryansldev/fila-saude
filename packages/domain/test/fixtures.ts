@@ -62,6 +62,7 @@ export function diaCom(ids: string[], parcial: Partial<DiaSessao> = {}): DiaSess
     estado: "aberta",
     itens: ids.map((id, i) => itemFila(id, i + 1)),
     chamadas: [],
+    avisosSaiaDeCasa: [],
     estacoes: [{ id: "e1", etapa: "atendimento", servicos: ["cli"], aberta: true, chamadoItemId: null }],
     config: CONFIG_PADRAO,
     contingencias: [],
@@ -79,7 +80,7 @@ export function comItem(dia: DiaSessao, id: string, parcial: Partial<ItemFila>):
  * Simula a chamada da Task 6 (chamarProximo) só no que a fila do dia observa:
  * o item vira "chamado", a chamada é registrada e as travas sobre ele acabam.
  */
-export function chamar(dia: DiaSessao, id: string, em: number): DiaSessao {
+export function chamar(dia: DiaSessao, id: string, em: number, estacaoId = "e1"): DiaSessao {
   const item = dia.itens.find((i) => i.id === id);
   if (!item) throw new Error(`item ${id} não existe`);
   return congelar({
@@ -89,6 +90,6 @@ export function chamar(dia: DiaSessao, id: string, em: number): DiaSessao {
         ? { ...i, estado: "chamado" as const, travadoAtras: [] }
         : { ...i, travadoAtras: i.travadoAtras.filter((t) => t !== id) },
     ),
-    chamadas: [...dia.chamadas, { itemId: id, etapa: item.etapa, em }],
+    chamadas: [...dia.chamadas, { itemId: id, etapa: item.etapa, estacaoId, em }],
   });
 }

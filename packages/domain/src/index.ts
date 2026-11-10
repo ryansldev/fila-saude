@@ -13,6 +13,8 @@ export {
   TRANSICOES_SESSAO,
   transicionar,
 } from "./contratos.ts";
+export type { Estimativa } from "./estimativa.ts";
+export { avisosSaiaDeCasa, estimar, tempoMedio } from "./estimativa.ts";
 export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, Pendencia } from "./fila.ts";
 export {
   CONFIG_PADRAO,

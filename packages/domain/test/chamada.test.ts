@@ -73,7 +73,7 @@ describe("RN-CHAM-01/02: chamar, encerrar a chamada anterior", () => {
     d = congelar(r.estado);
     expect(item(d, "joao").estado).toBe("chamado"); // Ana (nº 1) está remota
     expect(chamadoEm(d)).toBe("joao");
-    expect(d.chamadas).toEqual([{ itemId: "joao", etapa: "atendimento", em: T + MIN }]);
+    expect(d.chamadas).toEqual([{ itemId: "joao", etapa: "atendimento", estacaoId: "e1", em: T + MIN }]);
     expect(r.eventos).toEqual([
       {
         tipo: "chamado",

@@ -102,7 +102,10 @@ export function chamarProximo(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
   atual = soltarTravas(atual, proximo.id);
   atual = comItem(atual, { ...proximo, estado: "chamado", travadoAtras: [] });
   atual = comEstacao(atual, estacao.id, { chamadoItemId: proximo.id });
-  atual = { ...atual, chamadas: [...atual.chamadas, { itemId: proximo.id, etapa: proximo.etapa, em: agora }] };
+  atual = {
+    ...atual,
+    chamadas: [...atual.chamadas, { itemId: proximo.id, etapa: proximo.etapa, estacaoId: estacao.id, em: agora }],
+  };
   eventos.push({
     tipo: "chamado",
     ...base(dia, proximo, estacao.id),
