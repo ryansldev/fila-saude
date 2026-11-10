@@ -62,7 +62,7 @@ O MVP cobre UBS e policlínicas. UPA existe como tipo de unidade no modelo, mas 
 | Data de entrada original | Momento em que a entrada foi criada. Serve de desempate e é preservada em recusas e remanejamentos. |
 | Alocação | Atribuição de uma entrada a uma sessão (um dia, sem horário), feita pelo agendador. |
 | Pré-cadastro | Cadastro do paciente numa unidade, com documentos, validado presencialmente pela recepção. Feito uma vez por unidade. |
-| Vínculo | Exigência da unidade de que o paciente já tenha o pré-cadastro **validado** nela para entrar na lista. Uma sessão pode dispensá-la (AD-016). |
+| Vínculo | Exigência da unidade de que o paciente já tenha o pré-cadastro **validado** nela para entrar na lista. Uma sessão pública pode dispensá-la (AD-016). |
 | ID de atendimento | Código de 6 caracteres (e QR) do pré-cadastro, mostrado na recepção para a validação. |
 | Fila do dia | Fila de uma sessão aberta. Tem uma etapa (atendimento) ou duas (triagem e atendimento). |
 | Etapa | Triagem ou atendimento. Cada etapa tem sua própria ordem e suas chamadas. |
@@ -150,7 +150,7 @@ Cada nível herda o padrão do nível acima quando não define o seu.
 | Sessão | Vagas | Sem limite (recomendado definir) |
 | Sessão | Visibilidade: pública ou privada (alterável a qualquer momento) | Privada |
 | Sessão | Profissional (texto informativo) e estações | — |
-| Sessão | Dispensa pré-cadastro: ignora as exigências de pré-cadastro e de vínculo da unidade (ex.: plantão), pública ou privada (AD-016) | Desligado |
+| Sessão | Dispensa pré-cadastro: ignora as exigências de pré-cadastro e de vínculo da unidade (ex.: plantão). Só em sessão pública; a privada passa pela lista de espera, que segue a unidade (AD-016) | Desligado |
 
 ## 7. Lista de espera, risco, encaminhamento e alocação
 
@@ -257,7 +257,7 @@ Só é chamado quem está presente. Entre os presentes, vale a prioridade e depo
 - RN-FILA-02: quem entra depois da abertura (inscrição pública no dia, vaga da lista de reserva, balcão) recebe o próximo número livre, na hora em que entra.
 - RN-FILA-03: paciente incluído pela recepção já entra como **presente**.
 - RN-FILA-04: a senha tem o prefixo do serviço, é única na sessão e é a mesma em todas as etapas. O número também se mantém entre as etapas.
-- RN-FILA-05: quando a unidade exige pré-cadastro, a sessão não o dispensa (AD-016) e o do paciente ainda não foi validado, o check-in o deixa como **presente, aguardando validação**. Ele não é elegível até a recepção validar, e o app mostra "passe na recepção com seu ID de atendimento".
+- RN-FILA-05: quando a unidade exige pré-cadastro, a sessão (pública) não o dispensa (AD-016) e o do paciente ainda não foi validado, o check-in o deixa como **presente, aguardando validação**. Ele não é elegível até a recepção validar, e o app mostra "passe na recepção com seu ID de atendimento".
 - RN-FILA-06: ao encerrar a sessão, o sistema separa quem faltou (RN-FALTA-01) de quem é remanejado (RN-SES-02).
 
 ### 8.2 Presença
