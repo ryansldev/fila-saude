@@ -15,6 +15,7 @@ export type LinhaSpec = {
   paraQualificador: string;
   condicao: string;
   efeitos: string;
+  regra: string;
 };
 
 const RAIZ = resolve(import.meta.dirname, "../../../.specs/specs");
@@ -50,6 +51,8 @@ const ESTADOS: Record<Maquina, [string, string][]> = {
   ],
 };
 const NAO_FINAIS_ITEM = ["remoto", "presente", "chamado"];
+
+export const primeiraRegra = (texto: string): string => texto.match(/\b(?:RN|INV|AD|L)-[A-Z]*-?\d+\b/)?.[0] ?? "";
 
 function cortarParenteses(texto: string): { base: string; parenteses: string[] } {
   const parenteses: string[] = [];
@@ -133,6 +136,7 @@ export function lerTabelas(): LinhaSpec[] {
               paraQualificador: cortarParenteses(paraCelula).parenteses.join("; "),
               condicao,
               efeitos,
+              regra: primeiraRegra(`${condicao} ${efeitos}`),
             });
           }
           i++;

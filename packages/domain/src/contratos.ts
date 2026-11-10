@@ -1082,12 +1082,16 @@ export const TRANSICOES_SESSAO: Transicao<EstadoSessao>[] = [
 
 /**
  * Destino de `evento` a partir do estado `de`; `null` = transição proibida.
- * Quando várias linhas têm o mesmo (de, evento) e diferem só na condição
- * (ex.: "Não compareceu" por nº de pulos), devolve a primeira; a escolha pela
- * condição é das regras que usam a tabela.
+ * Linhas com o mesmo (de, evento) e o mesmo destino devolvem esse destino.
+ * Se os destinos divergem (ex.: "Não compareceu" por nº de pulos), é erro de
+ * programação: quem depende da condição escolhe a linha na tabela.
  */
 export function transicionar<S extends string>(tabela: Transicao<S>[], de: S, evento: string): S | "(mesmo)" | null {
-  const linha = tabela.find((t) => t.de === de && t.evento === evento);
-  if (!linha || linha.para === "(não cria)") return null;
-  return linha.para;
+  const linhas = tabela.filter((t) => t.de === de && t.evento === evento);
+  const primeira = linhas[0];
+  if (!primeira) return null;
+  if (linhas.some((t) => t.para !== primeira.para)) {
+    throw new Error(`transição ambígua: de "${de}" com o evento "${evento}" tem mais de um destino`);
+  }
+  return primeira.para === "(não cria)" ? null : primeira.para;
 }
