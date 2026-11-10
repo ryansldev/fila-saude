@@ -1,3 +1,12 @@
+export type { Grupo, PrioridadeLegal } from "./prioridade.ts";
+export {
+  expirada,
+  GRUPOS,
+  grupoDeDeclarado,
+  prioridadeDaPessoa,
+  rankPrioridade,
+  temPrioridade,
+} from "./prioridade.ts";
 export { alternarOpcao, classificar } from "./questionario.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";
