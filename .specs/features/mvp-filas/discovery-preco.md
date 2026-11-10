@@ -85,7 +85,7 @@ Nos cenários B e C o fator R fica acima de 28% (o pró-labore é 50–60% do fa
 
 1. ~~Infra~~: decidida, duas VPS nossas no Brasil (PD-12 revista).
 2. **Modelo de preço para os próximos municípios:** por habitante ou por unidade, com piso de R$ 1.500 (D7).
-3. Valor da taxa de conexão (D7); CLA para contribuições; registro da marca "Fila Saúde" no INPI; revisão da licença e do contrato pelo advogado (D5/D7); trocar o "totalmente gratuito" do site.
+3. Valor da taxa de conexão (D7); CLA para contribuições; revisão da licença e do contrato pelo advogado (D5/D7).
 4. Confirmar com o contador: enquadramento (Anexo III ou V), distribuição de lucro e abertura da empresa com dois sócios.
 
 ## Fontes

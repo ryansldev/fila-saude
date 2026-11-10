@@ -266,7 +266,7 @@ Specs por capacidade com só a verdade atual, regras "QUANDO … O SISTEMA DEVE 
 
 ### AD-052 · Licença AGPL-3.0 e receita por município
 2026-11-10 · ativa · Muda: constituição (produto)
-O código passa de MIT para **AGPL-3.0** daqui em diante (o já publicado segue MIT). A receita é mensal por município: **hospedagem completa** (VPS do município, central e app; mínimo R$ 1.500) ou **taxa de conexão** à central e ao app para quem roda o backend por conta própria (valor no D7). Quem quiser operar sem a central e sem o app precisa de outro app com outro nome; a quem fizer isso, vende-se licença comercial. Pendências: CLA para contribuições, marca "Fila Saúde" no INPI, revisão do advogado (D5/D7), texto do site ("gratuito"). **Por quê:** código aberto para portfólio e comunidade, sem permitir fork fechado; o que gera receita (central, app publicado, marca e operação) não se copia do repositório. Discovery: [preço](features/mvp-filas/discovery-preco.md).
+O código passa de MIT para **AGPL-3.0** daqui em diante (o já publicado segue MIT). A receita é mensal por município: **hospedagem completa** (VPS do município, central e app; mínimo R$ 1.500) ou **taxa de conexão** à central e ao app para quem roda o backend por conta própria (valor no D7). Quem quiser operar sem a central e sem o app precisa de outro app com outro nome; a quem fizer isso, vende-se licença comercial. Pendências: CLA para contribuições e revisão do advogado (D5/D7). **Por quê:** código aberto para portfólio e comunidade, sem permitir fork fechado; o que gera receita (central, app publicado, marca e operação) não se copia do repositório. Discovery: [preço](features/mvp-filas/discovery-preco.md).
 
 ## Arquitetura
 
