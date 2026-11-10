@@ -117,26 +117,6 @@ export const ctaVariants = {
   float: { opacity: 1, transform: tx(0, 1) },
 };
 
-export const pressScaleVariant = {
-  intro: { transform: "scale(1)" },
-  static: { transform: "scale(1)" },
-  select: {
-    transform: ["scale(1)", "scale(0.94)", "scale(1)"],
-    transition: { duration: 0.38, ease: easePop },
-  },
-  result: { transform: "scale(1)" },
-};
-
-export const countPressVariant = {
-  intro: { transform: "scale(1)" },
-  static: { transform: "scale(1)" },
-  select: {
-    transform: ["scale(1)", "scale(0.92)", "scale(1)"],
-    transition: { duration: 0.38, ease: easePop },
-  },
-  result: { transform: "scale(1)" },
-};
-
 export const emphasisScaleVariant = {
   intro: { transform: "scale(1)" },
   static: { transform: "scale(1)" },
@@ -145,30 +125,6 @@ export const emphasisScaleVariant = {
     transition: { duration: 0.42, ease: easePop },
   },
   result: { transform: "scale(1)" },
-};
-
-export const bellRingVariant = {
-  intro: { transform: "rotate(0deg)" },
-  static: { transform: "rotate(0deg)" },
-  select: {
-    transform: ["rotate(0deg)", "rotate(-14deg)", "rotate(14deg)", "rotate(-10deg)", "rotate(10deg)", "rotate(0deg)"],
-    transition: { duration: 0.5, ease: easePop },
-  },
-  result: { transform: "rotate(0deg)" },
-};
-
-export const checkPopVariant = {
-  idle: { opacity: 0, transform: "scale(0)" },
-  static: { opacity: 1, transform: "scale(1)" },
-  reset: { opacity: 0, transform: "scale(0)", transition: { duration: 0.15 } },
-  intro: { opacity: 0, transform: "scale(0)" },
-  select: {
-    opacity: 1,
-    transform: ["scale(0)", "scale(1.3)", "scale(1)"],
-    transition: { duration: 0.42, ease: easePop },
-  },
-  result: { opacity: 1, transform: "scale(1)" },
-  float: { opacity: 1, transform: "scale(1)" },
 };
 
 export const illustrationLevitate = {

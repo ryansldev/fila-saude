@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 7,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::when a record leaves a state remove every reference other records hold to it in that state",
+      "text": "When a record leaves a state, remove every reference other records hold to it in that state.",
+      "signal": "ac_gap",
+      "scope": "queue-rules",
+      "status": "candidate",
+      "features": ["prototipo"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["verification.md Revision 2 finding 1 (C34) (queue-rules)"],
+      "created": "2026-11-04T18:49:34Z",
+      "last_seen": "2026-11-04T18:49:34Z"
+    },
+    {
+      "id": "L-002",
+      "key": "ac_gap::decide precedence and lateness by the real ordering rule never by a proxy such as the ticket number",
+      "text": "Decide precedence and lateness by the real ordering rule, never by a proxy such as the ticket number.",
+      "signal": "ac_gap",
+      "scope": "queue-rules",
+      "status": "candidate",
+      "features": ["prototipo"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["verification.md Revisions 3 and 4 finding 1 (C44) (queue-rules)"],
+      "created": "2026-11-04T18:49:34Z",
+      "last_seen": "2026-11-04T18:49:34Z"
+    },
+    {
+      "id": "L-003",
+      "key": "weak_test::test a concurrency guard through the real two writer sequence not a fabricated stale value",
+      "text": "Test a concurrency guard through the real two-writer sequence, not a fabricated stale value.",
+      "signal": "weak_test",
+      "scope": "tests",
+      "status": "candidate",
+      "features": ["prototipo"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["verification.md finding C7 (round 1) (tests)"],
+      "created": "2026-11-04T18:49:34Z",
+      "last_seen": "2026-11-04T18:49:34Z"
+    },
+    {
+      "id": "L-004",
+      "key": "weak_test::test each boundary of a numeric rule on both sides",
+      "text": "Test each boundary of a numeric rule on both sides.",
+      "signal": "weak_test",
+      "scope": "tests",
+      "status": "candidate",
+      "features": ["prototipo"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["verification.md finding C3 (round 1) (tests)"],
+      "created": "2026-11-04T18:49:34Z",
+      "last_seen": "2026-11-04T18:49:34Z"
+    },
+    {
+      "id": "L-005",
+      "key": "weak_test::test state accounting on every path that enters and leaves the state",
+      "text": "Test state accounting on every path that enters and leaves the state.",
+      "signal": "weak_test",
+      "scope": "tests",
+      "status": "candidate",
+      "features": ["prototipo"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["verification.md Revisions 3 and 4 finding 5 (C42) (tests)"],
+      "created": "2026-11-04T18:49:34Z",
+      "last_seen": "2026-11-04T18:49:34Z"
+    },
+    {
+      "id": "L-006",
+      "key": "ac_gap::a guided step must require the steps before it or it completes early and strands the flow",
+      "text": "A guided step must require the steps before it, or it completes early and strands the flow.",
+      "signal": "ac_gap",
+      "scope": "ui-guide",
+      "status": "candidate",
+      "features": ["prototipo"],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": ["verification.md Revisions 3 and 4 finding 7 (C39) (ui-guide)"],
+      "created": "2026-11-04T18:49:34Z",
+      "last_seen": "2026-11-04T18:49:34Z"
+    }
+  ]
+}

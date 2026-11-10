@@ -1,48 +1,27 @@
 import { FeatureSection } from "@/components/landing/feature-section";
-import { NearbyClinicsIllustration } from "@/components/landing/illustrations/nearby-clinics-illustration";
-import { NotificationIllustration } from "@/components/landing/illustrations/notification-illustration";
+import { QuestionnaireIllustration } from "@/components/landing/illustrations/questionnaire-illustration";
 import { QueuePositionIllustration } from "@/components/landing/illustrations/queue-position-illustration";
-import { QueueTransparencyIllustration } from "@/components/landing/illustrations/queue-transparency-illustration";
-import { SymptomInputIllustration } from "@/components/landing/illustrations/symptom-input-illustration";
-import { UrgencyCheckIllustration } from "@/components/landing/illustrations/urgency-check-illustration";
+import { SlotAllocationIllustration } from "@/components/landing/illustrations/slot-allocation-illustration";
 import { headerHeight } from "@/components/landing/page-shell";
 
 const features = [
   {
-    headline: "dizer do que precisa",
-    body: "Pra quem é, consulta ou exame, e o motivo. Exame pede foto da requisição e segue só pra UBS.",
+    headline: "diga o que sente, de casa",
+    body: "São cinco telas de toque, sem texto livre. Sinal de alarme não entra em fila: o app manda ligar 192. O resto vira um nível sugerido, que a equipe confirma.",
     reverse: false,
-    visual: <SymptomInputIllustration />,
+    visual: <QuestionnaireIllustration />,
   },
   {
-    headline: "fazer a pré-triagem",
-    body: "Marca sinais urgentes, se tiver. Tem algum? Vai pra UPA. Não tem? Caminho leve na UBS. Na unidade, o enfermeiro faz a classificação oficial.",
+    headline: "pegue a vaga ou mostre interesse",
+    body: "Clínico geral é público: você escolhe o dia e a vaga é sua, sem esperar aprovação. Em atendimento privado, como odontologia, você mostra interesse e a equipe escolhe quem vai, explicando o motivo.",
     reverse: true,
-    visual: <UrgencyCheckIllustration />,
+    visual: <SlotAllocationIllustration />,
   },
   {
-    headline: "ir pro lugar certo",
-    body: "A pré-triagem indica UBS ou UPA. Na UBS, só entra onde você tá cadastrado. Na UPA, sem cadastro. Quer trocar de UBS? Cadastra em outra e sai da anterior.",
+    headline: "espere em casa, chegue na hora",
+    body: "No dia, o app mostra sua posição e o tempo. Quando a vez se aproxima, chega o aviso “saia de casa”. Na unidade, você lê o QR da TV pra confirmar a chegada, e a TV chama pela senha.",
     reverse: false,
-    visual: <NearbyClinicsIllustration />,
-  },
-  {
-    headline: "acompanhar a posição",
-    body: "Consulta entra na fila de acolhimento. Vê ao vivo quantas pessoas faltam.",
-    reverse: true,
     visual: <QueuePositionIllustration />,
-  },
-  {
-    headline: "entender a fila",
-    body: "Toque nas 3 pessoas na frente. Vê quem tá antes e por que. Nada de adivinhar.",
-    reverse: false,
-    visual: <QueueTransparencyIllustration />,
-  },
-  {
-    headline: "ir na hora certa",
-    body: "Chegou sua vez no acolhimento? A gente te avisa. Você só vai na hora.",
-    reverse: true,
-    visual: <NotificationIllustration />,
   },
 ] as const;
 

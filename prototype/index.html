@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fila Saúde · protótipo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="inner">
+        <a class="brand" href="index.html"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><path fill="currentColor" d="M5.127 23.609C6.564 36.242 20.52 48.093 29.33 54.212a4.673 4.673 0 0 0 5.34 0c8.81-6.119 22.767-17.97 24.203-30.603C60.863 6.099 38.967 3.972 32 13.977 25.033 3.972 3.137 6.1 5.127 23.61Z"/><path fill="#fff" d="M28.704 21.09a2.583 2.583 0 0 1 2.583-2.584h2.583a2.583 2.583 0 0 1 2.583 2.583v20.665a2.583 2.583 0 0 1-2.583 2.583h-2.583a2.583 2.583 0 0 1-2.583-2.583V21.09Z"/><path fill="#fff" d="M19.663 30.13a2.583 2.583 0 0 1 2.583-2.583H42.91a2.583 2.583 0 0 1 2.583 2.583v2.583a2.583 2.583 0 0 1-2.583 2.583H22.246a2.583 2.583 0 0 1-2.583-2.583V30.13Z"/></svg>Fila Saúde <span class="tag">protótipo</span></a>
+        <a class="btn sm" href="fluxo.html">Ver o fluxo</a>
+      </div>
+    </header>
+    <main class="page">
+      <section class="hero">
+        <img class="mascot" src="assets/mascote.svg" alt="Mascote do Fila Saúde, um médico acenando" />
+        <div>
+          <h1>chega de esperar <span class="accent">horas no postinho.</span></h1>
+          <p class="lead">O paciente entra na fila pelo celular, espera em casa e só vai à unidade quando a vez estiver perto.</p>
+          <div class="hero-actions">
+            <a class="btn lg" href="fluxo.html">Ver o fluxo completo</a>
+            <span class="hero-note">uns 8 minutos · dados fictícios</span>
+          </div>
+          <p class="speech">É um protótipo navegável: um roteiro diz o que fazer, marca onde clicar e explica por que cada passo importa.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="como">
+        <div class="section-head">
+          <h2 id="como">como funciona</h2>
+          <p>Três momentos, do celular do paciente até a TV da sala de espera.</p>
+        </div>
+
+        <article class="feature">
+          <div class="text">
+            <span class="step-num">1</span>
+            <h3>o paciente diz o que sente, de casa</h3>
+            <p>São cinco telas de toque, sem texto livre. Sinal de alarme não entra em fila: o app manda ligar 192. O resto vira um nível sugerido, que a equipe confirma.</p>
+          </div>
+          <div class="visual surface">
+            <div class="mini-phone">
+              <span class="label">Clínico geral · 2 de 5</span>
+              <p class="q">Por que você quer o atendimento?</p>
+              <div class="option selected">Problema novo ou que piorou</div>
+              <div class="option">Acompanhamento de doença</div>
+              <div class="option">Exame, check-up ou rotina</div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature reverse">
+          <div class="text">
+            <span class="step-num">2</span>
+            <h3>público pega a vaga, privado passa pela equipe</h3>
+            <p>Clínico geral é público: o paciente escolhe o dia e a vaga é dele. No volume de um dia de atendimento, ninguém daria conta de aprovar um a um. Na odontologia, que é privada, ele só sinaliza interesse: o sistema sugere quem vai e explica o motivo, e o agendador escolhe.</p>
+          </div>
+          <div class="visual surface">
+            <div class="mini-phone">
+              <span class="label">🔒 odontologia · segunda · 3 vagas</span>
+              <div class="card" style="margin-top: 10px"><strong>Carlos Melo</strong><div class="reasons">urgente sugerido · espera há 3 dias</div></div>
+              <div class="card"><strong>Dora Alves</strong><div class="reasons">idosa, 82 anos · espera há 41 dias</div></div>
+              <div class="card" style="margin-bottom: 0"><strong>Rita Gomes</strong><div class="reasons">idosa, 66 anos · espera há 25 dias</div></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="feature">
+          <div class="text">
+            <span class="step-num">3</span>
+            <h3>espera em casa, chega na hora</h3>
+            <p>No dia, o app mostra a posição e o tempo. Quando a vez se aproxima, chega o aviso “saia de casa”. Na unidade, o QR da TV confirma a chegada, e a TV chama pela senha.</p>
+          </div>
+          <div class="visual surface">
+            <div class="mini-phone">
+              <span class="label">fila de hoje · clínico geral</span>
+              <div class="ticket" style="margin: 10px 0 0"><div class="senha">C-003</div><div class="pos">você é o 2º a ser chamado</div></div>
+              <div class="stat-grid"><div class="stat"><b>1</b><span>na frente</span></div><div class="stat"><b>~15</b><span>min</span></div></div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="section" aria-labelledby="fluxo">
+        <div class="section-head">
+          <h2 id="fluxo">veja a Maria ser atendida</h2>
+          <p>Uma história do começo ao fim, com todas as telas funcionando juntas.</p>
+        </div>
+        <div class="surface flow-card">
+          <ol class="timeline">
+            <li><span class="step-num">1</span><div><b>Maria se inscreve no clínico geral</b>É público: ela escolhe o dia e a vaga é dela.</div></li>
+            <li><span class="step-num">2</span><div><b>responde o questionário</b>Quatro perguntas de toque, sem sair de casa.</div></li>
+            <li><span class="step-num">3</span><div><b>na odontologia, a equipe escolhe</b>É privada: o agendador marca quem vai, com o motivo.</div></li>
+            <li><span class="step-num">4</span><div><b>no dia, ela espera em casa</b>Acompanha a posição e o tempo no celular.</div></li>
+            <li><span class="step-num">5</span><div><b>perto da vez, lê o QR</b>O “saia de casa” chega na hora certa.</div></li>
+            <li><span class="step-num">6</span><div><b>passa pela triagem</b>A enfermeira confirma o risco.</div></li>
+            <li><span class="step-num">7</span><div><b>a fila do consultório está grande</b>Ela toca “Vou sair” e mantém o lugar.</div></li>
+            <li><span class="step-num">8</span><div><b>volta quando é avisada</b>Lê o QR de novo e entra na fila normal.</div></li>
+            <li><span class="step-num">9</span><div><b>é atendida e vai feliz para casa</b>Quase sem tempo de espera na unidade.</div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="regras">
+        <div class="section-head">
+          <h2 id="regras">o que nunca muda</h2>
+          <p>Regras que valem em todas as telas.</p>
+        </div>
+        <div class="principles">
+          <div class="surface principle"><b>o humano decide</b><p>O sistema sugere e explica. A triagem confirma o risco, e o agendador escolhe quem vai nas vagas privadas.</p></div>
+          <div class="surface principle"><b>presente tem preferência</b><p>Só é chamado quem está na unidade, e quem chegou antes não é ultrapassado.</p></div>
+          <div class="surface principle"><b>saúde em primeiro lugar</b><p>Urgência confirmada por um profissional passa na frente de todos.</p></div>
+          <div class="surface principle"><b>ninguém fica de fora</b><p>Quem não tem celular entra pela recepção, na mesma fila.</p></div>
+          <div class="surface principle"><b>privacidade</b><p>Um paciente nunca vê outro. A TV mostra só senhas.</p></div>
+          <div class="surface principle"><b>somos só a fila</b><p>Nada de prontuário: depois do atendimento, a responsabilidade é de outro sistema.</p></div>
+        </div>
+      </section>
+
+      <section class="surface cta">
+        <h2>pronto para ver?</h2>
+        <a class="btn lg" href="fluxo.html">Ver o fluxo completo</a>
+      </section>
+      <p class="footer">Protótipo com dados fictícios · feito com 💙 por quem usa o SUS.</p>
+    </main>
+  </body>
+</html>

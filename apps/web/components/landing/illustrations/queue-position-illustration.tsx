@@ -1,12 +1,11 @@
 "use client";
 
-import { ArrowUp, Clock, Users } from "lucide-react";
+import { Bell, Clock, House, Users } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
 import {
   badgeVariants,
-  easePop,
   emphasisScaleVariant,
   footerVariants,
   illustrationLevitate,
@@ -33,8 +32,6 @@ const PHASE_DURATIONS = {
   result: 500,
 } as const;
 
-const progressTransition = { duration: 0.45, ease: easePop } as const;
-
 export function QueuePositionIllustration() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, inViewViewportLoop);
@@ -42,9 +39,6 @@ export function QueuePositionIllustration() {
   const { contentPhase, levitating } = useStandardPhaseLoop(isInView, !!prefersReducedMotion, PHASE_DURATIONS);
 
   const isAdvanced = contentPhase === "select" || contentPhase === "result" || contentPhase === "static";
-  const progress = isAdvanced ? 0.28 : 0.22;
-  const progressPercent = progress * 100;
-
   const positionPhase =
     contentPhase === "idle" || contentPhase === "intro" ? "intro" : contentPhase === "select" ? "select" : "result";
 
@@ -58,8 +52,8 @@ export function QueuePositionIllustration() {
             animate={contentPhase}
             variants={badgeVariants}
           >
-            <span className="size-[0.6875rem] animate-pulse rounded-full bg-green-500" />
-            <span className="text-[0.9625rem] font-bold text-gray-700">ao vivo</span>
+            <House className="size-[1.1rem] text-primary" strokeWidth={2.5} />
+            <span className="text-[0.9625rem] font-bold text-gray-700">em casa</span>
           </motion.div>
 
           <PhoneFrame>
@@ -70,46 +64,23 @@ export function QueuePositionIllustration() {
               variants={introSequence}
             >
               <motion.div variants={popItem}>
-                <PhoneQueueHeader ticket="013" />
+                <PhoneQueueHeader ticket="C-003" />
               </motion.div>
 
               <motion.div
                 className="rounded-2xl border border-b-4 border-primary-200 bg-primary-50 px-4 py-5 text-center"
                 variants={popItem}
               >
-                <p className="text-[0.9625rem] font-bold lowercase tracking-wide text-primary-700">sua posição</p>
+                <p className="text-[0.9625rem] font-bold lowercase tracking-wide text-primary-700">você é o</p>
                 <motion.p
                   className="mt-1 text-[4.125rem] font-extrabold leading-none text-primary tabular-nums sm:text-[6.6rem] lg:text-[8.8rem]"
                   initial="intro"
                   animate={positionPhase}
                   variants={emphasisScaleVariant}
                 >
-                  {isAdvanced ? "4º" : "5º"}
+                  {isAdvanced ? "2º" : "3º"}
                 </motion.p>
-                <p className="mt-2 text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500">no acolhimento</p>
-              </motion.div>
-
-              <motion.div className="space-y-2" variants={popItem}>
-                <div className="flex items-center justify-between text-[0.9625rem] font-bold text-gray-500">
-                  <span className="tabular-nums">{isAdvanced ? "3" : "4"} na frente</span>
-                  <span className="tabular-nums">9 atrás</span>
-                </div>
-                <div className="relative h-3">
-                  <div className="absolute inset-0 overflow-hidden rounded-full bg-gray-100">
-                    <motion.div
-                      className="h-full w-full origin-left rounded-full bg-primary"
-                      animate={{ transform: `scaleX(${progress})` }}
-                      transition={progressTransition}
-                    />
-                  </div>
-                  <motion.div
-                    className="absolute top-1/2 w-full"
-                    animate={{ transform: `translateX(${progressPercent}%) translateY(-50%)` }}
-                    transition={progressTransition}
-                  >
-                    <div className="absolute left-0 top-1/2 size-[1.1rem] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-primary shadow-sm" />
-                  </motion.div>
-                </div>
+                <p className="mt-2 text-[0.9625rem] font-bold lowercase tracking-wide text-gray-500">a ser chamado</p>
               </motion.div>
 
               <motion.div className="grid grid-cols-2 gap-2" variants={listSequence}>
@@ -124,7 +95,7 @@ export function QueuePositionIllustration() {
                     animate={positionPhase}
                     variants={emphasisScaleVariant}
                   >
-                    {isAdvanced ? "3" : "4"}
+                    {isAdvanced ? "1" : "2"}
                   </motion.p>
                   <p className="text-[0.9625rem] font-bold text-gray-500">na frente</p>
                 </motion.div>
@@ -133,7 +104,9 @@ export function QueuePositionIllustration() {
                   variants={popItem}
                 >
                   <Clock className="mx-auto size-[1.375rem] text-primary" strokeWidth={2.5} />
-                  <p className="mt-1 text-[1.375rem] font-extrabold tabular-nums text-gray-900">~18</p>
+                  <p className="mt-1 text-[1.375rem] font-extrabold tabular-nums text-gray-900">
+                    ~{isAdvanced ? "15" : "30"}
+                  </p>
                   <p className="text-[0.9625rem] font-bold text-gray-500">min</p>
                 </motion.div>
               </motion.div>
@@ -146,9 +119,9 @@ export function QueuePositionIllustration() {
             animate={contentPhase}
             variants={footerVariants}
           >
-            <div className="flex items-center justify-center gap-1.5 rounded-xl border border-b-[3px] border-primary-700 bg-primary px-3 py-2 shadow-md">
-              <ArrowUp className="size-[0.9625rem] shrink-0 text-white" strokeWidth={3} />
-              <p className="text-[0.9625rem] font-extrabold text-white">você avançou!</p>
+            <div className="flex items-center justify-center gap-1.5 rounded-xl border border-b-[3px] border-green-700 bg-green-500 px-3 py-2 shadow-md">
+              <Bell className="size-[0.9625rem] shrink-0 text-white" strokeWidth={3} />
+              <p className="text-[0.9625rem] font-extrabold text-white">saia de casa agora!</p>
             </div>
           </motion.div>
         </motion.div>

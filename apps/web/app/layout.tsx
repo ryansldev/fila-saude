@@ -33,7 +33,6 @@ export const metadata: Metadata = {
     "entrar na fila de casa",
     "triagem online SUS",
     "UBS",
-    "UPA",
     "tempo de espera SUS",
     "atendimento público de saúde",
     "posição na fila",

@@ -115,7 +115,7 @@ interface PhoneQueueHeaderProps {
 export function PhoneQueueHeader({
   ticket,
   unitName = "UBS Centro",
-  serviceName = "acolhimento",
+  serviceName = "clínico geral · fila de hoje",
   className,
 }: PhoneQueueHeaderProps) {
   return (
