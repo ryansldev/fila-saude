@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, UserCheck } from "lucide-react";
+import { CalendarDays, Lock, UserCheck } from "lucide-react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import { useRef } from "react";
 
@@ -27,8 +27,8 @@ import {
 
 const suggestions = [
   { name: "Carlos Melo", reasons: ["urgente sugerido", "espera há 3 dias"], tone: "red" },
-  { name: "Helena Prado", reasons: ["atenção", "gestante", "espera há 8 dias"], tone: "orange" },
   { name: "Dora Alves", reasons: ["idosa, 82 anos", "espera há 41 dias"], tone: "gray" },
+  { name: "Rita Gomes", reasons: ["idosa, 66 anos", "espera há 25 dias"], tone: "gray" },
 ] as const;
 
 const toneClasses = {
@@ -75,8 +75,11 @@ export function SlotAllocationIllustration() {
                   <CalendarDays className="size-[1.1rem]" strokeWidth={2.5} />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-[1.1rem] font-bold text-gray-800">sugestão para sexta</p>
-                  <p className="truncate text-[0.9625rem] font-bold text-primary">clínico geral · 3 vagas</p>
+                  <p className="truncate text-[1.1rem] font-bold text-gray-800">sugestão para segunda</p>
+                  <p className="flex items-center gap-1 truncate text-[0.9625rem] font-bold text-primary">
+                    <Lock className="size-[0.9625rem] shrink-0" strokeWidth={2.5} aria-label="privada" />
+                    odontologia · 3 vagas
+                  </p>
                 </div>
               </motion.div>
 

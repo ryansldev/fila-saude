@@ -2,7 +2,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-const characterVariants = cva("aspect-[300/463] shrink-0", {
+// O jaleco é transparente (erro na vetorização): o mascote sempre vai sobre fundo branco.
+const characterVariants = cva("aspect-[300/463] shrink-0 bg-white", {
   variants: {
     size: {
       xs: "w-[132px]",

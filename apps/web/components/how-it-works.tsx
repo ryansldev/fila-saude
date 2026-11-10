@@ -12,8 +12,8 @@ const features = [
     visual: <QuestionnaireIllustration />,
   },
   {
-    headline: "a unidade organiza as vagas",
-    body: "O sistema sugere quem ocupa cada vaga e explica o motivo. O agendador decide e liga pra quem não confirmou. Nada é alocado sozinho.",
+    headline: "pegue a vaga ou mostre interesse",
+    body: "Clínico geral é público: você escolhe o dia e a vaga é sua, sem esperar aprovação. Em atendimento privado, como odontologia, você mostra interesse e a equipe escolhe quem vai, explicando o motivo.",
     reverse: true,
     visual: <SlotAllocationIllustration />,
   },
