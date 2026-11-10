@@ -68,4 +68,4 @@ Propostas a validar no piloto ou nos discoveries (lista completa em [tasks](task
 - Tempo médio (RN-ETA-05), triagem cadenciada (RN-TRI-06) e reativação em 30 dias (RN-PARADA-02): validar no piloto.
 - Conferência de documento pelo profissional na chamada (AD-050): confirmar no D4.
 - Área de abrangência por endereço como critério de vínculo, além do cadastro validado: perguntar no D4 se a unidade atende só a população adscrita.
-- Hospedagem de longo prazo e cobrança (D7, [hospedagem](hospedagem.md)).
+- Hospedagem de longo prazo e cobrança (D7, [hospedagem](discovery-hospedagem.md)).

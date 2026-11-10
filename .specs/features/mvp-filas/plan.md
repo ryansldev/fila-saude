@@ -2,7 +2,7 @@
 
 2026-11-10 · status: **rascunho para revisão**
 
-Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../../specs/) (RN-*, INV-*, RNF-*, transições, permissões). Decisões de produto em [decisions.md](../../decisions.md); princípios na [constituição](../../constitution.md). Anexos: [discovery-identidade.md](discovery-identidade.md) (decidido), [hospedagem.md](hospedagem.md) (MVP e piloto decididos, PD-12; longo prazo no D7) e [discovery-regulacao.md](discovery-regulacao.md) (MVP decidido, AD-026; piloto a confirmar).
+Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../../specs/) (RN-*, INV-*, RNF-*, transições, permissões). Decisões de produto em [decisions.md](../../decisions.md); princípios na [constituição](../../constitution.md). Anexos: [discovery-identidade.md](discovery-identidade.md) (decidido), [discovery-hospedagem.md](discovery-hospedagem.md) (MVP e piloto decididos, PD-12; longo prazo no D7) e [discovery-regulacao.md](discovery-regulacao.md) (MVP decidido, AD-026; piloto a confirmar).
 
 ## 1. Decisões de arquitetura
 
@@ -19,7 +19,7 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | PD-09 | **`apps/painel`**: Next com `/painel`, `/estacao` e `/tv` no subdomínio do tenant; a landing segue em `apps/web` | Separa a área autenticada do site público |
 | PD-10 | **Recorrência RFC 5545** (lib `rrule`): a série guarda DTSTART/DTEND/RRULE/EXDATE/RDATE; as ocorrências viram sessões numa janela móvel de 90 dias | Alocação, vagas e fila sempre apontam para uma linha real |
 | PD-11 | **Worker com varredura a cada minuto** por tenant, com consultas idempotentes; **push por tabela de saída** (outbox) | Não perde nada se cair; não reagenda quando um horário muda; ~8 consultas/s com 100 tenants |
-| PD-12 | **MVP e piloto na AWS sa-east-1, setup enxuto** ([hospedagem.md](hospedagem.md)): 1 VM t4g.small com Docker Compose (Caddy, API, painel) + RDS Postgres db.t4g.micro zona única com PITR (um banco por município na mesma instância) + S3/KMS; infra em OpenTofu; deploy por GitHub Actions. ~R$ 300–410/mês. Tudo em contêiner e Postgres padrão, para migrar ou instalar na prefeitura depois | Mais barato sem abrir mão de backup, criptografia, isolamento e dados no Brasil; sem alta disponibilidade no piloto |
+| PD-12 | **MVP e piloto na AWS sa-east-1, setup enxuto** ([discovery-hospedagem.md](discovery-hospedagem.md)): 1 VM t4g.small com Docker Compose (Caddy, API, painel) + RDS Postgres db.t4g.micro zona única com PITR (um banco por município na mesma instância) + S3/KMS; infra em OpenTofu; deploy por GitHub Actions. ~R$ 300–410/mês. Tudo em contêiner e Postgres padrão, para migrar ou instalar na prefeitura depois | Mais barato sem abrir mão de backup, criptografia, isolamento e dados no Brasil; sem alta disponibilidade no piloto |
 | PD-13 | **Ações do domínio devolvem resultado + eventos** (2026-11-10): `acao(estado, comando, agora)` → `{ ok: true, estado, eventos }` ou `{ ok: false, erro }` com código estável. Não alteram o que recebem. A API grava o estado e transforma cada evento em auditoria, outbox de push e `NOTIFY`, na mesma transação | Auditoria e push explícitos (o evento diz o *porquê*: chamado, rechamado, remanejado); testes TDD sobre eventos; erro vira `409` direto. Descartados: mutar como o protótipo e comparar antes/depois (frágil, perde o motivo) e classes de agregado (cerimônia sem ganho) |
 
 ## 2. Visão geral
@@ -198,7 +198,7 @@ Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (OpenT
 
 ## Em aberto
 
-- Provedor de longo prazo, oferta "na infra da prefeitura" e modelo de cobrança ([hospedagem.md](hospedagem.md)); a cobrança e as exigências de hospedagem saem do D7.
+- Provedor de longo prazo, oferta "na infra da prefeitura" e modelo de cobrança ([discovery-hospedagem.md](discovery-hospedagem.md)); a cobrança e as exigências de hospedagem saem do D7.
 - Jurídico e LGPD (D5): termo (RNF-LGPD-01), RIPD (RNF-LGPD-02), retenção das fotos, grupos e documentos de prioridade legal, aviso de declaração falsa (AD-024).
 - Contratação (D7): modalidade, exigências de hospedagem e modelo de cobrança.
 - Regulação (D6, [discovery-regulacao.md](discovery-regulacao.md)): configuração dos serviços do piloto, validade da requisição e integração pós-piloto com e-SUS Regulação/SISREG (AD-026).
