@@ -67,7 +67,8 @@ O MVP cobre UBS e policlínicas. UPA existe como tipo de unidade no modelo, mas 
 | Fila do dia | Fila de uma sessão aberta. Tem uma etapa (atendimento) ou duas (triagem e atendimento). |
 | Etapa | Triagem ou atendimento. Cada etapa tem sua própria ordem e suas chamadas. |
 | Remoto / Presente | Estado de presença na fila do dia: fora ou dentro da unidade. Existe ainda "presente, aguardando validação" (RN-FILA-05), que não é elegível. |
-| Elegível | Presente e liberado para ser chamado (por exemplo, com o pré-cadastro já validado, quando exigido). |
+| Elegível | Presente e liberado para ser chamado (conta verificada e, quando exigido, pré-cadastro validado). |
+| Conta verificada | Conta cujo dono do CPF foi confirmado: a recepção conferiu o documento com foto (MVP) ou, depois do piloto, gov.br prata/ouro. Antes disso a conta é **não verificada** (AD-017). |
 | Posição original | Número sequencial do paciente na fila do dia, dado ao entrar (RN-FILA-01 e RN-FILA-02). Não muda quando ele sai e volta; só muda pela regra de atraso (8.3). |
 | Estação | Ponto de chamada (consultório ou sala de triagem), ligado a uma etapa e a um ou mais serviços. Está aberta enquanto houver um profissional logado nela. |
 | Senha | Código do paciente na fila do dia, com prefixo do serviço (ex.: C-012). É a mesma na triagem e no atendimento. |
@@ -257,7 +258,7 @@ Só é chamado quem está presente. Entre os presentes, vale a prioridade e depo
 - RN-FILA-02: quem entra depois da abertura (inscrição pública no dia, vaga da lista de reserva, balcão) recebe o próximo número livre, na hora em que entra.
 - RN-FILA-03: paciente incluído pela recepção já entra como **presente**.
 - RN-FILA-04: a senha tem o prefixo do serviço, é única na sessão e é a mesma em todas as etapas. O número também se mantém entre as etapas.
-- RN-FILA-05: quando a unidade exige pré-cadastro, a sessão (pública) não o dispensa (AD-016) e o do paciente ainda não foi validado, o check-in o deixa como **presente, aguardando validação**. Ele não é elegível até a recepção validar, e o app mostra "passe na recepção com seu ID de atendimento".
+- RN-FILA-05: o check-in deixa o paciente como **presente, aguardando validação** quando (a) a conta ainda não é verificada (AD-017), em qualquer sessão, inclusive com dispensa de pré-cadastro, ou (b) a unidade exige pré-cadastro, a sessão (pública) não o dispensa (AD-016) e o dele ainda não foi validado. Ele não é elegível até a recepção validar, e o app mostra "passe na recepção" (com o ID de atendimento, no caso b). Uma só passagem na recepção resolve os dois.
 - RN-FILA-06: ao encerrar a sessão, o sistema separa quem faltou (RN-FALTA-01) de quem é remanejado (RN-SES-02).
 
 ### 8.2 Presença
@@ -424,8 +425,8 @@ As tabelas abaixo são a fonte da verdade para implementação e testes. Toda tr
 | — | Sessão abre | Entrada confirmada | Remoto | Senha; número por RN-FILA-01 |
 | — | Inscrição pública com a sessão aberta (encaminhamento aceito, quando exigido), ou vaga da lista de reserva | Vaga livre | Remoto | Senha; próximo número |
 | — | Recepção inclui no balcão | Vaga livre | Presente | Senha anotada ou impressa; próximo número |
-| Remoto | QR válido ou recepção marca | Pré-cadastro validado, não exigido ou dispensado pela sessão | Presente | Aplica janela protegida e regra de atraso |
-| Remoto | QR válido | Pré-cadastro exigido, não dispensado pela sessão e não validado | Presente aguardando validação | App: "passe na recepção" |
+| Remoto | QR válido ou recepção marca | Conta verificada; e pré-cadastro validado, não exigido ou dispensado pela sessão | Presente | Aplica janela protegida e regra de atraso |
+| Remoto | QR válido | Conta não verificada, ou pré-cadastro exigido, não dispensado pela sessão e não validado | Presente aguardando validação | App: "passe na recepção" |
 | Presente aguardando validação | Recepção valida | — | Presente | Aplica janela protegida e regra de atraso |
 | Presente ou Presente aguardando validação | Paciente toca "Vou sair" | — | Remoto | Mantém o número |
 | Presente | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado | TV com som; push; inicia tolerância |
@@ -486,6 +487,9 @@ O paciente tem **uma conta central** (CPF + senha), válida em qualquer municíp
 - RN-ID-02: um CPF só pode ter uma conta. Se alguém tentar criar conta com um CPF já usado, o app orienta procurar a recepção para contestar.
 - RN-ID-03: a recepção pode vincular a identidade à pessoa presencialmente (documento com foto) e bloquear uma conta usurpada.
 - RN-ID-04: senha com política mínima, armazenada com hash forte, e bloqueio temporário após tentativas seguidas de erro.
+- RN-ID-05 (AD-017): a conta nasce **não verificada** e já pode entrar na lista de espera e se inscrever em sessão pública. O agendador vê "identidade não verificada" na ficha. Ela vira **verificada** quando a recepção confere o documento com foto, o que vale para todas as unidades e o resto da vida da conta. Registra-se quem verificou, quando e por qual método (recepção; gov.br depois do piloto).
+- RN-ID-06 (AD-017): falta (RN-FALTA) de conta não verificada não gera ocorrência no CPF, porque ninguém provou que era o dono.
+- RN-ID-07 (AD-017): a inscrição em sessão pública tem limite de tentativas e captcha contra robôs (RNF-SEG-03).
 
 ### 10.2 Pré-cadastro na unidade
 
