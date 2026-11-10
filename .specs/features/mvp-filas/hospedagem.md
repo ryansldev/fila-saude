@@ -108,7 +108,7 @@ Premissa: **100 mil habitantes**, ~20 UBS, ~30 equipes. Para comparar, a maioria
 1. Provedor: AWS ou nacional (Magalu: pedir proposta).
 2. Modelo de isolamento padrão: banco por município numa instância compartilhada, ou instância dedicada.
 3. Em quanto tempo oferecer "na infra da prefeitura" e com que suporte.
-4. Modelo de cobrança para a prefeitura (por habitante, por unidade ou fixo). Fora do escopo técnico, mas depende destes números.
+4. Modelo de cobrança para a prefeitura (por habitante, por unidade ou fixo). Fora do escopo técnico, mas depende destes números. Levantado no D7 (contratação), junto com as exigências de hospedagem do contrato.
 
 ## Fontes
 

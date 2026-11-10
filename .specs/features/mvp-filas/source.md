@@ -2,7 +2,7 @@
 
 Nov 4, 2026 · @Ryan
 
-**Como ler esta spec.** Cada regra tem um código (RN = regra de negócio, RNF = requisito não funcional) para ser citado no plan, nas tasks e nos testes. "Padrão" indica um valor configurável (seção 6). Toda regra é obrigatória no MVP, exceto as marcadas como **proposta**, que dependem de validação (seção 16). As decisões AD-002..AD-015 (`.specs/STATE.md`), tomadas na validação do protótipo, já estão incorporadas ao texto e citadas onde mudaram uma regra. Datas e horas ("véspera", "no dia", "24 h") seguem o fuso horário configurado na unidade.
+**Como ler esta spec.** Cada regra tem um código (RN = regra de negócio, RNF = requisito não funcional) para ser citado no plan, nas tasks e nos testes. "Padrão" indica um valor configurável (seção 6). Toda regra é obrigatória no MVP, exceto as marcadas como **proposta**, que dependem de validação (seção 16). As decisões AD-002..AD-048 (`.specs/STATE.md`), tomadas na validação do protótipo e na revisão do plan, já estão incorporadas ao texto e citadas onde mudaram uma regra. Datas e horas ("véspera", "no dia", "24 h") seguem o fuso horário configurado na unidade.
 
 ## 1. Visão e objetivos
 
@@ -36,11 +36,11 @@ O MVP cobre UBS e policlínicas. UPA existe como tipo de unidade no modelo, mas 
 | --- | --- |
 | WhatsApp (oficial ou não oficial) | Custo e burocracia; entra depois, com API oficial da própria prefeitura |
 | SMS e segundo fator de login | Custo; login é CPF + senha |
-| Dashboard de métricas para o gestor | Fase seguinte |
+| Dashboard de métricas para o gestor | Fase seguinte; no MVP, exportação CSV das métricas do piloto (AD-042) |
 | Estimativa de tempo com IA (histórico de atendimentos parecidos) | Fase seguinte; MVP usa tempo médio |
 | Voz lendo a chamada na TV | Só som de aviso no MVP |
 | Botão físico USB | Descartado |
-| Integração com e-SUS PEC, SISREG ou regulação | Depende de terceiros |
+| Integração com e-SUS PEC, SISREG ou regulação | Depende de terceiros; regulação avaliada no D6 para depois do piloto (AD-026) |
 | Prontuário e dados clínicos além do questionário | Não é nossa responsabilidade |
 | Fluxo de UPA | Fase seguinte |
 | Página pública da fila (fora da TV) | O app já cobre |
@@ -54,7 +54,7 @@ O MVP cobre UBS e policlínicas. UPA existe como tipo de unidade no modelo, mas 
 | Serviço | O que a unidade oferece: clínico geral, cardiologia, odontologia. A lista de espera é do serviço, não do profissional. |
 | Sessão | Um dia de um serviço: data, horário de início e fim, vagas e visibilidade. Pode nascer de uma série recorrente (RFC 5545); cada ocorrência é uma sessão com estado e configuração próprios (AD-014). O profissional é só texto informativo. |
 | Sessão aberta | Sessão com a fila do dia ativa. Abre no horário de início (ou antes, pelo admin) e só fecha quando o admin a encerra. |
-| Sessão privada | O agendador decide quem entra, a partir da lista de espera do serviço. |
+| Sessão privada | O agendador decide quem entra, a partir da lista de espera do serviço ou, em serviço regulado, lançando os pacientes que a regulação mandou (AD-026). |
 | Sessão pública | O paciente se inscreve sozinho até acabarem as vagas. |
 | Lista de espera | Pacientes aguardando uma sessão de um serviço. Nenhum paciente a vê. |
 | Lista de reserva | Inscritos que sobraram quando uma sessão pública lotou. Recebem as vagas liberadas, em ordem. |
@@ -67,8 +67,8 @@ O MVP cobre UBS e policlínicas. UPA existe como tipo de unidade no modelo, mas 
 | ID de atendimento | Código de 6 caracteres (e QR) do pré-cadastro, mostrado na recepção para a validação. |
 | Fila do dia | Fila de uma sessão aberta. Tem uma etapa (atendimento) ou duas (triagem e atendimento). |
 | Etapa | Triagem ou atendimento. Cada etapa tem sua própria ordem e suas chamadas. |
-| Remoto / Presente | Estado de presença na fila do dia: fora ou dentro da unidade. Existe ainda "presente, aguardando validação" (RN-FILA-05), que não é elegível. |
-| Elegível | Presente e liberado para ser chamado (conta verificada e, quando exigido, pré-cadastro validado). |
+| Remoto / Presente | Estado de presença na fila do dia: fora ou dentro da unidade. Presente pode ter **pendência** de conferência (RN-FILA-05): continua elegível e é conferido na chamada (AD-050). |
+| Elegível | Presente e liberado para ser chamado: sem validação pendente na recepção (conta verificada, pré-cadastro validado quando exigido e prioridade legal conferida quando declarada, RN-FILA-05). |
 | Conta verificada | Conta cujo dono do CPF foi confirmado: a recepção conferiu o documento com foto (MVP) ou, depois do piloto, gov.br prata/ouro. Antes disso a conta é **não verificada** (AD-017). |
 | Posição original | Número sequencial do paciente na fila do dia, dado ao entrar (RN-FILA-01 e RN-FILA-02). Não muda quando ele sai e volta; só muda pela regra de atraso (8.3). |
 | Estação | Ponto de chamada (consultório ou sala de triagem), ligado a uma etapa e a um ou mais serviços. Está aberta enquanto houver um profissional logado nela. |
@@ -90,8 +90,8 @@ Uma pessoa pode acumular perfis (ex.: agendador e recepção). Cada perfil é co
 | Paciente | Próprio | Usa o app: lista de espera, fila, check-in, cancelamento |
 | Gestor municipal | Município | Cria unidades, define regras do município, gerencia usuários do painel |
 | Admin da unidade | Unidade | Configura serviços, sessões, TV e estações; cancela e encerra sessões |
-| Agendador | Unidade | Valida encaminhamentos, aloca pacientes, liga e registra confirmações |
-| Recepção | Unidade | Inclui pacientes no balcão, valida identidade e pré-cadastro, marca presença |
+| Agendador | Unidade | Valida encaminhamentos, aloca pacientes, lança pacientes de serviço regulado, liga e registra confirmações |
+| Recepção | Unidade | Inclui pacientes no balcão, valida identidade, pré-cadastro e prioridade legal, marca presença, registra contingência |
 | Triagem | Unidade | Chama para triagem, confirma ou reclassifica o risco |
 | Profissional | Unidade | Chama o próximo e rechama na estação |
 | TV (dispositivo) | Unidade | Exibe chamadas e QR. Não é um usuário; é um dispositivo pareado |
@@ -109,22 +109,26 @@ A hierarquia é **Município → Unidade → Serviço → Sessão**. O paciente 
 | --- | --- | --- |
 | Município | — | nome, UF, regras municipais (seção 6) |
 | Unidade | Município | tipo (UBS, Policlínica, UPA), endereço, coordenadas, horário de funcionamento, configurações |
-| Serviço | Unidade | nome, prefixo de senha, exige triagem, exige encaminhamento, tempo médio inicial |
+| Serviço | Unidade | nome, prefixo de senha, exige triagem, como é marcado (livre, requisição pelo app, regulado), tempo médio inicial |
 | Série de sessões | Serviço | DTSTART/DTEND, RRULE, EXDATE, RDATE (RFC 5545), configuração padrão das ocorrências (vagas, visibilidade, profissional, estações) |
 | Sessão | Serviço (e opcionalmente uma série) | data, horário, vagas (opcional), visibilidade, dispensa pré-cadastro, profissional (texto), estações, estado |
 | Paciente | Central | CPF, hash da senha, nome, e-mail, telefone, data de nascimento, consentimentos |
+| Pessoa local | Município | nome, data de nascimento, CPF (opcional), documento conferido por e em; vínculo com o Paciente central quando houver conta verificada com o mesmo CPF (AD-035). Representa quem não tem app e a pessoa atendida da AD-018 |
 | Cadastro na unidade | Paciente × Unidade | dados do formulário, Cartão SUS, foto do documento com foto, foto do Cartão SUS, ID de atendimento, estado de validação, validado por, validado em |
 | Encaminhamento | Paciente × Serviço | foto, data de emissão, validade, estado (pendente, aceito, rejeitado, vencido), motivo |
-| Entrada na lista de espera | Paciente (responsável) × Serviço | pessoa atendida (o próprio paciente ou outra: nome, nascimento, CPF opcional), data de entrada original, classificação de risco (sugerida e confirmada), prioridade legal, remanejado, recusas, estado |
+| Entrada na lista de espera | Paciente (responsável) ou Pessoa local (sem app) × Serviço | pessoa atendida (o próprio paciente ou outra: nome, nascimento, CPF opcional), data de entrada original, classificação de risco (sugerida e confirmada), prioridade legal, remanejado, recusas, estado |
 | Questionário de risco | Entrada | respostas estruturadas, nível sugerido, data; histórico de versões |
 | Alocação | Entrada × Sessão | alocado por, motivos da sugestão, prazo de confirmação, estado da confirmação |
-| Entrada na fila | Sessão × Paciente | senha, origem (alocado, público, balcão), etapa atual, presença, posição original (número sequencial), pulos no dia, chamadas, estado |
+| Entrada na fila | Sessão × Paciente ou Pessoa local | senha, origem (alocado, público, balcão), etapa atual, presença, posição original (número sequencial), pulos no dia, chamadas, estado |
 | Chamada | Entrada na fila × Estação | horário, rechamadas, resultado (compareceu, pulado) |
-| Estação | Unidade | nome (ex.: Consultório 3), etapa, serviços atendidos, profissional logado (aberta ou fechada) |
+| Estação | Unidade | nome (ex.: Consultório 3), etapa, serviços atendidos, profissional logado (aberta ou fechada), último sinal de vida |
+| Sinal de vida | Unidade | TV ou estação, horário; histórico usado na contingência (AD-020, AD-033) e no modo manual (AD-043) |
 | Dispositivo TV | Unidade | nome, token de pareamento, último sinal de vida, revogado |
-| Ocorrência de falta | Paciente × Unidade | data, tipo (faltou sem avisar, não compareceu à chamada) |
+| Ocorrência de falta | Pessoa atendida, pessoa local ou responsável (AD-040) × Unidade | data, tipo (faltou sem avisar, não compareceu à chamada), anulada (por quem, motivo; AD-021) |
+| Período de contingência | Unidade | início, fim, motivo, registrado por; sinais de vida da TV e das estações no período (AD-020) |
 | Usuário do painel | Município | nome, login, perfis com escopo |
 | Evento de auditoria | Município | quem, o quê, quando, sobre qual registro |
+| Evento de fila | Município | sessão, entrada, tipo (check-in, "Vou sair", chamada, atendido, pulo, falta), estação, horário; sem dado clínico. Base das métricas do piloto (AD-042) |
 
 ## 6. Configurações
 
@@ -143,10 +147,11 @@ Cada nível herda o padrão do nível acima quando não define o seu.
 | Unidade | Tolerância de chamada | 5 min |
 | Unidade | Tamanho da janela protegida (K) | 1 |
 | Unidade | Intervalo de troca do QR de entrada | 30 s |
+| Unidade | Tempo de destaque de cada chamada na TV (AD-022) | 10 s |
 | Unidade | Prazo de confirmação da alocação | 24 h |
 | Serviço | Nome e prefixo de senha | — (obrigatório) |
 | Serviço | Exige triagem | Desligado |
-| Serviço | Exige encaminhamento | Desligado |
+| Serviço | Como é marcado: livre, requisição pelo app (exige encaminhamento) ou regulado pela central (AD-026) | Livre |
 | Serviço | Tempo médio inicial por atendimento (por etapa) | 15 min |
 | Sessão | Data e horário; recorrência opcional (RRULE/EXDATE/RDATE, RFC 5545) | — (obrigatório) |
 | Sessão | Vagas | Sem limite (recomendado definir) |
@@ -166,13 +171,13 @@ O caminho de uma sessão privada é: **entrada na lista → questionário → (e
 ### 7.2 Entrada na lista de espera
 
 - RN-LE-01: o paciente só cria uma entrada se todas as condições valerem:
-  - o serviço aceita entrada pelo app;
+  - o serviço aceita entrada pelo app (não é regulado pela central, RN-ENC-05);
   - quando a unidade exige **vínculo**, ele já tem pré-cadastro **validado** nela;
   - quando a unidade exige **pré-cadastro** (sem vínculo), ele já **enviou** o pré-cadastro. A validação pode acontecer na primeira ida.
   - as duas exigências acima não valem para inscrição numa sessão pública que **dispensa pré-cadastro** (AD-016).
-- RN-LE-02: no máximo **uma entrada ativa por serviço** por pessoa atendida (identificada pelo CPF ou, sem CPF, por nome + nascimento). Ela pode estar em serviços diferentes ao mesmo tempo.
+- RN-LE-02: no máximo **uma entrada ativa por serviço** por pessoa atendida (identificada pelo CPF ou, sem CPF, por nome + nascimento). Ela pode estar em serviços diferentes ao mesmo tempo. Isso vale também para sessão pública do mesmo serviço (AD-032): quem está na lista precisa sair dela (e perder a posição) para se inscrever; o app explica isso ao tentar. Quem está só na reserva de uma sessão pública pode trocá-la por vaga em outra sessão pública do serviço (AD-047).
 - RN-LE-05 (AD-018): ao entrar na lista ou se inscrever, o paciente escolhe **para quem é**: ele mesmo ou outra pessoa. Para outra pessoa, informa nome, nascimento e CPF (se houver) e responde o questionário por ela. Classificação, prioridade legal e faltas usam a pessoa atendida. O responsável recebe os pushes, vê a posição e lê o QR ao chegar com ela; o app mostra as inscrições de cada pessoa separadas.
-- RN-LE-06 (AD-018): no 1º check-in de uma pessoa atendida que não é o dono da conta, ela fica "presente, aguardando validação" até a recepção conferir o documento dela (RN-FILA-05). Conferida, vale para as próximas idas àquela unidade.
+- RN-LE-06 (AD-018): no 1º check-in de uma pessoa atendida que não é o dono da conta, ela fica "presente com pendência" e é conferida na chamada pelo profissional, ou antes pela recepção (RN-FILA-05, AD-050). Conferida, vale para as próximas idas àquela unidade.
 - RN-LE-03: a entrada guarda a **data de entrada original**, que serve de desempate em todas as ordenações.
 - RN-LE-04: a recepção pode criar entradas pelo painel para quem não tem app.
 
@@ -187,10 +192,10 @@ O questionário é estruturado (sem texto livre) e serve para identificar risco 
 | Atenção | Comorbidade ou sintoma que pede prioridade | Acima de rotina |
 | Rotina | Sem sinais de risco (ex.: exame de rotina) | Ordem normal |
 
-- RN-RISCO-01: o nível calculado pelo app é sempre **sugerido**. Passa a **confirmado** quando o agendador aloca a entrada (ele pode alterar o nível nesse momento) ou quando a triagem classifica. A triagem tem a palavra final.
+- RN-RISCO-01: o nível calculado pelo app é sempre **sugerido**. Passa a **confirmado** quando o agendador aloca a entrada (ele pode alterar o nível nesse momento) ou quando a triagem classifica. A triagem tem a palavra final. Em serviço regulado, o agendador grava no lançamento a classificação vinda da regulação (AD-036).
 - RN-RISCO-02: em sessão pública e no balcão não há agendador; o nível fica sugerido até a triagem confirmar. No balcão, a recepção aplica o mesmo questionário com o paciente; se o resultado for emergência, o painel orienta encaminhá-lo à emergência. Em serviço sem triagem, ele permanece sugerido.
-- RN-RISCO-03: o paciente pode refazer o questionário enquanto espera. Se subir para urgente, o agendador recebe alerta. Se cair em emergência, o app orienta ligar para o SAMU (192).
-- RN-RISCO-04: a **prioridade legal** é um campo separado, declarado pelo paciente: idoso (60+, e 80+ com prioridade especial), gestante, lactante, pessoa com criança de colo, PcD, TEA, pessoa com obesidade. Vale como declarada até a recepção conferir; a recepção pode corrigir. A ordem entre os grupos segue a lei, sem regras próprias: os maiores de 80 anos vêm antes dos demais idosos, e entre grupos diferentes não há hierarquia.
+- RN-RISCO-03: o paciente pode refazer o questionário enquanto espera. Se subir para urgente, o agendador recebe alerta. Se cair em emergência, o app orienta ligar para o SAMU (192). Prioridade legal nova declarada por quem já está presente vale como pendência e é conferida na chamada (AD-050, substitui a AD-034).
+- RN-RISCO-04: a **prioridade legal** é um campo separado, declarado pelo paciente: idoso (60+, e 80+ com prioridade especial), gestante, lactante, pessoa com criança de colo, PcD, TEA, pessoa com mobilidade reduzida, doador de sangue (Lei 10.048 com a redação da Lei 14.626/2023), pessoa com obesidade. Quando se marca para outra pessoa (AD-018), conta a prioridade da pessoa atendida; se ela é criança de colo, vale "criança de colo"; a prioridade do acompanhante não passa para o atendido (AD-027, a confirmar no D5). Lista fixa no código no MVP (AD-025); grupos de leis estaduais e municipais entram por mudança de código, se o D5 apontar. Vale como declarada até a recepção conferir (AD-024): ao declarar, o app avisa que a prioridade será conferida na unidade com documento e que declaração falsa pode configurar crime (texto validado pelo jurídico); a conferência é visual (gestante, criança de colo; idoso vem da data de nascimento) ou por documento (PcD, TEA), sem foto de laudo no app; conferida, vale nas próximas idas à unidade, exceto as que têm prazo (gestante, lactante, criança de colo), que expiram e são conferidas de novo. Forma de conferência e prazo de lactante, mobilidade reduzida, doador de sangue e obesidade, e os prazos de gestante e criança de colo, vêm do D5. A recepção pode tirar uma prioridade declarada errada a qualquer momento e pode dar prioridade ao incluir alguém no balcão (registrando o documento visto), mas não pode dar prioridade a quem já está na lista ou na fila (AD-023). Para paciente "sem app" (ex.: lançado de serviço regulado), a 1ª marcação de presença pela recepção vale como inclusão no balcão. A ordem entre os grupos segue a lei, sem regras próprias: os maiores de 80 anos vêm antes dos demais idosos, e entre grupos diferentes não há hierarquia.
 
 #### Questionário v1 (proposta: validar com enfermeiro)
 
@@ -202,9 +207,9 @@ Meta: menos de 1 minuto, só toques, sem texto livre. "Nenhum destes" e "Nenhuma
 | 2 | Por que você quer o atendimento? (uma) | Problema novo ou que piorou · Acompanhamento de doença que já tenho · Exame, check-up ou rotina · Renovar receita |
 | 3 | Como está esse problema? (uma) | Leve, faço as coisas normalmente · Moderado, atrapalha o dia · Forte, não consigo fazer quase nada |
 | 4 | Você tem alguma destas condições? (vários) | Diabetes · Pressão alta · Doença do coração · Asma, bronquite ou DPOC · Câncer em tratamento · Imunidade baixa (transplante, HIV, uso de corticoide) · Nenhuma |
-| 5 | Alguma destas se aplica a você? (vários) | Gestante · Lactante · Com criança de colo · Pessoa com deficiência · TEA · Obesidade · Nenhuma |
+| 5 | Alguma destas se aplica a você? (vários) | Gestante · Lactante · Com criança de colo · Pessoa com deficiência · TEA · Mobilidade reduzida · Doador de sangue · Obesidade · Nenhuma |
 
-A idade vem da data de nascimento. A Tela 5 alimenta a prioridade legal (RN-RISCO-04) e vem preenchida com a resposta anterior.
+A idade vem da data de nascimento. A Tela 5 alimenta a prioridade legal (RN-RISCO-04, grupos da AD-025) e vem preenchida com a resposta anterior. Marcar qualquer opção mostra o aviso de conferência na unidade (AD-024).
 
 **Regras de classificação** (vale a primeira que bater, de cima para baixo):
 
@@ -217,14 +222,15 @@ A idade vem da data de nascimento. A Tela 5 alimenta a prioridade legal (RN-RISC
 | Rotina | Todo o resto | Ordem normal |
 
 - RN-RISCO-05: a ficha do agendador mostra o nível sugerido, a regra que o gerou, as respostas, a idade e a prioridade legal. Todo resultado do questionário, inclusive "Urgente + apoio", é gravado como sugerido; só vira urgência confirmada por agendador ou triagem.
-- RN-RISCO-06: a resposta sobre pensamentos de tirar a própria vida só é visível para os perfis de agendador e triagem daquela unidade.
+- RN-RISCO-06: a resposta sobre pensamentos de tirar a própria vida só é visível para os perfis de agendador e triagem daquela unidade. Exceção (AD-044): a recepção vê a pergunta enquanto aplica o questionário no balcão e, se a resposta for sim, o painel mostra CVV (188) e SAMU (192); depois de salvo, não vê mais.
 
 ### 7.4 Encaminhamento
 
 - RN-ENC-01: serviços com "exige encaminhamento" pedem a foto da requisição na entrada.
 - RN-ENC-02: o agendador valida: autenticidade, se é para aquele serviço e se está dentro da validade. Pode aceitar ou rejeitar com motivo.
 - RN-ENC-03: entrada com encaminhamento pendente, rejeitado ou vencido não é alocável. O paciente é avisado e pode enviar outro.
-- RN-ENC-04 (AD-015): em sessão pública, a inscrição com encaminhamento segura a vaga até o agendador aceitar a foto; aceita, vira confirmada. Rejeitada, o paciente pode enviar outra. Se não estiver aceita na abertura da sessão, a vaga é liberada e a entrada volta a "aguardando encaminhamento".
+- RN-ENC-04 (AD-015): em sessão pública, a inscrição com encaminhamento segura a vaga até o agendador aceitar a foto; aceita, vira confirmada. Rejeitada, o paciente pode enviar outra. Se não estiver aceita na abertura da sessão, a vaga é liberada e a entrada volta a "aguardando encaminhamento". O mesmo vale para quem, sem foto aceita, recebe vaga por remanejamento ou pela lista de reserva (AD-046).
+- RN-ENC-05 (AD-026): cada serviço define **como é marcado**: (a) **livre** (sem exigência); (b) **requisição pelo app**: o paciente envia de casa a foto do papel de requisição e o agendador confere (RN-ENC-01..04), que equivale a "exige encaminhamento"; (c) **regulado pela central**: o paciente não entra na lista de espera pelo app (o app orienta "este serviço é marcado pela regulação"), e o agendador da unidade lança na sessão, pelo CPF, os pacientes que a regulação mandou. No lançamento, o agendador informa a classificação de risco que veio da regulação (padrão "rotina"), gravada como confirmada (AD-036); quem tem app declara a prioridade legal só pela Tela 5, com conferência no check-in. O lançamento já entra **confirmado** (a regulação já marcou com o paciente): sem prazo de confirmação nem liberação na abertura (exceção à RN-CONF-04); quem tem conta **verificada** recebe o push "sua consulta está marcada" e pode desmarcar; conta não verificada é tratada como "sem app" até a recepção verificá-la (AD-049), para não expor dado de saúde a quem criou conta com CPF alheio. A partir daí segue o fluxo normal (fila do dia, check-in). Quem não tem conta entra como "sem app", como no balcão: sem push (a regulação avisa, como hoje), presença marcada pela recepção e papel com a senha (AD-012); se criar conta depois, o CPF vincula. Serviço regulado só tem sessões privadas (não há autoinscrição) e não aceita inclusão no balcão: só entra quem o agendador lançou; quem chega sem estar lançado é orientado a procurar a regulação (AD-048). Mudar um serviço para "regulado" fica bloqueado enquanto houver entradas ativas; na troca, as sessões públicas futuras sem inscritos e o padrão das séries viram privados automaticamente, e as entradas arquivadas são canceladas com aviso; entre "livre" e "requisição pelo app" a troca é livre, sem exigir foto de quem já está na lista, e as entradas que aguardam foto viram "aguardando" ao virar livre (AD-038). Se o paciente lançado recusa ou cancela, a vaga fica livre sem sugestão automática (não há lista de espera): o agendador é avisado na lista de ligação para comunicar a regulação e lançar quem ela mandar, e o app orienta o paciente a procurar a regulação ou a UBS para remarcar. Integração com o sistema de regulação (e-SUS Regulação ou SISREG) fica para depois do piloto ([D6](discovery-regulacao.md)).
 
 ### 7.5 Alocação em sessão privada
 
@@ -249,7 +255,7 @@ A idade vem da data de nascimento. A Tela 5 alimenta a prioridade legal (RN-RISC
 
 - RN-PUB-01 (AD-013): o paciente se inscreve direto na sessão, sem alocação e sem aprovação, e já entra **confirmado** (ele escolheu o dia). Se a sessão já estiver aberta, entra direto na fila remota com o próximo número. Exceção: serviço com encaminhamento (RN-ENC-04).
 - RN-PUB-02: sessão lotada abre a **lista de reserva** da sessão. Cada vaga liberada vai para o primeiro da reserva, que recebe push e entra confirmado (direto na fila remota, se a sessão já estiver aberta).
-- RN-PUB-03: pública → privada: quem já entrou permanece e novas inscrições são bloqueadas. Privada → pública: abre autoinscrição até preencher as vagas restantes.
+- RN-PUB-03: pública → privada: quem já entrou permanece, novas inscrições são bloqueadas e a "dispensa pré-cadastro" é desligada (AD-038). Privada → pública: abre autoinscrição até preencher as vagas restantes; não é permitido em serviço regulado (AD-038).
 
 ## 8. Fila do dia
 
@@ -261,7 +267,7 @@ Só é chamado quem está presente. Entre os presentes, vale a prioridade e depo
 - RN-FILA-02: quem entra depois da abertura (inscrição pública no dia, vaga da lista de reserva, balcão) recebe o próximo número livre, na hora em que entra.
 - RN-FILA-03: paciente incluído pela recepção já entra como **presente**.
 - RN-FILA-04: a senha tem o prefixo do serviço, é única na sessão e é a mesma em todas as etapas. O número também se mantém entre as etapas.
-- RN-FILA-05: o check-in deixa o paciente como **presente, aguardando validação** quando (a) a conta ainda não é verificada (AD-017), em qualquer sessão, inclusive com dispensa de pré-cadastro, ou a pessoa atendida não é o dono da conta e ainda não foi conferida na unidade (RN-LE-06), ou (b) a unidade exige pré-cadastro, a sessão (pública) não o dispensa (AD-016) e o dele ainda não foi validado. Ele não é elegível até a recepção validar, e o app mostra "passe na recepção" (com o ID de atendimento, no caso b). Uma só passagem na recepção resolve os dois.
+- RN-FILA-05 (AD-050): o check-in deixa o paciente **presente com pendência** quando (a) a conta ainda não é verificada (AD-017), em qualquer sessão, inclusive com dispensa de pré-cadastro, ou a pessoa atendida não é o dono da conta e ainda não foi conferida na unidade (RN-LE-06), ou (b) a unidade exige pré-cadastro, a sessão (pública) não o dispensa (AD-016) e o dele ainda não foi validado, ou (c) há prioridade legal declarada e ainda não conferida na unidade (AD-024). O app orienta **"passe na recepção para confirmar seus documentos"** (com o ID de atendimento, no caso b), que é o caminho preferido. Mesmo assim ele **continua elegível** e entra na ordem normalmente: se for chamado antes de passar na recepção, a estação mostra "conferir documento" (ou "conferir prioridade", "conferir pré-cadastro"), e o profissional confere na hora. Na chamada: (1) confere → segue o atendimento e a pendência sai (conta verificada, pessoa atendida conferida, prioridade conferida, pré-cadastro validado); (2) identidade não confere → "não conferiu": sai da fila sem remanejamento e sem falta (AD-039); (3) só a prioridade não confere → ela é retirada e o paciente volta para o lugar que teria sem ela, sem contar pulo. Quem foi embora com pendência é chamado, não aparece e é pulado como qualquer ausente. Não há prazo nem perdão de atraso para a espera no balcão (substitui a AD-030).
 - RN-FILA-06: ao encerrar a sessão, o sistema separa quem faltou (RN-FALTA-01) de quem é remanejado (RN-SES-02).
 
 ### 8.2 Presença
@@ -275,7 +281,7 @@ Só é chamado quem está presente. Entre os presentes, vale a prioridade e depo
 
 ```
 elegiveis = entradas da etapa, com presenca = PRESENTE,
-            liberadas para chamada (pre-cadastro validado, quando exigido),
+            sem validacao pendente na recepcao (RN-FILA-05),
             dos servicos atendidos pela estacao que chama
 
 ordem (RN-ORD), aplicada a qualquer conjunto de entradas:
@@ -300,7 +306,10 @@ janela protegida (K, padrao 1):
 atraso (AD-010: pela ordem real, nunca pelo numero):
   se, quando X fica elegivel, ja foi chamado nesta etapa alguem
   que vem depois de X em ordem (e, se X tocou "Vou sair",
-  chamado enquanto X estava fora), X perdeu a vez:
+  chamado enquanto X estava fora), X perdeu a vez.
+  (pendencia de conferencia nao tira a elegibilidade, AD-050.)
+  chamadas feitas no periodo de contingencia registrado nao
+  contam para quem estava remoto (AD-033). nesse caso:
   X recebe o proximo numero livre (vai para o fim).
   excecao: X tem urgencia confirmada.
 
@@ -350,8 +359,10 @@ RN-ETA-05 (proposta de algoritmo): cálculo do tempo médio de uma etapa num ser
 ### 8.7 Encerramento
 
 - RN-SES-01: a sessão só encerra quando o admin a encerra. No horário de fim, o painel lembra o admin.
-- RN-SES-02: ao encerrar, quem ainda está na fila e cuja vez **não passou** vira **remanejado** (seção 13). Quem estava remoto e cuja vez passou registra falta (RN-FALTA-01). Quem estava presente na unidade é sempre remanejado, nunca faltoso.
+- RN-SES-02: ao encerrar, quem ainda está na fila e cuja vez **não passou** vira **remanejado** (seção 13). Quem estava remoto e cuja vez passou registra falta, com as exceções da RN-FALTA-01 (já atendido em etapa anterior, AD-041; período de contingência, AD-033). Quem estava presente na unidade é sempre remanejado, nunca faltoso.
 - RN-SES-03: o encerramento só é permitido quando nenhuma estação tem paciente chamado. O painel mostra as estações que ainda precisam finalizar.
+- RN-SES-05 (AD-043): se a TV e todas as estações de uma unidade perdem o sinal de vida ao mesmo tempo por mais de ~2 min, as sessões abertas dela entram em "modo manual": o app mostra "atendimento em modo manual, procure a recepção", o "saia de casa" é suspenso e a estimativa some, até o sinal voltar.
+- RN-SES-04 (AD-033): se a TV ou alguma estação ficou sem sinal durante a sessão e não há período de contingência registrado, o painel avisa o admin antes de encerrar (não bloqueia).
 
 ## 9. Máquinas de estado
 
@@ -371,6 +382,7 @@ Há dois ciclos de vida: o da **entrada na lista de espera** (dias ou semanas) e
 | Concluída | Foi atendida na última etapa | Sim |
 | Cancelada | Paciente desistiu | Sim |
 | Encerrada sem atendimento | Saiu da fila por 3 pulos, ou faltou | Sim |
+| Na reserva | Inscrito numa sessão pública lotada; espera uma vaga liberada (RN-PUB-02). Conta como entrada ativa (INV-01) | Não |
 
 ### 9.2 Entrada na fila do dia
 
@@ -388,9 +400,10 @@ As tabelas abaixo são a fonte da verdade para implementação e testes. Toda tr
 | --- | --- | --- | --- | --- |
 | — | Cria sessão | Admin | Planejada | — |
 | Planejada | Horário de início chega, ou admin abre antes | Sistema / Admin | Aberta | Confirmadas entram na fila (RN-FILA-01); alocações pendentes liberadas (RN-CONF-04) |
-| Planejada ou Aberta | Cancela | Admin | Cancelada | Entradas não finais, inclusive a chamada no momento, viram remanejadas; push |
+| Planejada ou Aberta | Cancela | Admin | Cancelada | Entradas não finais, inclusive a chamada no momento, viram remanejadas, exceto "Na reserva", que é cancelada; push |
+| Planejada | Serviço muda para "regulado" e a sessão é pública sem inscritos (AD-038) | Sistema | (mesmo, privada) | Painel mostra quantas mudaram |
 | Aberta | Encerra | Admin; nenhuma estação com paciente chamado (RN-SES-03) | Encerrada | Separa faltas e remanejados (RN-SES-02) |
-| Planejada ou Aberta | Muda visibilidade | Admin | (mesmo) | RN-PUB-03 |
+| Planejada ou Aberta | Muda visibilidade | Admin; para pública, só se o serviço não é regulado (AD-038) | (mesmo) | RN-PUB-03; ao virar privada, desliga a dispensa pré-cadastro |
 
 **Entrada na lista de espera**
 
@@ -402,24 +415,51 @@ As tabelas abaixo são a fonte da verdade para implementação e testes. Toda tr
 | Aguardando encaminhamento | Agendador aceita | Dentro da validade | Aguardando | Push |
 | Aguardando encaminhamento | Agendador rejeita | — | (mesmo) | Push com motivo |
 | Aguardando | Encaminhamento vence | — | Aguardando encaminhamento | Push |
+| Aguardando encaminhamento | Serviço muda para "livre" (AD-038) | — | Aguardando | — |
+| Aguardando encaminhamento (vaga segura) | Serviço muda para "livre" (AD-038) | Antes da abertura | Confirmada | Push |
 | Aguardando ou Remanejada | Agendador aloca | Vaga livre (INV-02) | Alocada | Push "confirme"; aparece na lista de ligação |
 | Alocada | Paciente ou agendador confirma | Antes da abertura | Confirmada | Log |
-| Alocada | Recusa | Não remanejada, ou 2ª recusa de remanejada | Aguardando (data original) | Vaga liberada; sugere o próximo |
-| Alocada | Recusa | 1ª recusa de remanejada | Remanejada | Recusas +1 |
+| Alocada | Recusa | Serviço não regulado; não remanejada, ou 2ª recusa de remanejada | Aguardando (data original) | Vaga liberada; sugere o próximo |
+| Remanejada (serviço regulado) | Agendador lança na reposição ou na próxima sessão | Vaga livre | Confirmada (ou Na fila, se a sessão já abriu) | Como o lançamento (AD-026, AD-037) |
+| Confirmada, Alocada, Aguardando encaminhamento (vaga segura) ou Na fila ainda remoto (remanejada) | Paciente toca "Outra data" | 1ª recusa | Remanejada | Recusas +1; vaga liberada (AD-045) |
+| Confirmada ou Alocada (remanejada) | Paciente toca "Outra data" | 2ª recusa; sessão privada | Aguardando (data original) | Perde a preferência |
+| Confirmada ou Alocada (remanejada de sessão privada ou regulada) | Paciente toca "Outra data" | 2ª recusa; remanejado de sessão pública alocado numa privada | Cancelada | Push "inscreva-se de novo" (não tem data original na lista) |
+| Confirmada ou Alocada (remanejada) | Paciente toca "Outra data" | 2ª recusa; serviço regulado | Cancelada | Agendador avisado para comunicar a regulação |
+| Confirmada, Alocada, Aguardando encaminhamento (vaga segura) ou Na fila (remanejada) | Paciente toca "Desistir" | — | Cancelada | Vaga liberada; em serviço regulado, agendador avisado para comunicar a regulação |
+| Alocada | Recusa (agendador, em nome do paciente) | 1ª recusa de remanejada | Remanejada | Recusas +1 |
 | Alocada | Sessão abre sem confirmação | — | Aguardando (data original) | Vaga liberada |
+| — | Agendador lança paciente de serviço regulado (AD-026) | Vaga livre (INV-02); sessão privada | Confirmada | A regulação já marcou: push "sua consulta está marcada" só se a conta é verificada (AD-049); sem prazo de confirmação |
+| Confirmada | Paciente cancela | Serviço regulado | Cancelada | Vaga liberada sem sugestão; agendador avisado para comunicar a regulação |
+| — | Agendador lança paciente de serviço regulado com a sessão aberta (AD-037) | Vaga livre | Na fila | Senha; próximo número; push se tem conta |
+| Confirmada ou Na fila (ainda não chamado) | Agendador remove lançamento, com motivo (AD-037) | Serviço regulado | Cancelada | Vaga liberada; auditoria; push se tem conta |
 | — | Inscrição pública | Vaga livre; sem encaminhamento exigido | Confirmada | AD-013 |
 | — | Inscrição pública | Vaga livre; encaminhamento exigido | Aguardando encaminhamento (vaga segura) | RN-ENC-04 |
+| — | Inscrição pública | Sessão lotada | Na reserva | RN-PUB-02 |
+| Na reserva | Vaga liberada e é o primeiro da reserva | Antes da abertura; foto aceita, se exigida | Confirmada | Push (RN-PUB-02) |
+| Na reserva | Vaga liberada e é o primeiro da reserva | Sessão aberta; foto aceita, se exigida (sem foto, a vaga passa ao próximo) | Na fila | Push; próximo número |
+| Na reserva | Paciente cancela | — | Cancelada | — |
+| Na reserva | Paciente se inscreve em outra sessão pública do serviço com vaga (AD-047) | Confirma a troca no app; foto aceita, se exigida | Confirmada (ou Na fila, se a sessão já abriu) | Reserva cancelada |
+| Na reserva | Troca por vaga em serviço com requisição, sem foto aceita | Antes da abertura | Aguardando encaminhamento (vaga segura) | Reserva cancelada; AD-046 |
+| Na reserva ou Remanejada | Recebe vaga | Serviço com requisição e foto ainda não aceita | Aguardando encaminhamento (vaga segura) | AD-046; regras da RN-ENC-04 |
+| Na reserva | Sessão encerrada ou cancelada sem vaga para ele | — | Cancelada | Push; não é remanejado (não chegou a ter vaga) |
 | Aguardando encaminhamento (vaga segura) | Agendador aceita | Antes da abertura | Confirmada | Push |
 | Aguardando encaminhamento (vaga segura) | Sessão abre sem aceite | — | Aguardando encaminhamento | Vaga liberada; push |
 | Confirmada | Sessão abre | — | Na fila | Senha; push |
 | Alocada, Confirmada ou Na fila | Paciente cancela | — | Cancelada | Vaga liberada (RN-CANC-02) |
-| Alocada, Confirmada ou Na fila | Sessão cancelada, ou encerrada antes da vez | — | Remanejada | Push |
+| Alocada, Confirmada, Na fila ou Aguardando encaminhamento (vaga segura) | Sessão cancelada, ou encerrada antes da vez | — | Remanejada | Push |
+| Na fila | Sessão encerrada com o paciente presente, já atendido em etapa anterior, ou com a vez passada durante contingência registrada (RN-SES-02, AD-041, AD-033) | — | Remanejada | Push |
+| Na fila | Recepção recusa a validação (AD-039) | — | Cancelada | Sem falta; motivo na auditoria |
+| Encerrada sem atendimento (por falta) | Período de contingência registrado depois do encerramento, no mesmo dia, cobrindo a vez dele (AD-033) | Exceção: reverte estado final | Remanejada | Falta apagada; auditoria |
 | Na fila | Atendida na última etapa | — | Concluída | — |
 | Na fila | 3º pulo, ou falta no encerramento | — | Encerrada sem atendimento | Registra ocorrência de falta |
 | Aguardando | A cada 30 dias na lista | — | (mesmo) | Push "ainda precisa?" |
 | Aguardando | 7 dias sem resposta à pergunta | — | Arquivada | Push |
-| Arquivada | Paciente reativa | Até 30 dias (proposta) | Aguardando (data original) | — |
-| Aguardando ou Aguardando encaminhamento | Paciente cancela | — | Cancelada | — |
+| Arquivada | Paciente reativa | Até 30 dias (proposta); serviço não regulado | Aguardando (data original) | — |
+| Arquivada | Serviço muda para "regulado" (AD-038) | — | Cancelada | Push "este serviço passou a ser marcado pela regulação; procure sua UBS" |
+| Aguardando, Aguardando encaminhamento ou Remanejada | Paciente cancela | — | Cancelada | — |
+| Remanejada (de sessão pública) | Paciente (ou recepção/agendador por ele) escolhe uma ocorrência pública do serviço | Vaga livre e exigências da sessão cumpridas; foto aceita, se exigida | Confirmada (ou Na fila, se a sessão já abriu) | RN-REM-05, AD-031 |
+| Remanejada (de sessão pública) | Escolhe uma ocorrência pública lotada | — | Na reserva (no topo) | RN-REM-05 |
+| Remanejada (de sessão pública) | Escolhe uma ocorrência com vaga, sem foto aceita em serviço com requisição | — | Aguardando encaminhamento (vaga segura) | AD-046 |
 
 **Entrada na fila do dia** (por etapa)
 
@@ -427,27 +467,38 @@ As tabelas abaixo são a fonte da verdade para implementação e testes. Toda tr
 | --- | --- | --- | --- | --- |
 | — | Sessão abre | Entrada confirmada | Remoto | Senha; número por RN-FILA-01 |
 | — | Inscrição pública com a sessão aberta (encaminhamento aceito, quando exigido), ou vaga da lista de reserva | Vaga livre | Remoto | Senha; próximo número |
-| — | Recepção inclui no balcão | Vaga livre | Presente | Senha anotada ou impressa; próximo número |
-| Remoto | QR válido ou recepção marca | Conta verificada; e pré-cadastro validado, não exigido ou dispensado pela sessão | Presente | Aplica janela protegida e regra de atraso |
-| Remoto | QR válido | Conta não verificada, ou pré-cadastro exigido, não dispensado pela sessão e não validado | Presente aguardando validação | App: "passe na recepção" |
-| Presente aguardando validação | Recepção valida | — | Presente | Aplica janela protegida e regra de atraso |
-| Presente ou Presente aguardando validação | Paciente toca "Vou sair" | — | Remoto | Mantém o número |
+| — | Recepção inclui no balcão | Vaga livre; serviço não regulado (AD-048) | Presente | Senha anotada ou impressa; próximo número |
+| — | Agendador lança paciente regulado com a sessão aberta (AD-037) | Vaga livre | Remoto | Senha; próximo número |
+| Remoto, Presente ou Presente com pendência | Agendador remove lançamento (AD-037) | Serviço regulado; nunca chamado no dia | Saiu da fila | Vaga liberada; auditoria |
+| Remoto | QR válido ou recepção marca | Sem pendência (RN-FILA-05) | Presente | Aplica janela protegida e regra de atraso |
+| Remoto | QR válido | Com pendência: conta não verificada, pessoa atendida não conferida, pré-cadastro exigido e não validado, ou prioridade declarada e não conferida | Presente com pendência | Elegível; aplica janela protegida e regra de atraso; app orienta "passe na recepção para confirmar seus documentos" (AD-050) |
+| Remoto | Recepção marca presença de pessoa sem app, conferindo o documento (AD-035) | — | Presente | Aplica janela protegida e regra de atraso |
+| Presente com pendência | Recepção confere antes da chamada (opcional) | Confere | Presente | Pendência resolvida |
+| Presente com pendência | Recepção recusa ("não conferiu"), com motivo (AD-039) | Identidade não confere | Saiu da fila | Sem remanejamento e sem falta; auditoria; pode bloquear a conta (RN-ID-03) |
+| Presente com pendência | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado (com pendência) | TV com som; push; estação mostra "conferir documento/prioridade/pré-cadastro" (AD-050) |
+| Chamado (com pendência) | Profissional confere | Confere | Chamado | Pendência resolvida (conta verificada, pessoa atendida ou prioridade conferida, pré-cadastro validado); auditoria |
+| Chamado (com pendência) | Profissional: "não conferiu" | Identidade não confere | Saiu da fila | Sem remanejamento e sem falta; auditoria (AD-039) |
+| Chamado (com pendência) | Profissional: prioridade não confere | Identidade ok | Presente | Prioridade retirada; volta ao lugar que teria sem ela; não conta pulo |
+| Presente ou Presente com pendência | Paciente toca "Vou sair" | — | Remoto | Mantém o número |
 | Presente | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado | TV com som; push; inicia tolerância |
 | Chamado | Rechamar | — | (mesmo) | Novo anúncio; tolerância não reinicia |
 | Chamado | Estação chama o próximo ou toca Finalizar | — | Atendido na etapa | Há outra etapa: Presente nela, mesmo número. Senão: entrada Concluída |
 | Chamado | Profissional toca "Não compareceu" (AD-006) | Pulos no dia = 0 | Presente | Pulos = 1; aplica janela protegida |
 | Chamado | Profissional toca "Não compareceu" | Pulos no dia = 1 | Remoto | Pulos = 2; push |
 | Chamado | Profissional toca "Não compareceu" | Pulos no dia = 2 | Saiu da fila | Pulos = 3; ocorrência de falta; push |
-| Remoto, Presente ou Presente aguardando validação | Paciente cancela | — | Saiu da fila | Vaga vai para a lista de reserva, se houver |
+| Remoto, Presente ou Presente com pendência | Paciente cancela | — | Saiu da fila | Vaga vai para a lista de reserva, se houver |
 | Qualquer não final | Sessão cancelada | — | Remanejado | Push |
-| Remoto, Presente ou Presente aguardando validação | Sessão encerrada | A vez não passou | Remanejado | Push |
-| Remoto | Sessão encerrada | A vez passou | Saiu da fila | Ocorrência de falta |
-| Presente ou Presente aguardando validação | Sessão encerrada | A vez passou | Remanejado | Push (estava na unidade; não é falta) |
+| Remoto, Presente ou Presente com pendência | Sessão encerrada | A vez não passou | Remanejado | Push |
+| Remoto | Sessão encerrada | A vez passou na etapa atual, fora de período de contingência, e não foi atendido em nenhuma etapa do dia | Saiu da fila | Ocorrência de falta |
+| Remoto | Sessão encerrada | Já atendido em etapa anterior (ex.: triado), sem 3 pulos | Remanejado | Push; não é falta no encerramento (AD-041); 3 pulos seguem a RN-FALTA-02 |
+| Remoto | Sessão encerrada | A vez passou durante período de contingência registrado | Remanejado | Push (AD-033) |
+| Remoto, Presente ou Chamado | Recepção registra atendido na reconciliação (AD-020) | Período de contingência registrado | Atendido na etapa | Auditoria; mesmo efeito de "Atendido na etapa" |
+| Presente ou Presente com pendência | Sessão encerrada | A vez passou | Remanejado | Push (estava na unidade; não é falta) |
 
 **Invariantes** (nunca podem ser violados; cada um vira teste)
 
 - INV-01: uma pessoa atendida tem no máximo uma entrada ativa por serviço.
-- INV-02: entradas não finais numa sessão, somando alocadas, confirmadas, inscritas e do balcão, ≤ vagas.
+- INV-02: entradas não finais numa sessão, somando alocadas, confirmadas, inscritas, lançadas e do balcão, ≤ vagas. Entradas "Na reserva" não contam.
 - INV-03: só elegíveis são chamados. Remoto nunca é chamado.
 - INV-04: um paciente está chamado em no máximo uma estação por vez.
 - INV-05: a senha é única na sessão.
@@ -466,17 +517,24 @@ As tabelas abaixo são a fonte da verdade para implementação e testes. Toda tr
 | Criar unidades, regras do município e usuários do painel |  | ✓ |  |  |  |  |  |
 | Configurar serviços, sessões, estações; parear e revogar TV |  |  | ✓ |  |  |  |  |
 | Abrir, cancelar, encerrar sessão; mudar visibilidade |  |  | ✓ |  |  |  |  |
-| Criar entrada na lista | ✓ (própria) |  |  |  | ✓ |  |  |
+| Criar entrada na lista | ✓ (própria ou de quem marca, AD-018) |  |  |  | ✓ |  |  |
+| Lançar paciente em sessão de serviço regulado, inclusive no dia, e remover lançamento ainda não chamado (AD-026, AD-037) |  |  |  | ✓ |  |  |  |
 | Incluir paciente no balcão; marcar presença |  |  |  |  | ✓ |  |  |
-| Validar pré-cadastro; corrigir prioridade legal |  |  |  |  | ✓ |  |  |
+| Validar pré-cadastro; conferir ou tirar prioridade legal; dar prioridade só na inclusão pelo balcão ou na 1ª presença de paciente "sem app" (AD-023, AD-024) |  |  |  |  | ✓ |  |  |
+| Recusar validação ("não conferiu") e bloquear conta usurpada (AD-039, RN-ID-03); anular falta por 3 pulos, com motivo (AD-021); registrar período de contingência e atendidos na volta (AD-020) |  |  |  |  | ✓ |  |  |
+| Ver relatório de ajustes que mexem na ordem ou no histórico, por usuário (AD-023) |  | ✓ |  |  |  |  |  |
+| Exportar CSV das métricas do piloto (AD-042) |  | ✓ |  |  |  |  |  |
 | Ver documentos (foto do documento, Cartão SUS) | ✓ (próprios) |  |  | ✓ | ✓ |  |  |
 | Ver respostas do questionário | ✓ (próprias) |  |  | ✓ | ✓ | ✓ |  |
-| Ver resposta sobre pensamentos de tirar a própria vida | ✓ (própria) |  |  | ✓ |  | ✓ |  |
+| Ver resposta sobre pensamentos de tirar a própria vida | ✓ (própria) |  |  | ✓ | só ao aplicar no balcão (AD-044) | ✓ |  |
 | Validar encaminhamento |  |  |  | ✓ |  |  |  |
 | Alocar; confirmar ou recusar em nome do paciente |  |  |  | ✓ |  |  |  |
 | Confirmar nível de risco |  |  |  | ✓ (na alocação) |  | ✓ |  |
-| Chamar, rechamar, pular |  |  |  |  |  | ✓ (triagem) | ✓ (atendimento) |
-| Cancelar a própria vaga; check-in; "Vou sair" | ✓ |  |  |  |  |  |  |
+| Chamar, rechamar, pular, finalizar |  |  |  |  |  | ✓ (triagem) | ✓ (atendimento) |
+| Conferir na chamada: documento (verifica a conta ou a pessoa atendida), prioridade, pré-cadastro; "não conferiu" (AD-050, AD-039) |  |  |  |  | ✓ (antes da chamada) | ✓ | ✓ |
+| Cancelar a própria vaga; "Outra data" ou "Desistir" quando remanejado; escolher data quando remanejado de sessão pública; check-in; "Vou sair" | ✓ (própria ou de quem marca) |  |  |  |  |  |  |
+| Verificar conta (AD-017); conferir pessoa atendida (RN-LE-06); redefinir acesso com documento (AD-019) |  |  |  |  | ✓ |  |  |
+| Imprimir a lista do dia, uso interno (AD-020, AD-033) |  |  | ✓ |  | ✓ |  |  |
 
 Perfis são acumuláveis e concedidos por unidade (seção 4). Quem precisa de mais de uma coluna recebe mais de um perfil.
 
@@ -490,8 +548,8 @@ O paciente tem **uma conta central** (CPF + senha), válida em qualquer municíp
 - RN-ID-02: um CPF só pode ter uma conta. Se alguém tentar criar conta com um CPF já usado, o app orienta procurar a recepção para contestar.
 - RN-ID-03: a recepção pode vincular a identidade à pessoa presencialmente (documento com foto) e bloquear uma conta usurpada.
 - RN-ID-04: senha com política mínima, armazenada com hash forte, e bloqueio temporário após tentativas seguidas de erro.
-- RN-ID-05 (AD-017): a conta nasce **não verificada** e já pode entrar na lista de espera e se inscrever em sessão pública. O agendador vê "identidade não verificada" na ficha. Ela vira **verificada** quando a recepção confere o documento com foto, o que vale para todas as unidades e o resto da vida da conta. Registra-se quem verificou, quando e por qual método (recepção; gov.br depois do piloto).
-- RN-ID-06 (AD-017): falta (RN-FALTA) de conta não verificada não gera ocorrência no CPF, porque ninguém provou que era o dono.
+- RN-ID-05 (AD-017): a conta nasce **não verificada** e já pode entrar na lista de espera e se inscrever em sessão pública. O agendador vê "identidade não verificada" na ficha. Ela vira **verificada** quando a recepção (ou o profissional na chamada, AD-050) confere o documento com foto, o que vale para todas as unidades e o resto da vida da conta. Registra-se quem verificou, quando e por qual método (recepção; gov.br depois do piloto).
+- RN-ID-06 (AD-017): falta (RN-FALTA) de conta não verificada não gera ocorrência no CPF, porque ninguém provou que era o dono. Da mesma forma, falta de pessoa atendida ainda não conferida na unidade (RN-LE-06) vai para o responsável que marcou, se a conta dele for verificada, e não para o CPF informado (AD-040). Paciente lançado de serviço regulado leva a falta na própria pessoa local, pelo CPF vindo da regulação.
 - RN-ID-07 (AD-017): a inscrição em sessão pública tem limite de tentativas e captcha contra robôs (RNF-SEG-03).
 
 ### 10.2 Pré-cadastro na unidade
@@ -510,6 +568,7 @@ No MVP, o único canal automático é o **push do app**. Como muita gente não v
 | Evento | Quem recebe | Canal |
 | --- | --- | --- |
 | Alocado numa sessão: confirme em 24 h | Paciente | Push + tela no app |
+| Lançado por serviço regulado: sua consulta está marcada | Paciente | Push + tela no app |
 | Alocação pendente de confirmação (destacada após 24 h) | Agendador | Lista de ligação no painel |
 | Sessão aberta: você está na fila remota | Paciente | Push |
 | Saia de casa (tempo estimado abaixo do limite) | Paciente | Push |
@@ -523,6 +582,7 @@ No MVP, o único canal automático é o **push do app**. Como muita gente não v
 | Você faltou 2 vezes nos últimos 90 dias | Paciente | Push |
 | Ainda precisa deste atendimento? | Paciente | Push + tela no app |
 | Paciente refez o questionário e subiu para urgente | Agendador | Alerta no painel |
+| Paciente de serviço regulado recusou ou cancelou: comunicar a regulação | Agendador | Lista de ligação no painel |
 
 - RN-NOT-01: nenhuma notificação contém sintomas ou dados clínicos, só a ação e o local.
 - RN-NOT-02: WhatsApp fica fora do MVP. Quando entrar, será a API oficial configurada e paga pela própria prefeitura.
@@ -539,7 +599,7 @@ A TV é **uma URL pareada**, uma por unidade, que mostra todos os serviços junt
 - RN-TV-04: botão **Iniciar painel** ao abrir, para liberar o som. Depois, um som de aviso a cada chamada. Sem voz.
 - RN-TV-05 (AD-012): **sem nomes de pacientes**, nem o primeiro nome, só senhas. Quem é incluído no balcão recebe da recepção um papel com a senha, para conferir com a TV.
 - RN-TV-06: página leve para TV fraca, fonte grande, legível do fundo da sala, reconexão automática. Indicador "online/offline" no painel do admin.
-- RN-TV-07: duas chamadas ao mesmo tempo entram numa fila de anúncios; cada uma fica 10 s em destaque e depois desce para "últimas chamadas".
+- RN-TV-07: duas chamadas ao mesmo tempo entram numa fila de anúncios; cada uma fica em destaque pelo tempo configurado na unidade (padrão 10 s, AD-022) e depois desce para "últimas chamadas".
 
 **Layout**
 
@@ -576,6 +636,7 @@ A TV é **uma URL pareada**, uma por unidade, que mostra todos os serviços junt
 - [ ] TV pareada no painel
 - [ ] Estações cadastradas e testadas com uma chamada
 - [ ] Usuários do painel criados com seus perfis
+- [ ] Impressora na recepção para a lista do dia (contingência, AD-020)
 
 ## 13. Exceções
 
@@ -584,13 +645,13 @@ A regra geral: **quem desiste perde a vez; quem é prejudicado pela unidade ganh
 ### 13.1 Paciente cancela
 
 - RN-CANC-01: botão "Não vou poder ir" no app, antes ou no dia.
-- RN-CANC-02: a vaga é liberada e o sistema sugere o próximo (sessão privada) ou chama o primeiro da lista de reserva (sessão pública).
+- RN-CANC-02: a vaga é liberada e o sistema sugere o próximo (sessão privada) ou chama o primeiro da lista de reserva (sessão pública). Em serviço regulado não há sugestão: o agendador é avisado para comunicar a regulação (RN-ENC-05).
 - RN-CANC-03: o paciente perde a vaga. Para tentar outro dia, faz uma **entrada nova** na lista de espera, sem a posição antiga.
 
 ### 13.2 Falta sem avisar
 
-- RN-FALTA-01: é **falta** (da pessoa atendida, AD-018) quando, no encerramento da sessão, o paciente confirmado estava remoto e a vez dele já tinha passado: foi chamado, na primeira etapa, alguém que vinha depois dele na ordem real (AD-010). Se a sessão encerrar antes da vez dele, ele é remanejado, não faltoso.
-- RN-FALTA-02: sair da fila por 3 pulos no dia (RN-CHAM-03) também conta no mesmo limite.
+- RN-FALTA-01: é **falta** (da pessoa atendida, AD-018, ou do responsável enquanto ela não foi conferida na unidade, AD-040) quando, no encerramento da sessão, o paciente confirmado estava remoto e a vez dele já tinha passado: foi chamado, na etapa atual dele, alguém que vinha depois dele na ordem real (AD-010, AD-041). No encerramento, quem já foi atendido em alguma etapa do dia (ex.: triado) não é faltoso: se não chegar a ser atendido na última etapa, é remanejado (AD-041). Os pulos seguem valendo: 3 pulos no dia, somando as etapas, tiram da fila e contam falta (RN-FALTA-02). Se a sessão encerrar antes da vez dele, ele é remanejado, não faltoso. Não há falta quando a vez passou durante um período de contingência registrado (AD-020, AD-033); um período registrado depois do encerramento, no mesmo dia, recalcula e apaga essas faltas.
+- RN-FALTA-02: sair da fila por 3 pulos no dia (RN-CHAM-03) também conta no mesmo limite, com ou sem check-in (AD-021). A recepção pode anular essa falta quando o paciente comprova que estava na unidade; a anulação exige motivo e vai para a auditoria.
 - RN-FALTA-03: **não há bloqueio automático**. Ao atingir o limite (padrão 2 em 90 dias), o paciente recebe um alerta e o agendador vê o aviso ao alocá-lo.
 
 ### 13.3 Remanejamento (sessão cancelada ou encerrada)
@@ -604,16 +665,17 @@ Vira **remanejado** quem perdeu o atendimento por culpa da unidade:
 
 1. O admin cancela a sessão e informa o motivo.
 2. O sistema pergunta: **"Já existe nova data?"**
-3. **Sim**: o admin cria a **sessão de reposição** ali mesmo. Ela vem preenchida com os pacientes da sessão cancelada, como sugestão. O agendador revisa e confirma. Os pacientes recebem push com a nova data e seguem a confirmação normal.
-4. **Não**: os pacientes vão para o grupo **"Aguardando remarcação"** daquele serviço e recebem push. Quando a próxima sessão do serviço for criada, o sistema mostra "N pacientes aguardam remarcação. Alocá-los primeiro?", já pré-selecionados.
+3. **Sim**: o admin cria a **sessão de reposição** ali mesmo, com a mesma visibilidade da cancelada. Ela vem preenchida com os pacientes da sessão cancelada, como sugestão. **Privada:** o agendador revisa e confirma, e os pacientes seguem a confirmação normal. **Pública:** cada remanejado recebe push e escolhe se fica com a reposição ou outra data (RN-REM-05). **Regulada:** o agendador relança, e eles entram confirmados (AD-026).
+4. **Não**: os pacientes vão para o grupo **"Aguardando remarcação"** daquele serviço e recebem push. Quando a próxima sessão do serviço for criada, o sistema mostra "N pacientes aguardam remarcação. Alocá-los primeiro?", já pré-selecionados (sessão privada ou regulada). Remanejado de sessão pública escolhe a data ele mesmo (RN-REM-05).
 5. Se a sessão de reposição tiver menos vagas que a cancelada, o sistema avisa quantos ficaram de fora; eles seguem como remanejados.
 
 **Regras do remanejado**
 
 - RN-REM-01: **precedência**: urgência confirmada → remanejado → lista comum.
 - RN-REM-02: remanejado **nunca tira a vaga** de quem já está confirmado. A precedência vale só para vagas livres e sessões novas.
-- RN-REM-03: pode **recusar a nova data uma vez** e continua remanejado. Na segunda recusa, volta para a lista comum com a data de entrada original.
+- RN-REM-03 (AD-045): no app, o remanejado de sessão privada ou regulada vê **"Outra data"** e **"Desistir"**. "Outra data" na 1ª vez mantém o status de remanejado; na 2ª perde a preferência: em sessão privada volta para a lista comum com a data de entrada original; se era remanejado de sessão pública alocado numa privada, é encerrado com aviso "inscreva-se de novo" (não tem data na lista); em serviço regulado, sai e o agendador é avisado para comunicar a regulação (RN-ENC-05). "Desistir" cancela de vez.
 - RN-REM-04: mantém a classificação de risco e a prioridade legal que já tinha.
+- RN-REM-05 (AD-031, revista): remanejado de **sessão pública** não é encaixado automaticamente. Recebe push "sua sessão foi cancelada; escolha outra data com preferência" e pode se inscrever, ele mesmo, em qualquer ocorrência pública do serviço (inclusive de séries recorrentes). Com vaga, entra confirmado (ou com vaga segura, se faltar a foto, AD-046); lotada, entra no **topo da lista de reserva**, à frente dos demais. A inscrição segue as exigências da sessão escolhida (RN-LE-01, AD-016). Enquanto não escolhe, fica em "aguardando remarcação", visível para a recepção e o agendador, que remarcam no balcão ou por telefone quem não tem app. A reposição criada pelo admin vem pré-preenchida com eles (13.3).
 
 ### 13.4 Situação piorou
 
@@ -674,6 +736,10 @@ Prioridade P1 = sem ela o MVP não funciona; P2 = necessária para a operação 
 
 **US-17 · P2 · Cancelar minha vaga.** Quando toco em "Não vou poder ir", então a vaga é liberada e, para outro dia, preciso de uma entrada nova.
 
+**US-18 · P2 · Serviço regulado.** Como agendador de uma unidade que atende pacientes da regulação, quando lanço pelo CPF os pacientes que a regulação mandou, então eles entram na sessão já confirmados e seguem para a fila do dia; quem não tem app entra como "sem app". Como paciente, quando tento entrar na lista de um serviço regulado, então o app explica que ele é marcado pela regulação (AD-026).
+
+**US-19 · P2 · Contingência.** Como recepção, quando o sistema cai, então chamo pela lista do dia impressa; quando volta, registro quem foi atendido e o período da queda, e ninguém toma falta nesse período (AD-020).
+
 ## 15. Requisitos não funcionais
 
 A prefeitura é a **dona dos dados (controladora)** e a empresa é a **operadora**. Sintomas, documentos e localização são tratados como dados sensíveis.
@@ -720,17 +786,18 @@ A prefeitura é a **dona dos dados (controladora)** e a empresa é a **operadora
 
 **Em aberto**
 
-- [ ] Validar o questionário v1 (7.3) e suas regras de classificação com enfermeiro ou médico.
+- [ ] Validar o questionário v1 (7.3) e suas regras de classificação com enfermeiro ou médico: D8.
 - [x] Peso entre prioridade legal e nível de risco: configuração do município (AD-004).
-- [ ] Validade do encaminhamento: o agendador informa a data de vencimento, ou o sistema assume um prazo padrão?
-- [ ] Prazo de exclusão das fotos de documentos após inatividade do cadastro (RNF-LGPD-04).
+- [ ] Validade do encaminhamento: o agendador informa a data de vencimento, ou o sistema assume um prazo padrão? Não há prazo nacional; levantar no D6 (AD-026).
+- [ ] Prazo de exclusão das fotos de documentos após inatividade do cadastro (RNF-LGPD-04): D5.
 - [ ] Migrar entradas entre unidades na transferência, mantendo a data original: fora do MVP, reavaliar com uso real.
 - [ ] Triagem cadenciada pela previsão de atendimento (RN-TRI-06): validar com uma unidade piloto.
 - [ ] Reativação de entrada arquivada mantendo a data original (RN-PARADA-02): confirmar os 30 dias.
-- [ ] Área de abrangência por endereço como critério de vínculo, além do cadastro validado.
-- [ ] Contingência: como a unidade opera se o sistema ou a internet cair (papel, senha manual).
-- [ ] Hospedagem da camada municipal e modelo de custo para a prefeitura.
-- [ ] Assumido nesta revisão, confirmar: sair da fila por 3 pulos conta como falta (RN-FALTA-02); destaque de 10 s por chamada na TV (RN-TV-07).
+- [ ] Área de abrangência por endereço como critério de vínculo, além do cadastro validado: perguntar no D4 se a unidade atende só a população adscrita.
+- [x] Contingência: como a unidade opera se o sistema ou a internet cair (papel, senha manual): AD-020.
+- [ ] Hospedagem da camada municipal e modelo de custo para a prefeitura: MVP e piloto decididos (PD-12); longo prazo e cobrança no D7.
+- [x] Sair da fila por 3 pulos conta como falta, anulável pela recepção (RN-FALTA-02, AD-021).
+- [x] Destaque por chamada na TV: configurável por unidade, padrão 10 s (RN-TV-07, AD-022).
 
 **Próximos passos (SDD)**
 

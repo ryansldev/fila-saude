@@ -49,13 +49,15 @@ Por quê:
 - **Biometria comercial como módulo opcional**, contratado pelo município, porque tem custo por validação e exige contrato com fornecedor.
 - **Usurpação:** quem prova a identidade (gov.br ou recepção) **retoma** a conta de um CPF já usado. A conta antiga é bloqueada e o caso vai para a auditoria (substitui o "procure a recepção para contestar" da RN-ID-02 quando há gov.br).
 
-## Decisões em aberto
+## Decisões (AD-017, 2026-11-10)
 
-1. **O nível de confiança é o caminho?** Ou o MVP exige verificação para tudo, mais simples e com mais atrito?
-2. **Sessão pública exige conta verificada?** Isso fecha o cambista, mas quem nunca foi à unidade e não tem gov.br prata não consegue se inscrever sozinho.
-3. **gov.br no MVP ou depois?** Ele depende de cada prefeitura pedir a credencial. Uma opção: o MVP sai com presencial (A) e o gov.br entra antes do piloto.
-4. **Biometria comercial entra no MVP?** Recomendação: não. Fica como módulo para depois do piloto.
-5. **Jurídico:** a base legal para tratar biometria (se houver a opção C) e o texto do termo (RNF-LGPD-01).
+A tabela acima era a proposta. O que foi decidido:
+
+1. **Nível de confiança:** sim. A conta nasce não verificada e já usa o app.
+2. **Sessão pública:** **não** exige conta verificada (diferente da proposta). A verificação acontece no 1º check-in, pela recepção; conta não verificada fica "presente, aguardando validação". Contra robôs, captcha e limite na inscrição (RNF-SEG-03).
+3. **gov.br:** depois do piloto, opcional por município.
+4. **Biometria comercial:** fora do MVP; reavaliada depois do piloto.
+5. **Jurídico:** o texto do termo segue no [D5](tasks.md). A base legal da biometria só volta se a opção C for adotada.
 
 ## Fontes
 

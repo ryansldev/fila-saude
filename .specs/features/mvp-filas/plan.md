@@ -2,7 +2,7 @@
 
 2026-11-10 · status: **rascunho para revisão**
 
-Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisões de produto: AD-001..AD-017 em [`.specs/STATE.md`](../../STATE.md). Anexos: [discovery-identidade.md](discovery-identidade.md) (decidido) e [hospedagem.md](hospedagem.md) (em aberto).
+Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisões de produto: AD-001..AD-048 em [`.specs/STATE.md`](../../STATE.md). Anexos: [discovery-identidade.md](discovery-identidade.md) (decidido), [hospedagem.md](hospedagem.md) (MVP e piloto decididos, PD-12; longo prazo no D7) e [discovery-regulacao.md](discovery-regulacao.md) (MVP decidido, AD-026; piloto a confirmar).
 
 ## 1. Decisões de arquitetura
 
@@ -15,11 +15,12 @@ Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisõe
 | PD-05 | **better-auth em duas configurações**: central para pacientes (CPF como username, plugin Expo) e uma por tenant para o painel (criada sob demanda, em cache). Perfis e escopo em tabela própria | Contas de servidores municipais ficam no banco do município |
 | PD-06 | **Identidade por nível de confiança** (AD-017): a recepção verifica no 1º check-in; gov.br depois do piloto | Lançar sem depender da prefeitura |
 | PD-07 | **Tempo real por SSE**, com **LISTEN/NOTIFY** do Postgres entre as instâncias da API; ações por HTTP | Fluxo só de ida; HTTP comum passa pelo firewall municipal; reconexão nativa; sem Redis |
-| PD-08 | **Regras em `packages/domain`**: TS puro, sem banco nem relógio próprio, reescrito a partir do `prototype/js/engine.js`, com os 46 testes portados antes | As regras já validadas viram aceite; a API só carrega, aplica e grava |
+| PD-08 | **Regras em `packages/domain`**: TS puro, sem banco nem relógio próprio, reescrito a partir do `prototype/js/engine.js`, com os 51 testes portados antes | As regras já validadas viram aceite; a API só carrega, aplica e grava |
 | PD-09 | **`apps/painel`**: Next com `/painel`, `/estacao` e `/tv` no subdomínio do tenant; a landing segue em `apps/web` | Separa a área autenticada do site público |
 | PD-10 | **Recorrência RFC 5545** (lib `rrule`): a série guarda DTSTART/DTEND/RRULE/EXDATE/RDATE; as ocorrências viram sessões numa janela móvel de 90 dias | Alocação, vagas e fila sempre apontam para uma linha real |
 | PD-11 | **Worker com varredura a cada minuto** por tenant, com consultas idempotentes; **push por tabela de saída** (outbox) | Não perde nada se cair; não reagenda quando um horário muda; ~8 consultas/s com 100 tenants |
 | PD-12 | **MVP e piloto na AWS sa-east-1, setup enxuto** ([hospedagem.md](hospedagem.md)): 1 VM t4g.small com Docker Compose (Caddy, API, painel) + RDS Postgres db.t4g.micro zona única com PITR (um banco por município na mesma instância) + S3/KMS; infra em OpenTofu; deploy por GitHub Actions. ~R$ 300–410/mês. Tudo em contêiner e Postgres padrão, para migrar ou instalar na prefeitura depois | Mais barato sem abrir mão de backup, criptografia, isolamento e dados no Brasil; sem alta disponibilidade no piloto |
+| PD-13 | **Ações do domínio devolvem resultado + eventos** (2026-11-10): `acao(estado, comando, agora)` → `{ ok: true, estado, eventos }` ou `{ ok: false, erro }` com código estável. Não alteram o que recebem. A API grava o estado e transforma cada evento em auditoria, outbox de push e `NOTIFY`, na mesma transação | Auditoria e push explícitos (o evento diz o *porquê*: chamado, rechamado, remanejado); testes TDD sobre eventos; erro vira `409` direto. Descartados: mutar como o protótipo e comparar antes/depois (frágil, perde o motivo) e classes de agregado (cerimônia sem ganho) |
 
 ## 2. Visão geral
 
@@ -75,6 +76,8 @@ Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisõe
 - `db:migrate` aplica as migrations do schema municipal em todos os tenants (e no central, com o seu próprio conjunto de migrations).
 - Na infra da prefeitura: a mesma imagem, com `TENANT_MODE=single`.
 
+**Pessoa sem app (AD-035):** `pessoa_local` no banco do município (nome, nascimento, CPF opcional), usada no balcão, em entradas criadas pela recepção e em lançamentos de serviço regulado; quando surge uma conta central verificada com o mesmo CPF, o vínculo é gravado no tenant.
+
 **Paciente × município:** a conta é central; o que o paciente tem num município (entradas, filas, cadastro) fica no banco daquele município, referenciando o `paciente.id` central. O app junta as visões consultando cada tenant onde o paciente tem algo ativo (índice no central: paciente → municípios em que tem registros, sem nenhum dado clínico).
 
 ## 5. Autenticação e autorização
@@ -88,30 +91,30 @@ Spec: [spec.md](spec.md) e [source.md](source.md) (RN-*, INV-*, RNF-*). Decisõe
 
 ## 6. Domínio (`packages/domain`)
 
-Funções puras sobre dados explícitos (entradas, configuração, chamadas já feitas, `agora`). Nada de I/O.
+Funções puras sobre dados explícitos (entradas, configuração, chamadas já feitas, `agora`). Nada de I/O. Formato das ações (PD-13): recebem estado, comando e `agora` e devolvem `{ ok: true, estado, eventos }` ou `{ ok: false, erro }`; consultas (ordem, estimativa, visões) devolvem só o valor calculado.
 
 | Módulo | Regras | Origem no protótipo |
 | --- | --- | --- |
-| `questionario` | Classificação 7.3, exclusividade de "Nenhum", prioridade legal (RN-RISCO-04) | `classify`, `legalPriority`, `toggleOption` |
+| `questionario` | Classificação 7.3, exclusividade de "Nenhum", prioridade legal (RN-RISCO-04): grupos fixos com conferência e prazo (AD-025), da pessoa atendida com exceção da criança de colo (AD-027) | `classify`, `legalPriority`, `toggleOption` |
 | `ordem` | RN-ORD com risco × legal configurável (AD-004), sugestão de alocação RN-AL-02 | `orderCompare`, `allocCompare`, `riskThenLegal` |
-| `fila` | Elegibilidade, janela protegida, atraso pela ordem (AD-010), ordem de chamada | `callOrder`, `becomeEligible`, `releaseLocks` |
+| `fila` | Elegibilidade (inclusive prioridade não conferida, AD-024), janela protegida, atraso pela ordem (AD-010), ordem de chamada | `callOrder`, `becomeEligible`, `releaseLocks` |
 | `chamada` | Chamar próximo, rechamar, finalizar, "Não compareceu" com 1º/2º/3º pulo (AD-006), passagem de etapa da triagem | `callNext`, `skip`, `finishCurrent` |
 | `estimativa` | Posição e tempo do remoto/presente, "venha agora", aviso por etapa, média RN-ETA-05 | `eta`, `patientEta`, `tick` |
-| `sessao` | Contratos de estado 9.3 (transição não listada = erro), vagas (INV-02), encerramento (falta × remanejado) | vários |
+| `sessao` | Contratos de estado 9.3 (transição não listada = erro), vagas (INV-02), lançamento de serviço regulado (AD-026), encerramento (falta × remanejado; falta anulável, AD-021; sem falta no período de contingência, AD-020) | vários |
 | `qr` | Token HMAC por sessão, janela de 30 s, aceita o atual e o anterior | `qrToken`, `checkIn` |
 | `recorrencia` | Expansão RRULE/EXDATE/RDATE em ocorrências, divisão de série | novo |
 | `permissoes` | Matriz 9.3 | novo |
 
 **Porte:**
-1. Os 46 testes de `prototype/tests/engine.test.js` (casos C1..C45 de `.specs/features/prototipo/proofs.md`) são reescritos em Vitest contra a nova API do pacote **antes** da implementação.
+1. Os 51 testes de `prototype/tests/engine.test.js` (casos C1..C45 de `.specs/features/prototipo/proofs.md`) são reescritos em Vitest contra a nova API do pacote **antes** da implementação.
 2. As regras vêm em TS com tipos explícitos para estado de entrada/fila.
-3. A reescrita está pronta quando todos passam, mais os testes novos das regras que o protótipo não cobre (recorrência, permissões, encerramento, AD-015..017).
+3. A reescrita está pronta quando todos passam, mais os testes novos das regras que o protótipo não cobre (recorrência, permissões, encerramento, AD-015..017, AD-020..048).
 
 ## 7. API
 
 - **Rotas** em `routes/v1/...` (autoload), agrupadas por ator: `paciente/*`, `painel/*` (admin, agendador, recepção), `estacao/*`, `tv/*` e `publico/*` (catálogo e agenda).
 - **Contratos** em `packages/schemas` (Zod), validados na entrada e na saída. INV-06: as respostas do app são montadas por funções de visão que só incluem dados do próprio paciente.
-- **Transações:** toda ação carrega o estado necessário, aplica a regra do domínio e grava na mesma transação, junto com a auditoria, a outbox de push e o `NOTIFY`.
+- **Transações:** toda ação carrega o estado necessário, aplica a regra do domínio e grava na mesma transação, junto com a auditoria, a outbox de push, o `NOTIFY` e os eventos de fila com horário (base das métricas do piloto, AD-042).
 - **Concorrência:**
   - "Chamar próximo", "Não compareceu", check-in e saída travam a linha da sessão (`SELECT … FOR UPDATE`), o que serializa as mudanças de ordem de uma fila (RN-CHAM-01, INV-04);
   - alocação e inscrição usam um contador de versão da sessão; uma tentativa com versão velha recebe `409` e a lista atualizada (RN-PERF-02, INV-02).
@@ -135,9 +138,10 @@ Varredura a cada minuto, por tenant, com lock consultivo (`pg_try_advisory_lock`
 | Tarefa | Regra |
 | --- | --- |
 | Abrir sessões cujo início chegou | RN-FILA-01, contrato da sessão |
-| Liberar alocações pendentes e vagas seguras com encaminhamento não aceito na abertura | RN-CONF-04, RN-ENC-04 |
+| Liberar alocações pendentes e vagas seguras com encaminhamento não aceito na abertura (lançamentos de serviço regulado nunca, AD-026) | RN-CONF-04, RN-ENC-04 |
 | Destacar alocação pendente há mais de 24 h | RN-CONF-03 |
-| "Saia de casa" e recálculo de estimativa em sessões abertas | RN-ETA-03 |
+| "Saia de casa" e recálculo de estimativa em sessões abertas (suspensos em modo manual) | RN-ETA-03 |
+| Detectar unidade sem sinal (TV e todas as estações por ~2 min) e entrar/sair do modo manual | RN-SES-05, AD-043 |
 | Encaminhamento vencido | RN-ENC-03 |
 | "Ainda precisa?" (30 dias) e arquivamento (7 dias) | RN-PARADA |
 | Lembrar o admin no horário de fim | RN-SES-01 |
@@ -152,7 +156,7 @@ Varredura a cada minuto, por tenant, com lock consultivo (`pg_try_advisory_lock`
 
 - **QR de entrada:** a TV mostra `HMAC(segredo da sessão, janela de 30 s)` de cada sessão aberta da unidade; a API confere com o relógio do servidor, aceitando a janela atual e a anterior (RN-PRES-01). O check-in exige o paciente logado (RNF-SEG-01).
 - **Estação:** página em `/estacao`, com mini-janela por Document Picture-in-Picture (Chrome/Edge), e fallback para aba normal e para modo celular (RN-EST-02, RN-EST-04). Uma estação com chamado não fecha (RN-EST-05).
-- **TV:** rota enxuta, com pouco JavaScript, fonte grande, botão "Iniciar painel" para o som, fila de anúncios de 10 s (RN-TV-04, RN-TV-07). Sem nomes (AD-012).
+- **TV:** rota enxuta, com pouco JavaScript, fonte grande, botão "Iniciar painel" para o som, fila de anúncios com destaque configurável por unidade, padrão 10 s (RN-TV-04, RN-TV-07, AD-022). Sem nomes (AD-012).
 - **Documentos:** upload direto para o S3 por URL pré-assinada, com prefixo e chave KMS por tenant. A leitura é por URL pré-assinada curta, emitida só para os perfis da matriz, e cada emissão vai para a auditoria (RNF-LGPD-03).
 - **Recorrência:** criar uma série gera as ocorrências; editar uma vira exceção daquela sessão; "esta e as seguintes" fecha a série com UNTIL e cria outra; cancelar uma ocorrência segue o fluxo de cancelamento (13.3).
 - **Fuso:** todas as datas em UTC no banco; regras de dia ("véspera", "no dia") no fuso da unidade.
@@ -180,7 +184,7 @@ Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (OpenT
 4. **Sessão privada:** lista de espera, encaminhamento, alocação, confirmação e lista de ligação (US-03..US-05).
 5. **Triagem:** duas etapas e confirmação de risco (RN-TRI, US-09).
 6. **Recepção:** balcão e pré-cadastro (US-12, US-14).
-7. **P2:** cancelamento e remanejamento (US-15), cancelamento pelo paciente (US-17), lista de reserva (RN-PUB-02).
+7. **P2:** cancelamento e remanejamento (US-15), cancelamento pelo paciente (US-17), lista de reserva (RN-PUB-02); serviço regulado (US-18) na fase 5 e contingência (US-19) na fase 7.
 
 ## 13. Riscos
 
@@ -190,11 +194,14 @@ Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (OpenT
 | Migration que falha no meio dos tenants | Migrations idempotentes; o runner registra o estado por tenant e pode retomar |
 | Push ignorado ou desativado | Lista de ligação (RN-CONF-03) e "venha agora" dentro do app; onboarding explica o push |
 | SSE caindo em rede móvel ruim | Reconexão com visão completa; o app também atualiza ao voltar para o primeiro plano |
-| Atraso na publicação nas lojas (Apple) | Começar o build e a conta de desenvolvedor cedo; o piloto pode usar TestFlight e teste interno do Google Play |
+| Atraso ou recusa na publicação nas lojas (Apple 5.1.1(ix): app de saúde enviado por quem presta o serviço) | D10: conta de desenvolvedor da empresa e submissão de teste cedo; um app só, da empresa (AD-028); o piloto pode usar TestFlight e teste interno do Google Play |
 
 ## Em aberto
 
-- Provedor de longo prazo, oferta "na infra da prefeitura" e modelo de cobrança ([hospedagem.md](hospedagem.md)).
-- Plano de contingência da unidade quando o sistema cair (fonte §16), necessário porque o piloto não tem alta disponibilidade.
-- Termo do app com o jurídico (RNF-LGPD-01) e o RIPD (RNF-LGPD-02).
-- Propostas da fonte §16 para validar no piloto (questionário, tempo médio, 30 dias, 3 pulos, 10 s na TV).
+- Provedor de longo prazo, oferta "na infra da prefeitura" e modelo de cobrança ([hospedagem.md](hospedagem.md)); a cobrança e as exigências de hospedagem saem do D7.
+- Jurídico e LGPD (D5): termo (RNF-LGPD-01), RIPD (RNF-LGPD-02), retenção das fotos, grupos e documentos de prioridade legal, aviso de declaração falsa (AD-024).
+- Contratação (D7): modalidade, exigências de hospedagem e modelo de cobrança.
+- Regulação (D6, [discovery-regulacao.md](discovery-regulacao.md)): configuração dos serviços do piloto, validade da requisição e integração pós-piloto com e-SUS Regulação/SISREG (AD-026).
+- Validação clínica do questionário v1 (D8), antes do piloto.
+- Números-alvo dos critérios de sucesso do piloto (AD-029), depois da entrevista do D4.
+- Propostas da fonte §16 para validar no piloto (tempo médio, triagem cadenciada, 30 dias).
