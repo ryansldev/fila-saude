@@ -11,7 +11,8 @@ export type CodigoErro =
   | "qr_invalido"
   | "requisicao_pendente"
   | "sem_permissao"
-  | "fora_do_prazo";
+  | "fora_do_prazo"
+  | "pendencia";
 
 export type TipoEvento =
   | "entrada_criada"

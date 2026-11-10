@@ -1,8 +1,8 @@
 import { type PrioridadeLegal, rankPrioridade } from "./prioridade.ts";
-import type { NivelRisco } from "./tipos.ts";
+import type { NivelRisco, OrdemMunicipio } from "./tipos.ts";
 
-type Risco = Exclude<NivelRisco, "emergencia">;
-type OrdemMunicipio = "risco" | "prioridade";
+/** Risco vigente na fila: emergência nunca entra (vai ao 192). */
+export type Risco = Exclude<NivelRisco, "emergencia">;
 
 const PESO_RISCO: Record<Risco, number> = { urgente: 2, atencao: 1, rotina: 0 };
 

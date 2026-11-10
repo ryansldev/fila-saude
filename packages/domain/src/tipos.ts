@@ -1,3 +1,5 @@
+import type { Grupo } from "./prioridade.ts";
+
 /** Nível de risco sugerido pelo questionário (Manchester reduzido). */
 export type NivelRisco = "emergencia" | "urgente" | "atencao" | "rotina";
 
@@ -60,4 +62,26 @@ export type Classificacao = {
   regra: string;
   /** Mostrar CVV (188) e SAMU (192) em destaque. */
   apoio: boolean;
+};
+
+/** Ordem entre risco e prioridade legal (configuração do município, RN-ORD). */
+export type OrdemMunicipio = "risco" | "prioridade";
+
+/** Configurações que a fila do dia usa (§ Configurações de specs/modelo). Padrões em CONFIG_PADRAO. */
+export type ConfigUnidade = {
+  /** Fuso IANA da unidade. */
+  fuso: string;
+  /** Tamanho da janela protegida (K). */
+  janelaK: number;
+  toleranciaMin: number;
+  saiaDeCasaMin: number;
+  qrSegundos: number;
+  destaqueTvSegundos: number;
+  prazoConfirmacaoHoras: number;
+  tempoMedioInicialMin: number;
+  ordemMunicipio: OrdemMunicipio;
+  alertaFaltas: { faltas: number; dias: number };
+  aindaPrecisa: { intervaloDias: number; prazoDias: number };
+  /** Sobrepõe o prazo de validade da conferência de cada grupo (D5); vazio = padrões de GRUPOS. */
+  prazosPrioridade: Partial<Record<Grupo, number | null>>;
 };

@@ -5,7 +5,17 @@ export {
   TRANSICOES_SESSAO,
   transicionar,
 } from "./contratos.ts";
-export type { ChaveOrdem, ChaveSugestao } from "./ordem.ts";
+export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, Pendencia } from "./fila.ts";
+export {
+  CONFIG_PADRAO,
+  checkIn,
+  conferirEMarcar,
+  elegiveis,
+  ficarElegivel,
+  marcarPresencaSemApp,
+  vouSair,
+} from "./fila.ts";
+export type { ChaveOrdem, ChaveSugestao, Risco } from "./ordem.ts";
 export { compararOrdem, compararSugestao } from "./ordem.ts";
 export type { Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
@@ -24,9 +34,11 @@ export type {
   Alarme,
   Classificacao,
   Condicao,
+  ConfigUnidade,
   Gravidade,
   GrupoDeclarado,
   Motivo,
   NivelRisco,
+  OrdemMunicipio,
   Respostas,
 } from "./tipos.ts";
