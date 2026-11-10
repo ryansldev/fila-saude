@@ -19,7 +19,7 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | PD-09 | **`apps/painel`**: Next com `/painel`, `/estacao` e `/tv` no subdomínio do tenant; a landing segue em `apps/web` | Separa a área autenticada do site público |
 | PD-10 | **Recorrência RFC 5545** (lib `rrule`): a série guarda DTSTART/DTEND/RRULE/EXDATE/RDATE; as ocorrências viram sessões numa janela móvel de 90 dias | Alocação, vagas e fila sempre apontam para uma linha real |
 | PD-11 | **Worker com varredura a cada minuto** por tenant, com consultas idempotentes; **push por tabela de saída** (outbox) | Não perde nada se cair; não reagenda quando um horário muda; ~8 consultas/s com 100 tenants |
-| PD-12 | **MVP e piloto na AWS sa-east-1, setup enxuto** ([discovery-hospedagem.md](discovery-hospedagem.md)): 1 VM t4g.small com Docker Compose (Caddy, API, painel) + RDS Postgres db.t4g.micro zona única com PITR (um banco por município na mesma instância) + S3/KMS; infra em OpenTofu; deploy por GitHub Actions. ~R$ 300–410/mês. Tudo em contêiner e Postgres padrão, para migrar ou instalar na prefeitura depois | Mais barato sem abrir mão de backup, criptografia, isolamento e dados no Brasil; sem alta disponibilidade no piloto |
+| PD-12 | **Piloto em duas VPS nossas, no Brasil** (revista em 2026-11-10; [discovery-hospedagem.md](discovery-hospedagem.md), [discovery-preco.md](discovery-preco.md)): **VPS central** (API central: contas, catálogo, roteamento; Postgres central) e **VPS do município** (API em modo de um tenant, `TENANT_MODE=single` da PD-03, com Postgres e fotos do município), ambas com Docker Compose e Caddy. Backup contínuo do Postgres (WAL-G ou pgBackRest, criptografado) para armazenamento de objetos no Brasil, com restauração testada; fotos criptografadas na aplicação com chave por município. Deploy por GitHub Actions. ~R$ 100–150/mês. A VPS do município pode passar para a infra da prefeitura depois, como opção de contrato, com o mesmo contêiner | Custo mínimo para o piloto dar lucro; sem depender da TI municipal para começar. LGPD: somos operadores, com contrato (D5/D7). Sem alta disponibilidade (contingência em papel). Substitui o desenho EC2 + RDS (R$ 300–410) |
 | PD-13 | **Ações do domínio devolvem resultado + eventos** (2026-11-10): `acao(estado, comando, agora)` → `{ ok: true, estado, eventos }` ou `{ ok: false, erro }` com código estável. Não alteram o que recebem. A API grava o estado e transforma cada evento em auditoria, outbox de push e `NOTIFY`, na mesma transação | Auditoria e push explícitos (o evento diz o *porquê*: chamado, rechamado, remanejado); testes TDD sobre eventos; erro vira `409` direto. Descartados: mutar como o protótipo e comparar antes/depois (frágil, perde o motivo) e classes de agregado (cerimônia sem ganho) |
 
 ## 2. Visão geral
@@ -34,7 +34,8 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
                     │ usa packages/domain (regras) e packages/schemas (contratos Zod)
         ┌───────────┼─────────────────────────────┐
         ▼           ▼                             ▼
-   banco central   banco do município A ... N    armazenamento S3 (fotos; prefixo e chave por tenant)
+   banco central   banco do município A ... N    armazenamento de objetos (fotos; chave por tenant)
+   (VPS central)   (uma VPS por município no piloto; PD-12)
    (catálogo,      (listas, filas, cadastros,
     contas)         painel, auditoria, outbox)
                     │
@@ -157,7 +158,7 @@ Varredura a cada minuto, por tenant, com lock consultivo (`pg_try_advisory_lock`
 - **QR de entrada:** a TV mostra `HMAC(segredo da sessão, janela de 30 s)` de cada sessão aberta da unidade; a API confere com o relógio do servidor, aceitando a janela atual e a anterior (RN-PRES-01). O check-in exige o paciente logado (RNF-SEG-01).
 - **Estação:** página em `/estacao`, com mini-janela por Document Picture-in-Picture (Chrome/Edge), e fallback para aba normal e para modo celular (RN-EST-02, RN-EST-04). Uma estação com chamado não fecha (RN-EST-05).
 - **TV:** rota enxuta, com pouco JavaScript, fonte grande, botão "Iniciar painel" para o som, fila de anúncios com destaque configurável por unidade, padrão 10 s (RN-TV-04, RN-TV-07, AD-022). Sem nomes (AD-012).
-- **Documentos:** upload direto para o S3 por URL pré-assinada, com prefixo e chave KMS por tenant. A leitura é por URL pré-assinada curta, emitida só para os perfis da matriz, e cada emissão vai para a auditoria (RNF-LGPD-03).
+- **Documentos:** upload direto para o armazenamento de objetos (compatível com S3) por URL pré-assinada, criptografados com chave por tenant. A leitura é por URL pré-assinada curta, emitida só para os perfis da matriz, e cada emissão vai para a auditoria (RNF-LGPD-03).
 - **Recorrência:** criar uma série gera as ocorrências; editar uma vira exceção daquela sessão; "esta e as seguintes" fecha a série com UNTIL e cria outra; cancelar uma ocorrência segue o fluxo de cancelamento (13.3).
 - **Fuso:** todas as datas em UTC no banco; regras de dia ("véspera", "no dia") no fuso da unidade.
 
@@ -176,9 +177,9 @@ Lições candidatas a aplicar ([LESSONS.md](../../LESSONS.md)): L-001 (limpar re
 
 ## 12. Ordem de construção
 
-Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (OpenTofu, VM, RDS, deploy) saiu da fundação e virou a fase 4, depois da fatia vertical rodando local. Ordem original abaixo, para referência.
+Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (VPS, backup, deploy) saiu da fundação e virou a fase 4, depois da fatia vertical rodando local. Ordem original abaixo, para referência.
 
-1. **Fundação:** infra (OpenTofu, VM, RDS, S3, DNS, Caddy) e deploy (GitHub Actions), banco central e do tenant, resolução do tenant, `tenant:create`, migrations multi-tenant, `packages/domain` com os testes portados, auth do paciente e do painel, auditoria.
+1. **Fundação:** infra (VPS, Postgres, armazenamento, DNS, Caddy) e deploy (GitHub Actions), banco central e do tenant, resolução do tenant, `tenant:create`, migrations multi-tenant, `packages/domain` com os testes portados, auth do paciente e do painel, auditoria.
 2. **Configuração:** município, unidades, serviços, estações, sessões e séries, pareamento da TV (US-13).
 3. **Fatia vertical da sessão pública** (o fluxo principal do protótipo): agenda (US-01) → inscrição pública com questionário (US-02, US-16) → abertura → fila remota no app com SSE (US-06) → check-in pelo QR, "Vou sair" e verificação na recepção (US-07, AD-017) → chamada na estação e na TV (US-08..US-11).
 4. **Sessão privada:** lista de espera, encaminhamento, alocação, confirmação e lista de ligação (US-03..US-05).
@@ -199,6 +200,7 @@ Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (OpenT
 ## Em aberto
 
 - Provedor de longo prazo, oferta "na infra da prefeitura" e modelo de cobrança ([discovery-hospedagem.md](discovery-hospedagem.md)); a cobrança e as exigências de hospedagem saem do D7.
+- Com a API do município numa VPS própria (PD-12), a VPS do município precisa aceitar o login feito na central (token assinado pela central e verificado no tenant): detalhar no plano da fase 1.
 - Jurídico e LGPD (D5): termo (RNF-LGPD-01), RIPD (RNF-LGPD-02), retenção das fotos, grupos e documentos de prioridade legal, aviso de declaração falsa (AD-024).
 - Contratação (D7): modalidade, exigências de hospedagem e modelo de cobrança.
 - Regulação (D6, [discovery-regulacao.md](discovery-regulacao.md)): configuração dos serviços do piloto, validade da requisição e integração pós-piloto com e-SUS Regulação/SISREG (AD-026).

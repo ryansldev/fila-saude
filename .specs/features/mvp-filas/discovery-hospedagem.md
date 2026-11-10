@@ -1,26 +1,26 @@
 # Pré-análise: hospedagem e custo
 
-2026-11-10 · status: **MVP e piloto decididos** (PD-12); provedor de longo prazo e cobrança seguem em aberto.
+2026-11-10 · status: **piloto decidido** (PD-12 revista: duas VPS nossas); provedor da VPS, longo prazo e cobrança seguem em aberto (D7, [discovery-preco](discovery-preco.md)).
 
-## Decisão para o MVP e o piloto
+## Decisão para o MVP e o piloto (revista em 2026-11-10, PD-12)
 
-Objetivo: o mais barato possível sem abrir mão de backup, criptografia, isolamento por município e dados no Brasil.
+Objetivo: o mais barato possível para o piloto dar 10–30% de lucro ([discovery-preco](discovery-preco.md)), sem abrir mão de backup, criptografia, isolamento por município e dados no Brasil.
 
-| Peça | Escolha | US$/mês |
+| Peça | Escolha | R$/mês |
 | --- | --- | --- |
-| Programas | 1 VM EC2 **t4g.small** (ARM) em sa-east-1, Docker Compose com Caddy (TLS automático, curinga por DNS), API (http + sse + worker) e painel | ~22–28 |
-| Banco | **RDS Postgres db.t4g.micro**, zona única, PITR de 7 dias, criptografado; **um banco por município** na mesma instância, mais o central e a homologação | ~28–32 |
-| Fotos | S3 com prefixo e chave KMS por município | ~3–5 |
-| Resto | Route 53, SES (e-mail), logs, tráfego | ~3–8 |
-| **Total** | | **~55–75 (R$ 300–410)** |
+| VPS central | Contas, catálogo e roteamento; Postgres central; homologação | ~40–80 |
+| VPS do município | API em modo de um tenant, Postgres e fotos do município | ~40–80 |
+| Backup e fotos | Armazenamento de objetos no Brasil (compatível com S3); backup contínuo criptografado (WAL-G ou pgBackRest) | ~10–20 |
+| DNS, e-mail transacional | — | ~5–15 |
+| **Total** | | **~100–150** |
 
-- **Infra como código** (OpenTofu): VM, RDS, S3, DNS e regras de rede (o banco só aceita a VM e não fica exposto na internet). Alarme de gasto na conta.
-- **Deploy:** push na `main` → GitHub Actions (testes, imagens no GHCR) → `docker compose pull && up` na VM → migrations em todos os bancos. Rollback para a imagem anterior.
-- **Ferramentas gratuitas:** EAS Free, Sentry, Grafana Cloud, UptimeRobot.
-- **Homologação** na mesma VM e no mesmo RDS, em bancos separados.
-- **O que aceitamos:** sem alta disponibilidade; uma queda leva de minutos (reiniciar) a ~1 h (VM nova + restauração). Depende da contingência em papel (fonte §16).
-- **Descartado para o piloto:** Postgres dentro da VM ou VPS nacional (economiza R$ 150–300/mês, mas o backup e a restauração ficariam por nossa conta, com dado de saúde real).
-- **Quando subir de nível:** dezenas de municípios ou SLA em contrato → RDS Multi-AZ, 2 VMs + load balancer, instâncias reservadas, instância dedicada para quem contratar.
+- **LGPD:** a prefeitura é a controladora e nós somos os operadores (art. 39); o dado pode ficar na nossa infra com contrato que preveja instruções, segurança, aviso de incidente e devolução ou exclusão ao fim (D5, D7). Dados no Brasil.
+- **Criptografia:** fotos criptografadas na aplicação, com chave por município; backups criptografados; disco criptografado se o provedor oferecer.
+- **Backup:** contínuo, com restauração para um ponto no tempo testada antes do piloto (T4.3). É a parte que deixamos de ter "pronta" ao sair do banco gerenciado.
+- **Na infra da prefeitura depois:** a VPS do município é o mesmo contêiner; muda só de dono. Oferecido como opção de contrato depois do piloto.
+- **Provedor:** a escolher entre VPS no Brasil (ex.: Lightsail São Paulo, provedores nacionais), pelo preço e por ter armazenamento de objetos no Brasil.
+- **Quando subir de nível:** vários municípios ou SLA em contrato → banco gerenciado, mais de uma instância, ou a VPS na infra da prefeitura.
+- **Descartado para o piloto:** EC2 + RDS (R$ 300–410/mês, desenho anterior da PD-12) e Lightsail com banco gerenciado (R$ 165–220): mais caros, sem ganho que compense no piloto.
 
 ## Análise original
 
