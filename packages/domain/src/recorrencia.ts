@@ -6,6 +6,7 @@
  * não depende do fuso da máquina); cada ocorrência vira instante real por `localParaInstante`.
  */
 import * as modulo from "rrule";
+import type { EstadoSessao } from "./contratos.ts";
 import { instanteParaLocal, localComoUtc, localParaInstante, utcComoLocal } from "./tempo.ts";
 
 // O rrule 2.8 publica CJS (`main`) e ESM (`module`) sem `exports`: o Node puro carrega o CJS, que só
@@ -139,4 +140,94 @@ export function expandir(serie: Serie, janela: Janela): Ocorrencia[] {
     })
     .filter((o) => o.inicio >= janela.de && o.inicio < janela.ate)
     .sort((a, b) => a.inicio - b.inicio);
+}
+
+/** Ocorrências da série em `janela` cuja chave ainda não foi materializada (idempotência, PD-26). */
+export function ocorrenciasNovas(serie: Serie, existentes: Set<string>, janela: Janela): Ocorrencia[] {
+  return expandir(serie, janela).filter((o) => !existentes.has(o.chave));
+}
+
+/** Data local (`AAAAMMDD`) do dia anterior à chave. */
+function vesperaDe(chave: string): string {
+  return utcComoLocal(localComoUtc(chave) - DIA)
+    .slice(0, 10)
+    .replaceAll("-", "");
+}
+
+/** `rrule` sem `COUNT` e `UNTIL`, mais o fim pedido. */
+function trocarFim(rrule: string, fim: string): string {
+  const resto = rrule.split(";").filter((p) => !p.startsWith("COUNT=") && !p.startsWith("UNTIL="));
+  return [...resto, fim].join(";");
+}
+
+/**
+ * "Esta e as seguintes" (PD-27): `antiga` termina antes de `aPartirDe` e `nova` segue dali. Não
+ * altera `serie`; `aPartirDe` que não é ocorrência da série lança `ocorrencia_inexistente`.
+ *
+ * - A regra continua sendo a mesma: `nova.dtstart` é a primeira ocorrência da *regra* a partir do
+ *   corte (mantém hora, dia e fase de `INTERVAL`), mesmo quando o corte é uma RDATE. Sem ocorrência
+ *   da regra a partir do corte, a regra da `nova` fica vazia e só as RDATE restam.
+ * - `COUNT` é repartido (as removidas por EXDATE antes do corte contam, como no RFC 5545).
+ * - `antiga` só ganha `UNTIL` quando a regra ainda tem ocorrência a partir do corte: na véspera
+ *   (só data) se o corte é da regra; na última ocorrência da regra antes do corte, se é RDATE.
+ * - EXDATE e RDATE vão para o lado da sua chave (a do corte, para a `nova`).
+ */
+export function dividirSerie(serie: Serie, aPartirDe: string): { antiga: Serie; nova: Serie } {
+  const corte = localComoUtc(aPartirDe);
+  if (!locaisDaSerie(serie, corte, corte).includes(aPartirDe)) throw new Error("ocorrencia_inexistente");
+  const antes = (chave: string) => chave < aPartirDe; // chaves têm largura fixa: ordem de texto = cronológica
+  const regra = regraDaSerie(serie);
+  const proxima = regra.after(new Date(corte), true);
+  const anterior = regra.before(new Date(corte), false);
+  const vespera = `UNTIL=${vesperaDe(aPartirDe)}`;
+  const count = /(?:^|;)COUNT=(\d+)/.exec(serie.rrule)?.[1];
+
+  let rruleAntiga = serie.rrule;
+  let rruleNova = trocarFim(serie.rrule, vespera);
+  let dtstartNova = aPartirDe;
+  if (proxima) {
+    dtstartNova = utcComoLocal(proxima.getTime());
+    const noCorte = dtstartNova === aPartirDe;
+    const ate =
+      anterior && !noCorte
+        ? `UNTIL=${utcComoLocal(anterior.getTime())
+            .replace(/\D/g, "")
+            .replace(/^(\d{8})/, "$1T")}00`
+        : vespera;
+    rruleAntiga = trocarFim(serie.rrule, ate);
+    rruleNova = serie.rrule;
+    if (count !== undefined) {
+      const usadas = regra
+        .between(new Date(localComoUtc(serie.dtstart)), new Date(corte), true)
+        .filter((d) => d.getTime() < corte).length;
+      rruleNova = trocarFim(serie.rrule, `COUNT=${Number(count) - usadas}`);
+    }
+  }
+  return {
+    antiga: { ...serie, rrule: rruleAntiga, exdate: serie.exdate.filter(antes), rdate: serie.rdate.filter(antes) },
+    nova: {
+      ...serie,
+      dtstart: dtstartNova,
+      rrule: rruleNova,
+      exdate: serie.exdate.filter((c) => !antes(c)),
+      rdate: serie.rdate.filter((c) => !antes(c)),
+    },
+  };
+}
+
+/**
+ * Das sessões já materializadas da série antiga, decide o que a divisão apaga (PD-27): só as
+ * `planejada` sem entradas a partir de `aPartirDe` (inclusive). O resto é mantido.
+ */
+export function separarMaterializadas(
+  chaves: { chave: string; temEntradas: boolean; estado: EstadoSessao }[],
+  aPartirDe: string,
+): { apagar: string[]; manter: string[] } {
+  const apagar: string[] = [];
+  const manter: string[] = [];
+  for (const c of chaves) {
+    const apagavel = c.chave >= aPartirDe && c.estado === "planejada" && !c.temEntradas;
+    (apagavel ? apagar : manter).push(c.chave);
+  }
+  return { apagar, manter };
 }
