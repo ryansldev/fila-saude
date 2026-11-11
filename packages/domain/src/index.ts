@@ -13,6 +13,16 @@ export {
   TRANSICOES_SESSAO,
   transicionar,
 } from "./contratos.ts";
+export {
+  cancelar,
+  desistir,
+  encerrar,
+  escolherData,
+  origemDaSessao,
+  outraData,
+  registrarContingencia,
+  titularDaFalta,
+} from "./encerramento.ts";
 export type { Estimativa } from "./estimativa.ts";
 export { avisosSaiaDeCasa, estimar, tempoMedio } from "./estimativa.ts";
 export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, Pendencia } from "./fila.ts";
@@ -25,7 +35,7 @@ export {
   marcarPresencaSemApp,
   vouSair,
 } from "./fila.ts";
-export type { Entrada, ItemLigacao, Pessoa, Servico, SessaoVagas, Sugestao } from "./lista.ts";
+export type { Entrada, ItemLigacao, Origem, Pessoa, Servico, SessaoVagas, Sugestao } from "./lista.ts";
 export {
   alocar,
   arquivar,
@@ -58,7 +68,6 @@ export {
   temPrioridade,
 } from "./prioridade.ts";
 export { tokenQr, validarQr } from "./qr.ts";
-
 export { alternarOpcao, classificar } from "./questionario.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";

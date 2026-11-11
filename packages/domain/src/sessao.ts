@@ -46,14 +46,17 @@ export const idDoItem = (entradaId: string, sessaoId: string): string => `${sess
 /** RN-FILA-04: prefixo do serviço e número com 3 dígitos (ex.: "C-012"). */
 export const senhaDe = (prefixo: string, numero: number): string => `${prefixo}-${String(numero).padStart(3, "0")}`;
 
-/** INV-02: a sessão ainda tem vaga (`null` = sem limite). "Na reserva" não ocupa. */
-const temVaga = (s: SessaoVagas): boolean => s.vagas === null || s.ocupadas < s.vagas;
+// Os auxiliares exportados abaixo (temVaga, ocupar, itemCriado, comAbertura, situacao, porNaFila,
+// jaNaSessao) são de uso interno do pacote (encerramento.ts); não saem pelo index.
 
-const ocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas + 1 });
+/** INV-02: a sessão ainda tem vaga (`null` = sem limite). "Na reserva" não ocupa. */
+export const temVaga = (s: SessaoVagas): boolean => s.vagas === null || s.ocupadas < s.vagas;
+
+export const ocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas + 1 });
 const desocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: Math.max(0, s.ocupadas - 1) });
 
 /** Estado do item na linha de criação ("—") do contrato da fila do dia. */
-function itemCriado(evento: string): EstadoItem {
+export function itemCriado(evento: string): EstadoItem {
   const linhas = TRANSICOES_ITEM.filter((t) => t.de === "—" && t.evento === evento);
   const [linha] = linhas;
   if (!linha || linhas.length > 1 || linha.para === "(mesmo)" || linha.para === "(não cria)") {
@@ -74,13 +77,13 @@ function destino(
 }
 
 /** "Confirmada (ou Na fila, se a sessão já abriu)": a qualificação da célula "Para" das specs. */
-const comAbertura = (para: EstadoEntrada, aberta: boolean): EstadoEntrada =>
+export const comAbertura = (para: EstadoEntrada, aberta: boolean): EstadoEntrada =>
   para === "confirmada" && aberta ? "na_fila" : para;
 
-type Situacao = { ok: true; aberta: boolean } | { ok: false; erro: CodigoErro };
+export type Situacao = { ok: true; aberta: boolean } | { ok: false; erro: CodigoErro };
 
 /** O dia da sessão, se houver: `null` ou planejada = ainda não abriu; encerrada ou cancelada = fechada. */
-function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
+export function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
   if (dia === null) return { ok: true, aberta: false };
   if (dia.sessaoId !== sessao.id) return { ok: false, erro: "transicao_proibida" };
   if (dia.estado === "planejada") return { ok: true, aberta: false };
@@ -92,7 +95,7 @@ function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
  * Põe a entrada na fila do dia com o próximo número livre (RN-FILA-02) e a senha dele (RN-FILA-04).
  * Quem entra presente (balcão) fica elegível na hora, com a janela protegida e sem atraso (número novo).
  */
-function porNaFila(
+export function porNaFila(
   dia: DiaSessao,
   entrada: Entrada,
   estado: EstadoItem,
@@ -132,6 +135,13 @@ function porNaFila(
   if (estado !== "presente") return { dia: novo, eventos };
   const elegivel = ficarElegivel(novo, item.id, agora, { aplicarAtraso: false });
   return { dia: elegivel.estado, eventos: [...eventos, ...elegivel.eventos] };
+}
+
+/** INV-05: a entrada (ou o id dela) já tem item no dia da sessão; ações públicas recusam como duplicada. */
+export function jaNaSessao(dia: DiaSessao | null, entradaId: string): boolean {
+  if (dia === null) return false;
+  const itemId = idDoItem(entradaId, dia.sessaoId);
+  return dia.itens.some((i) => i.entradaId === entradaId || i.id === itemId);
 }
 
 const trocar = (entradas: Entrada[], nova: Entrada): Entrada[] => entradas.map((e) => (e.id === nova.id ? nova : e));
@@ -314,6 +324,7 @@ export function inscreverPublica(
   if (sessao.visibilidade !== "publica" || servico.id !== sessao.servicoId) return falha("transicao_proibida");
   const sit = situacao(dia, sessao);
   if (!sit.ok) return falha(sit.erro);
+  if (jaNaSessao(dia, cmd.id)) return falha("duplicada");
   const criada = criarEntrada(
     cmd.entradasAtivas,
     { servico, pessoa: cmd.pessoa, responsavelId: cmd.responsavelId, respostas: cmd.respostas, id: cmd.id },
@@ -375,6 +386,7 @@ export function trocarReserva(
   }
   const sit = situacao(diaDestino, destinoSessao);
   if (!sit.ok) return falha(sit.erro);
+  if (jaNaSessao(diaDestino, entrada.id)) return falha("duplicada");
   if (!temVaga(destinoSessao)) return falha("sem_vaga");
 
   const fotoOk = cmd.servico.modo !== "requisicao" || cmd.fotoAceita;
@@ -435,6 +447,7 @@ export function incluirNoBalcao(
   }
   if (servico.modo === "regulado") return falha("servico_regulado");
   if (dia.estado !== "aberta") return falha("sessao_fechada");
+  if (jaNaSessao(dia, cmd.id)) return falha("duplicada");
   const criada = criarEntrada(
     cmd.entradasAtivas,
     {
@@ -449,7 +462,7 @@ export function incluirNoBalcao(
   );
   if (!criada.ok) return falha(criada.erro);
   if (!temVaga(sessao)) return falha("sem_vaga");
-  const para = transicionar(TRANSICOES_ENTRADA, "—" as EstadoEntrada, ENTRADA_BALCAO);
+  const para = destinoPorCondicao("—", ENTRADA_BALCAO, () => true);
   if (para !== "na_fila") return falha("transicao_proibida");
 
   const base = criada.estado;
@@ -497,6 +510,10 @@ export function lancarRegulado(
   }
   const sit = situacao(dia, sessao);
   if (!sit.ok) return falha(sit.erro);
+  // A escala de risco (lista-espera, "Classificação de risco"): emergência não entra em lista nem fila;
+  // vai ao SAMU (192), como no questionário (RN-LE-01, linha "Questionário = Emergência").
+  if (cmd.riscoDaRegulacao === "emergencia") return falha("emergencia");
+  if (jaNaSessao(dia, cmd.id)) return falha("duplicada");
   if (entradaAtivaDa(cmd.entradasAtivas, cmd.pessoa, servico.id)) return falha("duplicada");
   if (!temVaga(sessao)) return falha("sem_vaga");
 
