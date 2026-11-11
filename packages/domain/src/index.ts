@@ -27,11 +27,14 @@ export {
 } from "./fila.ts";
 export type { ChaveOrdem, ChaveSugestao, Risco } from "./ordem.ts";
 export { compararOrdem, compararSugestao } from "./ordem.ts";
-export type { Grupo, PrioridadeLegal } from "./prioridade.ts";
+export type { Acao, Celula, LinhaMatriz, Perfil } from "./permissoes.ts";
+export { condicoes, MATRIZ, pode, textoDaCelula } from "./permissoes.ts";
+export type { ContextoDarPrioridade, Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
   expirada,
   GRUPOS,
   grupoDeDeclarado,
+  podeDarPrioridade,
   prioridadeDaPessoa,
   rankPrioridade,
   temPrioridade,
