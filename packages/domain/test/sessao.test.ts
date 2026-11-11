@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { type EstadoEntrada, TRANSICOES_ENTRADA, transicionar } from "../src/contratos.ts";
+import { TRANSICOES_ENTRADA } from "../src/contratos.ts";
 import { CONFIG_PADRAO, conferirEMarcar, type DiaSessao, elegiveis } from "../src/fila.ts";
 import {
   alocar,
   confirmar,
+  destinoPorCondicao,
   type Entrada,
   listaDeLigacao,
+  pendentesNaAbertura,
   type Servico,
   type SessaoVagas,
   sugerir,
@@ -222,9 +224,9 @@ describe("sessão pública (RN-PUB)", () => {
     };
     st = inscrever(st, "ana", INICIO + 10 * MIN);
     expect(ent(st, "ana").estado).toBe("na_fila");
-    const it = itemDe(st.dia, "ana");
-    expect(it?.numero).toBe(2); // RN-FILA-02: próximo número livre
-    expect(it?.estado).toBe("remoto");
+    const item = itemDe(st.dia, "ana");
+    expect(item?.numero).toBe(2); // RN-FILA-02: próximo número livre
+    expect(item?.estado).toBe("remoto");
     expect(st.sessao.ocupadas).toBe(2);
   });
 
@@ -427,11 +429,11 @@ describe("balcão (RN-FILA-03, RN-ENC-05)", () => {
     const { dia } = aberto();
     const r = incluirNoBalcao(dia, cmd("ze"), INICIO + MIN);
     const { dia: d2, sessao, entrada: ze } = aplicar(r);
-    const it = itemDe(d2, "ze");
-    expect([it?.estado, it?.numero, it?.senha]).toEqual(["presente", 3, "C-003"]);
+    const item = itemDe(d2, "ze");
+    expect([item?.estado, item?.numero, item?.senha]).toEqual(["presente", 3, "C-003"]);
     expect(ze.estado).toBe("na_fila");
     expect(ze.responsavelId).toBeNull(); // pessoa local
-    expect(it?.prioridade.conferida).toBe(true); // a recepção conferiu na hora (idoso)
+    expect(item?.prioridade.conferida).toBe(true); // a recepção conferiu na hora (idoso)
     expect(sessao.ocupadas).toBe(3);
 
     expect(erro(incluirNoBalcao(d2, cmd("outra", { sessao }), INICIO + 2 * MIN))).toBe("sem_vaga");
@@ -443,7 +445,7 @@ describe("balcão (RN-FILA-03, RN-ENC-05)", () => {
   it("RN-FILA-03: a entrada do balcão passa pelo contrato de estados", () => {
     const linhas = TRANSICOES_ENTRADA.filter((t) => t.de === "—" && t.evento === "Recepção inclui no balcão");
     expect(linhas.map((t) => [t.para, t.spec])).toEqual([["na_fila", "marcacao"]]);
-    expect(transicionar(TRANSICOES_ENTRADA, "—" as EstadoEntrada, "Recepção inclui no balcão")).toBe("na_fila");
+    expect(destinoPorCondicao("—", "Recepção inclui no balcão", () => true)).toBe("na_fila");
   });
 
   it("RN-ENC-05: balcão recusado em serviço regulado", () => {
@@ -506,8 +508,25 @@ describe("lançamento regulado (RN-ENC-06)", () => {
     );
     const { entrada: ana, dia } = aplicar(r2);
     expect(ana.estado).toBe("na_fila");
-    const it = itemDe(dia, "ana");
-    expect([it?.estado, it?.numero, it?.senha]).toEqual(["remoto", 2, "C-002"]);
+    const item = itemDe(dia, "ana");
+    expect([item?.estado, item?.numero, item?.senha]).toEqual(["remoto", 2, "C-002"]);
+  });
+
+  it("RN-ENC-06/RN-CONF-04: lançamento confirmado não é liberado na abertura", () => {
+    const { entrada: ze, sessao } = aplicar(lancarRegulado(privada(), null, cmd(), T));
+    const pend = pendentesNaAbertura(congelar([ze]), sessao);
+    expect(aplicar(pend).entradas).toEqual([ze]);
+    expect(aplicar(pend).sessao.ocupadas).toBe(1);
+    expect(eventos(pend)).toEqual([]);
+    const dia0 = diaPlanejado({ servicoId: "reg" });
+    const ab = aplicar(abrirSessao(dia0, sessao, congelar([ze]), { servico: REGULADO, fotosAceitas: [] }, INICIO));
+    expect(ab.entradas[0]?.estado).toBe("na_fila");
+    expect(ab.sessao.ocupadas).toBe(1);
+    expect(itemDe(ab.dia, "ze")?.estado).toBe("remoto");
+  });
+
+  it("RN-ENC-06/RN-LE-01: emergência informada pela regulação é recusada (não entra em fila)", () => {
+    expect(erro(lancarRegulado(privada(), null, cmd({ riscoDaRegulacao: "emergencia" }), T))).toBe("emergencia");
   });
 
   it("RN-ENC-06: conta não verificada é tratada como sem app", () => {
@@ -643,6 +662,64 @@ describe("invariantes", () => {
     const senhas = balcao.dia.itens.map((i) => i.senha);
     expect(senhas).toEqual(["C-001", "C-002", "C-003", "C-004", "C-005", "C-006"]);
     expect(new Set(senhas).size).toBe(senhas.length);
+  });
+
+  it("INV-05: id que já tem item na sessão aberta é recusado como duplicada, sem lançar", () => {
+    const e = [entrada("ana", { estado: "confirmada", sessaoId: "s1", servicoId: "cli" })];
+    const { dia } = aplicar(abrir(diaPlanejado(), congelar(e), INICIO));
+    const outraPessoa = { nome: "Outra", nascimento: "1980-01-01", cpf: null };
+    // Balcão com id repetido (pessoa diferente, então RN-LE-02 não pega).
+    const balcao = incluirNoBalcao(
+      dia,
+      {
+        servico: LIVRE,
+        sessao: sessaoVagas({ ocupadas: 1 }),
+        pessoa: outraPessoa,
+        respostas: respostas(),
+        id: "ana",
+        entradasAtivas: [],
+      },
+      INICIO + MIN,
+    );
+    expect(erro(balcao)).toBe("duplicada");
+    // Inscrição pública no dia com id repetido.
+    const pub = inscreverPublica(
+      publica({ ocupadas: 1 }),
+      dia,
+      {
+        servico: LIVRE,
+        pessoa: outraPessoa,
+        responsavelId: "x",
+        respostas: respostas(),
+        id: "ana",
+        entradasAtivas: [],
+        fotoAceita: false,
+      },
+      INICIO + MIN,
+    );
+    expect(erro(pub)).toBe("duplicada");
+    // Lançamento regulado no dia com id repetido.
+    const diaReg = aplicar(
+      abrir(
+        diaPlanejado({ servicoId: "reg" }),
+        congelar([entrada("ana", { estado: "confirmada", sessaoId: "s1", servicoId: "reg" })]),
+        INICIO,
+      ),
+    ).dia;
+    const lanc = lancarRegulado(
+      sessaoVagas({ servicoId: "reg", ocupadas: 1 }),
+      diaReg,
+      {
+        servico: REGULADO,
+        id: "ana",
+        pessoa: outraPessoa,
+        contaId: null,
+        contaVerificada: false,
+        entradasAtivas: [],
+      },
+      INICIO + MIN,
+    );
+    expect(erro(lanc)).toBe("duplicada");
   });
 
   it("ações não alteram o que recebem", () => {

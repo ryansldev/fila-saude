@@ -58,7 +58,6 @@ export {
   temPrioridade,
 } from "./prioridade.ts";
 export { tokenQr, validarQr } from "./qr.ts";
-
 export { alternarOpcao, classificar } from "./questionario.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";

@@ -134,6 +134,13 @@ function porNaFila(
   return { dia: elegivel.estado, eventos: [...eventos, ...elegivel.eventos] };
 }
 
+/** INV-05: a entrada (ou o id dela) já tem item no dia da sessão; ações públicas recusam como duplicada. */
+function jaNaSessao(dia: DiaSessao | null, entradaId: string): boolean {
+  if (dia === null) return false;
+  const itemId = idDoItem(entradaId, dia.sessaoId);
+  return dia.itens.some((i) => i.entradaId === entradaId || i.id === itemId);
+}
+
 const trocar = (entradas: Entrada[], nova: Entrada): Entrada[] => entradas.map((e) => (e.id === nova.id ? nova : e));
 
 const porData = (a: Entrada, b: Entrada): number =>
@@ -314,6 +321,7 @@ export function inscreverPublica(
   if (sessao.visibilidade !== "publica" || servico.id !== sessao.servicoId) return falha("transicao_proibida");
   const sit = situacao(dia, sessao);
   if (!sit.ok) return falha(sit.erro);
+  if (jaNaSessao(dia, cmd.id)) return falha("duplicada");
   const criada = criarEntrada(
     cmd.entradasAtivas,
     { servico, pessoa: cmd.pessoa, responsavelId: cmd.responsavelId, respostas: cmd.respostas, id: cmd.id },
@@ -375,6 +383,7 @@ export function trocarReserva(
   }
   const sit = situacao(diaDestino, destinoSessao);
   if (!sit.ok) return falha(sit.erro);
+  if (jaNaSessao(diaDestino, entrada.id)) return falha("duplicada");
   if (!temVaga(destinoSessao)) return falha("sem_vaga");
 
   const fotoOk = cmd.servico.modo !== "requisicao" || cmd.fotoAceita;
@@ -435,6 +444,7 @@ export function incluirNoBalcao(
   }
   if (servico.modo === "regulado") return falha("servico_regulado");
   if (dia.estado !== "aberta") return falha("sessao_fechada");
+  if (jaNaSessao(dia, cmd.id)) return falha("duplicada");
   const criada = criarEntrada(
     cmd.entradasAtivas,
     {
@@ -449,7 +459,7 @@ export function incluirNoBalcao(
   );
   if (!criada.ok) return falha(criada.erro);
   if (!temVaga(sessao)) return falha("sem_vaga");
-  const para = transicionar(TRANSICOES_ENTRADA, "—" as EstadoEntrada, ENTRADA_BALCAO);
+  const para = destinoPorCondicao("—", ENTRADA_BALCAO, () => true);
   if (para !== "na_fila") return falha("transicao_proibida");
 
   const base = criada.estado;
@@ -497,6 +507,10 @@ export function lancarRegulado(
   }
   const sit = situacao(dia, sessao);
   if (!sit.ok) return falha(sit.erro);
+  // A escala de risco (lista-espera, "Classificação de risco"): emergência não entra em lista nem fila;
+  // vai ao SAMU (192), como no questionário (RN-LE-01, linha "Questionário = Emergência").
+  if (cmd.riscoDaRegulacao === "emergencia") return falha("emergencia");
+  if (jaNaSessao(dia, cmd.id)) return falha("duplicada");
   if (entradaAtivaDa(cmd.entradasAtivas, cmd.pessoa, servico.id)) return falha("duplicada");
   if (!temVaga(sessao)) return falha("sem_vaga");
 
