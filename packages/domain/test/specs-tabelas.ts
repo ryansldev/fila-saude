@@ -161,20 +161,30 @@ export const PERFIS_MATRIZ = [
   "profissional",
 ] as const;
 
-export type LinhaMatriz = { texto: string; celulas: string[] };
+export type LinhaMatrizSpec = { texto: string; celulas: string[] };
+
+const CABECALHO_MATRIZ = ["Ação", "Paciente", "Gestor", "Admin", "Agendador", "Recepção", "Triagem", "Profissional"];
+
+const celulasDaLinha = (linha: string): string[] =>
+  linha
+    .trim()
+    .replace(/^\||\|$/g, "")
+    .split("|")
+    .map((x) => x.trim());
 
 /** Linhas da matriz de `specs/permissoes` (texto da ação + as 7 células, na ordem das colunas). */
-export function lerMatriz(): LinhaMatriz[] {
+export function lerMatriz(): LinhaMatrizSpec[] {
   const texto = readFileSync(resolve(RAIZ, "permissoes", "spec.md"), "utf8").split("\n");
   const inicio = texto.findIndex((l) => /^\|\s*Ação\s*\|\s*Paciente\s*\|/.test(l));
   if (inicio < 0) throw new Error("matriz de permissões não encontrada");
-  const linhas: LinhaMatriz[] = [];
+  const cabecalho = celulasDaLinha(texto[inicio] ?? "");
+  if (cabecalho.join("|") !== CABECALHO_MATRIZ.join("|")) {
+    throw new Error(`cabeçalho da matriz difere de PERFIS_MATRIZ: ${cabecalho.join(" | ")}`);
+  }
+  const linhas: LinhaMatrizSpec[] = [];
   for (let i = inicio + 2; i < texto.length && (texto[i] ?? "").startsWith("|"); i++) {
-    const c = (texto[i] ?? "")
-      .trim()
-      .replace(/^\||\|$/g, "")
-      .split("|")
-      .map((x) => x.trim());
+    const c = celulasDaLinha(texto[i] ?? "");
+    if (c.length !== 1 + PERFIS_MATRIZ.length) throw new Error(`linha da matriz com ${c.length - 1} células: ${c[0]}`);
     linhas.push({ texto: c[0] ?? "", celulas: c.slice(1) });
   }
   return linhas;

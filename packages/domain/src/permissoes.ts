@@ -42,7 +42,7 @@ export type LinhaMatriz = {
   perfis: Partial<Record<Perfil, Celula>>;
 };
 
-export const MATRIZ: LinhaMatriz[] = [
+const LINHAS: LinhaMatriz[] = [
   {
     acao: "criar_unidades_regras_usuarios",
     texto: "Criar unidades, regras do município e usuários do painel",
@@ -180,13 +180,33 @@ export const MATRIZ: LinhaMatriz[] = [
   },
 ];
 
+export const MATRIZ: ReadonlyArray<Readonly<LinhaMatriz>> = Object.freeze(
+  LINHAS.map((l) => Object.freeze({ ...l, perfis: Object.freeze({ ...l.perfis }) })),
+);
+
 /**
- * Algum dos perfis tem a ação? Qualquer célula preenchida conta (✓ ou ressalva); a ressalva
- * ("na alocação ou lançamento", "só ao aplicar no balcão") é contexto a checar por quem chama.
+ * Algum dos perfis tem a ação? Qualquer célula preenchida conta (✓ ou ressalva). Para saber se a
+ * concessão é livre ou depende de contexto ("própria", "só ao aplicar no balcão"), use `condicoes`.
  */
 export function pode(perfis: Perfil[], acao: Acao): boolean {
+  return condicoes(perfis, acao) !== null;
+}
+
+/**
+ * "livre" se algum perfil tem ✓ simples; senão as ressalvas/textos dos perfis que têm a ação
+ * (a checar por quem chama); `null` se nenhum perfil tem a ação.
+ */
+export function condicoes(perfis: Perfil[], acao: Acao): "livre" | string[] | null {
   const linha = MATRIZ.find((l) => l.acao === acao);
-  return linha !== undefined && perfis.some((p) => linha.perfis[p] !== undefined);
+  if (linha === undefined) return null;
+  const restricoes: string[] = [];
+  for (const p of perfis) {
+    const celula = linha.perfis[p];
+    if (celula === undefined) continue;
+    if (celula === true) return "livre";
+    restricoes.push("ressalva" in celula ? celula.ressalva : celula.texto);
+  }
+  return restricoes.length > 0 ? restricoes : null;
 }
 
 /** Texto exato da célula na spec: "" (ausente), "✓", "✓ (ressalva)" ou o texto sem ✓. */
