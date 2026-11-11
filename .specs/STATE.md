@@ -5,14 +5,16 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 ## Onde estamos (2026-11-10)
 
 - **Branch** `docs/spec-mvp-ads` (sem push nem PR).
-- **Specs reorganizadas** (AD-051, [discovery](discovery-estrutura-specs.md)): a antiga `features/mvp-filas/source.md` virou as specs por capacidade em `specs/`, as ADs saíram deste arquivo para `decisions.md` (AD-001..AD-051; PD-01..PD-13 no plan), e `scripts/specs-check.mjs` confere IDs, decisões substituídas e cobertura.
-- **MVP:** `features/mvp-filas/` com `spec.md` (escopo e histórias), `plan.md` (PD-01..PD-13), `tasks.md` (47 tasks em 8 fases, TDD, discoveries D1–D10).
+- **Specs reorganizadas** (AD-051, [discovery](discovery-estrutura-specs.md)): a antiga `features/mvp-filas/source.md` virou as specs por capacidade em `specs/`, as ADs saíram deste arquivo para `decisions.md` (AD-001..AD-051; PD-01..PD-31 no plan), e `scripts/specs-check.mjs` confere IDs, decisões substituídas e cobertura.
+- **MVP:** `features/mvp-filas/` com `spec.md` (escopo e histórias), `plan.md` (PD-01..PD-31), `tasks.md` (47 tasks em 8 fases, TDD, discoveries D1–D10).
 - **Protótipo:** revisões 1–4 construídas e verificadas.
 
 ## Próximo
 
-1. **Plano detalhado da fase 1:** `packages/domain` em TDD, formato PD-13 (resultado + eventos), com o **núcleo executável** (AD-051): transições, matriz de permissões e invariantes como dados em TS; cenários Dado/Quando/Então das specs viram os testes; tabelas das specs passam a ser geradas.
-2. Em paralelo: roteiro da visita à unidade piloto juntando D4, D6 e D9.
+1. **Fase 1A** (`packages/domain`, [plano](features/mvp-filas/plano-fase-1a-dominio.md)) em execução; as Tasks 11 (QR) e 12 (matriz de permissões) são pré-requisito da Task 17 da 1B.
+2. **Fase 1B** (T1.7–T1.9: multi-tenant, auth do paciente e do painel, permissões e auditoria): [plano-fase-1b-fundacao-api.md](features/mvp-filas/plano-fase-1b-fundacao-api.md), 18 tasks, decisões PD-14..PD-23. API em sequência; a Task 9 (CPF em `packages/schemas`) corre em paralelo.
+3. **Fase 2** (T2.1–T2.6: painel, unidades, serviços, worker, sessões e séries, TV): [plano-fase-2-configuracao.md](features/mvp-filas/plano-fase-2-configuracao.md), 30 tasks, decisões PD-24..PD-31. `recorrencia`, `configuracao` e regras no domínio (Tasks 1–5), schemas (6) e a base do painel (7–8) podem começar já, em paralelo com a 1B; a API segue em sequência depois da 1B.
+4. Em paralelo: roteiro da visita à unidade piloto juntando D4, D6 e D9.
 
 ## Pendências fora do código
 

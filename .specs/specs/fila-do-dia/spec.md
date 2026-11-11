@@ -7,6 +7,7 @@ Só é chamado quem está presente. Entre os presentes vale a prioridade e depoi
 Sessões nascem avulsas ou de uma série recorrente (RFC 5545: DTSTART/DTEND, RRULE, EXDATE, RDATE). Cada ocorrência é uma sessão com estado e configuração próprios.
 *Decisões: AD-011, AD-014.*
 
+<!-- gerado: contratos:fila-do-dia:sessao -->
 | De | Evento | Quem / condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | — | Cria sessão | Admin | Planejada | — |
@@ -15,6 +16,7 @@ Sessões nascem avulsas ou de uma série recorrente (RFC 5545: DTSTART/DTEND, RR
 | Planejada | Serviço muda para "regulado" e a sessão é pública sem inscritos | Sistema | (mesmo, privada) | RN-ENC-07 |
 | Aberta | Encerra | Admin; nenhuma estação com paciente chamado | Encerrada | Separa faltas e remanejados (RN-SES-02) |
 | Planejada ou Aberta | Muda visibilidade | Admin; para pública, só se o serviço não é regulado | (mesmo) | RN-PUB-03 |
+<!-- /gerado -->
 
 ## Abertura e entrada na fila
 
@@ -148,6 +150,7 @@ O paciente vê só a própria posição (RN-ETA-01 ou 01b) e o tempo estimado ("
 
 Entrada na fila do dia (por etapa):
 
+<!-- gerado: contratos:fila-do-dia:item -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | — | Sessão abre | Entrada confirmada | Remoto | Senha; número por RN-FILA-01 |
@@ -159,3 +162,4 @@ Entrada na fila do dia (por etapa):
 | Remoto | Recepção recusa ("não conferiu"), com motivo | Identidade não confere | Saiu da fila | Sem remanejamento e sem falta; entrada Cancelada; pode bloquear a conta (RN-ID-03) |
 | Presente | Paciente toca "Vou sair" | — | Remoto | Mantém o número |
 | Remoto ou Presente | Paciente cancela | — | Saiu da fila | Vaga vai para a reserva, se houver |
+<!-- /gerado -->

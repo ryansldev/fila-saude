@@ -159,6 +159,7 @@ QUANDO não houver resposta em 7 dias, O SISTEMA DEVE **arquivar** a entrada (n�
 
 ## Transições
 
+<!-- gerado: contratos:lista-espera:entrada -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | — | Paciente ou recepção cria | RN-LE-01 ok; serviço sem requisição | Aguardando | Nível sugerido calculado |
@@ -175,3 +176,4 @@ QUANDO não houver resposta em 7 dias, O SISTEMA DEVE **arquivar** a entrada (n�
 | Aguardando | A cada 30 dias na lista | — | (mesmo) | Push "ainda precisa?" |
 | Aguardando | 7 dias sem resposta | — | Arquivada | Push |
 | Arquivada | Paciente reativa | Até 30 dias (proposta); serviço não regulado | Aguardando (data original) | — |
+<!-- /gerado -->

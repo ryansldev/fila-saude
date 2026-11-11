@@ -28,6 +28,7 @@
     "db:generate": "npm -w @fila-saude/api run db:generate",
     "db:migrate": "npm -w @fila-saude/api run db:migrate",
     "specs:check": "node scripts/specs-check.mjs",
+    "specs:gen": "node scripts/specs-gen.mjs",
     "prepare": "husky",
     "commit": "cz",
     "test:domain": "npm -w @fila-saude/domain run test"

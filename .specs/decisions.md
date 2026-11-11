@@ -60,7 +60,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-052 | Licença AGPL-3.0 e receita por município | ativa |
 | AD-053 | Pré-cadastro com foto ligado por padrão | ativa |
 | AD-054 | Conferência antes de entrar na fila presencial | ativa |
-| PD-01..PD-13 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md)) |
+| PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
 
