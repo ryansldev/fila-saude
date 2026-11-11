@@ -93,6 +93,7 @@ Uma sessão **pública** PODE ter a opção "dispensa pré-cadastro" (padrão de
 | Na reserva | Sessão encerrada ou cancelada sem vaga para ele | — | Cancelada | Push; não é remanejado |
 | — | Agendador lança (serviço regulado) | Vaga livre; sessão privada planejada | Confirmada | Push "consulta marcada" só para conta verificada |
 | — | Agendador lança (serviço regulado) | Vaga livre; sessão aberta | Na fila | Senha; próximo número; push se a conta for verificada |
+| — | Recepção inclui no balcão | Vaga livre; sessão aberta; serviço não regulado (AD-048) | Na fila | Entra presente (RN-FILA-03); senha anotada ou impressa (AD-012); próximo número |
 | Confirmada ou Na fila (nunca chamado) | Agendador remove lançamento, com motivo | Serviço regulado | Cancelada | Vaga liberada; auditoria; push se conta verificada |
 | Confirmada ou Na fila (lançada) | Paciente desmarca ou desiste | Serviço regulado | Cancelada | Vaga liberada sem sugestão; agendador avisado na lista de ligação |
 | Arquivada | Serviço muda para "regulado" | — | Cancelada | Push "procure sua UBS" |

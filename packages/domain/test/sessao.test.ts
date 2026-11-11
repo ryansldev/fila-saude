@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { type EstadoEntrada, TRANSICOES_ENTRADA, transicionar } from "../src/contratos.ts";
 import { CONFIG_PADRAO, conferirEMarcar, type DiaSessao, elegiveis } from "../src/fila.ts";
 import {
   alocar,
@@ -437,6 +438,12 @@ describe("balcão (RN-FILA-03, RN-ENC-05)", () => {
     const emerg = cmd("x", { sessao: sessaoVagas({ vagas: 5 }), respostas: respostas({ alarmes: ["convulsao"] }) });
     expect(erro(incluirNoBalcao(d2, emerg, INICIO))).toBe("emergencia");
     expect(erro(incluirNoBalcao(diaPlanejado(), cmd("y"), T))).toBe("sessao_fechada");
+  });
+
+  it("RN-FILA-03: a entrada do balcão passa pelo contrato de estados", () => {
+    const linhas = TRANSICOES_ENTRADA.filter((t) => t.de === "—" && t.evento === "Recepção inclui no balcão");
+    expect(linhas.map((t) => [t.para, t.spec])).toEqual([["na_fila", "marcacao"]]);
+    expect(transicionar(TRANSICOES_ENTRADA, "—" as EstadoEntrada, "Recepção inclui no balcão")).toBe("na_fila");
   });
 
   it("RN-ENC-05: balcão recusado em serviço regulado", () => {

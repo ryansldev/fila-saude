@@ -37,6 +37,7 @@ const ITEM_SESSAO_ABRE = "Sessão abre";
 const ITEM_INSCRICAO = "Inscrição pública com a sessão aberta, ou vaga da reserva";
 const ITEM_LANCA = "Agendador lança paciente regulado com a sessão aberta";
 const ITEM_BALCAO = "Recepção inclui no balcão";
+const ENTRADA_BALCAO = "Recepção inclui no balcão";
 const ITEM_REMOVE = "Agendador remove lançamento";
 
 /** Id do item da fila de uma entrada na sessão: um por entrada e sessão, determinístico. */
@@ -448,12 +449,13 @@ export function incluirNoBalcao(
   );
   if (!criada.ok) return falha(criada.erro);
   if (!temVaga(sessao)) return falha("sem_vaga");
+  const para = transicionar(TRANSICOES_ENTRADA, "—" as EstadoEntrada, ENTRADA_BALCAO);
+  if (para !== "na_fila") return falha("transicao_proibida");
 
   const base = criada.estado;
   const entrada: Entrada = {
     ...base,
-    // Sem linha de entrada para o balcão nas specs: a entrada fica "na fila", como o item.
-    estado: "na_fila",
+    estado: para,
     sessaoId: sessao.id,
     prioridade: temPrioridade(base.prioridade)
       ? { ...base.prioridade, conferida: true, conferidaEm: agora }
@@ -462,7 +464,7 @@ export function incluirNoBalcao(
   const r = porNaFila(dia, entrada, itemCriado(ITEM_BALCAO), agora);
   const eventos: Evento[] = [
     ...criada.eventos.filter((e) => e.tipo !== "entrada_criada"),
-    { tipo: "inscrita", entradaId: entrada.id, sessaoId: sessao.id, motivo: "balcão", dados: { estado: "na_fila" } },
+    { tipo: "inscrita", entradaId: entrada.id, sessaoId: sessao.id, motivo: "balcão", dados: { estado: para } },
     ...r.eventos,
   ];
   return ok({ dia: r.dia, sessao: ocupar(sessao), entrada }, eventos);
