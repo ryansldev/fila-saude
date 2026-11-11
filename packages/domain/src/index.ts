@@ -64,9 +64,11 @@ export {
 } from "./prioridade.ts";
 export { tokenQr, validarQr } from "./qr.ts";
 export { alternarOpcao, classificar } from "./questionario.ts";
+export type { Janela, Ocorrencia, Serie } from "./recorrencia.ts";
+export { expandir } from "./recorrencia.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";
-export { idadeEm, mesmoDia, vespera } from "./tempo.ts";
+export { idadeEm, instanteParaLocal, localParaInstante, mesmoDia, vespera } from "./tempo.ts";
 export type {
   Alarme,
   Classificacao,
