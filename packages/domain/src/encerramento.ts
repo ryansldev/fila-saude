@@ -8,13 +8,12 @@ import {
   transicionar,
 } from "./contratos.ts";
 import { chamadasQuePassamAVez, type DiaSessao, emContingencia, type ItemFila } from "./fila.ts";
-import type { Entrada, Servico, SessaoVagas } from "./lista.ts";
+import { type Entrada, type Origem, outraDataNaSessao, type Servico, type SessaoVagas } from "./lista.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
 import { comAbertura, itemCriado, jaNaSessao, ocupar, porNaFila, situacao, temVaga } from "./sessao.ts";
 import { mesmoDia } from "./tempo.ts";
 
-/** Origem do remanejado (RN-REM-03): decide o que a 2ª "Outra data" faz. */
-export type Origem = NonNullable<Entrada["remanejada"]>;
+export type { Origem } from "./lista.ts";
 
 // Eventos das tabelas de transição (textos copiados das specs).
 const SESSAO_ENCERRA = "Encerra";
@@ -30,18 +29,11 @@ const ENTRADA_FALTA = "3º pulo, ou falta no encerramento";
 const ENTRADA_RESERVA_FECHA = "Sessão encerrada ou cancelada sem vaga para ele";
 const ENTRADA_FALTA_APAGADA =
   "Período de contingência registrado depois do encerramento, no mesmo dia, cobrindo a vez dele";
-const ENTRADA_OUTRA_DATA = '"Outra data"';
 const ENTRADA_DESISTIR = '"Desistir"';
 const ENTRADA_PACIENTE_CANCELA = "Paciente cancela";
 const ENTRADA_ESCOLHE = "Escolhe ocorrência pública do serviço";
 const ENTRADA_ESCOLHE_LOTADA = "Escolhe ocorrência pública lotada";
 const ENTRADA_ESCOLHE_SEGURA = "Escolhe ocorrência com vaga, sem foto aceita em serviço com requisição";
-
-const MOTIVO_CANCELADA: Record<Origem, string | undefined> = {
-  privada: undefined,
-  publica: "inscreva-se de novo",
-  regulada: "comunicar a regulação",
-};
 
 /** Destino da única linha (de, evento) que passa no filtro; `null` sem linha única (transição proibida). */
 function linhaUnica<S extends string>(
@@ -78,9 +70,9 @@ export function origemDaSessao(sessao: SessaoVagas, servico: Servico): Origem {
  * RN-REM-04: remanejada mantém risco, prioridade e data original; perde a sessão. DECISÃO: um
  * novo prejuízo pela unidade dá a origem desta sessão e zera as recusas (preferência renovada).
  */
-const remanejar = (e: Entrada, origem: Origem): Entrada => ({
+const remanejar = (e: Entrada, estado: EstadoEntrada, origem: Origem): Entrada => ({
   ...e,
-  estado: "remanejada",
+  estado,
   remanejada: origem,
   recusas: 0,
   sessaoId: null,
@@ -132,12 +124,12 @@ export function encerrar(
 
   const eventos: Evento[] = [];
   const faltas: string[] = [];
-  const porEntrada = new Map<string, Desfecho>();
+  const porEntrada = new Map<string, { desfecho: Desfecho; condicao: string }>();
   const itens = dia.itens.map((x) => {
     if (!naFila(x)) return x;
     const { desfecho, condicao } = desfechoNoEncerramento(dia, x);
     const para = garantido(TRANSICOES_ITEM, x.estado, ITEM_ENCERRADA, (t) => t.condicao === condicao);
-    porEntrada.set(x.entradaId, desfecho);
+    porEntrada.set(x.entradaId, { desfecho, condicao });
     const ids = { itemId: x.id, entradaId: x.entradaId, sessaoId: dia.sessaoId };
     if (desfecho === "falta") {
       faltas.push(x.id);
@@ -154,13 +146,16 @@ export function encerrar(
       eventos.push({ tipo: "cancelada", entradaId: e.id, sessaoId: dia.sessaoId, motivo: "sessão encerrada" });
       return { ...e, estado: garantido(TRANSICOES_ENTRADA, e.estado, ENTRADA_RESERVA_FECHA) };
     }
-    const desfecho = porEntrada.get(e.id);
-    if (e.estado !== "na_fila" || desfecho === undefined) return e;
-    if (desfecho === "falta") return { ...e, estado: garantido(TRANSICOES_ENTRADA, e.estado, ENTRADA_FALTA) };
-    const item = dia.itens.find((i) => i.entradaId === e.id);
-    const antesDaVez = item !== undefined && chamadasQuePassamAVez(dia, item).length === 0;
-    garantido(TRANSICOES_ENTRADA, e.estado, antesDaVez ? ENTRADA_ANTES_DA_VEZ : ENTRADA_ENCERRADA_SEM_FALTA);
-    return remanejar(e, opcoes.origem);
+    const fim = porEntrada.get(e.id);
+    if (e.estado !== "na_fila" || fim === undefined) return e;
+    const evento =
+      fim.desfecho === "falta"
+        ? ENTRADA_FALTA
+        : fim.condicao === "A vez não passou"
+          ? ENTRADA_ANTES_DA_VEZ
+          : ENTRADA_ENCERRADA_SEM_FALTA;
+    const para = garantido(TRANSICOES_ENTRADA, e.estado, evento);
+    return fim.desfecho === "falta" ? { ...e, estado: para } : remanejar(e, para, opcoes.origem);
   });
 
   const encerrado: DiaSessao = {
@@ -201,9 +196,9 @@ export function cancelar(
     if (!remanejaveis.includes(e.estado)) return e;
     const item = dia.itens.find((i) => i.entradaId === e.id);
     if (item !== undefined && !naFila(item)) return e;
-    garantido(TRANSICOES_ENTRADA, e.estado, ENTRADA_ANTES_DA_VEZ);
+    const para = garantido(TRANSICOES_ENTRADA, e.estado, ENTRADA_ANTES_DA_VEZ);
     eventos.push({ tipo: "remanejado", ...ids, ...(item ? { itemId: item.id } : {}), motivo: "sessão cancelada" });
-    return remanejar(e, opcoes.origem);
+    return remanejar(e, para, opcoes.origem);
   });
   const cancelado: DiaSessao = {
     ...dia,
@@ -239,30 +234,30 @@ export function registrarContingencia(
   }
 
   const eventos: Evento[] = [];
-  const apagadas = new Set<string>();
+  // Só apaga a falta com a entrada dela em mãos, encerrada sem atendimento por falta nesta sessão.
+  const apagadas = new Map<string, Entrada>();
   for (const itemId of enc.faltas) {
     const x = dia.itens.find((i) => i.id === itemId);
-    if (!x) continue;
+    const e = x && entradas.find((en) => en.id === x.entradaId && en.sessaoId === dia.sessaoId);
+    if (!x || !e) continue;
+    const para = linhaUnica(TRANSICOES_ENTRADA, e.estado, ENTRADA_FALTA_APAGADA);
+    if (para === null) continue;
     // Recalcula como no encerramento: o item estava remoto, nunca atendido.
     const passaram = chamadasQuePassamAVez(comPeriodo, x);
-    if (passaram.length > 0 && passaram.every((c) => emContingencia(comPeriodo, c.em))) apagadas.add(itemId);
+    if (passaram.length === 0 || !passaram.every((c) => emContingencia(comPeriodo, c.em))) continue;
+    apagadas.set(itemId, remanejar(e, para, enc.origem));
+    const ids = { itemId, entradaId: e.id, sessaoId: dia.sessaoId };
+    eventos.push(
+      { tipo: "falta_apagada", ...ids, motivo: periodo.motivo },
+      { tipo: "remanejado", ...ids, motivo: "contingência registrada" },
+    );
   }
   // DECISÃO: o item volta ao desfecho que o encerramento daria (remanejado), para a fila do dia
   // mostrar o mesmo que a entrada; o contrato do item não tem linha de reversão própria.
   const paraItem = garantido(TRANSICOES_ITEM, "remoto", ITEM_ENCERRADA, (t) => t.spec === "contingencia");
   const itens = comPeriodo.itens.map((i) => (apagadas.has(i.id) ? { ...i, estado: paraItem } : i));
-  const entradaDe = new Map(dia.itens.filter((i) => apagadas.has(i.id)).map((i) => [i.entradaId, i.id]));
-  const novas = entradas.map((e) => {
-    const itemId = entradaDe.get(e.id);
-    if (itemId === undefined || e.sessaoId !== dia.sessaoId) return e;
-    const para = linhaUnica(TRANSICOES_ENTRADA, e.estado, ENTRADA_FALTA_APAGADA);
-    if (para !== "remanejada") return e;
-    eventos.push(
-      { tipo: "falta_apagada", itemId, entradaId: e.id, sessaoId: dia.sessaoId, motivo: periodo.motivo },
-      { tipo: "remanejado", itemId, entradaId: e.id, sessaoId: dia.sessaoId, motivo: "contingência registrada" },
-    );
-    return remanejar(e, enc.origem);
-  });
+  const novaDe = new Map([...apagadas.values()].map((e) => [e.id, e]));
+  const novas = entradas.map((e) => novaDe.get(e.id) ?? e);
   const recalculado: DiaSessao = {
     ...comPeriodo,
     itens,
@@ -315,55 +310,25 @@ function sairDaFila(
   };
 }
 
-/** Qualificador da linha de 2ª "Outra data", pela origem (RN-REM-03). */
-const QUALIFICADOR_2A: Record<Origem, string> = {
-  privada: "remanejada de sessão privada",
-  publica: "remanejada de sessão pública, alocada numa privada",
-  regulada: "remanejada, serviço regulado",
-};
-
 /**
- * RN-REM-03, AD-045: "Outra data" do remanejado com data (confirmada, alocada, vaga segura ou na
- * fila ainda remoto; `dia` = o da sessão, se aberta). 1ª vez: continua remanejado, com a
- * preferência. 2ª (só confirmada ou alocada): privada volta à lista com a data original; pública
- * e regulada são encerradas com aviso. A vaga é liberada (o chamador usa `liberarVaga`).
+ * RN-REM-03, AD-045: "Outra data" do remanejado com data na sessão `sessao` (confirmada, alocada,
+ * vaga segura ou na fila ainda remoto; `dia` = o da sessão, se aberta). Só em sessão privada ou
+ * regulada. 1ª vez: continua remanejado, com a preferência. 2ª (só confirmada ou alocada): privada
+ * volta à lista com a data original; pública e regulada são encerradas com aviso. A vaga volta à
+ * sessão devolvida. É a entrada do app para qualquer remanejada com data, inclusive alocada; a
+ * regra (`outraDataNaSessao`, lista.ts) é a mesma de `recusar`.
  */
-export function outraData(entrada: Entrada, agora: number, dia: DiaSessao | null = null): Resultado<ComDia> {
-  const origem = entrada.remanejada;
-  const sessaoId = entrada.sessaoId;
-  if (origem === null || sessaoId === null) return falha("transicao_proibida");
-  const para =
-    entrada.recusas === 0
-      ? linhaUnica(TRANSICOES_ENTRADA, entrada.estado, ENTRADA_OUTRA_DATA, (t) => t.condicao === "1ª recusa")
-      : linhaUnica(
-          TRANSICOES_ENTRADA,
-          entrada.estado,
-          ENTRADA_OUTRA_DATA,
-          (t) => t.condicao === "2ª recusa" && t.qualificador === QUALIFICADOR_2A[origem],
-        );
-  if (para === null) return falha("transicao_proibida");
+export function outraData(
+  entrada: Entrada,
+  sessao: SessaoVagas,
+  agora: number,
+  dia: DiaSessao | null = null,
+): Resultado<{ entrada: Entrada; sessao: SessaoVagas; dia: DiaSessao | null }> {
+  const r = outraDataNaSessao(entrada, sessao, agora);
+  if (!r.ok) return r;
   const saida = sairDaFila(entrada, dia, ["remoto"]);
   if (!saida.ok) return falha("transicao_proibida");
-
-  const ids = { entradaId: entrada.id, sessaoId };
-  const nova: Entrada = {
-    ...entrada,
-    estado: para,
-    sessaoId: null,
-    alocadaEm: null,
-    recusas: entrada.recusas + 1,
-    remanejada: para === "remanejada" ? origem : null,
-    sessoesRecusadas: [...entrada.sessoesRecusadas, sessaoId],
-  };
-  const eventos: Evento[] = [
-    { tipo: "recusada", ...ids, motivo: "outra data", dados: { para, em: agora } },
-    { tipo: "vaga_liberada", ...ids },
-  ];
-  if (para === "cancelada") {
-    const motivo = MOTIVO_CANCELADA[origem];
-    eventos.push({ tipo: "cancelada", ...ids, ...(motivo === undefined ? {} : { motivo }) });
-  }
-  return ok({ entrada: nova, dia: saida.dia }, eventos);
+  return ok({ ...r.estado, dia: saida.dia }, r.eventos);
 }
 
 /**
@@ -393,7 +358,10 @@ export function desistir(entrada: Entrada, agora: number, dia: DiaSessao | null 
     ...(origem === "regulada" ? { motivo: "comunicar a regulação" } : {}),
     dados: { desistiu: true, em: agora },
   });
-  return ok({ entrada: { ...entrada, estado: para, sessaoId: null, alocadaEm: null }, dia: saida.dia }, eventos);
+  return ok(
+    { entrada: { ...entrada, estado: para, remanejada: null, sessaoId: null, alocadaEm: null }, dia: saida.dia },
+    eventos,
+  );
 }
 
 /**

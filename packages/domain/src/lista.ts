@@ -25,7 +25,7 @@ export type Entrada = {
   riscoConfirmado: NivelRisco | null;
   prioridade: PrioridadeLegal;
   /** Origem da remanejada (RN-REM-03); `null` = não remanejada. */
-  remanejada: null | "privada" | "publica" | "regulada";
+  remanejada: null | Origem;
   recusas: number;
   sessaoId: string | null;
   alocadaEm: number | null;
@@ -38,6 +38,9 @@ export type Entrada = {
   /** Sessões cuja alocação recusou: não volta a ser sugerida para elas (RN-CONF-04 "sugere o próximo"). */
   sessoesRecusadas: string[];
 };
+
+/** Origem do remanejado (RN-REM-03): decide o que a 2ª "Outra data" faz. */
+export type Origem = "privada" | "publica" | "regulada";
 
 export type Servico = { id: string; modo: "livre" | "requisicao" | "regulado"; exigeTriagem: boolean };
 
@@ -268,51 +271,62 @@ export function confirmar(entrada: Entrada, sessao: SessaoVagas, agora: number):
   return ok({ ...entrada, estado: "confirmada" }, [{ tipo: "confirmada", entradaId: entrada.id, sessaoId: sessao.id }]);
 }
 
-/** Linha do contrato para a recusa da remanejada (RN-REM-03), pela vez e pela origem. */
-function destinoRecusaRemanejada(entrada: Entrada): EstadoEntrada | "(mesmo)" | null {
-  if (entrada.recusas === 0) {
-    return destinoPorCondicao(
-      "alocada",
-      EVENTO_OUTRA_DATA,
-      (t) => t.condicao === "1ª recusa" && t.qualificador === "remanejada",
-    );
-  }
-  const qualificador = {
-    privada: "remanejada de sessão privada",
-    publica: "remanejada de sessão pública, alocada numa privada",
-    regulada: "remanejada, serviço regulado",
-  }[entrada.remanejada ?? "privada"];
-  return destinoPorCondicao(
-    "alocada",
-    EVENTO_OUTRA_DATA,
-    (t) => t.condicao === "2ª recusa" && t.qualificador === qualificador,
-  );
-}
+/** Qualificador da linha de 2ª "Outra data" (RN-REM-03), pela origem da remanejada. */
+const QUALIFICADOR_2A_RECUSA: Record<Origem, string> = {
+  privada: "remanejada de sessão privada",
+  publica: "remanejada de sessão pública, alocada numa privada",
+  regulada: "remanejada, serviço regulado",
+};
 
 /**
- * RN-CONF-04 e RN-REM-03: a recusa libera a vaga na hora e a entrada não volta a ser sugerida
- * para esta sessão. Não remanejada volta à lista com a data original; remanejada na 1ª recusa
- * continua remanejada; na 2ª perde a preferência (privada) ou é encerrada (pública, regulada).
+ * Fonte única do "Outra data" (RN-REM-03): destino da remanejada no estado `de`, pela vez
+ * (`recusas` = 0 → 1ª) e pela origem. `null` quando o contrato não tem a linha para esse estado
+ * (transição proibida); lança se o texto do contrato mudou e a linha ficou ambígua ou sumiu.
  */
-export function recusar(
+export function destinoOutraData(de: EstadoEntrada, recusas: number, origem: Origem): EstadoEntrada | null {
+  const condicao = recusas === 0 ? "1ª recusa" : "2ª recusa";
+  const linhas = TRANSICOES_ENTRADA.filter(
+    (t) => t.de === de && t.evento === EVENTO_OUTRA_DATA && t.condicao === condicao,
+  );
+  if (linhas.length === 0) return null;
+  const casam = recusas === 0 ? linhas : linhas.filter((t) => t.qualificador === QUALIFICADOR_2A_RECUSA[origem]);
+  const [linha] = casam;
+  if (!linha || casam.length > 1 || linha.para === "(mesmo)" || linha.para === "(não cria)") {
+    throw new Error(`contrato: sem linha única de "Outra data" (${condicao}) para "${de}", origem ${origem}`);
+  }
+  return linha.para;
+}
+
+/** Aviso da remanejada encerrada por "Outra data" ou "Desistir", pela origem (RN-REM-03). */
+const MOTIVO_CANCELADA: Record<Origem, string | undefined> = {
+  privada: undefined,
+  publica: "inscreva-se de novo",
+  regulada: "comunicar a regulação",
+};
+
+/**
+ * Núcleo do "Outra data" (RN-REM-03) na sessão da entrada: só em sessão privada (a regulada é
+ * privada); a vaga é liberada e a sessão não volta a ser sugerida. Usado por `recusar` (remanejada
+ * alocada) e por `outraData` (encerramento.ts), que acrescenta a saída da fila do dia.
+ */
+export function outraDataNaSessao(
   entrada: Entrada,
   sessao: SessaoVagas,
   agora: number,
 ): Resultado<{ entrada: Entrada; sessao: SessaoVagas }> {
-  if (!alocadaNesta(entrada, sessao)) return falha("transicao_proibida");
-  const para =
-    entrada.remanejada === null
-      ? transicionar(TRANSICOES_ENTRADA, entrada.estado, EVENTO_RECUSA)
-      : destinoRecusaRemanejada(entrada);
-  if (para !== "aguardando" && para !== "remanejada" && para !== "cancelada") return falha("transicao_proibida");
-
+  const origem = entrada.remanejada;
+  if (origem === null || entrada.sessaoId !== sessao.id || sessao.visibilidade !== "privada") {
+    return falha("transicao_proibida");
+  }
+  const para = destinoOutraData(entrada.estado, entrada.recusas, origem);
+  if (para === null) return falha("transicao_proibida");
   const nova: Entrada = {
     ...entrada,
     estado: para,
     sessaoId: null,
     alocadaEm: null,
-    recusas: entrada.remanejada === null ? entrada.recusas : entrada.recusas + 1,
-    remanejada: para === "remanejada" ? entrada.remanejada : null,
+    recusas: entrada.recusas + 1,
+    remanejada: para === "remanejada" ? origem : null,
     sessoesRecusadas: [...entrada.sessoesRecusadas, sessao.id],
   };
   const ids = { entradaId: entrada.id, sessaoId: sessao.id };
@@ -320,14 +334,39 @@ export function recusar(
     { tipo: "recusada", ...ids, dados: { para, em: agora } },
     { tipo: "vaga_liberada", ...ids },
   ];
-  if (para === "cancelada") {
-    eventos.push({
-      tipo: "cancelada",
-      ...ids,
-      motivo: entrada.remanejada === "publica" ? "inscreva-se de novo" : "comunicar a regulação",
-    });
-  }
+  const motivo = MOTIVO_CANCELADA[origem];
+  if (para === "cancelada") eventos.push({ tipo: "cancelada", ...ids, ...(motivo === undefined ? {} : { motivo }) });
   return ok({ entrada: nova, sessao: { ...sessao, ocupadas: Math.max(0, sessao.ocupadas - 1) } }, eventos);
+}
+
+/**
+ * RN-CONF-04: a recusa libera a vaga na hora e a entrada não volta a ser sugerida para esta
+ * sessão; não remanejada volta à lista com a data original. Remanejada alocada: é o "Outra data"
+ * (RN-REM-03) e delega a `outraDataNaSessao`. O app chama `outraData` (encerramento.ts) para
+ * qualquer remanejada com data, inclusive alocada; `recusar` dá o mesmo resultado para ela.
+ */
+export function recusar(
+  entrada: Entrada,
+  sessao: SessaoVagas,
+  agora: number,
+): Resultado<{ entrada: Entrada; sessao: SessaoVagas }> {
+  if (!alocadaNesta(entrada, sessao)) return falha("transicao_proibida");
+  if (entrada.remanejada !== null) return outraDataNaSessao(entrada, sessao, agora);
+  const para = transicionar(TRANSICOES_ENTRADA, entrada.estado, EVENTO_RECUSA);
+  if (para !== "aguardando") return falha("transicao_proibida");
+
+  const nova: Entrada = {
+    ...entrada,
+    estado: para,
+    sessaoId: null,
+    alocadaEm: null,
+    sessoesRecusadas: [...entrada.sessoesRecusadas, sessao.id],
+  };
+  const ids = { entradaId: entrada.id, sessaoId: sessao.id };
+  return ok({ entrada: nova, sessao: { ...sessao, ocupadas: Math.max(0, sessao.ocupadas - 1) } }, [
+    { tipo: "recusada", ...ids, dados: { para, em: agora } },
+    { tipo: "vaga_liberada", ...ids },
+  ]);
 }
 
 /**

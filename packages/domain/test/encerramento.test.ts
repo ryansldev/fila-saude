@@ -12,7 +12,7 @@ import {
   titularDaFalta,
 } from "../src/encerramento.ts";
 import { checkIn, type DiaSessao, vouSair } from "../src/fila.ts";
-import type { Entrada, Servico } from "../src/lista.ts";
+import { type Entrada, recusar, type Servico } from "../src/lista.ts";
 import type { Resultado } from "../src/resultado.ts";
 import { liberarVaga } from "../src/sessao.ts";
 import { chamar, comItem, congelar, diaCom, entrada, sessaoVagas } from "./fixtures.ts";
@@ -249,6 +249,16 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     const aberto = aplicar(registrarContingencia(brunoAtendido(), [], periodo, T + 2 * H));
     expect([aberto.dia.estado, aberto.dia.contingencias]).toEqual(["aberta", [periodo]]);
 
+    // Entrada que não veio (ou não está encerrada por falta): o item e a falta ficam como estão.
+    for (const entradas of [
+      [],
+      fechado.entradas.map((e) => (e.id === "ent-ana" ? { ...e, estado: "cancelada" as const } : e)),
+    ]) {
+      const sem = aplicar(registrarContingencia(fechado.dia, entradas, periodo, T + 6 * H));
+      expect(item(sem.dia, "ana").estado).toBe("saiu_da_fila");
+      expect(sem.dia.encerramento?.faltas).toEqual(["ana"]);
+    }
+
     // Registrado no dia seguinte: grava o período, mas não recalcula.
     const depois = aplicar(registrarContingencia(fechado.dia, fechado.entradas, periodo, T + DIA));
     expect(depois.dia.contingencias).toEqual([periodo]);
@@ -342,14 +352,17 @@ describe("remanejado (RN-REM-03..05)", () => {
   it("RN-REM-03: outra data 1ª mantém, 2ª perde a preferência por origem", () => {
     // 1ª vez: continua remanejado, com a preferência, e libera a vaga.
     const conf = entrada("ana", { estado: "confirmada", sessaoId: "s2", remanejada: "privada" });
-    const r1 = outraData(conf, T);
-    const { entrada: a1 } = aplicar(r1);
+    const s2 = sessaoVagas({ id: "s2", ocupadas: 1 });
+    const r1 = outraData(conf, s2, T);
+    const { entrada: a1, sessao: s2depois } = aplicar(r1);
     expect([a1.estado, a1.remanejada, a1.recusas, a1.sessaoId]).toEqual(["remanejada", "privada", 1, null]);
+    expect(s2depois.ocupadas).toBe(0);
     expect(eventos(r1)).toContainEqual(expect.objectContaining({ tipo: "vaga_liberada", sessaoId: "s2" }));
 
     // 2ª vez, por origem.
+    const s3 = sessaoVagas({ id: "s3", ocupadas: 1 });
     const segunda = (remanejada: Entrada["remanejada"]) =>
-      outraData(entrada("ana", { estado: "alocada", sessaoId: "s3", remanejada, recusas: 1, alocadaEm: T }), T);
+      outraData(entrada("ana", { estado: "alocada", sessaoId: "s3", remanejada, recusas: 1, alocadaEm: T }), s3, T);
     const priv = aplicar(segunda("privada")).entrada;
     expect([priv.estado, priv.remanejada, priv.dataEntradaOriginal]).toEqual([
       "aguardando",
@@ -368,22 +381,51 @@ describe("remanejado (RN-REM-03..05)", () => {
     // Na fila, ainda remoto: sai da fila do dia; presente não pode.
     const dia = diaCom(["ana"]);
     const naFilaAna = entrada("ent-ana", { estado: "na_fila", sessaoId: "s1", remanejada: "privada" });
-    const nf = aplicar(outraData(naFilaAna, T, dia));
+    const s1 = sessaoVagas({ ocupadas: 1 });
+    const nf = aplicar(outraData(naFilaAna, s1, T, dia));
     expect(nf.entrada.estado).toBe("remanejada");
     expect(nf.dia && item(nf.dia, "ana").estado).toBe("saiu_da_fila");
     const presente = comItem(dia, "ana", { estado: "presente" });
-    expect(erro(outraData(naFilaAna, T, presente))).toBe("transicao_proibida");
-    expect(erro(outraData(naFilaAna, T))).toBe("transicao_proibida");
+    expect(erro(outraData(naFilaAna, s1, T, presente))).toBe("transicao_proibida");
+    expect(erro(outraData(naFilaAna, s1, T))).toBe("transicao_proibida");
 
     // Não remanejado, ou 2ª vez sem linha no contrato: recusado.
-    expect(erro(outraData(entrada("b", { estado: "confirmada", sessaoId: "s2" }), T))).toBe("transicao_proibida");
-    expect(erro(outraData({ ...naFilaAna, recusas: 1 }, T, dia))).toBe("transicao_proibida");
+    expect(erro(outraData(entrada("b", { estado: "confirmada", sessaoId: "s2" }), s2, T))).toBe("transicao_proibida");
+    expect(erro(outraData({ ...naFilaAna, recusas: 1 }, s1, T, dia))).toBe("transicao_proibida");
+    // Sessão que não é a da entrada: recusado.
+    expect(erro(outraData(conf, s3, T))).toBe("transicao_proibida");
+  });
+
+  it('RN-REM-03: "Outra data" só na sessão privada ou regulada; remanejado em sessão pública não tem', () => {
+    // Ana, remanejada de pública, escolheu outra sessão pública (RN-REM-05): ali não há "Outra data".
+    const pub = sessaoVagas({ id: "s2", visibilidade: "publica", ocupadas: 1 });
+    const ana = entrada("ana", { estado: "confirmada", sessaoId: "s2", remanejada: "publica" });
+    expect(erro(outraData(ana, pub, T))).toBe("transicao_proibida");
+    expect(erro(outraData({ ...ana, recusas: 1 }, pub, T))).toBe("transicao_proibida");
+    // Alocada numa privada, tem.
+    const priv = sessaoVagas({ id: "s2", ocupadas: 1 });
+    expect(aplicar(outraData(ana, priv, T)).entrada.estado).toBe("remanejada");
+  });
+
+  it('RN-REM-03: recusar e "Outra data" de remanejada alocada dão o mesmo resultado (uma regra só)', () => {
+    const s = sessaoVagas({ id: "s2", ocupadas: 1 });
+    for (const remanejada of ["privada", "publica", "regulada"] as const) {
+      for (const recusas of [0, 1]) {
+        const e = entrada("ana", { estado: "alocada", sessaoId: "s2", remanejada, recusas, alocadaEm: T });
+        const a = recusar(e, s, T);
+        const b = outraData(e, s, T);
+        if (!a.ok || !b.ok) throw new Error("recusado");
+        expect({ entrada: b.estado.entrada, sessao: b.estado.sessao }).toEqual(a.estado);
+        expect(b.estado.dia).toBeNull();
+        expect(b.eventos).toEqual(a.eventos);
+      }
+    }
   });
 
   it("RN-REM-03: Desistir cancela de vez", () => {
     const conf = entrada("ana", { estado: "confirmada", sessaoId: "s2", remanejada: "regulada" });
     const r = desistir(conf, T);
-    expect(aplicar(r).entrada.estado).toBe("cancelada");
+    expect([aplicar(r).entrada.estado, aplicar(r).entrada.remanejada]).toEqual(["cancelada", null]);
     expect(eventos(r)).toContainEqual(expect.objectContaining({ tipo: "vaga_liberada", sessaoId: "s2" }));
     expect(eventos(r)).toContainEqual(expect.objectContaining({ tipo: "cancelada", motivo: "comunicar a regulação" }));
     // Aguardando remarcação também desiste.

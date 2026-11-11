@@ -13,7 +13,6 @@ export {
   TRANSICOES_SESSAO,
   transicionar,
 } from "./contratos.ts";
-export type { Origem } from "./encerramento.ts";
 export {
   cancelar,
   desistir,
@@ -36,7 +35,7 @@ export {
   marcarPresencaSemApp,
   vouSair,
 } from "./fila.ts";
-export type { Entrada, ItemLigacao, Pessoa, Servico, SessaoVagas, Sugestao } from "./lista.ts";
+export type { Entrada, ItemLigacao, Origem, Pessoa, Servico, SessaoVagas, Sugestao } from "./lista.ts";
 export {
   alocar,
   arquivar,

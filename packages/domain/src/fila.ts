@@ -1,4 +1,5 @@
 import { type EstadoItem, type EstadoSessao, TRANSICOES_ITEM, transicionar } from "./contratos.ts";
+import type { Origem } from "./lista.ts";
 import { type ChaveOrdem, compararOrdem, type Risco } from "./ordem.ts";
 import { expirada, type PrioridadeLegal, temPrioridade } from "./prioridade.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
@@ -55,7 +56,7 @@ export type DiaSessao = {
    * período de contingência registrado no mesmo dia pode apagar, RN-CONT-03) e a origem que o
    * remanejado recebe (RN-REM-03).
    */
-  encerramento?: { em: number; faltas: string[]; origem: "privada" | "publica" | "regulada" };
+  encerramento?: { em: number; faltas: string[]; origem: Origem };
 };
 
 export const CONFIG_PADRAO: ConfigUnidade = {
