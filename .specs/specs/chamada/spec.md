@@ -94,6 +94,7 @@ Não há bloqueio automático. QUANDO o paciente atingir o limite (padrão 2 em 
 
 Entrada na fila do dia (por etapa):
 
+<!-- gerado: contratos:chamada:item -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | Presente | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado | TV com som; push; inicia tolerância |
@@ -107,11 +108,14 @@ Entrada na fila do dia (por etapa):
 | Presente | Sessão encerrada | A vez passou | Remanejado | Push (estava na unidade) |
 | Remoto | Sessão encerrada | A vez passou; nunca atendido no dia; fora de contingência | Saiu da fila | Falta; entrada Encerrada sem atendimento |
 | Remoto | Sessão encerrada | Já atendido em etapa anterior | Remanejado | Push; não é falta |
+<!-- /gerado -->
 
 Entrada (lista):
 
+<!-- gerado: contratos:chamada:entrada -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | Na fila | Sessão encerrada com o paciente presente, já atendido em etapa anterior ou com a vez passada em contingência | — | Remanejada | Push |
 | Na fila | 3º pulo, ou falta no encerramento | — | Encerrada sem atendimento | Registra ocorrência de falta |
 | Na fila | Recepção: identidade não confere (RN-FILA-05) | — | Cancelada | Sem falta; motivo na auditoria |
+<!-- /gerado -->

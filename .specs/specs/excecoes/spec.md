@@ -54,6 +54,7 @@ A inscrição segue as exigências da sessão escolhida (RN-LE-01, RN-PUB-04).
 
 Entrada:
 
+<!-- gerado: contratos:excecoes:entrada -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | Alocada, Confirmada, Na fila ou Aguardando encaminhamento (vaga segura) | Sessão cancelada, ou encerrada antes da vez | — | Remanejada | Push |
@@ -66,3 +67,4 @@ Entrada:
 | Confirmada ou Alocada (remanejada de sessão pública, alocada numa privada) | "Outra data" | 2ª recusa | Cancelada | Push "inscreva-se de novo" |
 | Confirmada ou Alocada (remanejada, serviço regulado) | "Outra data" | 2ª recusa | Cancelada | Agendador avisado para comunicar a regulação |
 | Confirmada, Alocada, vaga segura ou Na fila (remanejada) | "Desistir" | — | Cancelada | Vaga liberada; em serviço regulado, aviso ao agendador |
+<!-- /gerado -->

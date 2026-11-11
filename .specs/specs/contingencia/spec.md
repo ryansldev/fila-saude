@@ -29,8 +29,10 @@ QUANDO a TV e todas as estações de uma unidade perderem o sinal ao mesmo tempo
 
 ## Transições
 
+<!-- gerado: contratos:contingencia:item,entrada -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | Remoto, Presente ou Chamado (fila do dia) | Recepção registra atendido na reconciliação | Período de contingência registrado | Atendido na etapa | Auditoria; mesmo efeito de "Atendido na etapa" |
 | Remoto (fila do dia) | Sessão encerrada | A vez passou durante período de contingência registrado | Remanejado | Push |
 | Encerrada sem atendimento por falta (entrada) | Período de contingência registrado depois do encerramento, no mesmo dia, cobrindo a vez dele | Única reversão de estado final | Remanejada | Falta apagada; auditoria |
+<!-- /gerado -->

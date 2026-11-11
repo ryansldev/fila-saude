@@ -1,5 +1,6 @@
 // Contratos de estado como dados (AD-051): as tabelas "Transições" das specs,
-// uma linha por estado de origem, com os textos copiados delas.
+// uma linha por estado de origem. As tabelas das specs são geradas daqui
+// (npm run specs:gen); edite aqui, não nas specs.
 
 export type EstadoEntrada =
   | "aguardando_encaminhamento"
@@ -23,6 +24,14 @@ export type Transicao<S extends string> = {
   de: S | "—";
   /** Parêntese da célula "De" da spec, ex.: "vaga segura", "nunca chamado". */
   qualificador?: string;
+  /**
+   * Texto da célula "De" quando a spec agrupa estados numa linha só
+   * (ex.: "Alocada, Confirmada ou Na fila") ou escreve o estado de outro jeito.
+   * Linhas seguidas com o mesmo `textoDe` e o resto igual viram uma linha na
+   * tabela gerada (scripts/specs-gen.mjs). Sem ele, a célula é o rótulo do
+   * estado + "(qualificador)".
+   */
+  textoDe?: string;
   evento: string;
   para: S | "(mesmo)" | "(não cria)";
   /** Parêntese da célula "Para" da spec, ex.: "data original", "ou Na fila, se a sessão já abriu". */
@@ -56,6 +65,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "aguardando",
+    textoDe: "Aguardando ou Remanejada",
     evento: "Agendador aloca",
     para: "alocada",
     condicao: "Vaga livre (INV-02)",
@@ -65,6 +75,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "remanejada",
+    textoDe: "Aguardando ou Remanejada",
     evento: "Agendador aloca",
     para: "alocada",
     condicao: "Vaga livre (INV-02)",
@@ -121,6 +132,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "alocada",
+    textoDe: "Alocada, Confirmada ou Na fila",
     evento: 'Paciente cancela ("Não vou poder ir")',
     para: "cancelada",
     condicao: "Serviço não regulado",
@@ -130,6 +142,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "confirmada",
+    textoDe: "Alocada, Confirmada ou Na fila",
     evento: 'Paciente cancela ("Não vou poder ir")',
     para: "cancelada",
     condicao: "Serviço não regulado",
@@ -139,6 +152,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "na_fila",
+    textoDe: "Alocada, Confirmada ou Na fila",
     evento: 'Paciente cancela ("Não vou poder ir")',
     para: "cancelada",
     condicao: "Serviço não regulado",
@@ -148,6 +162,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "aguardando",
+    textoDe: "Aguardando, Aguardando encaminhamento ou Remanejada",
     evento: "Paciente cancela",
     para: "cancelada",
     condicao: "—",
@@ -157,6 +172,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "aguardando_encaminhamento",
+    textoDe: "Aguardando, Aguardando encaminhamento ou Remanejada",
     evento: "Paciente cancela",
     para: "cancelada",
     condicao: "—",
@@ -166,6 +182,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   },
   {
     de: "remanejada",
+    textoDe: "Aguardando, Aguardando encaminhamento ou Remanejada",
     evento: "Paciente cancela",
     para: "cancelada",
     condicao: "—",
@@ -395,6 +412,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "nunca chamado",
+    textoDe: "Confirmada ou Na fila (nunca chamado)",
     evento: "Agendador remove lançamento, com motivo",
     para: "cancelada",
     condicao: "Serviço regulado",
@@ -405,6 +423,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "na_fila",
     qualificador: "nunca chamado",
+    textoDe: "Confirmada ou Na fila (nunca chamado)",
     evento: "Agendador remove lançamento, com motivo",
     para: "cancelada",
     condicao: "Serviço regulado",
@@ -415,6 +434,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "lançada",
+    textoDe: "Confirmada ou Na fila (lançada)",
     evento: "Paciente desmarca ou desiste",
     para: "cancelada",
     condicao: "Serviço regulado",
@@ -425,6 +445,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "na_fila",
     qualificador: "lançada",
+    textoDe: "Confirmada ou Na fila (lançada)",
     evento: "Paciente desmarca ou desiste",
     para: "cancelada",
     condicao: "Serviço regulado",
@@ -444,6 +465,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "alocada",
     qualificador: "vaga segura",
+    textoDe: "Alocada, Confirmada, Na fila ou Aguardando encaminhamento (vaga segura)",
     evento: "Sessão cancelada, ou encerrada antes da vez",
     para: "remanejada",
     condicao: "—",
@@ -454,6 +476,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "vaga segura",
+    textoDe: "Alocada, Confirmada, Na fila ou Aguardando encaminhamento (vaga segura)",
     evento: "Sessão cancelada, ou encerrada antes da vez",
     para: "remanejada",
     condicao: "—",
@@ -464,6 +487,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "na_fila",
     qualificador: "vaga segura",
+    textoDe: "Alocada, Confirmada, Na fila ou Aguardando encaminhamento (vaga segura)",
     evento: "Sessão cancelada, ou encerrada antes da vez",
     para: "remanejada",
     condicao: "—",
@@ -474,6 +498,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "aguardando_encaminhamento",
     qualificador: "vaga segura",
+    textoDe: "Alocada, Confirmada, Na fila ou Aguardando encaminhamento (vaga segura)",
     evento: "Sessão cancelada, ou encerrada antes da vez",
     para: "remanejada",
     condicao: "—",
@@ -528,6 +553,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila ainda remoto (remanejada)",
     evento: '"Outra data"',
     para: "remanejada",
     condicao: "1ª recusa",
@@ -538,6 +564,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "alocada",
     qualificador: "remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila ainda remoto (remanejada)",
     evento: '"Outra data"',
     para: "remanejada",
     condicao: "1ª recusa",
@@ -548,6 +575,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "aguardando_encaminhamento",
     qualificador: "vaga segura; remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila ainda remoto (remanejada)",
     evento: '"Outra data"',
     para: "remanejada",
     condicao: "1ª recusa",
@@ -558,6 +586,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "na_fila",
     qualificador: "ainda remoto; remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila ainda remoto (remanejada)",
     evento: '"Outra data"',
     para: "remanejada",
     condicao: "1ª recusa",
@@ -568,6 +597,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "remanejada de sessão privada",
+    textoDe: "Confirmada ou Alocada (remanejada de sessão privada)",
     evento: '"Outra data"',
     para: "aguardando",
     paraQualificador: "data original",
@@ -579,6 +609,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "alocada",
     qualificador: "remanejada de sessão privada",
+    textoDe: "Confirmada ou Alocada (remanejada de sessão privada)",
     evento: '"Outra data"',
     para: "aguardando",
     paraQualificador: "data original",
@@ -590,6 +621,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "remanejada de sessão pública, alocada numa privada",
+    textoDe: "Confirmada ou Alocada (remanejada de sessão pública, alocada numa privada)",
     evento: '"Outra data"',
     para: "cancelada",
     condicao: "2ª recusa",
@@ -600,6 +632,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "alocada",
     qualificador: "remanejada de sessão pública, alocada numa privada",
+    textoDe: "Confirmada ou Alocada (remanejada de sessão pública, alocada numa privada)",
     evento: '"Outra data"',
     para: "cancelada",
     condicao: "2ª recusa",
@@ -610,6 +643,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "remanejada, serviço regulado",
+    textoDe: "Confirmada ou Alocada (remanejada, serviço regulado)",
     evento: '"Outra data"',
     para: "cancelada",
     condicao: "2ª recusa",
@@ -620,6 +654,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "alocada",
     qualificador: "remanejada, serviço regulado",
+    textoDe: "Confirmada ou Alocada (remanejada, serviço regulado)",
     evento: '"Outra data"',
     para: "cancelada",
     condicao: "2ª recusa",
@@ -630,6 +665,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "confirmada",
     qualificador: "remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila (remanejada)",
     evento: '"Desistir"',
     para: "cancelada",
     condicao: "—",
@@ -640,6 +676,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "alocada",
     qualificador: "remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila (remanejada)",
     evento: '"Desistir"',
     para: "cancelada",
     condicao: "—",
@@ -650,6 +687,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "aguardando_encaminhamento",
     qualificador: "vaga segura; remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila (remanejada)",
     evento: '"Desistir"',
     para: "cancelada",
     condicao: "—",
@@ -660,6 +698,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "na_fila",
     qualificador: "remanejada",
+    textoDe: "Confirmada, Alocada, vaga segura ou Na fila (remanejada)",
     evento: '"Desistir"',
     para: "cancelada",
     condicao: "—",
@@ -698,6 +737,7 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
   {
     de: "encerrada_sem_atendimento",
     qualificador: "por falta",
+    textoDe: "Encerrada sem atendimento por falta (entrada)",
     evento: "Período de contingência registrado depois do encerramento, no mesmo dia, cobrindo a vez dele",
     para: "remanejada",
     condicao: "Única reversão de estado final",
@@ -728,6 +768,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "remoto",
+    textoDe: "Remoto ou Presente",
     evento: "Agendador remove lançamento",
     para: "saiu_da_fila",
     condicao: "Serviço regulado; nunca chamado no dia",
@@ -737,6 +778,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "presente",
+    textoDe: "Remoto ou Presente",
     evento: "Agendador remove lançamento",
     para: "saiu_da_fila",
     condicao: "Serviço regulado; nunca chamado no dia",
@@ -819,6 +861,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "remoto",
+    textoDe: "Remoto ou Presente",
     evento: "Paciente cancela",
     para: "saiu_da_fila",
     condicao: "—",
@@ -828,6 +871,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "presente",
+    textoDe: "Remoto ou Presente",
     evento: "Paciente cancela",
     para: "saiu_da_fila",
     condicao: "—",
@@ -892,6 +936,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "remoto",
+    textoDe: "Qualquer não final",
     evento: "Sessão cancelada",
     para: "remanejado",
     condicao: "—",
@@ -901,6 +946,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "presente",
+    textoDe: "Qualquer não final",
     evento: "Sessão cancelada",
     para: "remanejado",
     condicao: "—",
@@ -910,6 +956,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "chamado",
+    textoDe: "Qualquer não final",
     evento: "Sessão cancelada",
     para: "remanejado",
     condicao: "—",
@@ -919,6 +966,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "remoto",
+    textoDe: "Remoto ou Presente",
     evento: "Sessão encerrada",
     para: "remanejado",
     condicao: "A vez não passou",
@@ -928,6 +976,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "presente",
+    textoDe: "Remoto ou Presente",
     evento: "Sessão encerrada",
     para: "remanejado",
     condicao: "A vez não passou",
@@ -964,6 +1013,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "remoto",
+    textoDe: "Remoto, Presente ou Chamado (fila do dia)",
     evento: "Recepção registra atendido na reconciliação",
     para: "atendido_na_etapa",
     condicao: "Período de contingência registrado",
@@ -973,6 +1023,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "presente",
+    textoDe: "Remoto, Presente ou Chamado (fila do dia)",
     evento: "Recepção registra atendido na reconciliação",
     para: "atendido_na_etapa",
     condicao: "Período de contingência registrado",
@@ -982,6 +1033,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "chamado",
+    textoDe: "Remoto, Presente ou Chamado (fila do dia)",
     evento: "Recepção registra atendido na reconciliação",
     para: "atendido_na_etapa",
     condicao: "Período de contingência registrado",
@@ -991,6 +1043,7 @@ export const TRANSICOES_ITEM: Transicao<EstadoItem>[] = [
   },
   {
     de: "remoto",
+    textoDe: "Remoto (fila do dia)",
     evento: "Sessão encerrada",
     para: "remanejado",
     condicao: "A vez passou durante período de contingência registrado",
@@ -1021,6 +1074,7 @@ export const TRANSICOES_SESSAO: Transicao<EstadoSessao>[] = [
   },
   {
     de: "planejada",
+    textoDe: "Planejada ou Aberta",
     evento: "Cancela",
     para: "cancelada",
     condicao: "Admin",
@@ -1031,6 +1085,7 @@ export const TRANSICOES_SESSAO: Transicao<EstadoSessao>[] = [
   },
   {
     de: "aberta",
+    textoDe: "Planejada ou Aberta",
     evento: "Cancela",
     para: "cancelada",
     condicao: "Admin",
@@ -1060,6 +1115,7 @@ export const TRANSICOES_SESSAO: Transicao<EstadoSessao>[] = [
   },
   {
     de: "planejada",
+    textoDe: "Planejada ou Aberta",
     evento: "Muda visibilidade",
     para: "(mesmo)",
     paraQualificador: "mesmo",
@@ -1070,6 +1126,7 @@ export const TRANSICOES_SESSAO: Transicao<EstadoSessao>[] = [
   },
   {
     de: "aberta",
+    textoDe: "Planejada ou Aberta",
     evento: "Muda visibilidade",
     para: "(mesmo)",
     paraQualificador: "mesmo",
