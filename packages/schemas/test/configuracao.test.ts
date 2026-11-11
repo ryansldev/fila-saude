@@ -35,6 +35,12 @@ describe("unidadeEntradaSchema", () => {
     expect(ok(unidadeEntradaSchema, { ...unidade, lng: -180 })).toBe(true);
     expect(ok(unidadeEntradaSchema, { ...unidade, lng: -180.0001 })).toBe(false);
   });
+  it("fuso IANA válido / inválido", () => {
+    expect(ok(unidadeEntradaSchema, { ...unidade, fuso: "America/Sao_Paulo" })).toBe(true);
+    expect(ok(unidadeEntradaSchema, { ...unidade, fuso: "Brasil/Recife" })).toBe(false);
+  });
+  it("config da unidade com toleranciaMin 0 recusada", () =>
+    expect(ok(unidadeEntradaSchema, { ...unidade, config: { toleranciaMin: 0 } })).toBe(false));
   it("tipo inválido recusado", () => expect(ok(unidadeEntradaSchema, { ...unidade, tipo: "hospital" })).toBe(false));
   it("fecha antes de abre recusado; igual também", () => {
     const h = (abre: string, fecha: string) => ({ ...unidade, horario: { "1": [{ abre, fecha }] } });
@@ -70,10 +76,44 @@ describe("configMunicipioSchema", () => {
     expect(ok(configMunicipioSchema, { janelaK: 0 })).toBe(false);
     expect(ok(configMunicipioSchema, { janelaK: 1 })).toBe(true);
   });
-  it("toleranciaMin -1 / 0 e inteiro", () => {
-    expect(ok(configMunicipioSchema, { toleranciaMin: -1 })).toBe(false);
-    expect(ok(configMunicipioSchema, { toleranciaMin: 0 })).toBe(true);
+  it("toleranciaMin 0/1 e inteiro", () => {
+    expect(ok(configMunicipioSchema, { toleranciaMin: 0 })).toBe(false);
+    expect(ok(configMunicipioSchema, { toleranciaMin: 1 })).toBe(true);
     expect(ok(configMunicipioSchema, { toleranciaMin: 1.5 })).toBe(false);
+  });
+  it("saiaDeCasaMin 0/1", () => {
+    expect(ok(configMunicipioSchema, { saiaDeCasaMin: 0 })).toBe(false);
+    expect(ok(configMunicipioSchema, { saiaDeCasaMin: 1 })).toBe(true);
+  });
+  it("qrSegundos 9/10 e 300/301", () => {
+    expect(ok(configMunicipioSchema, { qrSegundos: 9 })).toBe(false);
+    expect(ok(configMunicipioSchema, { qrSegundos: 10 })).toBe(true);
+    expect(ok(configMunicipioSchema, { qrSegundos: 300 })).toBe(true);
+    expect(ok(configMunicipioSchema, { qrSegundos: 301 })).toBe(false);
+  });
+  it("destaqueTvSegundos 2/3 e 60/61", () => {
+    expect(ok(configMunicipioSchema, { destaqueTvSegundos: 2 })).toBe(false);
+    expect(ok(configMunicipioSchema, { destaqueTvSegundos: 3 })).toBe(true);
+    expect(ok(configMunicipioSchema, { destaqueTvSegundos: 60 })).toBe(true);
+    expect(ok(configMunicipioSchema, { destaqueTvSegundos: 61 })).toBe(false);
+  });
+  it("prazoConfirmacaoHoras e tempoMedioInicialMin 0/1", () => {
+    expect(ok(configMunicipioSchema, { prazoConfirmacaoHoras: 0 })).toBe(false);
+    expect(ok(configMunicipioSchema, { prazoConfirmacaoHoras: 1 })).toBe(true);
+    expect(ok(configMunicipioSchema, { tempoMedioInicialMin: 0 })).toBe(false);
+    expect(ok(configMunicipioSchema, { tempoMedioInicialMin: 1 })).toBe(true);
+  });
+  it("alertaFaltas faltas/dias 0/1", () => {
+    expect(ok(configMunicipioSchema, { alertaFaltas: { faltas: 0, dias: 90 } })).toBe(false);
+    expect(ok(configMunicipioSchema, { alertaFaltas: { faltas: 1, dias: 0 } })).toBe(false);
+    expect(ok(configMunicipioSchema, { alertaFaltas: { faltas: 1, dias: 1 } })).toBe(true);
+  });
+  it("booleanos de vínculo e pré-cadastro, anuláveis", () => {
+    expect(ok(configMunicipioSchema, { exigePreCadastro: false, soVinculados: true, umaUnidadePorVez: null })).toBe(
+      true,
+    );
+    expect(ok(configMunicipioSchema, { soVinculados: "sim" })).toBe(false);
+    expect(ok(configMunicipioSchema, { umaUnidadePorVez: 1 })).toBe(false);
   });
   it("ordem inválida recusada", () => expect(ok(configMunicipioSchema, { ordemMunicipio: "x" })).toBe(false));
 });

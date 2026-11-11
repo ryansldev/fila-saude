@@ -1,6 +1,15 @@
 import z from "zod";
 import { configEntradaSchema } from "./config.ts";
 
+const fusoValido = (fuso: string): boolean => {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: fuso });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:mm");
 
 export const intervaloSchema = z
@@ -16,7 +25,7 @@ export const unidadeEntradaSchema = z.object({
   endereco: z.string().trim().min(1),
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
-  fuso: z.string().min(1),
+  fuso: z.string().refine(fusoValido, "Fuso IANA inválido"),
   horario: horarioSchema,
   config: configEntradaSchema.optional(),
 });
