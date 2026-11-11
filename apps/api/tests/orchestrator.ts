@@ -22,8 +22,18 @@ async function waitForAllServices() {
   }
 }
 
+// Limpa os dados do central sem mexer no schema: as migrations já foram aplicadas pelo global-setup.
 async function clearDatabase() {
-  await database.execute(sql`drop schema public cascade; create schema public;`);
+  const tabelas = await database.execute<{ tablename: string }>(
+    sql`select tablename from pg_tables where schemaname = 'public'`,
+  );
+  if (tabelas.rows.length === 0) return;
+
+  const lista = sql.join(
+    tabelas.rows.map((linha) => sql.identifier(linha.tablename)),
+    sql`, `,
+  );
+  await database.execute(sql`truncate table ${lista} cascade`);
 }
 
 const orquestrator = {

@@ -1,11 +1,16 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import env from "../env";
+import * as auth from "./central/schema/auth";
+import * as municipio from "./central/schema/municipio";
 
+// Banco central (`fila_central`, PD-14/PD-16). Os bancos dos municípios ficam em outro módulo.
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
 });
 
-const database = drizzle(pool);
+export const schemaCentral = { ...auth, ...municipio };
+
+const database = drizzle(pool, { schema: schemaCentral });
 
 export default database;
