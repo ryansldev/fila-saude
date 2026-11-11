@@ -5,9 +5,11 @@
 //   - nenhuma decisão substituída é citada como vigente nas specs
 //   - toda RN é coberta por alguma task (aviso)
 //   - --migration: todo RN/INV/RNF/US da source.md antiga existe nas specs novas
+//   - as tabelas geradas (transições e permissões) estão em dia com packages/domain
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { rodar as rodarSpecsGen } from "./specs-gen.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const SPECS = join(ROOT, ".specs");
@@ -127,6 +129,9 @@ if (migIdx !== -1) {
   if (lost.length) errors.push(`migração: ${lost.length} IDs da source.md antiga sumiram: ${lost.join(", ")}`);
   else console.log(`migração: os ${oldIds.size} IDs da source.md (${rev}) existem nas specs novas`);
 }
+
+// ---------- tabelas geradas (AD-051) ----------
+for (const e of rodarSpecsGen(join(SPECS, "specs"), { checar: true })) errors.push(`.specs/specs/${e}`);
 
 // ---------- saída ----------
 const unique = (a) => [...new Set(a)];

@@ -14,6 +14,7 @@ QUANDO a recepção dar ou tirar prioridade, informar risco alto no balcão, anu
 
 ## Matriz
 
+<!-- gerado: permissoes -->
 | Ação | Paciente | Gestor | Admin | Agendador | Recepção | Triagem | Profissional |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Criar unidades, regras do município e usuários do painel |  | ✓ |  |  |  |  |  |
@@ -41,3 +42,4 @@ QUANDO a recepção dar ou tirar prioridade, informar risco alto no balcão, anu
 | Ver respostas do questionário | ✓ (próprias) |  |  | ✓ | ✓ | ✓ |  |
 | Ver resposta sobre pensamentos de tirar a própria vida (RN-RISCO-06) | ✓ (própria) |  |  | ✓ | só ao aplicar no balcão | ✓ |  |
 | Chamar, rechamar, pular, finalizar |  |  |  |  |  | ✓ (triagem) | ✓ (atendimento) |
+<!-- /gerado -->

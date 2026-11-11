@@ -71,6 +71,7 @@ Uma sessão **pública** PODE ter a opção "dispensa pré-cadastro" (padrão de
 
 ## Transições
 
+<!-- gerado: contratos:marcacao:entrada -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | — | Paciente ou recepção cria | RN-LE-01 ok; serviço com requisição | Aguardando encaminhamento | Nível sugerido calculado |
@@ -95,11 +96,14 @@ Uma sessão **pública** PODE ter a opção "dispensa pré-cadastro" (padrão de
 | Confirmada ou Na fila (nunca chamado) | Agendador remove lançamento, com motivo | Serviço regulado | Cancelada | Vaga liberada; auditoria; push se conta verificada |
 | Confirmada ou Na fila (lançada) | Paciente desmarca ou desiste | Serviço regulado | Cancelada | Vaga liberada sem sugestão; agendador avisado na lista de ligação |
 | Arquivada | Serviço muda para "regulado" | — | Cancelada | Push "procure sua UBS" |
+<!-- /gerado -->
 
 Na fila do dia:
 
+<!-- gerado: contratos:marcacao:item -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | — | Inscrição pública com a sessão aberta, ou vaga da reserva | Vaga livre; foto aceita, se exigida | Remoto | Senha; próximo número |
 | — | Agendador lança paciente regulado com a sessão aberta | Vaga livre | Remoto | Senha; próximo número |
 | Remoto ou Presente | Agendador remove lançamento | Serviço regulado; nunca chamado no dia | Saiu da fila | Vaga liberada; auditoria |
+<!-- /gerado -->
