@@ -31,13 +31,15 @@ function ehCorpoDeErro(
   return typeof valor === "object" && valor !== null && typeof (valor as { erro?: unknown }).erro === "string";
 }
 
+const NAO_JSON = Symbol("nao_json");
+
 async function lerJson(resposta: Response): Promise<unknown> {
   const texto = await resposta.text();
   if (!texto) return undefined;
   try {
     return JSON.parse(texto);
   } catch {
-    return undefined;
+    return NAO_JSON;
   }
 }
 
@@ -58,6 +60,7 @@ export function criarApi(base: string, fetcher: typeof fetch = fetch): Api {
     }
 
     const dados = await lerJson(resposta);
+    if (resposta.ok && dados === NAO_JSON) throw new ErroDaApi(resposta.status, "resposta_invalida");
     if (!resposta.ok) {
       if (ehCorpoDeErro(dados)) throw new ErroDaApi(resposta.status, dados.erro, dados.mensagem, dados.campos);
       throw new ErroDaApi(resposta.status, "resposta_invalida");
