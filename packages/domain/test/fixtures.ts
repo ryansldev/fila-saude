@@ -1,4 +1,5 @@
 import { CONFIG_PADRAO, type DiaSessao, type ItemFila } from "../src/fila.ts";
+import type { Entrada, SessaoVagas } from "../src/lista.ts";
 import type { Respostas } from "../src/tipos.ts";
 
 /** Respostas "sem nada": motivo de rotina, sem alarmes, condições ou grupos. */
@@ -91,5 +92,42 @@ export function chamar(dia: DiaSessao, id: string, em: number, estacaoId = "e1")
         : { ...i, travadoAtras: i.travadoAtras.filter((t) => t !== id) },
     ),
     chamadas: [...dia.chamadas, { itemId: id, etapa: item.etapa, estacaoId, em }],
+  });
+}
+
+/** Entrada "aguardando" no serviço "cli", rotina, sem prioridade, adulto sem CPF. Volta congelada. */
+export function entrada(id: string, parcial: Partial<Entrada> = {}): Entrada {
+  return congelar({
+    id,
+    servicoId: "cli",
+    responsavelId: "resp-1",
+    pessoa: { nome: `Pessoa ${id}`, nascimento: "1990-01-01", cpf: null },
+    estado: "aguardando",
+    dataEntradaOriginal: Date.UTC(2026, 9, 1, 12, 0),
+    classificacao: { nivel: "rotina", regra: "Sem sinais de risco", apoio: false },
+    riscoConfirmado: null,
+    prioridade: { grupos: [], conferida: false, conferidaEm: null },
+    remanejada: null,
+    recusas: 0,
+    sessaoId: null,
+    alocadaEm: null,
+    perguntadoEm: null,
+    respondidoEm: null,
+    arquivadaEm: null,
+    sessoesRecusadas: [],
+    ...parcial,
+  });
+}
+
+/** Sessão privada "s1" do serviço "cli", 3 vagas livres, início 13/11/2026 07:00 em Brasília. Volta congelada. */
+export function sessaoVagas(parcial: Partial<SessaoVagas> = {}): SessaoVagas {
+  return congelar({
+    id: "s1",
+    servicoId: "cli",
+    visibilidade: "privada",
+    vagas: 3,
+    inicio: Date.UTC(2026, 10, 13, 10, 0),
+    ocupadas: 0,
+    ...parcial,
   });
 }
