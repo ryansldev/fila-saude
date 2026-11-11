@@ -86,6 +86,15 @@ describe("criarApi", () => {
     expect(erro).toMatchObject({ status: 502, erro: "resposta_invalida" });
   });
 
+  it("api: 2xx com corpo que não é JSON vira ErroDaApi resposta_invalida", async () => {
+    const { fetcher } = fetcherFalso(() => new Response("<html>ok</html>", { status: 200 }));
+    const erro = await criarApi("", fetcher)
+      .get("/v1/x")
+      .catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(ErroDaApi);
+    expect(erro).toMatchObject({ status: 200, erro: "resposta_invalida" });
+  });
+
   it("api: falha de rede vira ErroDaApi sem_conexao com status 0", async () => {
     const fetcher = (async () => {
       throw new TypeError("Failed to fetch");

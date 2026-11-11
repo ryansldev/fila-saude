@@ -35,6 +35,17 @@ describe("slugDoHost", () => {
     expect(slugDoHost(".localhost:3000", "localhost")).toBeNull();
     expect(slugDoHost("pref_a.localhost", "localhost")).toBeNull();
   });
+
+  it("PD-09: slug segue a regra da API (3 a 30 caracteres, começa com letra, sem hífen no fim)", () => {
+    expect(slugDoHost("abc.localhost", "localhost")).toBe("abc");
+    expect(slugDoHost("ab.localhost", "localhost")).toBeNull();
+    expect(slugDoHost("a.localhost", "localhost")).toBeNull();
+    expect(slugDoHost("1abc.localhost", "localhost")).toBeNull();
+    expect(slugDoHost("-abc.localhost", "localhost")).toBeNull();
+    expect(slugDoHost("abc-.localhost", "localhost")).toBeNull();
+    expect(slugDoHost(`${"a".repeat(30)}.localhost`, "localhost")).toBe("a".repeat(30));
+    expect(slugDoHost(`${"a".repeat(31)}.localhost`, "localhost")).toBeNull();
+  });
 });
 
 describe("urlDaApi", () => {

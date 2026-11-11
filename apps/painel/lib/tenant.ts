@@ -1,7 +1,7 @@
 /** Cabeçalho que o proxy preenche com o slug do município para as páginas do servidor. */
 export const CABECALHO_SLUG = "x-fila-saude-slug";
 
-const ROTULO_VALIDO = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+const ROTULO_VALIDO = /^[a-z][a-z0-9-]{1,28}[a-z0-9]$/; // igual a validarSlug da API
 
 /**
  * Extrai o slug do município do `Host` (PD-09): `pref-a.localhost:3000` → `pref-a`.

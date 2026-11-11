@@ -3,7 +3,7 @@ import { CABECALHO_SLUG, destinoDoProxy } from "@/lib/tenant";
 
 /** PD-09: o município vem do subdomínio; sem slug no host, mostra "município não encontrado". */
 export function proxy(request: NextRequest) {
-  const destino = destinoDoProxy(request.headers.get("host"), process.env.DOMINIO_BASE ?? "localhost");
+  const destino = destinoDoProxy(request.headers.get("host"), process.env.TENANT_BASE_DOMAIN ?? "localhost");
 
   if (destino.tipo === "municipio_nao_encontrado") {
     return NextResponse.rewrite(new URL("/municipio-nao-encontrado", request.url));
