@@ -339,6 +339,59 @@ describe("ocorrenciasNovas / dividirSerie / separarMaterializadas", () => {
     }
   });
 
+  describe("corte em RDATE", () => {
+    const juntas = (s: Serie, corte: string) => {
+      const { antiga, nova } = dividirSerie(s, corte);
+      const todasJuntas = [...todas(antiga), ...todas(nova)].sort();
+      expect(todasJuntas).toEqual(todas(s)); // sem buraco nem repetição
+      return { antiga, nova };
+    };
+
+    it("PD-27: corte em RDATE de outra hora mantém a hora da regra na nova", () => {
+      const s = serie({ rdate: ["2026-11-17T07:00"] });
+      const { nova } = juntas(s, "2026-11-17T07:00");
+      expect(todas(nova)).toContain("2026-11-24T08:00");
+      expect(todas(nova)).not.toContain("2026-11-24T07:00");
+    });
+
+    it("PD-27: regra sem BYDAY com RDATE em outro dia da semana não vira 'toda quinta'", () => {
+      const s = serie({ rrule: "FREQ=WEEKLY", rdate: ["2026-11-12T08:00"] });
+      const { nova } = juntas(s, "2026-11-12T08:00");
+      expect(todas(nova)).not.toContain("2026-11-19T08:00");
+    });
+
+    it("PD-27: RDATE depois do UNTIL: a antiga não ganha ocorrências", () => {
+      const s = serie({ rrule: "FREQ=WEEKLY;BYDAY=TU;UNTIL=20261124", rdate: ["2026-12-20T09:00"] });
+      const { antiga, nova } = juntas(s, "2026-12-20T09:00");
+      expect(antiga.rrule).toBe(s.rrule);
+      expect(todas(nova)).toEqual(["2026-12-20T09:00"]);
+    });
+
+    it("PD-27: RDATE depois do COUNT: a antiga não ganha ocorrências", () => {
+      const s = serie({ rrule: "FREQ=WEEKLY;BYDAY=TU;COUNT=3", rdate: ["2026-12-20T09:00"] });
+      const { antiga, nova } = juntas(s, "2026-12-20T09:00");
+      expect(antiga.rrule).toBe(s.rrule);
+      expect(todas(nova)).toEqual(["2026-12-20T09:00"]);
+    });
+
+    it("PD-27: INTERVAL=2 com RDATE fora do padrão mantém a fase", () => {
+      const s = serie({ rrule: "FREQ=WEEKLY;INTERVAL=2;BYDAY=TU", rdate: ["2026-11-12T08:00", "2026-11-18T08:00"] });
+      juntas(s, "2026-11-12T08:00");
+      juntas(s, "2026-11-18T08:00");
+    });
+
+    it("PD-27: RDATE às 14:00 em dia com ocorrência da regra às 08:00 não perde a das 08:00", () => {
+      const s = serie({ rdate: ["2026-11-17T14:00"] });
+      const { antiga } = juntas(s, "2026-11-17T14:00");
+      expect(todas(antiga)).toContain("2026-11-17T08:00");
+    });
+
+    it("PD-27: COUNT com corte em RDATE é repartido", () => {
+      const s = serie({ rrule: "FREQ=WEEKLY;BYDAY=TU;COUNT=5", rdate: ["2026-11-19T10:00"] });
+      juntas(s, "2026-11-19T10:00");
+    });
+  });
+
   it("PD-27: não altera a série recebida e preserva UNTIL original na nova", () => {
     const s = serie({ rrule: "FREQ=WEEKLY;BYDAY=TU;UNTIL=20261201", exdate: ["2026-11-24T08:00"] });
     const copia = structuredClone(s);

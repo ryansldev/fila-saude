@@ -161,36 +161,53 @@ function trocarFim(rrule: string, fim: string): string {
 }
 
 /**
- * "Esta e as seguintes" (PD-27): fecha a série em `antiga` na véspera de `aPartirDe` e abre `nova`
- * a partir dela. `COUNT` é repartido (as ocorrências removidas por EXDATE antes do corte contam,
- * como no RFC 5545); EXDATE e RDATE vão para o lado da sua data. Não altera `serie`.
- * `aPartirDe` que não é ocorrência da série lança `ocorrencia_inexistente`.
+ * "Esta e as seguintes" (PD-27): `antiga` termina antes de `aPartirDe` e `nova` segue dali. Não
+ * altera `serie`; `aPartirDe` que não é ocorrência da série lança `ocorrencia_inexistente`.
+ *
+ * - A regra continua sendo a mesma: `nova.dtstart` é a primeira ocorrência da *regra* a partir do
+ *   corte (mantém hora, dia e fase de `INTERVAL`), mesmo quando o corte é uma RDATE. Sem ocorrência
+ *   da regra a partir do corte, a regra da `nova` fica vazia e só as RDATE restam.
+ * - `COUNT` é repartido (as removidas por EXDATE antes do corte contam, como no RFC 5545).
+ * - `antiga` só ganha `UNTIL` quando a regra ainda tem ocorrência a partir do corte: na véspera
+ *   (só data) se o corte é da regra; na última ocorrência da regra antes do corte, se é RDATE.
+ * - EXDATE e RDATE vão para o lado da sua chave (a do corte, para a `nova`).
  */
 export function dividirSerie(serie: Serie, aPartirDe: string): { antiga: Serie; nova: Serie } {
   const corte = localComoUtc(aPartirDe);
   if (!locaisDaSerie(serie, corte, corte).includes(aPartirDe)) throw new Error("ocorrencia_inexistente");
   const antes = (chave: string) => chave < aPartirDe; // chaves têm largura fixa: ordem de texto = cronológica
+  const regra = regraDaSerie(serie);
+  const proxima = regra.after(new Date(corte), true);
+  const anterior = regra.before(new Date(corte), false);
   const vespera = `UNTIL=${vesperaDe(aPartirDe)}`;
   const count = /(?:^|;)COUNT=(\d+)/.exec(serie.rrule)?.[1];
-  let rruleNova = serie.rrule;
-  if (count !== undefined) {
-    const usadas = regraDaSerie(serie)
-      .between(new Date(localComoUtc(serie.dtstart)), new Date(corte), true)
-      .filter((d) => d.getTime() < corte).length;
-    const restantes = Number(count) - usadas;
-    // RDATE avulsa além do fim da regra: a regra da nova fica vazia e só a RDATE resta.
-    rruleNova = trocarFim(serie.rrule, restantes > 0 ? `COUNT=${restantes}` : vespera);
+
+  let rruleAntiga = serie.rrule;
+  let rruleNova = trocarFim(serie.rrule, vespera);
+  let dtstartNova = aPartirDe;
+  if (proxima) {
+    dtstartNova = utcComoLocal(proxima.getTime());
+    const noCorte = dtstartNova === aPartirDe;
+    const ate =
+      anterior && !noCorte
+        ? `UNTIL=${utcComoLocal(anterior.getTime())
+            .replace(/\D/g, "")
+            .replace(/^(\d{8})/, "$1T")}00`
+        : vespera;
+    rruleAntiga = trocarFim(serie.rrule, ate);
+    rruleNova = serie.rrule;
+    if (count !== undefined) {
+      const usadas = regra
+        .between(new Date(localComoUtc(serie.dtstart)), new Date(corte), true)
+        .filter((d) => d.getTime() < corte).length;
+      rruleNova = trocarFim(serie.rrule, `COUNT=${Number(count) - usadas}`);
+    }
   }
   return {
-    antiga: {
-      ...serie,
-      rrule: trocarFim(serie.rrule, vespera),
-      exdate: serie.exdate.filter(antes),
-      rdate: serie.rdate.filter(antes),
-    },
+    antiga: { ...serie, rrule: rruleAntiga, exdate: serie.exdate.filter(antes), rdate: serie.rdate.filter(antes) },
     nova: {
       ...serie,
-      dtstart: aPartirDe,
+      dtstart: dtstartNova,
       rrule: rruleNova,
       exdate: serie.exdate.filter((c) => !antes(c)),
       rdate: serie.rdate.filter((c) => !antes(c)),
