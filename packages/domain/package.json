@@ -18,5 +18,8 @@
     "@types/node": "^20.19.43",
     "typescript": "^5.9.0",
     "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "rrule": "2.8.1"
   }
 }
