@@ -31,7 +31,8 @@
     "specs:gen": "node scripts/specs-gen.mjs",
     "prepare": "husky",
     "commit": "cz",
-    "test:domain": "npm -w @fila-saude/domain run test"
+    "test:domain": "npm -w @fila-saude/domain run test",
+    "test:painel": "npm -w @fila-saude/painel run test"
   },
   "engines": {
     "node": "24.x"
