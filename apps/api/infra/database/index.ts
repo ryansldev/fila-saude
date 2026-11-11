@@ -13,4 +13,6 @@ export const schemaCentral = { ...auth, ...municipio };
 
 const database = drizzle(pool, { schema: schemaCentral });
 
+export type Db = typeof database;
+
 export default database;

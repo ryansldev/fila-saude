@@ -12,6 +12,7 @@
     "db:generate:central": "drizzle-kit generate --config drizzle.central.config.ts",
     "db:generate:municipal": "drizzle-kit generate --config drizzle.municipal.config.ts",
     "db:migrate:central": "drizzle-kit migrate --config drizzle.central.config.ts",
+    "tenant:create": "tsx infra/scripts/tenant-create.ts",
     "test": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run $VITEST_ARGS\"",
     "test:watch": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest watch\"",
     "test:coverage": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run --coverage\""

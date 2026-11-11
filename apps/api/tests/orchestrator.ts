@@ -1,7 +1,12 @@
 import retry from "async-retry";
-import { sql } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import database from "infra/database";
+import { municipio } from "infra/database/central/schema/municipio";
+import env from "infra/env";
+import { criarTenant, type DadosDoTenant } from "infra/tenant/criar";
+import { bancoDoSlug } from "infra/tenant/slug";
 import webserver from "infra/webserver";
+import { escapeIdentifier } from "pg";
 
 async function waitForAllServices() {
   await waitForWebServer();
@@ -36,9 +41,46 @@ async function clearDatabase() {
   await database.execute(sql`truncate table ${lista} cascade`);
 }
 
+// PD-19: slugs gerados por este arquivo de teste; `derrubarMunicipios()` derruba o banco e a linha de cada um.
+const slugsDoArquivo = new Set<string>();
+let contadorDeSlugs = 0;
+
+// `t<timestamp36><n>`: único entre arquivos e execuções, sempre válido para `validarSlug`.
+function slugUnico() {
+  contadorDeSlugs += 1;
+  const slug = `t${Date.now().toString(36)}${contadorDeSlugs}`;
+  slugsDoArquivo.add(slug);
+  return slug;
+}
+
+// Cria o município no processo do Vitest, no mesmo Postgres que o servidor usa.
+async function criarMunicipio(opcoes: Partial<DadosDoTenant> = {}) {
+  const slug = opcoes.slug ?? slugUnico();
+  slugsDoArquivo.add(slug);
+  const { municipioId } = await criarTenant(
+    { nome: `Município ${slug}`, uf: "SP", ...opcoes, slug },
+    { central: database, template: env.TENANT_DATABASE_URL_TEMPLATE },
+  );
+  return { municipioId, slug, banco: bancoDoSlug(slug) };
+}
+
+async function derrubarMunicipios() {
+  const slugs = [...slugsDoArquivo];
+  slugsDoArquivo.clear();
+  for (const slug of slugs) {
+    await database.execute(sql.raw(`drop database if exists ${escapeIdentifier(bancoDoSlug(slug))} with (force)`));
+  }
+  if (slugs.length > 0) {
+    await database.delete(municipio).where(inArray(municipio.slug, slugs));
+  }
+}
+
 const orquestrator = {
   waitForAllServices,
   clearDatabase,
+  slugUnico,
+  criarMunicipio,
+  derrubarMunicipios,
 };
 
 export default orquestrator;
