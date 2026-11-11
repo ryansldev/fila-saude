@@ -78,6 +78,14 @@ export function prioridadeDaPessoa(
   return grupos;
 }
 
+/** Onde a recepção está ao tentar dar prioridade legal (RN-RISCO-04, matriz de permissões). */
+export type ContextoDarPrioridade = "inclusao_balcao" | "primeira_presenca_sem_app" | "ja_na_fila";
+
+/** Dar prioridade só na inclusão pelo balcão ou na 1ª presença de paciente sem app; na fila, só conferir ou tirar. */
+export function podeDarPrioridade(contexto: ContextoDarPrioridade): boolean {
+  return contexto === "inclusao_balcao" || contexto === "primeira_presenca_sem_app";
+}
+
 /** Declarada vale até a conferência (AD-024/050). */
 export function temPrioridade(p: PrioridadeLegal): boolean {
   return p.grupos.length > 0;

@@ -150,3 +150,39 @@ export function lerTabelas(): LinhaSpec[] {
   }
   return linhas;
 }
+
+export const PERFIS_MATRIZ = [
+  "paciente",
+  "gestor",
+  "admin",
+  "agendador",
+  "recepcao",
+  "triagem",
+  "profissional",
+] as const;
+
+export type LinhaMatriz = { texto: string; celulas: string[] };
+
+/** Linhas da matriz de `specs/permissoes` (texto da ação + as 7 células, na ordem das colunas). */
+export function lerMatriz(): LinhaMatriz[] {
+  const texto = readFileSync(resolve(RAIZ, "permissoes", "spec.md"), "utf8").split("\n");
+  const inicio = texto.findIndex((l) => /^\|\s*Ação\s*\|\s*Paciente\s*\|/.test(l));
+  if (inicio < 0) throw new Error("matriz de permissões não encontrada");
+  const linhas: LinhaMatriz[] = [];
+  for (let i = inicio + 2; i < texto.length && (texto[i] ?? "").startsWith("|"); i++) {
+    const c = (texto[i] ?? "")
+      .trim()
+      .replace(/^\||\|$/g, "")
+      .split("|")
+      .map((x) => x.trim());
+    linhas.push({ texto: c[0] ?? "", celulas: c.slice(1) });
+  }
+  return linhas;
+}
+
+/** "" → ausente; "✓" → true; "✓ (x)" → "x"; qualquer outro texto → ele mesmo. */
+export function valorDaCelula(celula: string): true | string | undefined {
+  if (celula === "") return undefined;
+  if (celula === "✓") return true;
+  return celula.match(/^✓ \((.*)\)$/)?.[1] ?? celula;
+}

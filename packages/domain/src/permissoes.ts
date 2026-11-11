@@ -1,0 +1,182 @@
+/**
+ * Matriz de permissões (RN-PERF-01..03, `specs/permissoes`) como dados.
+ * `texto` é a linha da spec, sem alteração. Em `perfis`: `true` = "✓"; string = a ressalva da célula
+ * ("✓ (x)" vira "x"; célula sem ✓ com texto, como "só ao aplicar no balcão", guarda o texto).
+ * Perfil ausente = sem permissão. Perfis são acumuláveis: `pode` soma os do usuário.
+ */
+export type Perfil = "paciente" | "gestor" | "admin" | "agendador" | "recepcao" | "triagem" | "profissional";
+
+export type Acao =
+  | "criar_unidades_regras_usuarios"
+  | "ver_relatorio_de_ajustes"
+  | "exportar_csv_metricas"
+  | "configurar_servicos_sessoes_estacoes_tv"
+  | "abrir_cancelar_encerrar_sessao"
+  | "imprimir_lista_do_dia"
+  | "criar_entrada"
+  | "cancelar_responder_remanejado_check_in_vou_sair"
+  | "validar_requisicao"
+  | "alocar_confirmar_recusar_pelo_paciente"
+  | "lancar_regulado"
+  | "confirmar_nivel_de_risco"
+  | "incluir_no_balcao_e_marcar_presenca"
+  | "conferir_e_marcar_presenca"
+  | "redefinir_acesso"
+  | "conferir_ou_tirar_prioridade"
+  | "dar_prioridade"
+  | "nao_conferiu"
+  | "bloquear_conta_usurpada"
+  | "anular_falta"
+  | "registrar_contingencia"
+  | "ver_documentos"
+  | "ver_respostas_do_questionario"
+  | "ver_resposta_risco_de_vida"
+  | "operar_chamadas";
+
+export type LinhaMatriz = {
+  acao: Acao;
+  texto: string;
+  perfis: Partial<Record<Perfil, true | string>>;
+};
+
+export const MATRIZ: LinhaMatriz[] = [
+  {
+    acao: "criar_unidades_regras_usuarios",
+    texto: "Criar unidades, regras do município e usuários do painel",
+    perfis: { gestor: true },
+  },
+  {
+    acao: "ver_relatorio_de_ajustes",
+    texto: "Ver relatório de ajustes por usuário (RN-PERF-03)",
+    perfis: { gestor: true },
+  },
+  {
+    acao: "exportar_csv_metricas",
+    texto: "Exportar CSV das métricas do piloto (RNF-MET-01)",
+    perfis: { gestor: true },
+  },
+  {
+    acao: "configurar_servicos_sessoes_estacoes_tv",
+    texto: "Configurar serviços, sessões, estações; parear e revogar TV",
+    perfis: { admin: true },
+  },
+  {
+    acao: "abrir_cancelar_encerrar_sessao",
+    texto: "Abrir, cancelar, encerrar sessão; mudar visibilidade",
+    perfis: { admin: true },
+  },
+  {
+    acao: "imprimir_lista_do_dia",
+    texto: "Imprimir a lista do dia, uso interno (RN-CONT-01)",
+    perfis: { admin: true, recepcao: true },
+  },
+  {
+    acao: "criar_entrada",
+    texto: "Criar entrada; escolher data quando remanejado de sessão pública",
+    perfis: {
+      paciente: "própria ou de quem marca",
+      agendador: "remarcar por quem não tem app",
+      recepcao: true,
+    },
+  },
+  {
+    acao: "cancelar_responder_remanejado_check_in_vou_sair",
+    texto: 'Cancelar; "Outra data" ou "Desistir" quando remanejado; check-in; "Vou sair"',
+    perfis: { paciente: "própria ou de quem marca" },
+  },
+  {
+    acao: "validar_requisicao",
+    texto: "Validar requisição",
+    perfis: { agendador: true },
+  },
+  {
+    acao: "alocar_confirmar_recusar_pelo_paciente",
+    texto: "Alocar; confirmar ou recusar em nome do paciente",
+    perfis: { agendador: true },
+  },
+  {
+    acao: "lancar_regulado",
+    texto: "Lançar paciente de serviço regulado, inclusive no dia; remover lançamento não chamado (RN-ENC-06)",
+    perfis: { agendador: true },
+  },
+  {
+    acao: "confirmar_nivel_de_risco",
+    texto: "Confirmar nível de risco",
+    perfis: { agendador: "na alocação ou lançamento", triagem: true },
+  },
+  {
+    acao: "incluir_no_balcao_e_marcar_presenca",
+    texto: "Incluir paciente no balcão; marcar presença",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "conferir_e_marcar_presenca",
+    texto:
+      "Verificar conta; conferir pessoa atendida; validar pré-cadastro; marcar presença na mesma ação (RN-FILA-05)",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "redefinir_acesso",
+    texto: "Redefinir acesso com documento conferido (RN-ID-01)",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "conferir_ou_tirar_prioridade",
+    texto: "Conferir ou tirar prioridade legal",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "dar_prioridade",
+    texto: "Dar prioridade legal, só na inclusão pelo balcão ou na 1ª presença de paciente sem app (RN-RISCO-04)",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "nao_conferiu",
+    texto: '"Não conferiu" (identidade não confere) (RN-FILA-05)',
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "bloquear_conta_usurpada",
+    texto: "Bloquear conta usurpada (RN-ID-03)",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "anular_falta",
+    texto: "Anular falta por 3 pulos, com motivo (RN-FALTA-02)",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "registrar_contingencia",
+    texto: "Registrar período de contingência e atendidos na volta (RN-CONT-02)",
+    perfis: { recepcao: true },
+  },
+  {
+    acao: "ver_documentos",
+    texto: "Ver documentos (foto do documento, Cartão SUS)",
+    perfis: { paciente: "próprios", agendador: true, recepcao: true },
+  },
+  {
+    acao: "ver_respostas_do_questionario",
+    texto: "Ver respostas do questionário",
+    perfis: { paciente: "próprias", agendador: true, recepcao: true, triagem: true },
+  },
+  {
+    acao: "ver_resposta_risco_de_vida",
+    texto: "Ver resposta sobre pensamentos de tirar a própria vida (RN-RISCO-06)",
+    perfis: { paciente: "própria", agendador: true, recepcao: "só ao aplicar no balcão", triagem: true },
+  },
+  {
+    acao: "operar_chamadas",
+    texto: "Chamar, rechamar, pular, finalizar",
+    perfis: { triagem: "triagem", profissional: "atendimento" },
+  },
+];
+
+/**
+ * Algum dos perfis tem a ação? Qualquer célula preenchida conta (✓ ou ressalva); a ressalva
+ * ("na alocação ou lançamento", "só ao aplicar no balcão") é contexto a checar por quem chama.
+ */
+export function pode(perfis: Perfil[], acao: Acao): boolean {
+  const linha = MATRIZ.find((l) => l.acao === acao);
+  return linha !== undefined && perfis.some((p) => linha.perfis[p] !== undefined);
+}
