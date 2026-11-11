@@ -6,6 +6,7 @@ import {
   TRANSICOES_ENTRADA,
   TRANSICOES_ITEM,
   TRANSICOES_SESSAO,
+  transicaoUnica,
   transicionar,
 } from "../src/contratos.ts";
 import { lerTabelas, type Maquina, primeiraRegra } from "./specs-tabelas.ts";
@@ -96,5 +97,24 @@ describe("contratos (AD-051)", () => {
       for (const t of tabela)
         expect(t.regra, `${t.de} | ${t.evento}`).toBe(primeiraRegra(`${t.condicao} ${t.efeitos}`));
     }
+  });
+
+  it("contratos AD-051: transicaoUnica devolve a linha única, null sem linha e lança se ambígua", () => {
+    expect(transicaoUnica(TRANSICOES_ENTRADA, "alocada", "Evento inexistente")).toBeNull();
+    expect(transicaoUnica(TRANSICOES_ENTRADA, "arquivada", 'Serviço muda para "regulado"')?.para).toBe("cancelada");
+    const livre = 'Serviço muda para "livre"';
+    expect(() => transicaoUnica(TRANSICOES_ENTRADA, "aguardando_encaminhamento", livre)).toThrow(
+      /contrato: mais de uma linha.*aguardando_encaminhamento/,
+    );
+    const comVaga = transicaoUnica(
+      TRANSICOES_ENTRADA,
+      "aguardando_encaminhamento",
+      livre,
+      (t) => t.qualificador === "vaga segura",
+    );
+    expect(comVaga?.para).toBe("confirmada");
+    expect(
+      transicaoUnica(TRANSICOES_ENTRADA, "aguardando_encaminhamento", livre, (t) => t.qualificador === "inexistente"),
+    ).toBeNull();
   });
 });

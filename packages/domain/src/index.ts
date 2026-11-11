@@ -18,6 +18,7 @@ export {
   TRANSICOES_ENTRADA,
   TRANSICOES_ITEM,
   TRANSICOES_SESSAO,
+  transicaoUnica,
   transicionar,
 } from "./contratos.ts";
 export type { Estimativa } from "./estimativa.ts";
@@ -68,6 +69,10 @@ export type { Janela, Ocorrencia, Serie } from "./recorrencia.ts";
 export { expandir } from "./recorrencia.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";
+export type { ModoServico } from "./servico.ts";
+export { contarAtivas, mudarModoServico, podeMudarExigeTriagem } from "./servico.ts";
+export type { ConfigSessao, ValidacaoSessao, Visibilidade } from "./sessao-config.ts";
+export { mudarVisibilidade, validarSessao } from "./sessao-config.ts";
 export { idadeEm, instanteParaLocal, localParaInstante, mesmoDia, vespera } from "./tempo.ts";
 export type {
   Alarme,
