@@ -6,6 +6,13 @@ export {
   rechamar,
   toleranciaEsgotada,
 } from "./chamada.ts";
+export type {
+  ConfigEfetiva,
+  ConfigParcial,
+  Origem,
+  ResultadoValidacao,
+} from "./configuracao.ts";
+export { configEfetiva, validarConfig } from "./configuracao.ts";
 export type { EstadoEntrada, EstadoItem, EstadoSessao, Transicao } from "./contratos.ts";
 export {
   TRANSICOES_ENTRADA,
