@@ -21,6 +21,11 @@ describe("mudarModoServico", () => {
     expect(mudarModoServico("requisicao", "regulado", entradas)).toEqual({ ok: false, erro: "servico_regulado" });
     expect(contarAtivas(entradas)).toBe(2);
     expect(contarAtivas([e("x", "concluida"), e("y", "arquivada")])).toBe(0);
+    expect(contarAtivas([e("r", "na_reserva"), e("s", "remanejada")])).toBe(2);
+    expect(mudarModoServico("livre", "regulado", [e("r", "na_reserva")])).toEqual({
+      ok: false,
+      erro: "servico_regulado",
+    });
   });
 
   it("RN-ENC-07: arquivadas são canceladas com push", () => {

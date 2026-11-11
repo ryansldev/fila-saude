@@ -1,6 +1,12 @@
 // Mudanças de configuração do serviço (RN-ENC-05, RN-ENC-07, RN-TRI-01, AD-038).
 
-import { type EstadoEntrada, type EstadoSessao, TRANSICOES_ENTRADA, transicionar } from "./contratos.ts";
+import {
+  type EstadoEntrada,
+  type EstadoSessao,
+  TRANSICOES_ENTRADA,
+  type Transicao,
+  transicaoUnica,
+} from "./contratos.ts";
 import { falha, ok, type Resultado } from "./resultado.ts";
 
 export type ModoServico = "livre" | "requisicao" | "regulado";
@@ -24,21 +30,22 @@ export function contarAtivas(entradas: { estado: EstadoEntrada }[]): number {
   return entradas.filter((e) => !NAO_ATIVAS.includes(e.estado)).length;
 }
 
+/** A mudança que a linha do contrato manda fazer; `null` se a linha falta ou não muda de estado. */
+function mudancaDaLinha(id: string, linha: Transicao<EstadoEntrada> | null): Mudanca | null {
+  if (!linha || linha.para === "(mesmo)" || linha.para === "(não cria)") return null;
+  return { id, para: linha.para, push: linha.efeitos.includes("Push") };
+}
+
 /**
- * Linha do contrato para "Serviço muda para livre" a partir de "aguardando encaminhamento":
- * com vaga segura e antes da abertura, a linha qualificada (Confirmada, push); senão, a sem qualificador.
+ * Linha do contrato para "Serviço muda para livre" a partir de "aguardando encaminhamento".
+ * A linha qualificada "vaga segura" tem a condição "Antes da abertura" (Confirmada, push):
+ * vale só com vaga segura e sessão ainda não aberta; senão, a linha sem qualificador.
  */
-function destinoAoVirarLivre(e: EntradaDoServico): { para: EstadoEntrada | "(mesmo)" | null; push: boolean } {
+function linhaAoVirarLivre(e: EntradaDoServico): Transicao<EstadoEntrada> | null {
   const qualificada = e.vagaSegura && !e.sessaoAbriu;
-  const linhas = TRANSICOES_ENTRADA.filter(
-    (t) =>
-      t.de === e.estado &&
-      t.evento === EVENTO_LIVRE &&
-      (qualificada ? t.qualificador === QUALIFICADOR_VAGA_SEGURA : t.qualificador === undefined),
+  return transicaoUnica(TRANSICOES_ENTRADA, e.estado, EVENTO_LIVRE, (t) =>
+    qualificada ? t.qualificador === QUALIFICADOR_VAGA_SEGURA : t.qualificador === undefined,
   );
-  const [linha] = linhas;
-  if (!linha || linhas.length > 1) return { para: null, push: false };
-  return { para: linha.para === "(não cria)" ? null : linha.para, push: linha.efeitos.includes("Push") };
 }
 
 /**
@@ -57,9 +64,9 @@ export function mudarModoServico(
     if (contarAtivas(entradas) > 0) return falha("servico_regulado");
     for (const e of entradas) {
       if (e.estado !== "arquivada") continue;
-      const destino = transicionar(TRANSICOES_ENTRADA, e.estado, EVENTO_REGULADO);
-      if (destino === null || destino === "(mesmo)") return falha("transicao_proibida");
-      mudancas.push({ id: e.id, para: destino, push: true });
+      const mudanca = mudancaDaLinha(e.id, transicaoUnica(TRANSICOES_ENTRADA, e.estado, EVENTO_REGULADO));
+      if (!mudanca) return falha("transicao_proibida");
+      mudancas.push(mudanca);
     }
     return ok({ mudancas });
   }
@@ -67,9 +74,9 @@ export function mudarModoServico(
   if (de === "requisicao" && para === "livre") {
     for (const e of entradas) {
       if (e.estado !== "aguardando_encaminhamento") continue;
-      const { para: destino, push } = destinoAoVirarLivre(e);
-      if (destino === null || destino === "(mesmo)") return falha("transicao_proibida");
-      mudancas.push({ id: e.id, para: destino, push });
+      const mudanca = mudancaDaLinha(e.id, linhaAoVirarLivre(e));
+      if (!mudanca) return falha("transicao_proibida");
+      mudancas.push(mudanca);
     }
   }
 

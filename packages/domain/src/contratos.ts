@@ -1138,6 +1138,23 @@ export const TRANSICOES_SESSAO: Transicao<EstadoSessao>[] = [
 ];
 
 /**
+ * A linha do contrato para (`de`, `evento`), restrita por `filtro` quando a
+ * transição depende da condição (vários destinos para o mesmo evento).
+ * `null` = nenhuma linha (transição proibida); mais de uma = contrato ambíguo,
+ * erro de programação, lança.
+ */
+export function transicaoUnica<S extends string>(
+  tabela: Transicao<S>[],
+  de: S | "—",
+  evento: string,
+  filtro: (t: Transicao<S>) => boolean = () => true,
+): Transicao<S> | null {
+  const linhas = tabela.filter((t) => t.de === de && t.evento === evento && filtro(t));
+  if (linhas.length > 1) throw new Error(`contrato: mais de uma linha para "${de}" com "${evento}"`);
+  return linhas[0] ?? null;
+}
+
+/**
  * Destino de `evento` a partir do estado `de`; `null` = transição proibida.
  * Linhas com o mesmo (de, evento) e o mesmo destino devolvem esse destino.
  * Se os destinos divergem (ex.: "Não compareceu" por nº de pulos), é erro de

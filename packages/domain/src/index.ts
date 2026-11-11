@@ -18,6 +18,7 @@ export {
   TRANSICOES_ENTRADA,
   TRANSICOES_ITEM,
   TRANSICOES_SESSAO,
+  transicaoUnica,
   transicionar,
 } from "./contratos.ts";
 export type { Estimativa } from "./estimativa.ts";
