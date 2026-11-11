@@ -27,8 +27,8 @@ export {
 } from "./fila.ts";
 export type { ChaveOrdem, ChaveSugestao, Risco } from "./ordem.ts";
 export { compararOrdem, compararSugestao } from "./ordem.ts";
-export type { Acao, LinhaMatriz, Perfil } from "./permissoes.ts";
-export { MATRIZ, pode } from "./permissoes.ts";
+export type { Acao, Celula, LinhaMatriz, Perfil } from "./permissoes.ts";
+export { MATRIZ, pode, textoDaCelula } from "./permissoes.ts";
 export type { ContextoDarPrioridade, Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
   expirada,

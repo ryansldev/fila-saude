@@ -179,10 +179,3 @@ export function lerMatriz(): LinhaMatriz[] {
   }
   return linhas;
 }
-
-/** "" → ausente; "✓" → true; "✓ (x)" → "x"; qualquer outro texto → ele mesmo. */
-export function valorDaCelula(celula: string): true | string | undefined {
-  if (celula === "") return undefined;
-  if (celula === "✓") return true;
-  return celula.match(/^✓ \((.*)\)$/)?.[1] ?? celula;
-}

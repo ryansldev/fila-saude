@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { type Acao, MATRIZ, type Perfil, pode } from "../src/permissoes.ts";
+import { type Acao, MATRIZ, type Perfil, pode, textoDaCelula } from "../src/permissoes.ts";
 import { podeDarPrioridade } from "../src/prioridade.ts";
-import { lerMatriz, PERFIS_MATRIZ, valorDaCelula } from "./specs-tabelas.ts";
+import { lerMatriz, PERFIS_MATRIZ } from "./specs-tabelas.ts";
 
 describe("permissoes (RN-PERF)", () => {
   it("permissoes: toda linha da matriz da spec está nos dados", () => {
@@ -11,7 +11,7 @@ describe("permissoes (RN-PERF)", () => {
     daSpec.forEach((linha, i) => {
       const dados = MATRIZ[i]?.perfis ?? {};
       PERFIS_MATRIZ.forEach((perfil, col) => {
-        expect(dados[perfil], `${linha.texto} / ${perfil}`).toEqual(valorDaCelula(linha.celulas[col] ?? ""));
+        expect(textoDaCelula(dados[perfil]), `${linha.texto} / ${perfil}`).toBe(linha.celulas[col] ?? "");
       });
       expect(Object.keys(dados).every((p) => (PERFIS_MATRIZ as readonly string[]).includes(p))).toBe(true);
     });

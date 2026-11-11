@@ -1,8 +1,9 @@
 /**
  * Matriz de permissões (RN-PERF-01..03, `specs/permissoes`) como dados.
- * `texto` é a linha da spec, sem alteração. Em `perfis`: `true` = "✓"; string = a ressalva da célula
- * ("✓ (x)" vira "x"; célula sem ✓ com texto, como "só ao aplicar no balcão", guarda o texto).
- * Perfil ausente = sem permissão. Perfis são acumuláveis: `pode` soma os do usuário.
+ * `texto` é a linha da spec, sem alteração. Em `perfis`, a célula é `true` ("✓"),
+ * `{ ressalva: "x" }` ("✓ (x)") ou `{ texto: "x" }` (texto sem ✓, como "só ao aplicar no balcão");
+ * `textoDaCelula` devolve o texto exato da spec. Perfil ausente = sem permissão.
+ * Perfis são acumuláveis: `pode` soma os do usuário.
  */
 export type Perfil = "paciente" | "gestor" | "admin" | "agendador" | "recepcao" | "triagem" | "profissional";
 
@@ -33,10 +34,12 @@ export type Acao =
   | "ver_resposta_risco_de_vida"
   | "operar_chamadas";
 
+export type Celula = true | { ressalva: string } | { texto: string };
+
 export type LinhaMatriz = {
   acao: Acao;
   texto: string;
-  perfis: Partial<Record<Perfil, true | string>>;
+  perfis: Partial<Record<Perfil, Celula>>;
 };
 
 export const MATRIZ: LinhaMatriz[] = [
@@ -74,15 +77,15 @@ export const MATRIZ: LinhaMatriz[] = [
     acao: "criar_entrada",
     texto: "Criar entrada; escolher data quando remanejado de sessão pública",
     perfis: {
-      paciente: "própria ou de quem marca",
-      agendador: "remarcar por quem não tem app",
+      paciente: { ressalva: "própria ou de quem marca" },
+      agendador: { ressalva: "remarcar por quem não tem app" },
       recepcao: true,
     },
   },
   {
     acao: "cancelar_responder_remanejado_check_in_vou_sair",
     texto: 'Cancelar; "Outra data" ou "Desistir" quando remanejado; check-in; "Vou sair"',
-    perfis: { paciente: "própria ou de quem marca" },
+    perfis: { paciente: { ressalva: "própria ou de quem marca" } },
   },
   {
     acao: "validar_requisicao",
@@ -102,7 +105,7 @@ export const MATRIZ: LinhaMatriz[] = [
   {
     acao: "confirmar_nivel_de_risco",
     texto: "Confirmar nível de risco",
-    perfis: { agendador: "na alocação ou lançamento", triagem: true },
+    perfis: { agendador: { ressalva: "na alocação ou lançamento" }, triagem: true },
   },
   {
     acao: "incluir_no_balcao_e_marcar_presenca",
@@ -153,22 +156,27 @@ export const MATRIZ: LinhaMatriz[] = [
   {
     acao: "ver_documentos",
     texto: "Ver documentos (foto do documento, Cartão SUS)",
-    perfis: { paciente: "próprios", agendador: true, recepcao: true },
+    perfis: { paciente: { ressalva: "próprios" }, agendador: true, recepcao: true },
   },
   {
     acao: "ver_respostas_do_questionario",
     texto: "Ver respostas do questionário",
-    perfis: { paciente: "próprias", agendador: true, recepcao: true, triagem: true },
+    perfis: { paciente: { ressalva: "próprias" }, agendador: true, recepcao: true, triagem: true },
   },
   {
     acao: "ver_resposta_risco_de_vida",
     texto: "Ver resposta sobre pensamentos de tirar a própria vida (RN-RISCO-06)",
-    perfis: { paciente: "própria", agendador: true, recepcao: "só ao aplicar no balcão", triagem: true },
+    perfis: {
+      paciente: { ressalva: "própria" },
+      agendador: true,
+      recepcao: { texto: "só ao aplicar no balcão" },
+      triagem: true,
+    },
   },
   {
     acao: "operar_chamadas",
     texto: "Chamar, rechamar, pular, finalizar",
-    perfis: { triagem: "triagem", profissional: "atendimento" },
+    perfis: { triagem: { ressalva: "triagem" }, profissional: { ressalva: "atendimento" } },
   },
 ];
 
@@ -179,4 +187,11 @@ export const MATRIZ: LinhaMatriz[] = [
 export function pode(perfis: Perfil[], acao: Acao): boolean {
   const linha = MATRIZ.find((l) => l.acao === acao);
   return linha !== undefined && perfis.some((p) => linha.perfis[p] !== undefined);
+}
+
+/** Texto exato da célula na spec: "" (ausente), "✓", "✓ (ressalva)" ou o texto sem ✓. */
+export function textoDaCelula(celula: Celula | undefined): string {
+  if (celula === undefined) return "";
+  if (celula === true) return "✓";
+  return "ressalva" in celula ? `✓ (${celula.ressalva})` : celula.texto;
 }
