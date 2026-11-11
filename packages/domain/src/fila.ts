@@ -45,6 +45,10 @@ export type DiaSessao = {
   config: ConfigUnidade;
   contingencias: { inicio: number; fim: number }[];
   proximoNumero: number;
+  /** Prefixo de senha do serviço (RN-FILA-04), ex.: "C" → "C-001". */
+  prefixoSenha: string;
+  /** Serviço com triagem: quem entra começa na etapa de triagem (RN-TRI-01). */
+  exigeTriagem: boolean;
 };
 
 export const CONFIG_PADRAO: ConfigUnidade = {

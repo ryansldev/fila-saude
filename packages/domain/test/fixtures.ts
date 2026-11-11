@@ -68,6 +68,8 @@ export function diaCom(ids: string[], parcial: Partial<DiaSessao> = {}): DiaSess
     config: CONFIG_PADRAO,
     contingencias: [],
     proximoNumero: ids.length + 1,
+    prefixoSenha: "C",
+    exigeTriagem: false,
     ...parcial,
   });
 }
