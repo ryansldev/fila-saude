@@ -410,6 +410,15 @@ export const TRANSICOES_ENTRADA: Transicao<EstadoEntrada>[] = [
     spec: "marcacao",
   },
   {
+    de: "—",
+    evento: "Recepção inclui no balcão",
+    para: "na_fila",
+    condicao: "Vaga livre; sessão aberta; serviço não regulado (AD-048)",
+    efeitos: "Entra presente (RN-FILA-03); senha anotada ou impressa (AD-012); próximo número",
+    regra: "AD-048",
+    spec: "marcacao",
+  },
+  {
     de: "confirmada",
     qualificador: "nunca chamado",
     textoDe: "Confirmada ou Na fila (nunca chamado)",

@@ -77,7 +77,7 @@ const EVENTO_REATIVA = "Paciente reativa";
  * Destino da única linha do contrato que casa com (de, evento) e com o filtro da condição;
  * usado quando a transição depende da condição (vários destinos para o mesmo evento).
  */
-function destinoPorCondicao(
+export function destinoPorCondicao(
   de: EstadoEntrada | "—",
   evento: string,
   filtro: (t: Transicao<EstadoEntrada>) => boolean,
@@ -163,7 +163,7 @@ export function criarEntrada(
 }
 
 /** Risco vigente: confirmado, se houver; senão, sugerido. Emergência não fica na lista. */
-function riscoVigente(e: Entrada): Risco {
+export function riscoVigente(e: Entrada): Risco {
   const nivel = e.riscoConfirmado ?? e.classificacao.nivel;
   return nivel === "emergencia" ? "urgente" : nivel;
 }

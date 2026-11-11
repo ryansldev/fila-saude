@@ -31,6 +31,7 @@ export {
   arquivar,
   confirmar,
   criarEntrada,
+  destinoPorCondicao,
   entradaAtivaDa,
   listaDeLigacao,
   pendentesNaAbertura,
@@ -39,6 +40,7 @@ export {
   reativar,
   recusar,
   responderAindaPrecisa,
+  riscoVigente,
   sugerir,
 } from "./lista.ts";
 export type { ChaveOrdem, ChaveSugestao, Risco } from "./ordem.ts";
@@ -56,9 +58,26 @@ export {
   temPrioridade,
 } from "./prioridade.ts";
 export { tokenQr, validarQr } from "./qr.ts";
+
 export { alternarOpcao, classificar } from "./questionario.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";
+export type { CmdReserva } from "./sessao.ts";
+export {
+  abrir,
+  abrirSessao,
+  aceitarRequisicao,
+  idDoItem,
+  incluirNoBalcao,
+  inscreverPublica,
+  lancarRegulado,
+  liberarVaga,
+  preencherDaReserva,
+  removerLancamento,
+  senhaDe,
+  trocarReserva,
+  vagasSegurasNaAbertura,
+} from "./sessao.ts";
 export { idadeEm, mesmoDia, vespera } from "./tempo.ts";
 export type {
   Alarme,

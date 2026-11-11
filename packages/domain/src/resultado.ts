@@ -21,6 +21,7 @@ export type TipoEvento =
   | "recusada"
   | "vaga_liberada"
   | "inscrita"
+  | "requisicao_aceita"
   | "na_reserva"
   | "lancada"
   | "removida"
