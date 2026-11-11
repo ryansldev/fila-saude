@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TRANSICOES_ENTRADA } from "../src/contratos.ts";
-import { CONFIG_PADRAO, conferirEMarcar, type DiaSessao, elegiveis } from "../src/fila.ts";
+import { CONFIG_PADRAO, checkIn, conferirEMarcar, type DiaSessao, elegiveis } from "../src/fila.ts";
 import {
   alocar,
   confirmar,
@@ -523,6 +523,25 @@ describe("lançamento regulado (RN-ENC-06)", () => {
     expect(ab.entradas[0]?.estado).toBe("na_fila");
     expect(ab.sessao.ocupadas).toBe(1);
     expect(itemDe(ab.dia, "ze")?.estado).toBe("remoto");
+  });
+
+  it("RN-ENC-06/RN-FILA-05: lançamento com prioridade a conferir não é liberado; só o check-in espera a recepção", () => {
+    // José (76 anos) tem prioridade de idoso pela data de nascimento, ainda não conferida.
+    const { entrada: ze, sessao } = aplicar(lancarRegulado(privada(), null, cmd(), T));
+    expect(ze.prioridade.grupos).toEqual(["idoso"]);
+    expect(ze.prioridade.conferida).toBe(false);
+    const dia0 = diaPlanejado({ servicoId: "reg" });
+    const r = abrirSessao(dia0, sessao, congelar([ze]), { servico: REGULADO, fotosAceitas: [] }, INICIO);
+    const ab = aplicar(r);
+    expect(eventos(r).some((e) => e.tipo === "vaga_liberada")).toBe(false);
+    expect([ab.entradas[0]?.estado, ab.sessao.ocupadas]).toEqual(["na_fila", 1]);
+    const itemZe = itemDe(ab.dia, "ze");
+    if (!itemZe) throw new Error("José fora da fila");
+    // A pendência efetiva só recusa o check-in: ele continua na fila, remoto.
+    expect(erro(checkIn(ab.dia, { itemId: itemZe.id }, INICIO + 10 * MIN))).toBe("pendencia");
+    const conferido = aplicar(conferirEMarcar(ab.dia, { itemId: itemZe.id, resultado: "confere" }, INICIO + 12 * MIN));
+    expect(itemDe(conferido, "ze")?.estado).toBe("presente");
+    expect(itemDe(conferido, "ze")?.prioridade.conferida).toBe(true);
   });
 
   it("RN-ENC-06/RN-LE-01: emergência informada pela regulação é recusada (não entra em fila)", () => {

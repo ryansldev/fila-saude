@@ -43,12 +43,19 @@ export type DiaSessao = {
   tempoInicialMin?: Partial<Record<Etapa, number>>;
   estacoes: Estacao[];
   config: ConfigUnidade;
-  contingencias: { inicio: number; fim: number }[];
+  /** Períodos de contingência registrados (RN-CONT-02), com o motivo. */
+  contingencias: { inicio: number; fim: number; motivo?: string }[];
   proximoNumero: number;
   /** Prefixo de senha do serviço (RN-FILA-04), ex.: "C" → "C-001". */
   prefixoSenha: string;
   /** Serviço com triagem: quem entra começa na etapa de triagem (RN-TRI-01). */
   exigeTriagem: boolean;
+  /**
+   * Preenchido ao encerrar (RN-SES-02): hora, itens que levaram falta no encerramento (os que um
+   * período de contingência registrado no mesmo dia pode apagar, RN-CONT-03) e a origem que o
+   * remanejado recebe (RN-REM-03).
+   */
+  encerramento?: { em: number; faltas: string[]; origem: "privada" | "publica" | "regulada" };
 };
 
 export const CONFIG_PADRAO: ConfigUnidade = {
@@ -108,24 +115,31 @@ export function elegiveis(dia: DiaSessao, estacaoId: string): ItemFila[] {
   );
 }
 
-const emContingencia = (dia: DiaSessao, em: number): boolean =>
+/** A hora `em` cai num período de contingência registrado (AD-033). */
+export const emContingencia = (dia: DiaSessao, em: number): boolean =>
   dia.contingencias.some((c) => em >= c.inicio && em <= c.fim);
 
 /**
- * Atraso (AD-010, AD-033): já foi chamado nesta etapa alguém que vem depois de X em ordem.
- * Só contam as chamadas feitas enquanto X estava remoto: depois de "Vou sair" ou do 2º pulo,
- * as anteriores a `saiuEm` saem; sem `saiuEm`, X nunca esteve presente nesta etapa, e todas as
- * chamadas dela foram feitas com ele fora. Das chamadas que contam, as feitas em contingência saem.
- * Quem fica elegível estando na unidade (1º pulo, triagem → atendimento) não passa por aqui.
+ * Chamadas que fazem a vez de X passar (AD-010): nesta etapa, de alguém que vem depois de X em
+ * ordem. Só contam as feitas enquanto X estava remoto: depois de "Vou sair" ou do 2º pulo, as
+ * anteriores a `saiuEm` saem; sem `saiuEm`, X nunca esteve presente nesta etapa, e todas as
+ * chamadas dela foram feitas com ele fora. Não filtra contingência: quem usa decide (AD-033).
  */
-function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
-  return dia.chamadas.some((c) => {
+export function chamadasQuePassamAVez(dia: DiaSessao, x: ItemFila): Chamada[] {
+  return dia.chamadas.filter((c) => {
     if (c.etapa !== x.etapa || c.itemId === x.id) return false;
     if (x.saiuEm !== null && c.em < x.saiuEm) return false;
-    if (emContingencia(dia, c.em)) return false;
     const chamado = dia.itens.find((i) => i.id === c.itemId);
     return chamado !== undefined && antes(dia, x, chamado) < 0;
   });
+}
+
+/**
+ * Atraso (AD-010, AD-033): a vez de X passou por uma chamada fora de contingência.
+ * Quem fica elegível estando na unidade (1º pulo, triagem → atendimento) não passa por aqui.
+ */
+function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
+  return chamadasQuePassamAVez(dia, x).some((c) => !emContingencia(dia, c.em));
 }
 
 /**

@@ -46,14 +46,17 @@ export const idDoItem = (entradaId: string, sessaoId: string): string => `${sess
 /** RN-FILA-04: prefixo do serviço e número com 3 dígitos (ex.: "C-012"). */
 export const senhaDe = (prefixo: string, numero: number): string => `${prefixo}-${String(numero).padStart(3, "0")}`;
 
-/** INV-02: a sessão ainda tem vaga (`null` = sem limite). "Na reserva" não ocupa. */
-const temVaga = (s: SessaoVagas): boolean => s.vagas === null || s.ocupadas < s.vagas;
+// Os auxiliares exportados abaixo (temVaga, ocupar, itemCriado, comAbertura, situacao, porNaFila,
+// jaNaSessao) são de uso interno do pacote (encerramento.ts); não saem pelo index.
 
-const ocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas + 1 });
+/** INV-02: a sessão ainda tem vaga (`null` = sem limite). "Na reserva" não ocupa. */
+export const temVaga = (s: SessaoVagas): boolean => s.vagas === null || s.ocupadas < s.vagas;
+
+export const ocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas + 1 });
 const desocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: Math.max(0, s.ocupadas - 1) });
 
 /** Estado do item na linha de criação ("—") do contrato da fila do dia. */
-function itemCriado(evento: string): EstadoItem {
+export function itemCriado(evento: string): EstadoItem {
   const linhas = TRANSICOES_ITEM.filter((t) => t.de === "—" && t.evento === evento);
   const [linha] = linhas;
   if (!linha || linhas.length > 1 || linha.para === "(mesmo)" || linha.para === "(não cria)") {
@@ -74,13 +77,13 @@ function destino(
 }
 
 /** "Confirmada (ou Na fila, se a sessão já abriu)": a qualificação da célula "Para" das specs. */
-const comAbertura = (para: EstadoEntrada, aberta: boolean): EstadoEntrada =>
+export const comAbertura = (para: EstadoEntrada, aberta: boolean): EstadoEntrada =>
   para === "confirmada" && aberta ? "na_fila" : para;
 
-type Situacao = { ok: true; aberta: boolean } | { ok: false; erro: CodigoErro };
+export type Situacao = { ok: true; aberta: boolean } | { ok: false; erro: CodigoErro };
 
 /** O dia da sessão, se houver: `null` ou planejada = ainda não abriu; encerrada ou cancelada = fechada. */
-function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
+export function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
   if (dia === null) return { ok: true, aberta: false };
   if (dia.sessaoId !== sessao.id) return { ok: false, erro: "transicao_proibida" };
   if (dia.estado === "planejada") return { ok: true, aberta: false };
@@ -92,7 +95,7 @@ function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
  * Põe a entrada na fila do dia com o próximo número livre (RN-FILA-02) e a senha dele (RN-FILA-04).
  * Quem entra presente (balcão) fica elegível na hora, com a janela protegida e sem atraso (número novo).
  */
-function porNaFila(
+export function porNaFila(
   dia: DiaSessao,
   entrada: Entrada,
   estado: EstadoItem,
@@ -135,7 +138,7 @@ function porNaFila(
 }
 
 /** INV-05: a entrada (ou o id dela) já tem item no dia da sessão; ações públicas recusam como duplicada. */
-function jaNaSessao(dia: DiaSessao | null, entradaId: string): boolean {
+export function jaNaSessao(dia: DiaSessao | null, entradaId: string): boolean {
   if (dia === null) return false;
   const itemId = idDoItem(entradaId, dia.sessaoId);
   return dia.itens.some((i) => i.entradaId === entradaId || i.id === itemId);

@@ -13,6 +13,17 @@ export {
   TRANSICOES_SESSAO,
   transicionar,
 } from "./contratos.ts";
+export type { Origem } from "./encerramento.ts";
+export {
+  cancelar,
+  desistir,
+  encerrar,
+  escolherData,
+  origemDaSessao,
+  outraData,
+  registrarContingencia,
+  titularDaFalta,
+} from "./encerramento.ts";
 export type { Estimativa } from "./estimativa.ts";
 export { avisosSaiaDeCasa, estimar, tempoMedio } from "./estimativa.ts";
 export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, Pendencia } from "./fila.ts";
