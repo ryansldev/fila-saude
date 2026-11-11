@@ -25,6 +25,22 @@ export {
   marcarPresencaSemApp,
   vouSair,
 } from "./fila.ts";
+export type { Entrada, ItemLigacao, Pessoa, Servico, SessaoVagas, Sugestao } from "./lista.ts";
+export {
+  alocar,
+  arquivar,
+  confirmar,
+  criarEntrada,
+  entradaAtivaDa,
+  listaDeLigacao,
+  pendentesNaAbertura,
+  perguntarAindaPrecisa,
+  prazoConfirmacao,
+  reativar,
+  recusar,
+  responderAindaPrecisa,
+  sugerir,
+} from "./lista.ts";
 export type { ChaveOrdem, ChaveSugestao, Risco } from "./ordem.ts";
 export { compararOrdem, compararSugestao } from "./ordem.ts";
 export type { Acao, Celula, LinhaMatriz, Perfil } from "./permissoes.ts";

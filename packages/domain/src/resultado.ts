@@ -44,6 +44,7 @@ export type TipoEvento =
   | "alerta_agendador"
   | "lista_ligacao"
   | "arquivada"
+  | "ainda_precisa"
   | "reativada"
   | "cancelada";
 
