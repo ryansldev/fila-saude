@@ -35,6 +35,8 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 | S1 | A tabela de transições da entrada (specs/marcacao) não tinha linha para a inclusão pelo balcão | Uma linha nova foi criada ("Recepção inclui no balcão" → na fila), gerada a partir do código | Deixar o balcão fora do contrato | Só o texto da spec |
 | S2 | Sessão pública lotada | Quem tenta se inscrever vai para a lista de reserva (RN-PUB-02). O teste do protótipo esperava um erro "lotada" | Recusar com "lotada" | Muda a mensagem no app |
 | S3 | Foto do encaminhamento aceita | Quem chama a função informa; não fica guardado na entrada | Guardar na entrada | Só a forma do dado |
+| S4 | Número na sessão pública (RN-FILA-01 diz "hora da inscrição") | Ordena pela data de entrada original; não há campo "inscrita em". Para inscrição nova é a mesma coisa | Guardar a hora da inscrição na entrada | Remanejado de sessão pública ou troca da reserva fica com o número da data antiga |
+| S5 | Prioridade declarada no balcão | A recepção já confere na hora (RN-ENC-06 diz que "pode dar a prioridade na 1ª presença") | Deixar pendente para conferir depois | Prioridade passa a valer sem conferência explícita |
 
 ## Configurações (fase 2, Task 4)
 
