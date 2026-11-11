@@ -66,7 +66,7 @@ export {
 export { tokenQr, validarQr } from "./qr.ts";
 export { alternarOpcao, classificar } from "./questionario.ts";
 export type { Janela, Ocorrencia, Serie } from "./recorrencia.ts";
-export { expandir } from "./recorrencia.ts";
+export { expandir, JANELA_MATERIALIZACAO_DIAS, janelaDeMaterializacao } from "./recorrencia.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";
 export type { ModoServico } from "./servico.ts";
