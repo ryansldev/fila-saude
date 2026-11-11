@@ -1,3 +1,4 @@
+CREATE TYPE "public"."municipio_status" AS ENUM('criando', 'ativo', 'suspenso');--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" text PRIMARY KEY NOT NULL,
 	"account_id" text NOT NULL,
@@ -44,6 +45,20 @@ CREATE TABLE "verification" (
 	"expires_at" timestamp NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "municipio" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"slug" text NOT NULL,
+	"nome" text NOT NULL,
+	"uf" char(2) NOT NULL,
+	"fuso" text DEFAULT 'America/Sao_Paulo' NOT NULL,
+	"banco_ref" text NOT NULL,
+	"status" "municipio_status" DEFAULT 'criando' NOT NULL,
+	"migracao_versao" text,
+	"migracao_erro" text,
+	"criado_em" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "municipio_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
