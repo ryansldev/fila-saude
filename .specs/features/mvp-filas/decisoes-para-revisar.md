@@ -43,6 +43,7 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
 | C1 | Herança de configurações compostas (alerta de faltas, "ainda precisa?", prazos de prioridade) | O objeto inteiro é herdado: a unidade ou define tudo ou herda tudo | Herdar campo a campo | A unidade não consegue mudar só o número de faltas sem repetir os dias |
+| C2 | "Esta e as seguintes" escolhida numa sessão avulsa (data extra fora da regra) | A série nova começa na próxima sessão normal da regra e mantém o horário e o intervalo dela; a sessão avulsa continua avulsa. Se a regra já tinha acabado, a série antiga fica como estava | Recusar o corte numa sessão avulsa | Só a forma de dividir; nenhuma sessão some ou se repete |
 
 ## Permissões (fase 1A, Task 12)
 
