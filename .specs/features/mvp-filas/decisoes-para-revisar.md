@@ -38,6 +38,18 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 | S4 | Número na sessão pública (RN-FILA-01 diz "hora da inscrição") | Ordena pela data de entrada original; não há campo "inscrita em". Para inscrição nova é a mesma coisa | Guardar a hora da inscrição na entrada | Remanejado de sessão pública ou troca da reserva fica com o número da data antiga |
 | S5 | Prioridade declarada no balcão | A recepção já confere na hora (RN-ENC-06 diz que "pode dar a prioridade na 1ª presença") | Deixar pendente para conferir depois | Prioridade passa a valer sem conferência explícita |
 
+## Encerramento, faltas e remanejados (fase 1A, Task 10)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| E1 | "A vez passou" no encerramento | Definição literal da fila do dia (alguém depois da pessoa foi chamado na etapa atual dela), contando só chamadas feitas enquanto ela estava fora (AD-010). Quem voltou para remoto no 2º pulo sem ninguém chamado depois é remanejado, não faltoso | Contar qualquer chamada posterior | Algumas faltas viram remanejamentos (ou o contrário) |
+| E2 | Contingência registrada depois do encerramento (RN-CONT-03) | A falta só é apagada se todas as chamadas que passaram a vez caíram dentro do período registrado. O item volta de "saiu da fila" para "remanejado" (o contrato do item não tem linha de reversão) | Apagar se qualquer chamada caiu no período | Menos faltas apagadas |
+| E3 | Período de contingência | Só aceita período já terminado (início < fim ≤ agora); recusa sessão planejada; em sessão aberta ou cancelada só registra; em sessão encerrada só recalcula no mesmo dia local do encerramento | Aceitar período em aberto | Quem registra a contingência durante a queda precisa esperar a volta |
+| E4 | Novo remanejamento | A entrada recebe a origem da sessão atual e o contador de recusas volta a 0 | Manter a origem e as recusas do 1º remanejamento | Quem é remanejado várias vezes ganha preferência de novo a cada vez |
+| E5 | "Outra data" (RN-REM-03) | Vale só quando a sessão em que a pessoa está é privada ou regulada (pela visibilidade da sessão, não pela origem). Remanejado de pública alocado numa privada pode usar; numa pública, não. Também entra em "sessões recusadas", como a recusa normal | Decidir pela origem | O botão aparece ou some em casos de borda |
+| E6 | Desistir | Em "aguardando remarcação" usa a linha "Paciente cancela"; na fila, aceita remoto ou presente. "Outra data" só aceita remoto | Restringir desistir a remoto | Só o estado aceito |
+| E7 | Assinatura de encerrar/cancelar | Recebem as entradas e a origem da sessão e devolvem {dia, entradas}, porque falta e remanejamento mudam a entrada | Assinatura do plano (só a sessão) | Só a forma da chamada |
+
 ## Configurações (fase 2, Task 4)
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
