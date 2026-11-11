@@ -28,6 +28,20 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 | L3 | "Ainda precisa?" (RN-PARADA) perguntado, depois a entrada é alocada e volta para a lista (recusa ou liberação na abertura) | A pergunta pendente continua valendo e a entrada pode ser arquivada logo em seguida. A contagem dos 30 dias parte da data de entrada original | Alocar conta como resposta ("sim") e reinicia a contagem | Paciente que acabou de interagir é arquivado |
 | L2 | Entrada arquivada e duplicidade (RN-LE-05) | A arquivada não conta como ativa. Ao reativar, a duplicidade é conferida de novo | Arquivada bloqueia uma entrada nova no mesmo serviço | A pessoa pode ter duas entradas: a arquivada e uma nova |
 
+## Sessão do dia (fase 1A, Task 9)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| S1 | A tabela de transições da entrada (specs/marcacao) não tinha linha para a inclusão pelo balcão | Uma linha nova foi criada ("Recepção inclui no balcão" → na fila), gerada a partir do código | Deixar o balcão fora do contrato | Só o texto da spec |
+| S2 | Sessão pública lotada | Quem tenta se inscrever vai para a lista de reserva (RN-PUB-02). O teste do protótipo esperava um erro "lotada" | Recusar com "lotada" | Muda a mensagem no app |
+| S3 | Foto do encaminhamento aceita | Quem chama a função informa; não fica guardado na entrada | Guardar na entrada | Só a forma do dado |
+
+## Configurações (fase 2, Task 4)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| C1 | Herança de configurações compostas (alerta de faltas, "ainda precisa?", prazos de prioridade) | O objeto inteiro é herdado: a unidade ou define tudo ou herda tudo | Herdar campo a campo | A unidade não consegue mudar só o número de faltas sem repetir os dias |
+
 ## Permissões (fase 1A, Task 12)
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
