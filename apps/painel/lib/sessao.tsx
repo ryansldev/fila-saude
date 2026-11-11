@@ -46,7 +46,7 @@ export function useEu(): EstadoDoEu {
 export type ErroDeLogin = "credenciais" | "bloqueado" | "rede";
 export type EstadoDoLogin = { estado: "ocioso" } | { estado: "enviando" } | { estado: "erro"; erro: ErroDeLogin };
 
-function classificar(e: unknown): ErroDeLogin {
+function classificarSignIn(e: unknown): ErroDeLogin {
   if (e instanceof ErroDaApi) {
     if (e.status === 423 || e.erro === "bloqueado") return "bloqueado";
     if (e.status === 401) return "credenciais";
@@ -56,8 +56,23 @@ function classificar(e: unknown): ErroDeLogin {
 
 /** A única chamada de credenciais: ajustar aqui quando a 1B T15 definir o endpoint. */
 async function entrar(api: Api, email: string, senha: string): Promise<EuPainel> {
-  await api.post(CAMINHO_LOGIN, { email, password: senha });
-  return api.get<EuPainel>(CAMINHO_EU);
+  try {
+    await api.post(CAMINHO_LOGIN, { email, password: senha });
+  } catch (e) {
+    throw new ErroDeEntrada(classificarSignIn(e));
+  }
+  // Falha do /eu depois do sign-in (ex.: cookie não chegou) não é erro de credenciais.
+  try {
+    return await api.get<EuPainel>(CAMINHO_EU);
+  } catch {
+    throw new ErroDeEntrada("rede");
+  }
+}
+
+class ErroDeEntrada extends Error {
+  constructor(readonly tipo: ErroDeLogin) {
+    super(tipo);
+  }
 }
 
 export function useLogin(navegar: (href: string) => void) {
@@ -71,7 +86,7 @@ export function useLogin(navegar: (href: string) => void) {
         const eu = await entrar(api, email, senha);
         navegar(menuDoPainel(eu.perfis)[0]?.href ?? "/em-breve");
       } catch (e) {
-        setEstado({ estado: "erro", erro: classificar(e) });
+        setEstado({ estado: "erro", erro: e instanceof ErroDeEntrada ? e.tipo : "rede" });
       }
     },
     [api, navegar],

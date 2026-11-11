@@ -9,10 +9,15 @@ afterEach(cleanup);
 function apiComLogin(sign: () => Promise<unknown>, eu: unknown = undefined): Api {
   const nada = async () => undefined as never;
   return {
-    get: (async () => eu) as Api["get"],
-    post: (async (caminho: string) => {
-      if (caminho === "/v1/painel/auth/sign-in/email") return sign();
-      throw new Error(`inesperado ${caminho}`);
+    get: (async (caminho: string) => {
+      if (caminho !== "/v1/painel/eu") throw new Error(`inesperado ${caminho}`);
+      if (eu instanceof Error) throw eu;
+      return eu;
+    }) as Api["get"],
+    post: (async (caminho: string, corpo: unknown) => {
+      if (caminho !== "/v1/painel/auth/sign-in/email") throw new Error(`inesperado ${caminho}`);
+      expect(corpo).toEqual({ email: "a@b.com", password: "segredo123" });
+      return sign();
     }) as Api["post"],
     patch: nada,
     put: nada,
@@ -51,7 +56,7 @@ describe("login", () => {
     });
     montar(rede);
     preencherEEnviar();
-    expect(await screen.findByText(/tentar de novo/i)).toBeDefined();
+    expect(await screen.findByText(/tente de novo/i)).toBeDefined();
     cleanup();
 
     const ok = apiComLogin(async () => ({}), {
@@ -62,6 +67,14 @@ describe("login", () => {
     const navegarOk = montar(ok);
     preencherEEnviar();
     await waitFor(() => expect(navegarOk).toHaveBeenCalledWith("/servicos"));
+  });
+
+  it("login: sign-in ok mas /eu com 401 mostra erro genérico, não credenciais", async () => {
+    const navegar = montar(apiComLogin(async () => ({}), new ErroDaApi(401, "nao_autenticado")));
+    preencherEEnviar();
+    expect(await screen.findByText(/tente de novo/i)).toBeDefined();
+    expect(screen.queryByText(/e-mail ou senha inválidos/i)).toBeNull();
+    expect(navegar).not.toHaveBeenCalled();
   });
 
   it("login: 423 ou código bloqueado mostra conta bloqueada", async () => {

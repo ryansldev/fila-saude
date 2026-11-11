@@ -7,7 +7,7 @@ import { type ErroDeLogin, useLogin } from "@/lib/sessao";
 const MENSAGENS: Record<ErroDeLogin, string> = {
   credenciais: "E-mail ou senha inválidos.",
   bloqueado: "Conta bloqueada. Procure o gestor do município.",
-  rede: "Não foi possível entrar. Verifique a conexão e tentar de novo.",
+  rede: "Não foi possível entrar agora. Tente de novo.",
 };
 
 export function FormularioDeLogin({ navegar }: { navegar: (href: string) => void }) {
