@@ -59,6 +59,10 @@ export { tokenQr, validarQr } from "./qr.ts";
 export { alternarOpcao, classificar } from "./questionario.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";
+export type { ModoServico } from "./servico.ts";
+export { contarAtivas, mudarModoServico, podeMudarExigeTriagem } from "./servico.ts";
+export type { ConfigSessao, ValidacaoSessao, Visibilidade } from "./sessao-config.ts";
+export { mudarVisibilidade, validarSessao } from "./sessao-config.ts";
 export { idadeEm, mesmoDia, vespera } from "./tempo.ts";
 export type {
   Alarme,
