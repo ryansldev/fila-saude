@@ -50,6 +50,10 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | PD-40 | **`dev:seed` preenche o município `exemplo` pelas mesmas funções das rotas, com auditoria** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 | PD-41 | **Funções de serviço com contexto do ator** (`executarAcao`): rota e `dev:seed` chamam a mesma função ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 | PD-42 | **Troca do modo do serviço só sem entradas ativas na v0.1** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-43 | **Fila do dia como jsonb em `dia_sessao`, trava pela linha da sessão** ([fatia 1](plano-fatia-1-publica.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-44 | **Sessão sem `dia_sessao` está planejada; o dia nasce na abertura** ([fatia 1](plano-fatia-1-publica.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-45 | **Rotas do app: agenda, inscrições e "minhas" no caminho do município** ([fatia 1](plano-fatia-1-publica.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-46 | **Estação escolhida na tela; ressalvas de `operar_chamadas` pela etapa da estação** ([fatia 1](plano-fatia-1-publica.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 
 ## 2. Visão geral
 
