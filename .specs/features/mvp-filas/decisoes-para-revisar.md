@@ -65,6 +65,13 @@ Ficaram **para você decidir** (a revisão não julgou, e o código ficou como e
 - **Janela protegida:** hoje são os K primeiros da ordem de chamada real, respeitando as travas (decisão da Task 5). Confirme se é essa a intenção.
 - **"Vou sair":** hoje solta as travas de quem estava atrás. A spec não diz.
 - **"Chamar próximo" sem ninguém elegível:** hoje a chamada anterior continua aberta na estação. Alternativa: fechar e mostrar "ninguém na vez".
+- **Refazer o questionário estando presente:** hoje o risco da pessoa já presente não muda naquele dia (só a triagem muda). Em serviço sem triagem, quem piorou não sobe no dia. Sugestão da revisão: o risco novo vale para quem está presente só em serviço sem triagem.
+
+Pendências conhecidas do domínio (corrigir junto com a rota que as usa):
+
+- Refazer o questionário (Tela 5) hoje descarta os grupos de prioridade novos; deveria somá-los como "declarados, não conferidos" para quem está na lista ou remoto.
+- "Dar prioridade" na 1ª presença sem app marca como conferidos todos os grupos do item, inclusive os que a recepção não viu.
+- Remanejado "na reserva" não tem ação de desistir.
 
 ## Configurações (fase 2, Task 4)
 
