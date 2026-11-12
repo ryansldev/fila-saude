@@ -1,7 +1,7 @@
 {
   "name": "fila-saude",
   "version": "1.0.0",
-  "description": "Vamos tornar a espera nos postos de sa\u00fade mais tranquila? \ud83d\udc99",
+  "description": "Vamos tornar a espera nos postos de saúde mais tranquila? 💙",
   "packageManager": "npm@11.16.0",
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
@@ -35,7 +35,9 @@
     "commit": "cz",
     "test:domain": "npm -w @fila-saude/domain run test",
     "test:painel": "npm -w @fila-saude/painel run test",
-    "dev:seed": "npm -w @fila-saude/api run dev:seed"
+    "dev:seed": "npm -w @fila-saude/api run dev:seed",
+    "test:mobile": "npm -w @fila-saude/mobile run test",
+    "dev:mobile": "npm -w @fila-saude/mobile run start"
   },
   "engines": {
     "node": "24.x"
@@ -58,5 +60,9 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "overrides": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   }
 }
