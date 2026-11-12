@@ -31,3 +31,20 @@ export const unidadeEntradaSchema = z.object({
 });
 
 export type UnidadeEntrada = z.infer<typeof unidadeEntradaSchema>;
+
+// `null` num campo da config = voltar a herdar (PD-28).
+export const unidadeEdicaoSchema = unidadeEntradaSchema.partial();
+
+export const unidadeSchema = unidadeEntradaSchema.extend({
+  id: z.uuid(),
+  config: configEntradaSchema,
+});
+
+export const configEfetivaSchema = z.object({
+  valores: z.record(z.string(), z.unknown()),
+  origem: z.record(z.string(), z.enum(["padrao", "municipio", "unidade"])),
+});
+
+export type UnidadeEdicao = z.infer<typeof unidadeEdicaoSchema>;
+export type Unidade = z.infer<typeof unidadeSchema>;
+export type ConfigEfetivaSaida = z.infer<typeof configEfetivaSchema>;

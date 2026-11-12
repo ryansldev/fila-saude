@@ -1,5 +1,6 @@
 import z from "zod";
 import { cpfSchema } from "./cpf";
+import { perfilPainelSchema } from "./usuario.ts";
 
 // "Hoje" no fuso do Brasil (AAAA-MM-DD), para a data de nascimento não ficar no futuro.
 function hojeEmSaoPaulo() {
@@ -27,3 +28,13 @@ export const cadastroPacienteSchema = z.object({
 });
 
 export type CadastroPaciente = z.infer<typeof cadastroPacienteSchema>;
+
+// PD-23 / RN-PERF-01: `GET /v1/painel/eu`. Perfis do painel nunca incluem paciente.
+export const euPainelSchema = z.object({
+  id: z.string(),
+  nome: z.string(),
+  login: z.string(),
+  perfis: z.array(z.object({ perfil: perfilPainelSchema, unidadeId: z.uuid().nullable() })),
+});
+
+export type EuPainel = z.infer<typeof euPainelSchema>;

@@ -14,3 +14,14 @@ export const servicoEntradaSchema = z.object({
 });
 
 export type ServicoEntrada = z.infer<typeof servicoEntradaSchema>;
+
+export const servicoEdicaoSchema = servicoEntradaSchema.partial();
+
+export const servicoSchema = servicoEntradaSchema.extend({
+  id: z.uuid(),
+  unidadeId: z.uuid(),
+  ativo: z.boolean(),
+});
+
+export type ServicoEdicao = z.infer<typeof servicoEdicaoSchema>;
+export type Servico = z.infer<typeof servicoSchema>;

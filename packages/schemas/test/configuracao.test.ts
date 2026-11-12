@@ -185,9 +185,9 @@ describe("sessaoEntradaSchema", () => {
     estacoes: [],
   };
   it("aceita válida", () => expect(ok(sessaoEntradaSchema, s)).toBe(true));
-  it("vagas -1/0/1 e null", () => {
+  it("PD-37: vagas 0 recusado, 1 aceito, nulo aceito", () => {
     expect(ok(sessaoEntradaSchema, { ...s, vagas: -1 })).toBe(false);
-    expect(ok(sessaoEntradaSchema, { ...s, vagas: 0 })).toBe(true);
+    expect(ok(sessaoEntradaSchema, { ...s, vagas: 0 })).toBe(false);
     expect(ok(sessaoEntradaSchema, { ...s, vagas: 1 })).toBe(true);
     expect(ok(sessaoEntradaSchema, { ...s, vagas: null })).toBe(true);
   });
