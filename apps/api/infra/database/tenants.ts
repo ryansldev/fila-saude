@@ -29,6 +29,8 @@ export type OpcoesDosPools = {
   // Padrão: TENANT_DATABASE_URL_TEMPLATE e process.env (PD-14).
   template?: string;
   env?: Record<string, string | undefined>;
+  // Padrão: console.error. Recebe falhas de conexão e de encerramento dos pools.
+  registrar?: (mensagem: string, erro: unknown) => void;
 };
 
 // T1.7 / PD-03 / PD-14: um pool `pg` (e uma instância Drizzle) por município, num LRU de no máximo `max`.
@@ -46,7 +48,11 @@ export class PoolsDosTenants {
     this.pools = new LRUCache<string, Tenant>({
       max: opcoes.max,
       dispose: (tenant) => {
-        const fim = tenant.db.$client.end().finally(() => this.encerrando.delete(fim));
+        // Um end() que falha só é registrado: não vira rejeição solta nem impede os outros de fechar.
+        const fim = tenant.db.$client
+          .end()
+          .catch((erro) => this.registrar(`falha ao encerrar o pool de ${tenant.slug}`, erro))
+          .finally(() => this.encerrando.delete(fim));
         this.encerrando.add(fim);
       },
     });
@@ -79,6 +85,12 @@ export class PoolsDosTenants {
       fuso: linha.fuso,
       db: drizzle(pool, { schema: schemaMunicipal }),
     };
+    // Cliente ocioso que cai (banco reiniciado, conexão derrubada) emite 'error' no pool; sem ouvinte,
+    // isso derrubaria o processo inteiro. Registra e tira o pool do LRU: o próximo `obter` cria outro.
+    pool.on("error", (erro) => {
+      this.registrar(`conexão do pool de ${slug} caiu`, erro);
+      if (this.pools.peek(slug) === tenant) this.pools.delete(slug);
+    });
     this.pools.set(slug, tenant);
     return tenant;
   }
@@ -86,7 +98,11 @@ export class PoolsDosTenants {
   async encerrar(): Promise<void> {
     this.pools.clear();
     this.catalogo?.clear();
-    await Promise.all([...this.encerrando]);
+    await Promise.allSettled([...this.encerrando]);
+  }
+
+  private registrar(mensagem: string, erro: unknown) {
+    (this.opcoes.registrar ?? console.error)(mensagem, erro);
   }
 
   private async buscarNoCatalogo(slug: string): Promise<LinhaDoCatalogo | null> {

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import database from "infra/database";
 import { municipio } from "infra/database/central/schema/municipio";
 import { PoolsDosTenants, urlDoBanco } from "infra/database/tenants";
@@ -106,5 +106,40 @@ describe("PoolsDosTenants", () => {
     expect(await pools.obter(slug)).toBeNull();
     // Suspenso, o pool do tenant é encerrado na hora.
     expect(ativo?.db.$client.ended).toBe(true);
+  });
+  it("pool: conexão derrubada no banco do tenant não derruba o processo e o próximo obter reconecta", async () => {
+    const { slug } = await orchestrator.criarMunicipio();
+    const erros: string[] = [];
+    const pools = novosPools({ registrar: (mensagem) => erros.push(mensagem) });
+
+    const antes = await pools.obter(slug);
+    await antes?.db.execute("select 1"); // deixa um cliente ocioso no pool
+    expect(antes?.db.$client.idleCount).toBe(1);
+
+    await database.execute(
+      sql`select pg_terminate_backend(pid) from pg_stat_activity where datname = ${bancoDoSlug(slug)} and pid <> pg_backend_pid()`,
+    );
+    for (let i = 0; i < 50 && erros.length === 0; i++) await new Promise((r) => setTimeout(r, 20));
+
+    expect(erros).toEqual([expect.stringContaining(slug)]);
+    const depois = await pools.obter(slug);
+    expect(depois?.db).not.toBe(antes?.db);
+    const resultado = await depois?.db.execute<{ um: number }>("select 1 as um");
+    expect(resultado?.rows[0]?.um).toBe(1);
+  });
+
+  it("pool: encerrar fecha todos mesmo quando um pool.end() falha", async () => {
+    const a = await orchestrator.criarMunicipio();
+    const b = await orchestrator.criarMunicipio();
+    const erros: string[] = [];
+    const pools = novosPools({ registrar: (mensagem) => erros.push(mensagem) });
+
+    const tenantA = await pools.obter(a.slug);
+    const tenantB = await pools.obter(b.slug);
+    await tenantA?.db.$client.end(); // o segundo end() deste pool rejeita
+
+    await expect(pools.encerrar()).resolves.toBeUndefined();
+    expect(tenantB?.db.$client.ended).toBe(true);
+    expect(erros).toEqual([expect.stringContaining(a.slug)]);
   });
 });
