@@ -1,5 +1,6 @@
-import { perfilUsuario } from "infra/database/municipal/schema/perfil";
+import { funcaoUsuario } from "infra/database/municipal/schema/equipe";
 import orchestrator from "tests/orchestrator";
+import { gerente } from "tests/painel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let a: string;
@@ -19,18 +20,22 @@ describe("GET /v1/painel/eu", () => {
     const cookie = await orchestrator.loginGestor(a);
     const r = await orchestrator.pedirPainel(a, "GET", "/v1/painel/eu", { cookie });
     expect(r.status).toBe(200);
-    expect(r.corpo).toMatchObject({ login: "gestor", perfis: [{ perfil: "gestor", unidadeId: null }] });
+    expect(r.corpo).toMatchObject({
+      login: "gestor",
+      funcoes: [{ funcao: "gestao_sms", unidadeId: null }],
+      perfis: [{ perfil: "gestao_sms", unidadeId: null }],
+    });
   });
 
-  it("RN-PERF-01: agendador e recepção acumulados aparecem os dois", async () => {
-    const u = await orchestrator.criarUsuarioComPerfis(a, "dupla", [
-      { perfil: "agendador", unidadeId },
-      { perfil: "recepcao", unidadeId },
-    ]);
+  it("RN-PERF-01: enfermeira que também agenda tem os dois papéis", async () => {
+    const u = await orchestrator.criarUsuarioComPerfis(a, "dupla", {
+      vinculos: [{ unidadeId, ocupacao: "enfermeiro" }],
+      funcoes: [{ funcao: "agendar", unidadeId }],
+    });
     const cookie = await orchestrator.loginPainel(a, u.login, u.senha);
     const r = await orchestrator.pedirPainel(a, "GET", "/v1/painel/eu", { cookie });
     expect(r.corpo.perfis).toHaveLength(2);
-    expect(r.corpo.perfis.map((p: { perfil: string }) => p.perfil).sort()).toEqual(["agendador", "recepcao"]);
+    expect(r.corpo.perfis.map((p: { perfil: string }) => p.perfil).sort()).toEqual(["agendar", "enfermeiro"]);
   });
 
   it("sem sessão → 401; cookie do paciente da central → 401", async () => {
@@ -39,18 +44,20 @@ describe("GET /v1/painel/eu", () => {
     expect((await orchestrator.pedirPainel(a, "GET", "/v1/painel/eu", { cookie })).status).toBe(401);
   });
 
-  it("modelo: gestor com unidade e admin sem unidade recusados pelo banco", async () => {
+  it("modelo: SMS com unidade e gerente sem unidade recusados pelo banco", async () => {
     const db = orchestrator.bancoDoMunicipio(a);
-    const u = await orchestrator.criarUsuarioComPerfis(a, "escopo", [{ perfil: "admin", unidadeId }]);
-    await expect(db.insert(perfilUsuario).values({ usuarioId: u.id, perfil: "gestor", unidadeId })).rejects.toThrow();
+    const u = await orchestrator.criarUsuarioComPerfis(a, "escopo", gerente(unidadeId));
     await expect(
-      db.insert(perfilUsuario).values({ usuarioId: u.id, perfil: "admin", unidadeId: null }),
+      db.insert(funcaoUsuario).values({ usuarioId: u.id, funcao: "gestao_sms", unidadeId }),
+    ).rejects.toThrow();
+    await expect(
+      db.insert(funcaoUsuario).values({ usuarioId: u.id, funcao: "gerente_ubs", unidadeId: null }),
     ).rejects.toThrow();
   });
 
   it("perfil de A não aparece no eu de B", async () => {
     const cookieB = await orchestrator.loginGestor(b);
     const r = await orchestrator.pedirPainel(b, "GET", "/v1/painel/eu", { cookie: cookieB });
-    expect(r.corpo.perfis).toEqual([{ perfil: "gestor", unidadeId: null }]);
+    expect(r.corpo.perfis).toEqual([{ perfil: "gestao_sms", unidadeId: null }]);
   });
 });

@@ -1,5 +1,6 @@
 import { origemDoPainel } from "infra/painel/origem";
 import orchestrator, { SENHA_GESTOR } from "tests/orchestrator";
+import { sms } from "tests/painel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let a: string;
@@ -28,7 +29,7 @@ describe("POST /v1/painel/auth/sign-in/username", () => {
   });
 
   it("T1.9: usuário de A não loga em B; cookie de A no Host de B não autentica", async () => {
-    await orchestrator.criarUsuarioComPerfis(a, "soema", [{ perfil: "gestor", unidadeId: null }]);
+    await orchestrator.criarUsuarioComPerfis(a, "soema", sms());
     expect((await entrar(b, "soema", "senha-forte-1")).status).toBe(401);
     const cookieA = await orchestrator.loginGestor(a);
     const eu = await orchestrator.pedirPainel(b, "GET", "/v1/painel/eu", { cookie: cookieA });

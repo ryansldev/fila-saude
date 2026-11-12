@@ -4,17 +4,20 @@ A hierarquia é **Município → Unidade → Serviço → Sessão**. O paciente 
 
 ## Atores e perfis
 
-Uma pessoa pode acumular perfis (ex.: agendador e recepção). Cada perfil é concedido com um **escopo**: o município inteiro ou unidades específicas. Toda ação administrativa fica registrada em auditoria. O que cada perfil pode fazer está em [permissões](../permissoes/spec.md).
+Cada pessoa do painel tem **ocupações** (o que ela é em cada unidade, alinhado ao CBO do vínculo no CNES) e pode ter **funções de gestão** ou a permissão **Agendar**. Disso saem os papéis de permissão da [matriz](../permissoes/spec.md). Toda ação administrativa fica registrada em auditoria.
 
-| Perfil | Escopo | Papel |
+| Ator | Escopo | Papel |
 | --- | --- | --- |
 | Paciente | Próprio (e de quem ele marca) | Usa o app: lista de espera, inscrição, fila, check-in, cancelamento |
-| Gestor municipal | Município | Cria unidades, define regras do município, gerencia usuários do painel, vê relatórios e métricas |
-| Admin da unidade | Unidade | Configura serviços, sessões, TV e estações; abre, cancela e encerra sessões |
-| Agendador | Unidade | Valida requisições, aloca pacientes, lança pacientes de serviço regulado, liga e registra confirmações |
-| Recepção | Unidade | Balcão, conferência de documentos e prioridade, presença, ajustes, contingência |
-| Triagem | Unidade | Chama para triagem, confirma ou reclassifica o risco |
-| Profissional | Unidade | Chama, rechama, pula e finaliza na estação |
+| Gestão municipal (SMS) | Município | Cria unidades, define regras do município, cadastra a equipe, vê relatórios e métricas |
+| Regulação (SMS) | Município | Lança pacientes de serviço regulado (vaga vinda da central de regulação) |
+| Gerente da UBS | Unidade | Configura serviços, sessões, TV e estações; abre, cancela e encerra sessões; cadastra a equipe da unidade |
+| Agendar (permissão) | Unidade | Valida requisições, aloca pacientes, liga e registra confirmações. O gerente liga para quem faz isso na UBS |
+| Recepção / auxiliar administrativo | Unidade | Balcão, conferência de documentos e prioridade, presença, ajustes, contingência |
+| Enfermeiro(a) | Unidade | Classifica e confirma o risco; chama na triagem e no atendimento de enfermagem |
+| Técnico(a) de enfermagem | Unidade | Acolhimento e sinais vitais na estação de triagem, sem classificar risco |
+| Atendimento: médico(a), cirurgião(ã)-dentista, eMulti | Unidade | Chama, rechama, pula e finaliza na estação de atendimento |
+| ACS, saúde bucal (técnico/auxiliar) | Unidade | Fazem parte da equipe; sem ação no painel por enquanto |
 | TV (dispositivo) | Unidade | Exibe chamadas e QR. Não é um usuário; é um dispositivo pareado |
 
 ## Entidades

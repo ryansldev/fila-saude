@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { auditoria } from "infra/database/municipal/schema/auditoria";
 import { sessao } from "infra/database/municipal/schema/sessao";
 import orchestrator from "tests/orchestrator";
-import { municipioComUnidade, UNIDADE, usuarioLogado } from "tests/painel";
+import { gerente, municipioComUnidade, ocupacao, UNIDADE, usuarioLogado } from "tests/painel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let slug: string;
@@ -13,7 +13,7 @@ let admin: string;
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   ({ slug, gestor, unidadeId } = await municipioComUnidade());
-  admin = (await usuarioLogado(slug, gestor, "admin", [{ perfil: "admin", unidadeId }])).cookie;
+  admin = (await usuarioLogado(slug, gestor, "admin", gerente(unidadeId))).cookie;
 });
 afterAll(() => orchestrator.derrubarMunicipios());
 
@@ -46,7 +46,7 @@ describe("serviços", () => {
   it("prefixo repetido na unidade → 409; em outra unidade, aceito", async () => {
     expect(await criar(servico("C"))).toMatchObject({ status: 409, corpo: { erro: "prefixo_em_uso" } });
     const u2 = await pedir("POST", "/v1/painel/unidades", gestor, { ...UNIDADE, nome: "UBS 2" });
-    const admin2 = (await usuarioLogado(slug, gestor, "admin2", [{ perfil: "admin", unidadeId: u2.corpo.id }])).cookie;
+    const admin2 = (await usuarioLogado(slug, gestor, "admin2", gerente(u2.corpo.id))).cookie;
     expect((await criar(servico("C"), admin2, u2.corpo.id)).status).toBe(201);
     const s1 = (await pedir("GET", `/v1/painel/unidades/${unidadeId}/servicos`, admin)).corpo[0];
     expect((await pedir("PATCH", `/v1/painel/servicos/${s1.id}`, admin2, { nome: "invasão" })).status).toBe(403);
@@ -102,7 +102,7 @@ describe("serviços", () => {
   });
 
   it("recepção não configura → 403; INV-12: auditoria", async () => {
-    const recep = (await usuarioLogado(slug, gestor, "recep", [{ perfil: "recepcao", unidadeId }])).cookie;
+    const recep = (await usuarioLogado(slug, gestor, "recep", ocupacao(unidadeId, "recepcao"))).cookie;
     expect((await criar(servico("R"), recep)).status).toBe(403);
     const linhas = await orchestrator
       .bancoDoMunicipio(slug)

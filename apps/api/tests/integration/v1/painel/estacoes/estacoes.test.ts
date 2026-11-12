@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { estacao } from "infra/database/municipal/schema/estacao";
 import orchestrator from "tests/orchestrator";
-import { municipioComUnidade, UNIDADE, usuarioLogado } from "tests/painel";
+import { gerente, municipioComUnidade, UNIDADE, usuarioLogado } from "tests/painel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let slug: string;
@@ -14,7 +14,7 @@ let semTriagem: string;
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   ({ slug, gestor, unidadeId } = await municipioComUnidade());
-  admin = (await usuarioLogado(slug, gestor, "admin", [{ perfil: "admin", unidadeId }])).cookie;
+  admin = (await usuarioLogado(slug, gestor, "admin", gerente(unidadeId))).cookie;
   const s = (corpo: object) => pedir("POST", `/v1/painel/unidades/${unidadeId}/servicos`, admin, corpo);
   comTriagem = (await s({ nome: "Clínico", prefixo: "C", exigeTriagem: true, modo: "livre", tempoMedioMin: {} })).corpo
     .id;
@@ -38,7 +38,7 @@ describe("estações", () => {
   it("triagem com serviço sem triagem → 400; serviço de outra unidade → 400", async () => {
     expect((await criar({ nome: "T2", etapa: "triagem", servicos: [semTriagem] })).status).toBe(400);
     const u2 = await pedir("POST", "/v1/painel/unidades", gestor, { ...UNIDADE, nome: "UBS 2" });
-    const adm2 = (await usuarioLogado(slug, gestor, "adm2", [{ perfil: "admin", unidadeId: u2.corpo.id }])).cookie;
+    const adm2 = (await usuarioLogado(slug, gestor, "adm2", gerente(u2.corpo.id))).cookie;
     const fora = (
       await pedir("POST", `/v1/painel/unidades/${u2.corpo.id}/servicos`, adm2, {
         nome: "X",

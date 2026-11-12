@@ -153,17 +153,30 @@ export function lerTabelas(): LinhaSpec[] {
 
 export const PERFIS_MATRIZ = [
   "paciente",
-  "gestor",
-  "admin",
-  "agendador",
+  "gestao_sms",
+  "regulacao_sms",
+  "gerente_ubs",
+  "agendar",
   "recepcao",
-  "triagem",
-  "profissional",
+  "enfermeiro",
+  "tecnico_enfermagem",
+  "atendimento",
 ] as const;
 
 export type LinhaMatrizSpec = { texto: string; celulas: string[] };
 
-const CABECALHO_MATRIZ = ["Ação", "Paciente", "Gestor", "Admin", "Agendador", "Recepção", "Triagem", "Profissional"];
+const CABECALHO_MATRIZ = [
+  "Ação",
+  "Paciente",
+  "Gestão SMS",
+  "Regulação SMS",
+  "Gerente da UBS",
+  "Agendar",
+  "Recepção",
+  "Enfermeiro",
+  "Técnico de enfermagem",
+  "Atendimento",
+];
 
 const celulasDaLinha = (linha: string): string[] =>
   linha
@@ -172,7 +185,7 @@ const celulasDaLinha = (linha: string): string[] =>
     .split("|")
     .map((x) => x.trim());
 
-/** Linhas da matriz de `specs/permissoes` (texto da ação + as 7 células, na ordem das colunas). */
+/** Linhas da matriz de `specs/permissoes` (texto da ação + as 9 células, na ordem das colunas). */
 export function lerMatriz(): LinhaMatrizSpec[] {
   const texto = readFileSync(resolve(RAIZ, "permissoes", "spec.md"), "utf8").split("\n");
   const inicio = texto.findIndex((l) => /^\|\s*Ação\s*\|\s*Paciente\s*\|/.test(l));

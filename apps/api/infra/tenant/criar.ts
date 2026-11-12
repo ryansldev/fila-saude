@@ -8,14 +8,14 @@ import { migrarBanco } from "infra/database/migrar";
 import { usuarioPainel } from "infra/database/municipal/schema/auth";
 import { type DbDoTenant, schemaMunicipal } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
-import { concederPerfis } from "infra/painel/perfis";
+import { concederAtribuicoes } from "infra/painel/perfis";
 import { Pool } from "pg";
 import { bancoDoSlug, validarSlug } from "./slug";
 
 export type DadosDoGestor = { login: string; nome: string; senha: string };
 export type DadosDoTenant = { slug: string; nome: string; uf: string; fuso?: string; gestor?: DadosDoGestor | null };
 
-// T1.9: o primeiro gestor do município (escopo município). Idempotente: login existente é reaproveitado.
+// T1.9: o primeiro usuário do município, com a função Gestão SMS. Idempotente: login existente é reaproveitado.
 async function criarGestor(url: string, gestor: DadosDoGestor): Promise<string> {
   const pool = new Pool({ connectionString: url, max: 1 });
   try {
@@ -25,7 +25,7 @@ async function criarGestor(url: string, gestor: DadosDoGestor): Promise<string> 
       .from(usuarioPainel)
       .where(eq(usuarioPainel.username, gestor.login.toLowerCase()));
     const id = existe?.id ?? (await criarUsuarioPainel(db, gestor)).id;
-    await concederPerfis(db, id, [{ perfil: "gestor", unidadeId: null }], null);
+    await concederAtribuicoes(db, id, { vinculos: [], funcoes: [{ funcao: "gestao_sms", unidadeId: null }] }, null);
     return id;
   } finally {
     await pool.end();

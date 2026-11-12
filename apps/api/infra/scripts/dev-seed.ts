@@ -17,7 +17,7 @@ async function main() {
     const r = await semearExemplo({ central: database, template: env.TENANT_DATABASE_URL_TEMPLATE, agora: Date.now() });
     console.log(`\nPainel: ${r.painel}\n`);
     console.log("Usuários do painel:");
-    for (const u of r.usuarios) console.log(`  ${u.perfil.padEnd(13)} login ${u.login.padEnd(13)} senha ${u.senha}`);
+    for (const u of r.usuarios) console.log(`  login ${u.login.padEnd(11)} senha ${u.senha}  ${u.papel}`);
     console.log("\nPacientes (app, login pelo CPF):");
     for (const p of r.pacientes) console.log(`  ${p.nome.padEnd(12)} CPF ${p.cpf}  senha ${p.senha}`);
     console.log("\nSessões (hora local):");

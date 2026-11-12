@@ -7,6 +7,8 @@ import { validarSlug } from "./tenant/slug";
 
 const camposDoEnv = z.object({
   NODE_ENV: z.enum(["development", "production", "test", "staging"]).default("development"),
+  // Porta da API. Os testes usam outra (3334) para rodar com o `npm run dev` no ar.
+  PORTA: z.coerce.number().int().positive().default(3333),
   VERCEL_URL: z.string().optional(),
   POSTGRES_USER: z.string(),
   POSTGRES_PASSWORD: z.string(),

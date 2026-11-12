@@ -5,12 +5,13 @@ export type PerfilDoUsuario = { perfil: Perfil; unidadeId: string | null };
 
 export type Candidato = ItemDeMenu & { acao: Acao };
 
-const GESTAO: Acao = "criar_unidades_regras_usuarios";
+const UNIDADES: Acao = "criar_unidades_e_regras";
+const EQUIPE: Acao = "cadastrar_equipe";
 const CONFIGURAR: Acao = "configurar_servicos_sessoes_estacoes_tv";
 
 export const ITENS_DO_MENU: Candidato[] = [
-  { rotulo: "Unidades", href: "/unidades", acao: GESTAO },
-  { rotulo: "Usuários", href: "/usuarios", acao: GESTAO },
+  { rotulo: "Unidades", href: "/unidades", acao: UNIDADES },
+  { rotulo: "Equipe", href: "/equipe", acao: EQUIPE },
   { rotulo: "Serviços", href: "/servicos", acao: CONFIGURAR },
   { rotulo: "Estações", href: "/estacoes", acao: CONFIGURAR },
   { rotulo: "Sessões", href: "/sessoes", acao: CONFIGURAR },
@@ -20,7 +21,7 @@ const EM_BREVE: ItemDeMenu = { rotulo: "Em breve", href: "/em-breve" };
 
 /**
  * Menu do painel (PD-09, `specs/permissoes`): cada item só aparece se `pode` permitir a ação dele.
- * Perfis acumulam; os que não são gestor, admin nem paciente (sem painel) ganham um único item "Em breve" até as fases 3–7.
+ * Papéis acumulam; quem não é gestão SMS, gerente da UBS nem paciente ganha um único item "Em breve" até as próximas fatias.
  */
 export function menuDoPainel(perfis: PerfilDoUsuario[]): ItemDeMenu[] {
   const lista = perfis.map((p) => p.perfil);
@@ -28,6 +29,6 @@ export function menuDoPainel(perfis: PerfilDoUsuario[]): ItemDeMenu[] {
     rotulo,
     href,
   }));
-  if (lista.some((p) => p !== "gestor" && p !== "admin" && p !== "paciente")) menu.push(EM_BREVE);
+  if (lista.some((p) => p !== "gestao_sms" && p !== "gerente_ubs" && p !== "paciente")) menu.push(EM_BREVE);
   return menu;
 }

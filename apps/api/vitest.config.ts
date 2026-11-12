@@ -13,7 +13,7 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
     },
-    // PD-19: todos os arquivos compartilham o Postgres de teste e o servidor em :3333.
+    // PD-19: todos os arquivos compartilham o Postgres de teste e o servidor em :3334 (PORTA do .env.test).
     fileParallelism: false,
     globalSetup: ["./tests/global-setup.ts"],
   },

@@ -8,8 +8,8 @@ import type { Db } from "./index";
 import * as auditoria from "./municipal/schema/auditoria";
 import * as auth from "./municipal/schema/auth";
 import * as entrada from "./municipal/schema/entrada";
+import * as equipe from "./municipal/schema/equipe";
 import * as estacao from "./municipal/schema/estacao";
-import * as perfil from "./municipal/schema/perfil";
 import * as pessoaLocal from "./municipal/schema/pessoa-local";
 import * as servico from "./municipal/schema/servico";
 import * as sessao from "./municipal/schema/sessao";
@@ -26,7 +26,7 @@ export const schemaMunicipal = {
   ...sessao,
   ...entrada,
   ...auth,
-  ...perfil,
+  ...equipe,
   ...auditoria,
 };
 

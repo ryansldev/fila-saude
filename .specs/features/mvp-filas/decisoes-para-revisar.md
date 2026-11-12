@@ -102,3 +102,16 @@ Pedido: "o mais rápido possível, menos perfeccionista". Tasks 2–20 feitas di
 | V3 | CORS (Task 10) | Hook próprio em vez de `@fastify/cors`; mutação em `/v1/painel` com `Origin` de outro município → 403 antes da rota (CSRF) | `@fastify/cors` | Baixo: um arquivo |
 | V4 | Login do painel | Plugin username do better-auth: login só com letras, números, `.` e `_` (3–30) | Validador próprio que aceite hífen | Login com hífen dá 400 |
 | V5 | `GET /v1/painel/unidades` e `/config` | Qualquer usuário logado vê as unidades dos seus perfis (gestor: todas) | Exigir uma ação da matriz | Baixo |
+
+## Papéis da equipe (discovery, 2026-11-12)
+
+Decididos por você: ocupação + função de gestão; quem cria quem (RN-PERF-04); "Agendar" como permissão ligável; técnico acolhe e enfermeiro classifica (RN-PERF-05). Ficaram provisórios:
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| E1 | Confirmar nível de risco | Só o enfermeiro (a matriz antiga dava ao agendador, "na alocação ou lançamento") | Médico também confirma | O agendamento não confirma risco: precisa de enfermeiro |
+| E2 | Lançar paciente de serviço regulado | Regulação SMS e quem tem "Agendar" na UBS | Só a Regulação SMS | A UBS pode lançar o regulado que recebeu |
+| E3 | Técnico de enfermagem vê a resposta sobre pensamentos de tirar a própria vida (RN-RISCO-06) | Vê, para encaminhar no acolhimento | Só o enfermeiro vê | Exposição maior de um dado sensível |
+| E4 | ACS e saúde bucal (técnico/auxiliar) | Entram na equipe sem ação no painel | Dar alguma ação | Nenhum por enquanto |
+| E5 | Gerente edita alguém com atribuições fora da UBS dele | Recusado (403); só a SMS mexe | O gerente mexe só na parte da UBS dele | A SMS precisa ajustar quem trabalha em duas UBS |
+| E6 | CBO | Ocupações sem o código CBO por enquanto | Guardar o CBO de cada ocupação | Importar do CNES depois pede o mapeamento |

@@ -11,7 +11,7 @@ import {
   visibilidadesPermitidas,
 } from "@/lib/formularios/sessao";
 import { campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
-import { problemasDosPerfis } from "@/lib/formularios/usuario";
+import { funcoesQuePodeConceder, problemasDoCadastro, unidadesQuePodeAtribuir } from "@/lib/formularios/usuario";
 import { menuDoPainel } from "@/lib/navegacao";
 
 describe("erros da API nos formulários", () => {
@@ -58,13 +58,37 @@ describe("unidade", () => {
   });
 });
 
-describe("usuário", () => {
-  it("perfil de unidade exige escolher a unidade; gestor não leva unidade", () => {
-    expect(problemasDosPerfis([{ perfil: "recepcao", unidadeId: null }])).toEqual({
-      "perfis.0.unidadeId": "Escolha a unidade.",
+describe("equipe", () => {
+  const sms = { vinculos: [], funcoes: [{ funcao: "gestao_sms" as const, unidadeId: null }] };
+  const gerente = { vinculos: [], funcoes: [{ funcao: "gerente_ubs" as const, unidadeId: "u1" }] };
+  const unidades = [
+    { id: "u1", nome: "UBS 1" },
+    { id: "u2", nome: "UBS 2" },
+  ];
+
+  it("RN-PERF-04: o formulário só oferece o que quem está logado pode conceder", () => {
+    expect(funcoesQuePodeConceder(sms)).toEqual(["gestao_sms", "regulacao_sms", "gerente_ubs", "agendar"]);
+    expect(funcoesQuePodeConceder(gerente)).toEqual(["agendar"]);
+    expect(unidadesQuePodeAtribuir(sms, unidades).map((u) => u.id)).toEqual(["u1", "u2"]);
+    expect(unidadesQuePodeAtribuir(gerente, unidades).map((u) => u.id)).toEqual(["u1"]);
+  });
+
+  it("ocupação exige a unidade; função de gerente exige a unidade; nada marcado pede ao menos uma", () => {
+    expect(problemasDoCadastro(sms, { vinculos: [], funcoes: [] })).toEqual({
+      _: "Informe ao menos uma ocupação ou função.",
     });
-    expect(problemasDosPerfis([{ perfil: "gestor", unidadeId: null }])).toEqual({});
-    expect(problemasDosPerfis([])).toEqual({ perfis: "Escolha ao menos um perfil." });
+    expect(problemasDoCadastro(sms, { vinculos: [], funcoes: [{ funcao: "gerente_ubs", unidadeId: null }] })).toEqual({
+      "funcoes.0.unidadeId": "Escolha a unidade.",
+    });
+    expect(problemasDoCadastro(sms, { vinculos: [{ unidadeId: "u1", ocupacao: "enfermeiro" }], funcoes: [] })).toEqual(
+      {},
+    );
+  });
+
+  it("gerente que tenta cadastrar em outra UBS recebe o aviso antes de enviar", () => {
+    expect(problemasDoCadastro(gerente, { vinculos: [{ unidadeId: "u2", ocupacao: "medico" }], funcoes: [] })).toEqual({
+      _: "Você só cadastra a equipe da sua unidade, sem função de gestão.",
+    });
   });
 });
 
@@ -120,11 +144,11 @@ describe("sessão", () => {
 describe("menu", () => {
   it("menu sem Regras do município e TVs", () => {
     const rotulos = menuDoPainel([
-      { perfil: "gestor", unidadeId: null },
-      { perfil: "admin", unidadeId: "u1" },
+      { perfil: "gestao_sms", unidadeId: null },
+      { perfil: "gerente_ubs", unidadeId: "u1" },
     ]).map((i) => i.rotulo);
     expect(rotulos).not.toContain("Regras do município");
     expect(rotulos).not.toContain("TVs");
-    expect(rotulos).toEqual(["Unidades", "Usuários", "Serviços", "Estações", "Sessões"]);
+    expect(rotulos).toEqual(["Unidades", "Equipe", "Serviços", "Estações", "Sessões"]);
   });
 });

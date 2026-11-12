@@ -1,4 +1,5 @@
 import { randomInt, randomUUID } from "node:crypto";
+import type { Atribuicoes } from "@fila-saude/domain";
 import retry from "async-retry";
 import { inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
@@ -9,7 +10,7 @@ import { unidade } from "infra/database/municipal/schema/unidade";
 import { type DbDoTenant, schemaMunicipal } from "infra/database/tenants";
 import env from "infra/env";
 import { origemDoPainel } from "infra/painel/origem";
-import { concederPerfis, type PerfilComEscopo } from "infra/painel/perfis";
+import { concederAtribuicoes } from "infra/painel/perfis";
 import { criarTenant, type DadosDoTenant } from "infra/tenant/criar";
 import { bancoDoSlug } from "infra/tenant/slug";
 import webserver from "infra/webserver";
@@ -95,10 +96,10 @@ function esquecerBanco(slug: string) {
   bancos.delete(slug);
 }
 
-async function criarUsuarioComPerfis(slug: string, login: string, perfis: PerfilComEscopo[], senha = "senha-forte-1") {
+async function criarUsuarioComPerfis(slug: string, login: string, atribuicoes: Atribuicoes, senha = "senha-forte-1") {
   const db = bancoDoMunicipio(slug);
   const { id } = await criarUsuarioPainel(db, { login, nome: login, senha });
-  await concederPerfis(db, id, perfis, null);
+  await concederAtribuicoes(db, id, atribuicoes, null);
   return { id, login, senha };
 }
 

@@ -29,6 +29,20 @@
       "when": 1794483949854,
       "tag": "0003_sem_endereco_texto",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794484860709,
+      "tag": "0004_equipe",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794484861377,
+      "tag": "0005_sem_perfil_usuario",
+      "breakpoints": true
     }
   ]
 }

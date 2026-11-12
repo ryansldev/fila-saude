@@ -63,11 +63,13 @@ describe("login", () => {
       id: "p1",
       nome: "Ana",
       login: "ana.souza",
-      perfis: [{ perfil: "admin", unidadeId: "6f1c1f0e-8f0a-4b5e-9d0e-1c2b3a4d5e6f" }],
+      vinculos: [],
+      funcoes: [{ funcao: "gerente_ubs", unidadeId: "6f1c1f0e-8f0a-4b5e-9d0e-1c2b3a4d5e6f" }],
+      perfis: [{ perfil: "gerente_ubs", unidadeId: "6f1c1f0e-8f0a-4b5e-9d0e-1c2b3a4d5e6f" }],
     });
     const navegarOk = montar(ok);
     preencherEEnviar();
-    await waitFor(() => expect(navegarOk).toHaveBeenCalledWith("/servicos"));
+    await waitFor(() => expect(navegarOk).toHaveBeenCalledWith("/equipe"));
   });
 
   it("login: sign-in ok mas /eu com 401 mostra erro genérico, não credenciais", async () => {
@@ -103,7 +105,9 @@ describe("login", () => {
       id: "p1",
       nome: "Ana",
       login: "ana.souza",
-      perfis: [{ perfil: "gestor", unidadeId: null }],
+      vinculos: [],
+      funcoes: [{ funcao: "gestao_sms", unidadeId: null }],
+      perfis: [{ perfil: "gestao_sms", unidadeId: null }],
     });
     const navegar = montar(api);
     preencherEEnviar();

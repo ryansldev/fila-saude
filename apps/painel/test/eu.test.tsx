@@ -28,7 +28,14 @@ describe("useEu", () => {
   it("eu no contrato autentica", async () => {
     render(
       <ApiProvider
-        api={apiCom({ id: "x", nome: "Ana", login: "ana", perfis: [{ perfil: "gestor", unidadeId: null }] })}
+        api={apiCom({
+          id: "x",
+          nome: "Ana",
+          login: "ana",
+          vinculos: [],
+          funcoes: [],
+          perfis: [{ perfil: "gestao_sms", unidadeId: null }],
+        })}
       >
         <Mostra />
       </ApiProvider>,

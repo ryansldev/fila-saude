@@ -5,10 +5,38 @@
  * `textoDaCelula` devolve o texto exato da spec. Perfil ausente = sem permissão.
  * Perfis são acumuláveis: `pode` soma os do usuário.
  */
-export type Perfil = "paciente" | "gestor" | "admin" | "agendador" | "recepcao" | "triagem" | "profissional";
+/**
+ * Papéis de permissão (colunas da matriz). Não são cargos: vêm da ocupação da pessoa na unidade
+ * (enfermeiro, técnico de enfermagem, recepção, "atendimento" para médico, dentista e eMulti) e das
+ * funções de gestão (gestão SMS, regulação SMS, gerente da UBS) ou da permissão "agendar" (ver `equipe.ts`).
+ */
+export type Perfil =
+  | "paciente"
+  | "gestao_sms"
+  | "regulacao_sms"
+  | "gerente_ubs"
+  | "agendar"
+  | "recepcao"
+  | "enfermeiro"
+  | "tecnico_enfermagem"
+  | "atendimento";
+
+/** Ordem das colunas na spec. */
+export const PERFIS: readonly Perfil[] = [
+  "paciente",
+  "gestao_sms",
+  "regulacao_sms",
+  "gerente_ubs",
+  "agendar",
+  "recepcao",
+  "enfermeiro",
+  "tecnico_enfermagem",
+  "atendimento",
+];
 
 export type Acao =
-  | "criar_unidades_regras_usuarios"
+  | "criar_unidades_e_regras"
+  | "cadastrar_equipe"
   | "ver_relatorio_de_ajustes"
   | "exportar_csv_metricas"
   | "configurar_servicos_sessoes_estacoes_tv"
@@ -44,41 +72,46 @@ export type LinhaMatriz = {
 
 const LINHAS: LinhaMatriz[] = [
   {
-    acao: "criar_unidades_regras_usuarios",
-    texto: "Criar unidades, regras do município e usuários do painel",
-    perfis: { gestor: true },
+    acao: "criar_unidades_e_regras",
+    texto: "Criar unidades e regras do município",
+    perfis: { gestao_sms: true },
+  },
+  {
+    acao: "cadastrar_equipe",
+    texto: "Cadastrar a equipe no painel: ocupação, funções e permissões (RN-PERF-04)",
+    perfis: { gestao_sms: true, gerente_ubs: { ressalva: "da própria unidade, sem função de gestão" } },
   },
   {
     acao: "ver_relatorio_de_ajustes",
     texto: "Ver relatório de ajustes por usuário (RN-PERF-03)",
-    perfis: { gestor: true },
+    perfis: { gestao_sms: true },
   },
   {
     acao: "exportar_csv_metricas",
     texto: "Exportar CSV das métricas do piloto (RNF-MET-01)",
-    perfis: { gestor: true },
+    perfis: { gestao_sms: true },
   },
   {
     acao: "configurar_servicos_sessoes_estacoes_tv",
     texto: "Configurar serviços, sessões, estações; parear e revogar TV",
-    perfis: { admin: true },
+    perfis: { gerente_ubs: true },
   },
   {
     acao: "abrir_cancelar_encerrar_sessao",
     texto: "Abrir, cancelar, encerrar sessão; mudar visibilidade",
-    perfis: { admin: true },
+    perfis: { gerente_ubs: true },
   },
   {
     acao: "imprimir_lista_do_dia",
     texto: "Imprimir a lista do dia, uso interno (RN-CONT-01)",
-    perfis: { admin: true, recepcao: true },
+    perfis: { gerente_ubs: true, recepcao: true },
   },
   {
     acao: "criar_entrada",
     texto: "Criar entrada; escolher data quando remanejado de sessão pública",
     perfis: {
       paciente: { ressalva: "própria ou de quem marca" },
-      agendador: { ressalva: "remarcar por quem não tem app" },
+      agendar: { ressalva: "remarcar por quem não tem app" },
       recepcao: true,
     },
   },
@@ -90,22 +123,22 @@ const LINHAS: LinhaMatriz[] = [
   {
     acao: "validar_requisicao",
     texto: "Validar requisição",
-    perfis: { agendador: true },
+    perfis: { agendar: true },
   },
   {
     acao: "alocar_confirmar_recusar_pelo_paciente",
     texto: "Alocar; confirmar ou recusar em nome do paciente",
-    perfis: { agendador: true },
+    perfis: { agendar: true },
   },
   {
     acao: "lancar_regulado",
     texto: "Lançar paciente de serviço regulado, inclusive no dia; remover lançamento não chamado (RN-ENC-06)",
-    perfis: { agendador: true },
+    perfis: { regulacao_sms: true, agendar: true },
   },
   {
     acao: "confirmar_nivel_de_risco",
     texto: "Confirmar nível de risco",
-    perfis: { agendador: { ressalva: "na alocação ou lançamento" }, triagem: true },
+    perfis: { enfermeiro: true },
   },
   {
     acao: "incluir_no_balcao_e_marcar_presenca",
@@ -156,27 +189,38 @@ const LINHAS: LinhaMatriz[] = [
   {
     acao: "ver_documentos",
     texto: "Ver documentos (foto do documento, Cartão SUS)",
-    perfis: { paciente: { ressalva: "próprios" }, agendador: true, recepcao: true },
+    perfis: { paciente: { ressalva: "próprios" }, agendar: true, recepcao: true },
   },
   {
     acao: "ver_respostas_do_questionario",
     texto: "Ver respostas do questionário",
-    perfis: { paciente: { ressalva: "próprias" }, agendador: true, recepcao: true, triagem: true },
+    perfis: {
+      paciente: { ressalva: "próprias" },
+      agendar: true,
+      recepcao: true,
+      enfermeiro: true,
+      tecnico_enfermagem: true,
+    },
   },
   {
     acao: "ver_resposta_risco_de_vida",
     texto: "Ver resposta sobre pensamentos de tirar a própria vida (RN-RISCO-06)",
     perfis: {
       paciente: { ressalva: "própria" },
-      agendador: true,
+      agendar: true,
       recepcao: { texto: "só ao aplicar no balcão" },
-      triagem: true,
+      enfermeiro: true,
+      tecnico_enfermagem: true,
     },
   },
   {
     acao: "operar_chamadas",
     texto: "Chamar, rechamar, pular, finalizar",
-    perfis: { triagem: { ressalva: "triagem" }, profissional: { ressalva: "atendimento" } },
+    perfis: {
+      enfermeiro: true,
+      tecnico_enfermagem: { ressalva: "acolhimento na triagem" },
+      atendimento: { ressalva: "atendimento" },
+    },
   },
 ];
 

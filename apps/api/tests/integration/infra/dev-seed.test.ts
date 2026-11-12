@@ -55,12 +55,22 @@ describe("dev:seed", () => {
     expect(resumo.sessoes.map((s) => s.inicioLocal).sort()).toEqual(["2026-11-12T08:00", "2026-11-12T13:00"]);
   });
 
-  it("exemplo: cada perfil loga no painel e o eu mostra o próprio perfil", async () => {
-    expect(resumo.usuarios).toHaveLength(6);
+  it("exemplo: cada pessoa da equipe loga no painel com os seus papéis", async () => {
+    const esperados: Record<string, string[]> = {
+      gestor: ["gestao_sms"],
+      regulacao: ["regulacao_sms"],
+      gerente: ["gerente_ubs"],
+      recepcao: ["recepcao", "agendar"],
+      enfermeira: ["enfermeiro"],
+      tecnica: ["tecnico_enfermagem"],
+      medica: ["atendimento"],
+      dentista: ["atendimento"],
+    };
+    expect(resumo.usuarios.map((u) => u.login).sort()).toEqual(Object.keys(esperados).sort());
     for (const u of resumo.usuarios) {
       const cookie = await orchestrator.loginPainel(slug, u.login, u.senha);
       const eu = await orchestrator.pedirPainel(slug, "GET", "/v1/painel/eu", { cookie });
-      expect(eu.corpo.perfis.map((p: { perfil: string }) => p.perfil)).toEqual([u.perfil]);
+      expect(eu.corpo.perfis.map((p: { perfil: string }) => p.perfil)).toEqual(esperados[u.login]);
     }
   });
 
@@ -81,7 +91,7 @@ describe("dev:seed", () => {
     expect(entradas.map((e) => e.estado)).toEqual(["aguardando", "aguardando", "aguardando", "aguardando"]);
   });
 
-  it("PD-40: auditoria atribuída a quem fez; nenhuma linha para as entradas dos pacientes", async () => {
+  it("PD-40 / RN-PERF-04: auditoria atribuída a quem fez (SMS → gerente → equipe); nenhuma linha para as entradas dos pacientes", async () => {
     const id = (login: string) => resumo.usuarios.find((u) => u.login === login)?.id;
     const linhas = await db().select().from(auditoria);
     const por = (login: string) =>
@@ -89,10 +99,23 @@ describe("dev:seed", () => {
         .filter((l) => l.usuarioId === id(login))
         .map((l) => l.alvoTipo)
         .sort();
-    expect(por("gestor")).toEqual(["unidade", "usuario", "usuario", "usuario", "usuario", "usuario"]);
-    expect(por("admin")).toEqual(["estacao", "estacao", "estacao", "servico", "servico", "sessao", "sessao"]);
+    expect(por("gestor")).toEqual(["unidade", "usuario", "usuario"]);
+    expect(por("gerente")).toEqual([
+      "estacao",
+      "estacao",
+      "estacao",
+      "servico",
+      "servico",
+      "sessao",
+      "sessao",
+      "usuario",
+      "usuario",
+      "usuario",
+      "usuario",
+      "usuario",
+    ]);
     expect(por("recepcao")).toEqual(["entrada"]);
-    expect(linhas).toHaveLength(14);
+    expect(linhas).toHaveLength(16);
   });
 
   it("PD-40: rodar de novo apaga e recria — mesmas contagens, ids novos, sessão antiga inválida", async () => {

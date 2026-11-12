@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { sessao } from "infra/database/municipal/schema/sessao";
 import orchestrator from "tests/orchestrator";
-import { municipioComUnidade, usuarioLogado } from "tests/painel";
+import { gerente, municipioComUnidade, usuarioLogado } from "tests/painel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let slug: string;
@@ -18,7 +18,7 @@ beforeAll(async () => {
   await orchestrator.waitForAllServices();
   let gestor: string;
   ({ slug, gestor, unidadeId } = await municipioComUnidade());
-  admin = (await usuarioLogado(slug, gestor, "admin", [{ perfil: "admin", unidadeId }])).cookie;
+  admin = (await usuarioLogado(slug, gestor, "admin", gerente(unidadeId))).cookie;
   const s = (corpo: object) =>
     pedir("POST", `/v1/painel/unidades/${unidadeId}/servicos`, admin, {
       exigeTriagem: false,

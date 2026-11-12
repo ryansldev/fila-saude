@@ -33,6 +33,8 @@ export {
   registrarContingencia,
   titularDaFalta,
 } from "./encerramento.ts";
+export type { Atribuicoes, Funcao, FuncaoComEscopo, Ocupacao, PapelComEscopo, Vinculo } from "./equipe.ts";
+export { FUNCOES, OCUPACOES, papeisDe, podeCadastrar, problemasDaEquipe } from "./equipe.ts";
 export type { Estimativa } from "./estimativa.ts";
 export { avisosSaiaDeCasa, estimar, tempoMedio } from "./estimativa.ts";
 export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, MotivoSaida, Pendencia } from "./fila.ts";
@@ -68,7 +70,7 @@ export {
 export type { ChaveOrdem, ChaveSugestao, Risco } from "./ordem.ts";
 export { compararOrdem, compararSugestao } from "./ordem.ts";
 export type { Acao, Celula, LinhaMatriz, Perfil } from "./permissoes.ts";
-export { condicoes, MATRIZ, pode, textoDaCelula } from "./permissoes.ts";
+export { condicoes, MATRIZ, PERFIS, pode, textoDaCelula } from "./permissoes.ts";
 export type { ContextoDarPrioridade, Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
   aConferir,

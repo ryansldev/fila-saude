@@ -44,15 +44,24 @@ function montar(unidades: unknown[]) {
 describe("unidade atual", () => {
   it("gestor vê todas; os outros, as das suas perfis", () => {
     expect(
-      unidadesDoUsuario({ id: "a", nome: "A", login: "a", perfis: [{ perfil: "gestor", unidadeId: null }] }),
+      unidadesDoUsuario({
+        id: "a",
+        nome: "A",
+        login: "a",
+        vinculos: [],
+        funcoes: [],
+        perfis: [{ perfil: "gestao_sms", unidadeId: null }],
+      }),
     ).toEqual({ todas: true, ids: [] });
     expect(
       unidadesDoUsuario({
         id: "a",
         nome: "A",
         login: "a",
+        vinculos: [],
+        funcoes: [],
         perfis: [
-          { perfil: "admin", unidadeId: U1.id },
+          { perfil: "gerente_ubs", unidadeId: U1.id },
           { perfil: "recepcao", unidadeId: U1.id },
         ],
       }),

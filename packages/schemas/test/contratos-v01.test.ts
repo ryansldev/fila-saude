@@ -4,7 +4,7 @@ import { estacaoEdicaoSchema, estacaoSchema } from "../estacao.ts";
 import { servicoEdicaoSchema, servicoSchema } from "../servico.ts";
 import { sessaoEdicaoSchema, sessaoSchema, visibilidadeEntradaSchema } from "../sessao.ts";
 import { configEfetivaSchema, unidadeEdicaoSchema, unidadeSchema } from "../unidade.ts";
-import { perfisEntradaSchema, usuarioPainelSchema } from "../usuario.ts";
+import { atribuicoesSchema, usuarioPainelSchema } from "../usuario.ts";
 
 const ok = (s: { safeParse: (v: unknown) => { success: boolean } }, v: unknown) => s.safeParse(v).success;
 const id = "6f1c1f0e-8f0a-4b5e-9d0e-1c2b3a4d5e6f";
@@ -15,8 +15,10 @@ describe("euPainelSchema", () => {
       id: "u1",
       nome: "Ana",
       login: "ana",
+      vinculos: [{ unidadeId: id, ocupacao: "recepcao" }],
+      funcoes: [{ funcao: "gestao_sms", unidadeId: null }],
       perfis: [
-        { perfil: "gestor", unidadeId: null },
+        { perfil: "gestao_sms", unidadeId: null },
         { perfil: "recepcao", unidadeId: id },
       ],
     };
@@ -48,9 +50,11 @@ describe("contratos da configuração da v0.1", () => {
     expect(ok(servicoEdicaoSchema, { modo: "regulado" })).toBe(true);
     expect(ok(servicoEdicaoSchema, { prefixo: "ABCD" })).toBe(false);
   });
-  it("perfisEntradaSchema exige ao menos um", () => {
-    expect(ok(perfisEntradaSchema, { perfis: [] })).toBe(false);
-    expect(ok(perfisEntradaSchema, { perfis: [{ perfil: "admin", unidadeId: id }] })).toBe(true);
+  it("atribuições: ocupação na unidade e função com escopo; ocupação desconhecida recusada", () => {
+    expect(ok(atribuicoesSchema, { vinculos: [{ unidadeId: id, ocupacao: "enfermeiro" }], funcoes: [] })).toBe(true);
+    expect(ok(atribuicoesSchema, { vinculos: [{ unidadeId: id, ocupacao: "triagem" }], funcoes: [] })).toBe(false);
+    expect(ok(atribuicoesSchema, { vinculos: [], funcoes: [{ funcao: "gerente_ubs", unidadeId: id }] })).toBe(true);
+    expect(ok(atribuicoesSchema, { vinculos: [], funcoes: [{ funcao: "admin", unidadeId: id }] })).toBe(false);
   });
   it("um caso válido de cada saída", () => {
     expect(
@@ -100,7 +104,13 @@ describe("contratos da configuração da v0.1", () => {
       }),
     ).toBe(true);
     expect(
-      ok(usuarioPainelSchema, { id: "x", login: "ana", nome: "Ana", perfis: [{ perfil: "gestor", unidadeId: null }] }),
+      ok(usuarioPainelSchema, {
+        id: "x",
+        login: "ana",
+        nome: "Ana",
+        vinculos: [],
+        funcoes: [{ funcao: "gestao_sms", unidadeId: null }],
+      }),
     ).toBe(true);
   });
 });

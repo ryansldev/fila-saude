@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { auditoria } from "infra/database/municipal/schema/auditoria";
 import orchestrator from "tests/orchestrator";
-import { municipioComUnidade, UNIDADE, usuarioLogado } from "tests/painel";
+import { gerente, municipioComUnidade, UNIDADE, usuarioLogado } from "tests/painel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let slug: string;
@@ -31,7 +31,7 @@ describe("unidades", () => {
 
   it("T2.2: só o gestor cria ou edita; admin da unidade 1 lista só a unidade 1", async () => {
     const u2 = await pedir("POST", "/v1/painel/unidades", gestor, { ...UNIDADE, nome: "UBS 2" });
-    const admin = await usuarioLogado(slug, gestor, "admin1", [{ perfil: "admin", unidadeId }]);
+    const admin = await usuarioLogado(slug, gestor, "admin1", gerente(unidadeId));
     expect((await pedir("POST", "/v1/painel/unidades", admin.cookie, UNIDADE)).status).toBe(403);
     expect((await pedir("PATCH", `/v1/painel/unidades/${unidadeId}`, admin.cookie, { nome: "X" })).status).toBe(403);
     const lista = await pedir("GET", "/v1/painel/unidades", admin.cookie);
@@ -82,6 +82,6 @@ describe("unidades", () => {
       .from(auditoria)
       .where(eq(auditoria.alvoId, unidadeId));
     expect(linhas.length).toBeGreaterThanOrEqual(2);
-    expect(new Set(linhas.map((l) => l.acao))).toEqual(new Set(["criar_unidades_regras_usuarios"]));
+    expect(new Set(linhas.map((l) => l.acao))).toEqual(new Set(["criar_unidades_e_regras"]));
   });
 });

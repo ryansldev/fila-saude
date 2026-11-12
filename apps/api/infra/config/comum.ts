@@ -5,7 +5,8 @@ import { unidade } from "infra/database/municipal/schema/unidade";
 import type { BancoDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
 
-export const GESTAO: Acao = "criar_unidades_regras_usuarios";
+export const UNIDADES_E_REGRAS: Acao = "criar_unidades_e_regras";
+export const EQUIPE: Acao = "cadastrar_equipe";
 export const CONFIGURAR: Acao = "configurar_servicos_sessoes_estacoes_tv";
 export const SESSAO: Acao = "abrir_cancelar_encerrar_sessao";
 

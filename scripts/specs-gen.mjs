@@ -47,8 +47,29 @@ const ROTULOS = {
   sessao: { planejada: "Planejada", aberta: "Aberta", cancelada: "Cancelada", encerrada: "Encerrada" },
 };
 
-const PERFIS = ["paciente", "gestor", "admin", "agendador", "recepcao", "triagem", "profissional"];
-const CABECALHO_MATRIZ = ["Ação", "Paciente", "Gestor", "Admin", "Agendador", "Recepção", "Triagem", "Profissional"];
+const PERFIS = [
+  "paciente",
+  "gestao_sms",
+  "regulacao_sms",
+  "gerente_ubs",
+  "agendar",
+  "recepcao",
+  "enfermeiro",
+  "tecnico_enfermagem",
+  "atendimento",
+];
+const CABECALHO_MATRIZ = [
+  "Ação",
+  "Paciente",
+  "Gestão SMS",
+  "Regulação SMS",
+  "Gerente da UBS",
+  "Agendar",
+  "Recepção",
+  "Enfermeiro",
+  "Técnico de enfermagem",
+  "Atendimento",
+];
 
 const linhaTabela = (celulas) => `| ${celulas.join(" | ")} |`;
 const separador = (n) => linhaTabela(Array(n).fill("---"));

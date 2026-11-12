@@ -1,6 +1,6 @@
 import z from "zod";
 import { cpfSchema } from "./cpf";
-import { perfilPainelSchema } from "./usuario.ts";
+import { atribuicoesSchema, papelComEscopoSchema } from "./usuario.ts";
 
 // "Hoje" no fuso do Brasil (AAAA-MM-DD), para a data de nascimento não ficar no futuro.
 function hojeEmSaoPaulo() {
@@ -29,12 +29,13 @@ export const cadastroPacienteSchema = z.object({
 
 export type CadastroPaciente = z.infer<typeof cadastroPacienteSchema>;
 
-// PD-23 / RN-PERF-01: `GET /v1/painel/eu`. Perfis do painel nunca incluem paciente.
-export const euPainelSchema = z.object({
+// PD-23 / RN-PERF-01: `GET /v1/painel/eu`: ocupações e funções, e os papéis de permissão que saem delas
+// (`perfis`). O painel nunca tem o papel paciente.
+export const euPainelSchema = atribuicoesSchema.extend({
   id: z.string(),
   nome: z.string(),
   login: z.string(),
-  perfis: z.array(z.object({ perfil: perfilPainelSchema, unidadeId: z.uuid().nullable() })),
+  perfis: z.array(papelComEscopoSchema),
 });
 
 export type EuPainel = z.infer<typeof euPainelSchema>;

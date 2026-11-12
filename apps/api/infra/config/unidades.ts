@@ -4,7 +4,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import { camposDoDominio, ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
-import { exigirUnidade, GESTAO } from "./comum";
+import { exigirUnidade, UNIDADES_E_REGRAS } from "./comum";
 
 type Linha = typeof unidade.$inferSelect;
 
@@ -56,7 +56,7 @@ function mesclar(atual: ConfigParcial, mudancas: Record<string, unknown>): Confi
 export async function criarUnidade(ctx: ContextoDaAcao, dados: UnidadeEntrada): Promise<Unidade> {
   const config = mesclar({}, dados.config ?? {});
   validar(config);
-  return executarAcao(ctx, { acao: GESTAO, alvo: { tipo: "unidade", id: (u) => u.id } }, async (tx) => {
+  return executarAcao(ctx, { acao: UNIDADES_E_REGRAS, alvo: { tipo: "unidade", id: (u) => u.id } }, async (tx) => {
     const { endereco, ...resto } = dados;
     const [u] = await tx
       .insert(unidade)
@@ -71,7 +71,7 @@ export async function editarUnidade(ctx: ContextoDaAcao, id: string, dados: Unid
   const config = mesclar(atual.config, dados.config ?? {});
   validar(config);
   const { config: _c, endereco, ...resto } = dados;
-  return executarAcao(ctx, { acao: GESTAO, alvo: { tipo: "unidade", id }, unidadeId: id }, async (tx) => {
+  return executarAcao(ctx, { acao: UNIDADES_E_REGRAS, alvo: { tipo: "unidade", id }, unidadeId: id }, async (tx) => {
     const [u] = await tx
       .update(unidade)
       .set({ ...resto, ...(endereco ? colunasDoEndereco(endereco) : {}), config })

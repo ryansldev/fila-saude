@@ -1,4 +1,14 @@
-import { type Entrada, instanteParaLocal, localParaInstante, type Perfil, type Respostas } from "@fila-saude/domain";
+import {
+  type Atribuicoes,
+  type Entrada,
+  FUNCOES,
+  type Funcao,
+  instanteParaLocal,
+  localParaInstante,
+  OCUPACOES,
+  type Ocupacao,
+  type Respostas,
+} from "@fila-saude/domain";
 import { eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { authCentral } from "infra/auth/central";
@@ -12,7 +22,7 @@ import { paciente } from "infra/database/central/schema/auth";
 import { type DbDoTenant, schemaMunicipal } from "infra/database/tenants";
 import env from "infra/env";
 import { entrarNaLista, type PessoaInformada } from "infra/fila/entradas";
-import { contextoDoUsuario, executarAcao } from "infra/painel/acao";
+import { type ContextoDaAcao, contextoDoUsuario, executarAcao } from "infra/painel/acao";
 import { origemDoPainel } from "infra/painel/origem";
 import { criarTenant } from "infra/tenant/criar";
 import { derrubarTenant } from "infra/tenant/derrubar";
@@ -24,7 +34,7 @@ const FUSO = "America/Sao_Paulo";
 
 export type ResumoExemplo = {
   painel: string;
-  usuarios: { id: string; perfil: Perfil; login: string; senha: string }[];
+  usuarios: { id: string; papel: string; login: string; senha: string }[];
   pacientes: { nome: string; cpf: string; senha: string }[];
   sessoes: { servico: string; visibilidade: "publica" | "privada"; inicioLocal: string }[];
 };
@@ -42,8 +52,6 @@ const PACIENTES = [
 ] as const;
 
 export const CPFS_DE_EXEMPLO = PACIENTES.map((p) => p.cpf);
-
-const PERFIS_DA_UNIDADE = ["admin", "agendador", "recepcao", "triagem", "profissional"] as const;
 
 const respostas = (grupos: readonly string[]): Respostas =>
   ({ alarmes: [], motivo: "acompanhamento", gravidade: null, condicoes: [], grupos }) as unknown as Respostas;
@@ -79,7 +87,8 @@ async function cadastrarPaciente(central: Db, p: (typeof PACIENTES)[number]): Pr
   return user.id;
 }
 
-// PD-40 / PD-41: o município de exemplo, cada passo pela função de serviço e por quem faz aquilo no produto.
+// PD-40 / PD-41: o município de exemplo, cada passo pela função de serviço e por quem faz aquilo no produto
+// (a SMS cria a unidade, a regulação e o gerente; o gerente cadastra a equipe e configura a UBS).
 export async function semearExemplo(deps: {
   central: Db;
   template: string;
@@ -120,28 +129,55 @@ export async function semearExemplo(deps: {
       config: {},
     });
     const usuarios: ResumoExemplo["usuarios"] = [
-      { id: gestorId, perfil: "gestor", login: "gestor", senha: SENHA_EXEMPLO },
+      { id: gestorId, papel: FUNCOES.gestao_sms.rotulo, login: "gestor", senha: SENHA_EXEMPLO },
     ];
-    const nomes: Record<string, string> = {
-      admin: "Admin Exemplo",
-      agendador: "Agendador Exemplo",
-      recepcao: "Recepção Exemplo",
-      triagem: "Triagem Exemplo",
-      profissional: "Profissional Exemplo",
+    const cadastrar = async (ctx: ContextoDaAcao, login: string, nome: string, papel: string, a: Atribuicoes) => {
+      const u = await criarUsuario(ctx, { login, nome, senha: SENHA_EXEMPLO, ...a });
+      usuarios.push({ id: u.id, papel, login, senha: SENHA_EXEMPLO });
+      return u.id;
     };
-    for (const perfil of PERFIS_DA_UNIDADE) {
-      const u = await criarUsuario(comoGestor, {
-        login: perfil,
-        nome: nomes[perfil] as string,
-        senha: SENHA_EXEMPLO,
-        perfis: [{ perfil, unidadeId: ubs.id }],
-      });
-      usuarios.push({ id: u.id, perfil, login: perfil, senha: SENHA_EXEMPLO });
+    const so = (funcao: Funcao, unidadeId: string | null): Atribuicoes => ({
+      vinculos: [],
+      funcoes: [{ funcao, unidadeId }],
+    });
+    const ocupacao = (o: Ocupacao, ...funcoes: Funcao[]): Atribuicoes => ({
+      vinculos: [{ unidadeId: ubs.id, ocupacao: o }],
+      funcoes: funcoes.map((funcao) => ({ funcao, unidadeId: ubs.id })),
+    });
+
+    // A SMS cadastra a regulação e o gerente da UBS (RN-PERF-04).
+    await cadastrar(
+      comoGestor,
+      "regulacao",
+      "Regulação Exemplo",
+      FUNCOES.regulacao_sms.rotulo,
+      so("regulacao_sms", null),
+    );
+    const gerenteId = await cadastrar(
+      comoGestor,
+      "gerente",
+      "Gerente Exemplo",
+      FUNCOES.gerente_ubs.rotulo,
+      so("gerente_ubs", ubs.id),
+    );
+
+    // O gerente cadastra a equipe da própria unidade.
+    const comoGerente = await contextoDoUsuario(db, gerenteId, agora);
+    const equipe: [string, string, Ocupacao, Funcao[]][] = [
+      ["recepcao", "Recepção Exemplo", "recepcao", ["agendar"]],
+      ["enfermeira", "Enfermeira Exemplo", "enfermeiro", []],
+      ["tecnica", "Técnica de Enfermagem Exemplo", "tecnico_enfermagem", []],
+      ["medica", "Médica Exemplo", "medico", []],
+      ["dentista", "Dentista Exemplo", "cirurgiao_dentista", []],
+    ];
+    for (const [login, nome, o, funcoes] of equipe) {
+      const rotulo = [OCUPACOES[o].rotulo, ...funcoes.map((f) => FUNCOES[f].rotulo)].join(" + ");
+      await cadastrar(comoGerente, login, nome, rotulo, ocupacao(o, ...funcoes));
     }
     const idDe = (login: string) => usuarios.find((u) => u.login === login)?.id as string;
 
-    // Como admin: serviços, estações e sessões.
-    const comoAdmin = await contextoDoUsuario(db, idDe("admin"), agora);
+    // Como gerente: serviços, estações e sessões.
+    const comoAdmin = comoGerente;
     const clinico = await criarServico(comoAdmin, ubs.id, {
       nome: "Clínico geral",
       prefixo: "C",

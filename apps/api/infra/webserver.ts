@@ -2,7 +2,7 @@ import env from "./env";
 
 function getOrigin() {
   if (["test", "development"].includes(env.NODE_ENV)) {
-    return `http://localhost:3333`;
+    return `http://localhost:${env.PORTA}`;
   }
 
   if (process.env.NODE_ENV === "preview") {

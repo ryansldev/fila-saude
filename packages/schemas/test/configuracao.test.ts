@@ -133,7 +133,13 @@ describe("configMunicipioSchema", () => {
 });
 
 describe("usuarioPainelEntradaSchema", () => {
-  const u = { login: "ana", nome: "Ana", senha: "12345678", perfis: [{ perfil: "admin", unidadeId: null }] };
+  const u = {
+    login: "ana",
+    nome: "Ana",
+    senha: "12345678",
+    vinculos: [],
+    funcoes: [{ funcao: "gestao_sms", unidadeId: null }],
+  };
   it("aceita válido", () => expect(ok(usuarioPainelEntradaSchema, u)).toBe(true));
   it("login 2/3", () => {
     expect(ok(usuarioPainelEntradaSchema, { ...u, login: "ab" })).toBe(false);
@@ -147,10 +153,10 @@ describe("usuarioPainelEntradaSchema", () => {
     expect(ok(usuarioPainelEntradaSchema, { ...u, senha: "1234567" })).toBe(false);
     expect(ok(usuarioPainelEntradaSchema, { ...u, senha: "12345678" })).toBe(true);
   });
-  it("perfil com unidadeId uuid; perfil inválido recusado", () => {
-    expect(ok(usuarioPainelEntradaSchema, { ...u, perfis: [{ perfil: "recepcao", unidadeId: id }] })).toBe(true);
-    expect(ok(usuarioPainelEntradaSchema, { ...u, perfis: [{ perfil: "paciente", unidadeId: null }] })).toBe(false);
-    expect(ok(usuarioPainelEntradaSchema, { ...u, perfis: [{ perfil: "recepcao", unidadeId: "x" }] })).toBe(false);
+  it("ocupação com unidadeId uuid; ocupação inválida recusada", () => {
+    expect(ok(usuarioPainelEntradaSchema, { ...u, vinculos: [{ ocupacao: "recepcao", unidadeId: id }] })).toBe(true);
+    expect(ok(usuarioPainelEntradaSchema, { ...u, vinculos: [{ ocupacao: "paciente", unidadeId: id }] })).toBe(false);
+    expect(ok(usuarioPainelEntradaSchema, { ...u, vinculos: [{ ocupacao: "recepcao", unidadeId: "x" }] })).toBe(false);
   });
 });
 
