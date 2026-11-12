@@ -14,12 +14,16 @@ import {
   entradaAtivaDa,
   type Pessoa,
   pendentesNaAbertura,
+  prioridadeDaEntrada,
   riscoVigente,
+  type Saida,
   type Servico,
   type SessaoVagas,
 } from "./lista.ts";
-import { prioridadeDaPessoa, temPrioridade } from "./prioridade.ts";
+import { temPrioridade } from "./prioridade.ts";
+import { classificar } from "./questionario.ts";
 import { type CodigoErro, type Evento, falha, ok, type Resultado } from "./resultado.ts";
+import { idadeEm } from "./tempo.ts";
 import type { ConfigUnidade, NivelRisco, Respostas } from "./tipos.ts";
 
 // Eventos das tabelas de transição (textos copiados das specs).
@@ -46,14 +50,14 @@ export const idDoItem = (entradaId: string, sessaoId: string): string => `${sess
 /** RN-FILA-04: prefixo do serviço e número com 3 dígitos (ex.: "C-012"). */
 export const senhaDe = (prefixo: string, numero: number): string => `${prefixo}-${String(numero).padStart(3, "0")}`;
 
-// Os auxiliares exportados abaixo (temVaga, ocupar, itemCriado, comAbertura, situacao, porNaFila,
+// Os auxiliares exportados abaixo (temVaga, ocupar, desocupar, itemCriado, comAbertura, situacao, porNaFila,
 // jaNaSessao) são de uso interno do pacote (encerramento.ts); não saem pelo index.
 
 /** INV-02: a sessão ainda tem vaga (`null` = sem limite). "Na reserva" não ocupa. */
 export const temVaga = (s: SessaoVagas): boolean => s.vagas === null || s.ocupadas < s.vagas;
 
 export const ocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas + 1 });
-const desocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: Math.max(0, s.ocupadas - 1) });
+export const desocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: Math.max(0, s.ocupadas - 1) });
 
 /** Estado do item na linha de criação ("—") do contrato da fila do dia. */
 export function itemCriado(evento: string): EstadoItem {
@@ -94,6 +98,9 @@ export function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
 /**
  * Põe a entrada na fila do dia com o próximo número livre (RN-FILA-02) e a senha dele (RN-FILA-04).
  * Quem entra presente (balcão) fica elegível na hora, com a janela protegida e sem atraso (número novo).
+ * O item nasce remoto "desde agora" (`saiuEm = agora`): para a regra de atraso e para a falta no
+ * encerramento só contam as chamadas feitas depois de a pessoa entrar na fila (AD-010, RN-SES-02).
+ * Na abertura ainda não houve chamadas, então nada muda ali.
  */
 export function porNaFila(
   dia: DiaSessao,
@@ -112,11 +119,13 @@ export function porNaFila(
     pendencias: [],
     urgenciaConfirmada: entrada.riscoConfirmado === "urgente",
     risco: riscoVigente(entrada),
-    prioridade: entrada.prioridade,
+    // AD-027/AD-024: idade no dia desta sessão, mais a conferência guardada na entrada.
+    prioridade: prioridadeDaEntrada(entrada, agora, dia.config.fuso),
     pulos: 0,
     travadoAtras: [],
-    saiuEm: null,
+    saiuEm: agora,
     atendidoEmEtapas: [],
+    motivoSaida: null,
   };
   // INV-05: o número vem de um contador da sessão, então a senha não se repete.
   if (dia.itens.some((i) => i.entradaId === entrada.id || i.id === item.id || i.senha === item.senha)) {
@@ -239,6 +248,8 @@ type Vagas = { sessao: SessaoVagas; dia: DiaSessao | null; entradas: Entrada[] }
  * RN-PUB-02: enquanto houver vaga livre, ela vai ao primeiro da reserva, que entra confirmado
  * (na fila, se a sessão já abriu). Sem a foto aceita: antes da abertura, recebe vaga segura
  * (RN-ENC-04); com a sessão aberta, a vaga passa ao próximo. Sessão privada não tem reserva.
+ * Regra única (RN-CANC-02): toda saída que libera vaga devolve `Saida` com a sessão já liberada;
+ * depois de qualquer saída, chame esta função com essa sessão (ela não libera nada).
  */
 export function preencherDaReserva(
   sessao: SessaoVagas,
@@ -281,20 +292,6 @@ export function preencherDaReserva(
     );
   }
   return ok(estado, eventos);
-}
-
-/**
- * Uma vaga ocupada da sessão foi liberada (quem saiu já mudou de estado com o chamador) e vai
- * para a reserva (RN-PUB-02). Quem já desocupou a vaga (ex.: `recusar`) usa `preencherDaReserva`.
- */
-export function liberarVaga(
-  sessao: SessaoVagas,
-  dia: DiaSessao | null,
-  entradas: Entrada[],
-  cmd: CmdReserva,
-  agora: number,
-): Resultado<Vagas> {
-  return preencherDaReserva(desocupar(sessao), dia, entradas, cmd, agora);
 }
 
 /** Dados de quem se inscreve (RN-LE-05: a pessoa atendida), como em `criarEntrada`. */
@@ -470,7 +467,7 @@ export function incluirNoBalcao(
     ...base,
     estado: para,
     sessaoId: sessao.id,
-    prioridade: temPrioridade(base.prioridade)
+    prioridade: temPrioridade(prioridadeDaEntrada(base, agora, dia.config.fuso))
       ? { ...base.prioridade, conferida: true, conferidaEm: agora }
       : base.prioridade,
   };
@@ -502,7 +499,6 @@ export function lancarRegulado(
     entradasAtivas: Entrada[];
   },
   agora: number,
-  config: ConfigUnidade = dia?.config ?? CONFIG_PADRAO,
 ): Resultado<{ entrada: Entrada; sessao: SessaoVagas; dia: DiaSessao | null }> {
   const { servico } = cmd;
   if (servico.modo !== "regulado" || servico.id !== sessao.servicoId || sessao.visibilidade !== "privada") {
@@ -531,11 +527,8 @@ export function lancarRegulado(
     dataEntradaOriginal: agora,
     classificacao: { nivel: risco, regra: "Classificação informada pela regulação", apoio: false },
     riscoConfirmado: risco,
-    prioridade: {
-      grupos: prioridadeDaPessoa(cmd.pessoa, [], agora, config.fuso),
-      conferida: false,
-      conferidaEm: null,
-    },
+    // Nada declarado; idoso entra pela data de nascimento no dia da sessão (AD-027).
+    prioridade: { grupos: [], conferida: false, conferidaEm: null },
     remanejada: null,
     recusas: 0,
     sessaoId: sessao.id,
@@ -559,7 +552,8 @@ export function lancarRegulado(
 
 /**
  * RN-ENC-06, AD-037: o agendador remove, com motivo, um lançamento nunca chamado no dia. A vaga é
- * liberada sem sugestão (não há lista); push só para conta verificada (ligada).
+ * liberada sem sugestão (não há lista; `Saida` com a sessão já liberada); push só para conta
+ * verificada (ligada).
  */
 export function removerLancamento(
   entrada: Entrada,
@@ -567,7 +561,7 @@ export function removerLancamento(
   dia: DiaSessao | null,
   cmd: { servico: Servico; motivo: string },
   agora: number,
-): Resultado<{ entrada: Entrada; sessao: SessaoVagas; dia: DiaSessao | null }> {
+): Resultado<Saida> {
   const { servico } = cmd;
   if (servico.modo !== "regulado" || entrada.servicoId !== servico.id || entrada.sessaoId !== sessao.id) {
     return falha("transicao_proibida");
@@ -585,7 +579,7 @@ export function removerLancamento(
       ...dia,
       itens: dia.itens.map((i) =>
         i.id === item.id
-          ? { ...i, estado: "saiu_da_fila" as const, travadoAtras: [] }
+          ? { ...i, estado: "saiu_da_fila" as const, travadoAtras: [], motivoSaida: "removido" as const }
           : { ...i, travadoAtras: i.travadoAtras.filter((t) => t !== item.id) },
       ),
     };
@@ -595,4 +589,43 @@ export function removerLancamento(
     { tipo: "removida", ...ids, motivo: cmd.motivo, dados: { push: entrada.responsavelId !== null } },
     { tipo: "vaga_liberada", ...ids, motivo: "lançamento removido; sem sugestão", dados: { em: agora } },
   ]);
+}
+
+const ESPERA_ENCERRADA: EstadoEntrada[] = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"];
+
+/**
+ * RN-RISCO-03: o paciente refaz o questionário enquanto espera; o nível sugerido muda (RN-RISCO-01).
+ * Subir para urgente alerta o agendador; emergência é recusada (o app orienta ligar 192) e nada
+ * muda. Na fila do dia (`dia` = o da sessão da entrada, aberta), o item remoto passa a usar o
+ * risco vigente (o confirmado, se houver, continua valendo); presente segue no lugar até a
+ * triagem. DECISÃO: grupos da Tela 5 não mudam aqui (prioridade nova só vale depois de conferida).
+ */
+export function refazerQuestionario(
+  entrada: Entrada,
+  dia: DiaSessao | null,
+  cmd: { respostas: Respostas },
+  agora: number,
+  config: ConfigUnidade = dia?.config ?? CONFIG_PADRAO,
+): Resultado<{ entrada: Entrada; dia: DiaSessao | null }> {
+  if (ESPERA_ENCERRADA.includes(entrada.estado)) return falha("transicao_proibida");
+  if (dia !== null && dia.sessaoId !== entrada.sessaoId) return falha("transicao_proibida");
+  const classificacao = classificar(cmd.respostas, idadeEm(entrada.pessoa.nascimento, agora, config.fuso));
+  if (classificacao.nivel === "emergencia") return falha("emergencia");
+  const nova: Entrada = { ...entrada, classificacao };
+  const eventos: Evento[] = [];
+  if (classificacao.nivel === "urgente" && entrada.classificacao.nivel !== "urgente") {
+    eventos.push({ tipo: "alerta_agendador", entradaId: entrada.id, motivo: classificacao.regra });
+  }
+  const item = dia?.estado === "aberta" ? dia.itens.find((i) => i.entradaId === entrada.id) : undefined;
+  const risco = riscoVigente(nova);
+  if (dia === null || item?.estado !== "remoto" || item.risco === risco) return ok({ entrada: nova, dia }, eventos);
+  eventos.push({
+    tipo: "risco_sugerido",
+    itemId: item.id,
+    entradaId: entrada.id,
+    sessaoId: dia.sessaoId,
+    dados: { nivel: risco },
+  });
+  const novoDia: DiaSessao = { ...dia, itens: dia.itens.map((i) => (i.id === item.id ? { ...i, risco } : i)) };
+  return ok({ entrada: nova, dia: novoDia }, eventos);
 }

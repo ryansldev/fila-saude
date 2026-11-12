@@ -7,10 +7,10 @@ import {
   type Transicao,
   transicionar,
 } from "./contratos.ts";
-import { chamadasQuePassamAVez, type DiaSessao, emContingencia, type ItemFila } from "./fila.ts";
-import { type Entrada, type Origem, outraDataNaSessao, type Servico, type SessaoVagas } from "./lista.ts";
+import { chamadasQuePassamAVez, type DiaSessao, emContingencia, type ItemFila, type MotivoSaida } from "./fila.ts";
+import { type Entrada, type Origem, outraDataNaSessao, type Saida, type Servico, type SessaoVagas } from "./lista.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
-import { comAbertura, itemCriado, jaNaSessao, ocupar, porNaFila, situacao, temVaga } from "./sessao.ts";
+import { comAbertura, desocupar, itemCriado, jaNaSessao, ocupar, porNaFila, situacao, temVaga } from "./sessao.ts";
 import { mesmoDia } from "./tempo.ts";
 
 export type { Origem } from "./lista.ts";
@@ -31,6 +31,10 @@ const ENTRADA_FALTA_APAGADA =
   "Período de contingência registrado depois do encerramento, no mesmo dia, cobrindo a vez dele";
 const ENTRADA_DESISTIR = '"Desistir"';
 const ENTRADA_PACIENTE_CANCELA = "Paciente cancela";
+const ENTRADA_NAO_VOU = 'Paciente cancela ("Não vou poder ir")';
+const ENTRADA_DESMARCA_REGULADO = "Paciente desmarca ou desiste";
+const ENTRADA_CONCLUIDA = "Atendida na última etapa";
+const ENTRADA_NAO_CONFERIU = "Recepção: identidade não confere (RN-FILA-05)";
 const ENTRADA_ESCOLHE = "Escolhe ocorrência pública do serviço";
 const ENTRADA_ESCOLHE_LOTADA = "Escolhe ocorrência pública lotada";
 const ENTRADA_ESCOLHE_SEGURA = "Escolhe ocorrência com vaga, sem foto aceita em serviço com requisição";
@@ -103,11 +107,54 @@ function desfechoNoEncerramento(dia: DiaSessao, x: ItemFila): { desfecho: Desfec
   return { desfecho: "falta", condicao: "A vez passou; nunca atendido no dia; fora de contingência" };
 }
 
+/** Linha do contrato da entrada para cada motivo de saída que só a fila do dia produz. */
+const EVENTO_DO_MOTIVO: Partial<Record<MotivoSaida, string>> = {
+  pulos: ENTRADA_FALTA,
+  falta: ENTRADA_FALTA,
+  nao_conferiu: ENTRADA_NAO_CONFERIU,
+};
+
+/**
+ * Mapeamento único do desfecho do item na fila do dia para a entrada "Na fila" (contrato de
+ * Entrada): atendido na última etapa → Concluída; 3º pulo (ou falta no encerramento) → Encerrada
+ * sem atendimento, e a pessoa pode criar entrada nova (RN-CHAM-03); identidade não confere →
+ * Cancelada (RN-FILA-05). Chame depois de `finalizar`/`chamarProximo`, `naoCompareceu` e
+ * `conferirEMarcar` quando o item ficar final; `encerrar` e `cancelar` aplicam a quem faltou.
+ * Remanejado, cancelamento e remoção mudam a entrada na própria ação: aqui são recusados.
+ */
+export function desfechoDaEntrada(entrada: Entrada, item: ItemFila): Resultado<Entrada> {
+  if (entrada.estado !== "na_fila" || item.entradaId !== entrada.id) return falha("transicao_proibida");
+  let evento: string | undefined;
+  if (item.estado === "atendido_na_etapa" && item.etapa === "atendimento") evento = ENTRADA_CONCLUIDA;
+  else if (item.estado === "saiu_da_fila" && item.motivoSaida !== null) evento = EVENTO_DO_MOTIVO[item.motivoSaida];
+  if (evento === undefined) return falha("transicao_proibida");
+  const para = garantido(TRANSICOES_ENTRADA, entrada.estado, evento);
+  const ids = {
+    entradaId: entrada.id,
+    itemId: item.id,
+    ...(entrada.sessaoId === null ? {} : { sessaoId: entrada.sessaoId }),
+  };
+  const eventos: Evento[] =
+    para === "cancelada" ? [{ tipo: "cancelada", ...ids, motivo: "identidade não confere" }] : [];
+  return ok({ ...entrada, estado: para }, eventos);
+}
+
+/** Entrada "Na fila" cujo item já é final: aplica o desfecho; sem desfecho, fica como está. */
+function fecharComDesfecho(e: Entrada, dia: DiaSessao, eventos: Evento[]): Entrada {
+  const item = dia.itens.find((i) => i.entradaId === e.id);
+  if (e.estado !== "na_fila" || item === undefined) return e;
+  const r = desfechoDaEntrada(e, item);
+  if (!r.ok) return e;
+  eventos.push(...r.eventos);
+  return r.estado;
+}
+
 type DiaEEntradas = { dia: DiaSessao; entradas: Entrada[] };
 
 /**
  * RN-SES-01..04: o admin encerra a sessão aberta, sem estação com paciente chamado. Cada um ainda
- * na fila vira remanejado ou leva falta (RN-SES-02); a reserva é cancelada. Sinal perdido sem
+ * na fila vira remanejado ou leva falta (RN-SES-02); a reserva é cancelada. Entrada ainda "Na
+ * fila" cujo item já teve desfecho no dia é fechada por `desfechoDaEntrada`. Sinal perdido sem
  * contingência registrada só gera o aviso (RN-SES-04). `entradas` são as da sessão; `origem`
  * vem de `origemDaSessao`.
  */
@@ -137,7 +184,7 @@ export function encerrar(
     } else {
       eventos.push({ tipo: "remanejado", ...ids, motivo: condicao });
     }
-    return { ...x, estado: para, travadoAtras: [] };
+    return { ...x, estado: para, travadoAtras: [], motivoSaida: desfecho === "falta" ? ("falta" as const) : null };
   });
 
   const novas = entradas.map((e) => {
@@ -147,7 +194,8 @@ export function encerrar(
       return { ...e, estado: garantido(TRANSICOES_ENTRADA, e.estado, ENTRADA_RESERVA_FECHA) };
     }
     const fim = porEntrada.get(e.id);
-    if (e.estado !== "na_fila" || fim === undefined) return e;
+    if (e.estado !== "na_fila") return e;
+    if (fim === undefined) return fecharComDesfecho(e, dia, eventos);
     const evento =
       fim.desfecho === "falta"
         ? ENTRADA_FALTA
@@ -171,7 +219,8 @@ export function encerrar(
 /**
  * Fluxo de cancelamento de sessão (excecoes, tabela de Sessão): planejada ou aberta. Entradas não
  * finais da sessão, inclusive a chamada no momento, viram remanejadas; "Na reserva" é cancelada.
- * Cancelamento nunca gera falta; quem já foi atendido não é afetado.
+ * Cancelamento nunca gera falta; quem já teve desfecho no dia (atendido, 3º pulo, não conferiu)
+ * não é remanejado: a entrada vai à linha desse desfecho (`desfechoDaEntrada`).
  */
 export function cancelar(
   dia: DiaSessao,
@@ -195,7 +244,7 @@ export function cancelar(
     }
     if (!remanejaveis.includes(e.estado)) return e;
     const item = dia.itens.find((i) => i.entradaId === e.id);
-    if (item !== undefined && !naFila(item)) return e;
+    if (item !== undefined && !naFila(item)) return fecharComDesfecho(e, dia, eventos);
     const para = garantido(TRANSICOES_ENTRADA, e.estado, ENTRADA_ANTES_DA_VEZ);
     eventos.push({ tipo: "remanejado", ...ids, ...(item ? { itemId: item.id } : {}), motivo: "sessão cancelada" });
     return remanejar(e, para, opcoes.origem);
@@ -255,7 +304,7 @@ export function registrarContingencia(
   // DECISÃO: o item volta ao desfecho que o encerramento daria (remanejado), para a fila do dia
   // mostrar o mesmo que a entrada; o contrato do item não tem linha de reversão própria.
   const paraItem = garantido(TRANSICOES_ITEM, "remoto", ITEM_ENCERRADA, (t) => t.spec === "contingencia");
-  const itens = comPeriodo.itens.map((i) => (apagadas.has(i.id) ? { ...i, estado: paraItem } : i));
+  const itens = comPeriodo.itens.map((i) => (apagadas.has(i.id) ? { ...i, estado: paraItem, motivoSaida: null } : i));
   const novaDe = new Map([...apagadas.values()].map((e) => [e.id, e]));
   const novas = entradas.map((e) => novaDe.get(e.id) ?? e);
   const recalculado: DiaSessao = {
@@ -281,8 +330,6 @@ export function titularDaFalta(
   return entrada.responsavelId !== null && responsavelVerificado ? "responsavel" : "ninguem";
 }
 
-type ComDia = { entrada: Entrada; dia: DiaSessao | null };
-
 /**
  * Tira da fila do dia o item da entrada "Na fila" (o "Paciente cancela" do item), a partir dos
  * estados aceitos. Fora da fila, devolve o dia como veio.
@@ -303,7 +350,7 @@ function sairDaFila(
       ...dia,
       itens: dia.itens.map((i) =>
         i.id === x.id
-          ? { ...i, estado: "saiu_da_fila" as const, travadoAtras: [] }
+          ? { ...i, estado: "saiu_da_fila" as const, travadoAtras: [], motivoSaida: "cancelou" as const }
           : { ...i, travadoAtras: i.travadoAtras.filter((t) => t !== x.id) },
       ),
     },
@@ -314,16 +361,16 @@ function sairDaFila(
  * RN-REM-03, AD-045: "Outra data" do remanejado com data na sessão `sessao` (confirmada, alocada,
  * vaga segura ou na fila ainda remoto; `dia` = o da sessão, se aberta). Só em sessão privada ou
  * regulada. 1ª vez: continua remanejado, com a preferência. 2ª (só confirmada ou alocada): privada
- * volta à lista com a data original; pública e regulada são encerradas com aviso. A vaga volta à
- * sessão devolvida. É a entrada do app para qualquer remanejada com data, inclusive alocada; a
- * regra (`outraDataNaSessao`, lista.ts) é a mesma de `recusar`.
+ * volta à lista com a data original; pública e regulada são encerradas com aviso. Devolve `Saida`
+ * (sessão já liberada). É a entrada do app para qualquer remanejada com data, inclusive alocada;
+ * a regra (`outraDataNaSessao`, lista.ts) é a mesma de `recusar`.
  */
 export function outraData(
   entrada: Entrada,
   sessao: SessaoVagas,
   agora: number,
   dia: DiaSessao | null = null,
-): Resultado<{ entrada: Entrada; sessao: SessaoVagas; dia: DiaSessao | null }> {
+): Resultado<Saida> {
   const r = outraDataNaSessao(entrada, sessao, agora);
   if (!r.ok) return r;
   const saida = sairDaFila(entrada, dia, ["remoto"]);
@@ -333,18 +380,23 @@ export function outraData(
 
 /**
  * RN-REM-03: "Desistir" cancela de vez. Com data (confirmada, alocada, vaga segura ou na fila), a
- * vaga é liberada; aguardando remarcação, é o cancelamento do paciente. Em serviço regulado, o
- * agendador é avisado para comunicar a regulação.
+ * vaga de `sessao` (a da entrada) é liberada e devolvida em `Saida`; aguardando remarcação, é o
+ * cancelamento do paciente e `sessao` é `null`. Em serviço regulado, o agendador é avisado para
+ * comunicar a regulação.
  */
-export function desistir(entrada: Entrada, agora: number, dia: DiaSessao | null = null): Resultado<ComDia> {
+export function desistir(
+  entrada: Entrada,
+  sessao: SessaoVagas | null,
+  agora: number,
+  dia: DiaSessao | null = null,
+): Resultado<Saida<SessaoVagas | null>> {
   const origem = entrada.remanejada;
   if (origem === null) return falha("transicao_proibida");
   const semData = entrada.estado === "remanejada";
-  const para = semData
-    ? linhaUnica(TRANSICOES_ENTRADA, entrada.estado, ENTRADA_PACIENTE_CANCELA)
-    : entrada.sessaoId === null
-      ? null
-      : linhaUnica(TRANSICOES_ENTRADA, entrada.estado, ENTRADA_DESISTIR);
+  if (semData ? sessao !== null : sessao === null || entrada.sessaoId !== sessao.id) {
+    return falha("transicao_proibida");
+  }
+  const para = linhaUnica(TRANSICOES_ENTRADA, entrada.estado, semData ? ENTRADA_PACIENTE_CANCELA : ENTRADA_DESISTIR);
   if (para !== "cancelada") return falha("transicao_proibida");
   const saida = sairDaFila(entrada, dia, ["remoto", "presente"]);
   if (!saida.ok) return falha("transicao_proibida");
@@ -359,7 +411,66 @@ export function desistir(entrada: Entrada, agora: number, dia: DiaSessao | null 
     dados: { desistiu: true, em: agora },
   });
   return ok(
-    { entrada: { ...entrada, estado: para, remanejada: null, sessaoId: null, alocadaEm: null }, dia: saida.dia },
+    {
+      entrada: { ...entrada, estado: para, remanejada: null, sessaoId: null, alocadaEm: null },
+      sessao: sessao === null ? null : desocupar(sessao),
+      dia: saida.dia,
+    },
+    eventos,
+  );
+}
+
+/** Estados em que a entrada ocupa uma vaga da sessão (INV-02); "Na reserva" não ocupa. */
+const COM_VAGA: EstadoEntrada[] = ["alocada", "confirmada", "na_fila"];
+
+/**
+ * RN-CANC-01/02/03: o paciente cancela ("Não vou poder ir") a entrada não remanejada (remanejada
+ * usa `desistir`). Na lista (aguardando, aguardando encaminhamento) ou na reserva, só cancela;
+ * com vaga (alocada, confirmada, vaga segura ou na fila, remoto ou presente), libera a vaga da
+ * `sessao` (a da entrada) e tira o item da fila do dia, devolvendo `Saida`; depois, chame
+ * `preencherDaReserva`. Em serviço regulado (lançado) é "Paciente desmarca ou desiste": vaga sem
+ * sugestão e o agendador avisado para comunicar a regulação. Quem cancela faz entrada nova.
+ */
+export function cancelarEntrada(
+  entrada: Entrada,
+  sessao: SessaoVagas | null,
+  dia: DiaSessao | null,
+  cmd: { servico: Servico },
+  agora: number,
+): Resultado<Saida<SessaoVagas | null>> {
+  const { servico } = cmd;
+  if (entrada.remanejada !== null || servico.id !== entrada.servicoId) return falha("transicao_proibida");
+  const regulado = servico.modo === "regulado";
+  const comVaga =
+    COM_VAGA.includes(entrada.estado) || (entrada.estado === "aguardando_encaminhamento" && entrada.sessaoId !== null);
+  if (comVaga ? sessao === null || entrada.sessaoId !== sessao.id : sessao !== null) {
+    return falha("transicao_proibida");
+  }
+  const evento = regulado
+    ? ENTRADA_DESMARCA_REGULADO
+    : COM_VAGA.includes(entrada.estado)
+      ? ENTRADA_NAO_VOU
+      : ENTRADA_PACIENTE_CANCELA;
+  const para = linhaUnica(TRANSICOES_ENTRADA, entrada.estado, evento);
+  if (para !== "cancelada") return falha("transicao_proibida");
+  const saida = sairDaFila(entrada, dia, ["remoto", "presente"]);
+  if (!saida.ok) return falha("transicao_proibida");
+
+  const ids = { entradaId: entrada.id, ...(entrada.sessaoId === null ? {} : { sessaoId: entrada.sessaoId }) };
+  const eventos: Evento[] = [];
+  if (comVaga) eventos.push({ tipo: "vaga_liberada", ...ids, ...(regulado ? { motivo: "sem sugestão" } : {}) });
+  eventos.push({
+    tipo: "cancelada",
+    ...ids,
+    ...(regulado ? { motivo: "comunicar a regulação" } : {}),
+    dados: { em: agora },
+  });
+  return ok(
+    {
+      entrada: { ...entrada, estado: para, sessaoId: null, alocadaEm: null },
+      sessao: sessao === null ? null : desocupar(sessao),
+      dia: saida.dia,
+    },
     eventos,
   );
 }

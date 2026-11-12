@@ -424,3 +424,64 @@ describe("pureza", () => {
     expect(chamado).toEqual(antes);
   });
 });
+
+describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
+  /** Ana e João já triados e presentes no atendimento; Caio chamado na triagem. */
+  function caioNaTriagem(): DiaSessao {
+    let d = diaComTriagem(["ana", "joao", "caio", "duda"]);
+    d = comItem(d, "ana", { etapa: "atendimento", estado: "presente", atendidoEmEtapas: ["triagem"] });
+    d = comItem(d, "joao", { etapa: "atendimento", estado: "presente", atendidoEmEtapas: ["triagem"] });
+    d = entrar(d, "caio");
+    return chamar(d, "t1", T + MIN);
+  }
+
+  it("RN-TRI-03/04: urgência confirmada na triagem é a 1ª do atendimento", () => {
+    const r = finalizar(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "urgente" }, T + 5 * MIN);
+    const d = aplicar(r);
+    expect(item(d, "caio")).toMatchObject({ etapa: "atendimento", risco: "urgente", urgenciaConfirmada: true });
+    expect(ordem(d)).toEqual(["caio", "ana", "joao"]);
+    // A API grava entrada.riscoConfirmado (INV-07: só agendador ou triagem).
+    expect(r.ok && r.eventos).toContainEqual({
+      tipo: "risco_confirmado",
+      itemId: "caio",
+      entradaId: "ent-caio",
+      estacaoId: "t1",
+      sessaoId: "s1",
+      dados: { nivel: "urgente", etapa: "triagem" },
+    });
+  });
+
+  it("RN-TRI-03: chamar o próximo também confirma ou reclassifica quem sai da triagem", () => {
+    let d = caioNaTriagem();
+    d = comItem(d, "caio", { risco: "atencao" });
+    d = entrar(d, "duda", T + 2 * MIN);
+    d = aplicar(chamarProximo(d, { estacaoId: "t1", riscoConfirmado: "rotina" }, T + 5 * MIN));
+    expect(item(d, "caio")).toMatchObject({ etapa: "atendimento", risco: "rotina", urgenciaConfirmada: false });
+    expect(ordem(d)).toEqual(["ana", "joao", "caio"]);
+  });
+
+  it("RN-TRI-03: emergência recusada; só a triagem confirma; sem confirmação, nada muda", () => {
+    const d = caioNaTriagem();
+    expect(finalizar(d, { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN)).toEqual({
+      ok: false,
+      erro: "emergencia",
+    });
+    const noConsultorio = chamar(aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN)), "e1", T + 6 * MIN);
+    expect(finalizar(noConsultorio, { estacaoId: "e1", riscoConfirmado: "urgente" }, T + 7 * MIN)).toEqual({
+      ok: false,
+      erro: "transicao_proibida",
+    });
+    expect(item(aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN)), "caio").risco).toBe("rotina");
+  });
+});
+
+describe("m5: estação com a sessão aberta", () => {
+  it("m5/RN-EST-05: fechar estação só com a sessão aberta, como as ações vizinhas", () => {
+    for (const estado of ["planejada", "encerrada", "cancelada"] as const) {
+      expect(fecharEstacao({ ...diaCom(["ana"]), estado }, { estacaoId: "e1" })).toEqual({
+        ok: false,
+        erro: "sessao_fechada",
+      });
+    }
+  });
+});

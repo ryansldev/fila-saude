@@ -15,6 +15,8 @@ export {
 } from "./contratos.ts";
 export {
   cancelar,
+  cancelarEntrada,
+  desfechoDaEntrada,
   desistir,
   encerrar,
   escolherData,
@@ -25,20 +27,21 @@ export {
 } from "./encerramento.ts";
 export type { Estimativa } from "./estimativa.ts";
 export { avisosSaiaDeCasa, estimar, tempoMedio } from "./estimativa.ts";
-export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, Pendencia } from "./fila.ts";
+export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, MotivoSaida, Pendencia } from "./fila.ts";
 export {
   CONFIG_PADRAO,
   checkIn,
   conferirEMarcar,
+  darPrioridade,
   elegiveis,
-  ficarElegivel,
   marcarPresencaSemApp,
   vouSair,
 } from "./fila.ts";
-export type { Entrada, ItemLigacao, Origem, Pessoa, Servico, SessaoVagas, Sugestao } from "./lista.ts";
+export type { Entrada, ItemLigacao, Origem, Pessoa, Saida, Servico, SessaoVagas, Sugestao } from "./lista.ts";
 export {
   alocar,
   arquivar,
+  conferenciaNaEntrada,
   confirmar,
   criarEntrada,
   destinoPorCondicao,
@@ -47,6 +50,7 @@ export {
   pendentesNaAbertura,
   perguntarAindaPrecisa,
   prazoConfirmacao,
+  prioridadeDaEntrada,
   reativar,
   recusar,
   responderAindaPrecisa,
@@ -59,6 +63,8 @@ export type { Acao, Celula, LinhaMatriz, Perfil } from "./permissoes.ts";
 export { condicoes, MATRIZ, pode, textoDaCelula } from "./permissoes.ts";
 export type { ContextoDarPrioridade, Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
+  aConferir,
+  daIdade,
   expirada,
   GRUPOS,
   grupoDeDeclarado,
@@ -80,8 +86,8 @@ export {
   incluirNoBalcao,
   inscreverPublica,
   lancarRegulado,
-  liberarVaga,
   preencherDaReserva,
+  refazerQuestionario,
   removerLancamento,
   senhaDe,
   trocarReserva,

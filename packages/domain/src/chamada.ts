@@ -1,8 +1,15 @@
 import { type EstadoItem, TRANSICOES_ITEM, transicionar } from "./contratos.ts";
 import { type DiaSessao, type Estacao, elegiveis, ficarElegivel, type ItemFila } from "./fila.ts";
-import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
+import { type CodigoErro, type Evento, falha, ok, type Resultado } from "./resultado.ts";
+import type { NivelRisco } from "./tipos.ts";
 
 type Cmd = { estacaoId: string };
+
+/**
+ * Fechar o chamado da estação (Finalizar ou chamar o próximo). Na triagem, o profissional pode
+ * confirmar ou reclassificar o risco de quem sai dela (RN-TRI-03, RN-RISCO-01).
+ */
+type CmdFechar = Cmd & { riscoConfirmado?: NivelRisco };
 
 const MIN = 60_000;
 const EVENTO_CHAMAR = "Estação chama o próximo";
@@ -51,48 +58,76 @@ function chamadoNaEstacao(dia: DiaSessao, estacaoId: string): ChamadoNaEstacao {
 }
 
 /**
- * Encerra o chamado como atendido na etapa (RN-CHAM-02). Da triagem, entra presente no atendimento
- * com a mesma senha e o mesmo número, sem regra de atraso (RN-TRI-04).
+ * Risco confirmado na saída da triagem (RN-TRI-03): só na etapa de triagem; emergência não fica
+ * na fila (vai à emergência, como no questionário e na regulação, RN-LE-01).
  */
-function encerrar(dia: DiaSessao, estacao: Estacao, item: ItemFila, agora: number): { dia: DiaSessao; evento: Evento } {
+function riscoInvalido(item: ItemFila | undefined, risco: NivelRisco | undefined): CodigoErro | null {
+  if (risco === undefined) return null;
+  if (item?.estado !== "chamado" || item.etapa !== "triagem") return "transicao_proibida";
+  return risco === "emergencia" ? "emergencia" : null;
+}
+
+/**
+ * Encerra o chamado como atendido na etapa (RN-CHAM-02). Da triagem, entra presente no atendimento
+ * com a mesma senha e o mesmo número, sem regra de atraso (RN-TRI-04), já com o risco confirmado
+ * pela triagem, se houver (RN-TRI-03/04: a ordem do atendimento usa a classificação confirmada).
+ */
+function encerrarChamado(
+  dia: DiaSessao,
+  estacao: Estacao,
+  item: ItemFila,
+  agora: number,
+  riscoConfirmado?: NivelRisco,
+): { dia: DiaSessao; eventos: Evento[] } {
   if (transicionar(TRANSICOES_ITEM, item.estado, EVENTO_ENCERRAR) !== "atendido_na_etapa") {
     throw new Error(`contrato: ${item.estado} não encerra`);
   }
   const atendidoEmEtapas = [...item.atendidoEmEtapas, item.etapa];
   const proximaEtapa = item.etapa === "triagem" ? ("atendimento" as const) : null;
-  const evento: Evento = {
-    tipo: "atendido",
-    ...base(dia, item, estacao.id),
-    dados: { etapa: item.etapa, proximaEtapa, em: agora },
-  };
+  const eventos: Evento[] = [
+    { tipo: "atendido", ...base(dia, item, estacao.id), dados: { etapa: item.etapa, proximaEtapa, em: agora } },
+  ];
   const livre = comEstacao(dia, estacao.id, { chamadoItemId: null });
   if (proximaEtapa === null) {
-    return { dia: comItem(livre, { ...item, estado: "atendido_na_etapa", atendidoEmEtapas }), evento };
+    return { dia: comItem(livre, { ...item, estado: "atendido_na_etapa", atendidoEmEtapas }), eventos };
   }
-  const naProxima = comItem(livre, { ...item, etapa: proximaEtapa, atendidoEmEtapas, saiuEm: null });
-  return { dia: ficarElegivel(naProxima, item.id, agora, { aplicarAtraso: false }).estado, evento };
+  let triado: ItemFila = { ...item, etapa: proximaEtapa, atendidoEmEtapas, saiuEm: null };
+  if (riscoConfirmado !== undefined && riscoConfirmado !== "emergencia") {
+    triado = { ...triado, risco: riscoConfirmado, urgenciaConfirmada: riscoConfirmado === "urgente" };
+    // A API grava entrada.riscoConfirmado (INV-07: só agendador ou triagem).
+    eventos.push({
+      tipo: "risco_confirmado",
+      ...base(dia, item, estacao.id),
+      dados: { nivel: riscoConfirmado, etapa: item.etapa },
+    });
+  }
+  const naProxima = comItem(livre, triado);
+  return { dia: ficarElegivel(naProxima, item.id, agora, { aplicarAtraso: false }).estado, eventos };
 }
 
 /**
- * RN-CHAM-01/02: encerra o chamado anterior desta estação e chama o 1º elegível dela.
+ * RN-CHAM-01/02: encerra o chamado anterior desta estação e chama o 1º elegível dela. Na triagem,
+ * `riscoConfirmado` confirma ou reclassifica o risco de quem sai (RN-TRI-03).
  * Sem elegível (ou estação fechada), `nenhum_elegivel` sem mudar nada, nem o chamado anterior
  * (Review Focus 2); use `finalizar`. A seleção usa o estado recebido: uma 2ª estação chamando
  * sobre o estado devolvido pela 1ª não pega o mesmo paciente (INV-04).
  */
-export function chamarProximo(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<DiaSessao> {
+export function chamarProximo(dia: DiaSessao, cmd: CmdFechar, agora: number): Resultado<DiaSessao> {
   if (dia.estado !== "aberta") return falha("sessao_fechada");
   const estacao = dia.estacoes.find((e) => e.id === cmd.estacaoId);
   if (!estacao?.aberta) return falha("nenhum_elegivel");
   const anterior = estacao.chamadoItemId ? dia.itens.find((i) => i.id === estacao.chamadoItemId) : undefined;
   // Chamado de outra sessão em aberto nesta estação: não é derrubado.
   if (estacao.chamadoItemId !== null && anterior === undefined) return falha("estacao_ocupada");
+  const invalido = riscoInvalido(anterior, cmd.riscoConfirmado);
+  if (invalido) return falha(invalido);
 
   let atual = dia;
   const eventos: Evento[] = [];
   if (anterior?.estado === "chamado") {
-    const fechado = encerrar(atual, estacao, anterior, agora);
+    const fechado = encerrarChamado(atual, estacao, anterior, agora, cmd.riscoConfirmado);
     atual = fechado.dia;
-    eventos.push(fechado.evento);
+    eventos.push(...fechado.eventos);
   }
   const proximo = elegiveis(atual, estacao.id)[0];
   if (!proximo) return falha("nenhum_elegivel");
@@ -124,12 +159,14 @@ export function rechamar(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<Dia
   ]);
 }
 
-/** RN-CHAM-02: encerra o atendimento atual sem chamar outro. */
-export function finalizar(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<DiaSessao> {
+/** RN-CHAM-02: encerra o atendimento atual sem chamar outro; na triagem, com o risco confirmado (RN-TRI-03). */
+export function finalizar(dia: DiaSessao, cmd: CmdFechar, agora: number): Resultado<DiaSessao> {
   const achado = chamadoNaEstacao(dia, cmd.estacaoId);
   if (!achado.ok) return falha(achado.erro);
-  const fechado = encerrar(dia, achado.estacao, achado.item, agora);
-  return ok(fechado.dia, [fechado.evento]);
+  const invalido = riscoInvalido(achado.item, cmd.riscoConfirmado);
+  if (invalido) return falha(invalido);
+  const fechado = encerrarChamado(dia, achado.estacao, achado.item, agora, cmd.riscoConfirmado);
+  return ok(fechado.dia, fechado.eventos);
 }
 
 /** Linha do contrato escolhida pelos pulos no dia (a transição depende da condição). */
@@ -147,7 +184,8 @@ function destinoDoPulo(pulos: number): EstadoItem {
 /**
  * RN-CHAM-03: os pulos somam as etapas. 1º: presente atrás dos próximos K, sem atraso;
  * 2º: remoto, e ao voltar só contam as chamadas feitas depois daqui (`saiuEm`);
- * 3º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02).
+ * 3º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02); a entrada vai a "Encerrada sem
+ * atendimento" com `desfechoDaEntrada` (ou no encerramento).
  */
 export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<DiaSessao> {
   const achado = chamadoNaEstacao(dia, cmd.estacaoId);
@@ -169,6 +207,7 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
     pulos,
     travadoAtras: [],
     saiuEm: para === "remoto" ? agora : item.saiuEm,
+    motivoSaida: para === "saiu_da_fila" ? "pulos" : null,
   };
   const atual = soltarTravas(comItem(livre, fora), item.id);
   if (para === "remoto") return ok(atual, [pulado]);
@@ -179,8 +218,12 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
   ]);
 }
 
-/** RN-EST-05: não fecha com paciente chamado (de qualquer sessão); finalize ou marque "Não compareceu". */
+/**
+ * RN-EST-05: não fecha com paciente chamado (de qualquer sessão); finalize ou marque "Não compareceu".
+ * Como as ações vizinhas, só com a sessão aberta (m5).
+ */
 export function fecharEstacao(dia: DiaSessao, cmd: Cmd): Resultado<DiaSessao> {
+  if (dia.estado !== "aberta") return falha("sessao_fechada");
   const estacao = dia.estacoes.find((e) => e.id === cmd.estacaoId);
   if (!estacao) return falha("transicao_proibida");
   if (estacao.chamadoItemId !== null) return falha("estacao_com_chamado");

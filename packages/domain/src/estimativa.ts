@@ -8,7 +8,11 @@ export type Estimativa =
   | { tipo: "posicao"; posicao: number; minutos: number; consulta?: { minutos: number } }
   | { tipo: "venha_agora"; consulta?: { minutos: number } }
   | { tipo: "aguardando_inicio" }
-  | { tipo: "modo_manual" };
+  | { tipo: "modo_manual" }
+  /** Chamado agora numa estação: o app mostra a chamada, não uma posição. */
+  | { tipo: "chamado" }
+  /** Atendido, fora da fila, remanejado, ou sessão encerrada/cancelada: sem estimativa. */
+  | { tipo: "fora_da_fila" };
 
 type Opcoes = { modoManual: boolean };
 
@@ -69,11 +73,16 @@ const ordem = (dia: DiaSessao, a: ItemFila, b: ItemFila): number =>
  * RN-ETA-01/01b/01c/02/04 (AD-002, AD-003, AD-009) e RN-SES-05 (AD-043).
  * Presente: lugar na ordem de chamada real (janela protegida); remoto: quantos vêm antes em
  * ordem(todas), presentes e remotos. Quem está na triagem vê o tempo até a triagem e, à parte,
- * a previsão da consulta. Item inexistente é erro de programação: lança.
+ * a previsão da consulta. Só quem espera (remoto ou presente) na sessão aberta tem posição:
+ * sessão planejada aguarda o início; encerrada ou cancelada, ou item em estado final, está fora
+ * da fila; chamado vê a chamada. Item inexistente é erro de programação: lança.
  */
 export function estimar(dia: DiaSessao, itemId: string, agora: number, opcoes: Opcoes): Estimativa {
   const item = dia.itens.find((i) => i.id === itemId);
   if (!item) throw new Error(`item ${itemId} não existe`);
+  if (dia.estado === "planejada") return { tipo: "aguardando_inicio" };
+  if (dia.estado !== "aberta" || (!naFila(item) && item.estado !== "chamado")) return { tipo: "fora_da_fila" };
+  if (item.estado === "chamado") return { tipo: "chamado" };
   if (opcoes.modoManual) return { tipo: "modo_manual" };
 
   const estacoes = abertas(dia, item.etapa);

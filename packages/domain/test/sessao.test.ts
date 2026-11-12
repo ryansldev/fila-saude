@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { chamarProximo, finalizar } from "../src/chamada.ts";
 import { TRANSICOES_ENTRADA } from "../src/contratos.ts";
+import { encerrar } from "../src/encerramento.ts";
 import { CONFIG_PADRAO, checkIn, conferirEMarcar, type DiaSessao, elegiveis } from "../src/fila.ts";
 import {
   alocar,
+  conferenciaNaEntrada,
   confirmar,
   destinoPorCondicao,
   type Entrada,
@@ -21,11 +24,12 @@ import {
   incluirNoBalcao,
   inscreverPublica,
   lancarRegulado,
-  liberarVaga,
+  preencherDaReserva,
+  refazerQuestionario,
   removerLancamento,
   trocarReserva,
 } from "../src/sessao.ts";
-import { congelar, entrada, respostas, sessaoVagas } from "./fixtures.ts";
+import { congelar, entrada, problemaNovo, respostas, sessaoVagas } from "./fixtures.ts";
 
 const MIN = 60_000;
 const H = 60 * MIN;
@@ -68,6 +72,9 @@ function diaPlanejado(parcial: Partial<DiaSessao> = {}): DiaSessao {
     ...parcial,
   });
 }
+
+/** A sessão com uma vaga a menos ocupada: quem saiu já a liberou (a saída do teste é feita à mão). */
+const livre = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas - 1 });
 
 const publica = (parcial: Partial<SessaoVagas> = {}) => sessaoVagas({ visibilidade: "publica", ...parcial });
 
@@ -289,7 +296,7 @@ describe("lista de reserva (RN-PUB-02)", () => {
 
     // Ana cancela (o cancelamento é da Task 10); a vaga dela vai para Bruno.
     const semAna = st.entradas.map((e) => (e.id === "ana" ? { ...e, estado: "cancelada" as const } : e));
-    const r = liberarVaga(st.sessao, null, congelar(semAna), { servico: LIVRE, fotosAceitas: [] }, T + H);
+    const r = preencherDaReserva(livre(st.sessao), null, congelar(semAna), { servico: LIVRE, fotosAceitas: [] }, T + H);
     const { entradas, sessao } = aplicar(r);
     expect(entradas.find((e) => e.id === "bruno")?.estado).toBe("confirmada");
     expect(entradas.find((e) => e.id === "carla")?.estado).toBe("na_reserva");
@@ -307,7 +314,7 @@ describe("lista de reserva (RN-PUB-02)", () => {
           : e,
     );
     const { entradas: depois } = aplicar(
-      liberarVaga(st.sessao, null, congelar(entradas), { servico: LIVRE, fotosAceitas: [] }, T + H),
+      preencherDaReserva(livre(st.sessao), null, congelar(entradas), { servico: LIVRE, fotosAceitas: [] }, T + H),
     );
     expect(depois.find((e) => e.id === "carla")?.estado).toBe("confirmada");
   });
@@ -324,7 +331,13 @@ describe("lista de reserva (RN-PUB-02)", () => {
     };
     const semAna = st.entradas.map((e) => (e.id === "ana" ? { ...e, estado: "cancelada" as const } : e));
     const r = aplicar(
-      liberarVaga(st.sessao, st.dia, congelar(semAna), { servico: REQUISICAO, fotosAceitas: ["carla"] }, INICIO + H),
+      preencherDaReserva(
+        livre(st.sessao),
+        st.dia,
+        congelar(semAna),
+        { servico: REQUISICAO, fotosAceitas: ["carla"] },
+        INICIO + H,
+      ),
     );
     expect(r.entradas.find((e) => e.id === "bruno")?.estado).toBe("na_reserva");
     expect(r.entradas.find((e) => e.id === "carla")?.estado).toBe("na_fila");
@@ -337,7 +350,9 @@ describe("lista de reserva (RN-PUB-02)", () => {
     st = inscrever(st, "ana", T, { servico: REQUISICAO, fotoAceita: true });
     st = inscrever(st, "bruno", T + MIN, { servico: REQUISICAO });
     const semAna = st.entradas.map((e) => (e.id === "ana" ? { ...e, estado: "cancelada" as const } : e));
-    const r = aplicar(liberarVaga(st.sessao, null, congelar(semAna), { servico: REQUISICAO, fotosAceitas: [] }, T + H));
+    const r = aplicar(
+      preencherDaReserva(livre(st.sessao), null, congelar(semAna), { servico: REQUISICAO, fotosAceitas: [] }, T + H),
+    );
     const bruno = r.entradas.find((e) => e.id === "bruno");
     expect([bruno?.estado, bruno?.sessaoId]).toEqual(["aguardando_encaminhamento", "s1"]);
     expect(r.sessao.ocupadas).toBe(1);
@@ -526,10 +541,9 @@ describe("lançamento regulado (RN-ENC-06)", () => {
   });
 
   it("RN-ENC-06/RN-FILA-05: lançamento com prioridade a conferir não é liberado; só o check-in espera a recepção", () => {
-    // José (76 anos) tem prioridade de idoso pela data de nascimento, ainda não conferida.
+    // José (76 anos): idoso vem da data de nascimento no dia da sessão (AD-027) e não é pendência (F1).
     const { entrada: ze, sessao } = aplicar(lancarRegulado(privada(), null, cmd(), T));
-    expect(ze.prioridade.grupos).toEqual(["idoso"]);
-    expect(ze.prioridade.conferida).toBe(false);
+    expect(ze.prioridade.grupos).toEqual([]);
     const dia0 = diaPlanejado({ servicoId: "reg" });
     const r = abrirSessao(dia0, sessao, congelar([ze]), { servico: REGULADO, fotosAceitas: [] }, INICIO);
     const ab = aplicar(r);
@@ -537,9 +551,15 @@ describe("lançamento regulado (RN-ENC-06)", () => {
     expect([ab.entradas[0]?.estado, ab.sessao.ocupadas]).toEqual(["na_fila", 1]);
     const itemZe = itemDe(ab.dia, "ze");
     if (!itemZe) throw new Error("José fora da fila");
-    // A pendência efetiva só recusa o check-in: ele continua na fila, remoto.
-    expect(erro(checkIn(ab.dia, { itemId: itemZe.id }, INICIO + 10 * MIN))).toBe("pendencia");
-    const conferido = aplicar(conferirEMarcar(ab.dia, { itemId: itemZe.id, resultado: "confere" }, INICIO + 12 * MIN));
+    expect(itemZe.prioridade.grupos).toEqual(["idoso"]);
+    expect(erro(checkIn(ab.dia, { itemId: itemZe.id }, INICIO + 10 * MIN))).toBe("ok");
+
+    // Com prioridade declarada ainda não conferida (PcD): a pendência só recusa o check-in.
+    const pcd = congelar({ ...ze, prioridade: { grupos: ["pcd" as const], conferida: false, conferidaEm: null } });
+    const ab2 = aplicar(abrirSessao(dia0, sessao, congelar([pcd]), { servico: REGULADO, fotosAceitas: [] }, INICIO));
+    expect([ab2.entradas[0]?.estado, ab2.sessao.ocupadas]).toEqual(["na_fila", 1]);
+    expect(erro(checkIn(ab2.dia, { itemId: itemZe.id }, INICIO + 10 * MIN))).toBe("pendencia");
+    const conferido = aplicar(conferirEMarcar(ab2.dia, { itemId: itemZe.id, resultado: "confere" }, INICIO + 12 * MIN));
     expect(itemDe(conferido, "ze")?.estado).toBe("presente");
     expect(itemDe(conferido, "ze")?.prioridade.conferida).toBe(true);
   });
@@ -603,7 +623,9 @@ describe("invariantes", () => {
     for (const [i, n] of ["a", "b", "c", "d"].entries()) st = inscrever(st, n, T + i * MIN);
     expect(st.sessao.ocupadas).toBe(1);
     const semA = st.entradas.map((e) => (e.id === "a" ? { ...e, estado: "cancelada" as const } : e));
-    const lib = aplicar(liberarVaga(st.sessao, null, congelar(semA), { servico: LIVRE, fotosAceitas: [] }, T + H));
+    const lib = aplicar(
+      preencherDaReserva(livre(st.sessao), null, congelar(semA), { servico: LIVRE, fotosAceitas: [] }, T + H),
+    );
     expect(lib.sessao.ocupadas).toBe(1);
     expect(lib.entradas.filter((e) => e.estado === "confirmada")).toHaveLength(1);
     // Troca para sessão cheia, balcão e lançamento sem vaga: recusados.
@@ -659,7 +681,9 @@ describe("invariantes", () => {
     const semB = st.entradas.map((e) => (e.id === "b" ? { ...e, estado: "cancelada" as const } : e));
     st = {
       ...st,
-      ...aplicar(liberarVaga(st.sessao, st.dia, congelar(semB), { servico: LIVRE, fotosAceitas: [] }, INICIO + H)),
+      ...aplicar(
+        preencherDaReserva(livre(st.sessao), st.dia, congelar(semB), { servico: LIVRE, fotosAceitas: [] }, INICIO + H),
+      ),
     };
     const semC = st.entradas.map((e) => (e.id === "c" ? { ...e, estado: "cancelada" as const } : e));
     const sessao = { ...st.sessao, ocupadas: st.sessao.ocupadas - 1 };
@@ -755,5 +779,265 @@ describe("invariantes", () => {
         INICIO,
       ),
     ).not.toThrow();
+  });
+});
+
+describe("AD-010: quem entra na fila com a sessão aberta", () => {
+  const E1 = { estacaoId: "e1" };
+  const ATENCAO = problemaNovo("moderado");
+
+  /** Bruno (rotina) inscrito antes, sessão aberta às 07:00 e Bruno chamado às 07:01. */
+  function brunoChamado(vagas: number): Estado {
+    let st: Estado = { sessao: publica({ vagas }), dia: null, entradas: [] };
+    st = inscrever(st, "bruno", T);
+    st = {
+      ...st,
+      ...aplicar(abrirSessao(diaPlanejado(), st.sessao, st.entradas, { servico: LIVRE, fotosAceitas: [] }, INICIO)),
+    };
+    const brunoItem = itemDe(st.dia, "bruno");
+    if (!brunoItem || !st.dia) throw new Error("Bruno fora da fila");
+    let dia = aplicar(checkIn(st.dia, { itemId: brunoItem.id }, INICIO));
+    dia = aplicar(chamarProximo(dia, E1, INICIO + MIN));
+    return { ...st, dia };
+  }
+
+  /** Zé (atenção, antes de Bruno na ordem) se inscreve na sessão aberta. */
+  function zeInscreve(st: Estado, agora: number): Estado {
+    const {
+      entrada: ze,
+      sessao,
+      dia,
+    } = aplicar(
+      inscreverPublica(
+        st.sessao,
+        st.dia,
+        {
+          servico: LIVRE,
+          pessoa: { nome: "Zé", nascimento: "1990-01-01", cpf: null },
+          responsavelId: "ze",
+          respostas: ATENCAO,
+          id: "ze",
+          entradasAtivas: st.entradas,
+          fotoAceita: false,
+        },
+        agora,
+      ),
+    );
+    return { sessao, dia, entradas: [...st.entradas, ze] };
+  }
+
+  const diaDe = (st: Estado): DiaSessao => {
+    if (!st.dia) throw new Error("sem dia");
+    return st.dia;
+  };
+
+  it("AD-010: inscrito com a sessão aberta não perde a vez por chamadas anteriores à inscrição (check-in)", () => {
+    const st = zeInscreve(brunoChamado(3), INICIO + H);
+    const ze = itemDe(st.dia, "ze");
+    expect(ze?.numero).toBe(2);
+    const r = checkIn(diaDe(st), { itemId: idDoItem("ze", "s1") }, INICIO + 90 * MIN);
+    expect(itemDe(aplicar(r), "ze")).toMatchObject({ estado: "presente", numero: 2 });
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "presente", dados: expect.objectContaining({ perdeuAVez: false }) }),
+    );
+  });
+
+  it("AD-010/RN-SES-02: inscrito com a sessão aberta que não veio é remanejado, não faltoso", () => {
+    const st = zeInscreve(brunoChamado(3), INICIO + H);
+    const dia = aplicar(finalizar(diaDe(st), E1, INICIO + 2 * H));
+    const fim = aplicar(
+      encerrar(dia, st.entradas, INICIO + 3 * H, { semSinalSemContingencia: false, origem: "publica" }),
+    );
+    expect(fim.dia.encerramento?.faltas).toEqual([]);
+    expect(itemDe(fim.dia, "ze")?.estado).toBe("remanejado");
+    expect(fim.entradas.find((e) => e.id === "ze")?.estado).toBe("remanejada");
+  });
+
+  it("AD-010: vaga da reserva preenchida com a sessão aberta não perde a vez por chamadas anteriores", () => {
+    // Uma vaga só: Zé vai para a reserva; Bruno é chamado; a vaga da Carla abre às 08:00.
+    let st: Estado = { sessao: publica({ vagas: 2 }), dia: null, entradas: [] };
+    st = inscrever(st, "bruno", T);
+    st = inscrever(st, "carla", T + MIN);
+    st = zeInscreve(st, T + 2 * MIN);
+    expect(ent(st, "ze").estado).toBe("na_reserva");
+    st = {
+      ...st,
+      ...aplicar(abrirSessao(diaPlanejado(), st.sessao, st.entradas, { servico: LIVRE, fotosAceitas: [] }, INICIO)),
+    };
+    let dia = aplicar(checkIn(diaDe(st), { itemId: idDoItem("bruno", "s1") }, INICIO));
+    dia = aplicar(chamarProximo(dia, E1, INICIO + MIN));
+    const semCarla = st.entradas.map((e) => (e.id === "carla" ? { ...e, estado: "cancelada" as const } : e));
+    const rs = aplicar(
+      preencherDaReserva(livre(st.sessao), dia, congelar(semCarla), { servico: LIVRE, fotosAceitas: [] }, INICIO + H),
+    );
+    expect(rs.entradas.find((e) => e.id === "ze")?.estado).toBe("na_fila");
+    const r = checkIn(diaDe(rs), { itemId: idDoItem("ze", "s1") }, INICIO + 90 * MIN);
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "presente", dados: expect.objectContaining({ perdeuAVez: false }) }),
+    );
+  });
+
+  it("AD-010: lançamento regulado com a sessão aberta não perde a vez por chamadas anteriores", () => {
+    const diaReg = diaPlanejado({
+      servicoId: "reg",
+      estacoes: [{ id: "e1", etapa: "atendimento", servicos: ["reg"], aberta: true, chamadoItemId: null }],
+    });
+    const lancar = (
+      s: SessaoVagas,
+      d: DiaSessao | null,
+      id: string,
+      risco: "rotina" | "atencao",
+      agora: number,
+      ativas: Entrada[],
+    ) =>
+      aplicar(
+        lancarRegulado(
+          s,
+          d,
+          {
+            servico: REGULADO,
+            id,
+            pessoa: { nome: id, nascimento: "1990-01-01", cpf: null },
+            contaId: null,
+            contaVerificada: false,
+            riscoDaRegulacao: risco,
+            entradasAtivas: ativas,
+          },
+          agora,
+        ),
+      );
+    const bruno = lancar(sessaoVagas({ servicoId: "reg" }), null, "bruno", "rotina", T, []);
+    const ab = aplicar(
+      abrirSessao(diaReg, bruno.sessao, congelar([bruno.entrada]), { servico: REGULADO, fotosAceitas: [] }, INICIO),
+    );
+    let dia = aplicar(checkIn(ab.dia, { itemId: idDoItem("bruno", "s1") }, INICIO));
+    dia = aplicar(chamarProximo(dia, E1, INICIO + MIN));
+    const ze = lancar(ab.sessao, dia, "ze", "atencao", INICIO + H, ab.entradas);
+    if (!ze.dia) throw new Error("sem dia");
+    const r = checkIn(ze.dia, { itemId: idDoItem("ze", "s1") }, INICIO + 90 * MIN);
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "presente", dados: expect.objectContaining({ perdeuAVez: false }) }),
+    );
+  });
+});
+
+describe("I1: prioridade montada no dia de cada sessão (AD-024, AD-027, RN-RISCO-04)", () => {
+  /** Abre a sessão "s1" com a entrada confirmada e devolve o item dela. */
+  const itemNaAbertura = (e: Entrada, agora: number, config = CONFIG_PADRAO) => {
+    const conf = congelar({ ...e, estado: "confirmada" as const, sessaoId: "s1" });
+    const r = aplicar(abrir(diaPlanejado({ config }), [conf], agora));
+    const item = itemDe(r.dia, e.id);
+    if (!item) throw new Error("sem item");
+    return { dia: r.dia, item };
+  };
+  /** 13/11/2026 00:30 e 12/11/2026 23:30 em Brasília (UTC-3). */
+  const POS_MEIA_NOITE = Date.UTC(2026, 10, 13, 3, 30);
+  const PRE_MEIA_NOITE = Date.UTC(2026, 10, 13, 2, 30);
+
+  it("AD-027: quem faz 60 anos entre a entrada na lista e a sessão entra como idoso (fuso da unidade)", () => {
+    const e = entrada("ze", {
+      pessoa: { nome: "Zé", nascimento: "1966-11-13", cpf: null },
+      dataEntradaOriginal: T - 90 * DIA,
+    });
+    expect(itemNaAbertura(e, POS_MEIA_NOITE).item.prioridade.grupos).toEqual(["idoso"]);
+    expect(itemNaAbertura(e, PRE_MEIA_NOITE).item.prioridade.grupos).toEqual([]);
+  });
+
+  it("AD-027: quem faz 80 anos na espera passa a idoso80 (80+ antes dos demais)", () => {
+    const e = entrada("dora", {
+      pessoa: { nome: "Dora", nascimento: "1946-11-13", cpf: null },
+      prioridade: { grupos: ["pcd"], conferida: true, conferidaEm: T - 90 * DIA },
+    });
+    expect(itemNaAbertura(e, POS_MEIA_NOITE).item.prioridade.grupos).toEqual(["idoso80", "pcd"]);
+    expect(itemNaAbertura(e, PRE_MEIA_NOITE).item.prioridade.grupos).toEqual(["idoso", "pcd"]);
+  });
+
+  it("RN-FILA-05/F1: idoso sem outra prioridade faz check-in sem passar na recepção", () => {
+    const e = entrada("ze", { pessoa: { nome: "Zé", nascimento: "1950-01-01", cpf: null } });
+    const { dia, item } = itemNaAbertura(e, INICIO);
+    expect(item.prioridade.grupos).toEqual(["idoso"]);
+    expect(itemDe(aplicar(checkIn(dia, { itemId: item.id }, INICIO + MIN)), "ze")?.estado).toBe("presente");
+  });
+
+  it("AD-024: conferida na recepção, vale nas próximas idas; com prazo, expira e volta a ser conferida", () => {
+    const gestante = entrada("bia", { prioridade: { grupos: ["gestante"], conferida: false, conferidaEm: null } });
+    const ida1 = itemNaAbertura(gestante, INICIO);
+    expect(erro(checkIn(ida1.dia, { itemId: ida1.item.id }, INICIO + MIN))).toBe("pendencia");
+    const conferido = aplicar(
+      conferirEMarcar(ida1.dia, { itemId: ida1.item.id, resultado: "confere" }, INICIO + 2 * MIN),
+    );
+    const itemConferido = itemDe(conferido, "bia");
+    if (!itemConferido) throw new Error("sem item");
+    const guardada = conferenciaNaEntrada(gestante, itemConferido);
+    expect(guardada.prioridade).toEqual({ grupos: ["gestante"], conferida: true, conferidaEm: INICIO + 2 * MIN });
+
+    // Próxima ida, 20 dias depois: já conferida, check-in direto.
+    const ida2 = itemNaAbertura(guardada, INICIO + 20 * DIA);
+    expect(erro(checkIn(ida2.dia, { itemId: ida2.item.id }, INICIO + 20 * DIA + MIN))).toBe("ok");
+    // Com prazo de 30 dias (D5, configuração): na ida de 40 dias depois, expirou.
+    const comPrazo = { ...CONFIG_PADRAO, prazosPrioridade: { gestante: 30 } };
+    const ida3 = itemNaAbertura(guardada, INICIO + 40 * DIA, comPrazo);
+    expect(erro(checkIn(ida3.dia, { itemId: ida3.item.id }, INICIO + 40 * DIA + MIN))).toBe("pendencia");
+  });
+
+  it("RN-RISCO-04: prioridade não conferida é retirada da entrada; a idade continua valendo", () => {
+    const e = entrada("ze", {
+      pessoa: { nome: "Zé", nascimento: "1950-01-01", cpf: null },
+      prioridade: { grupos: ["pcd"], conferida: false, conferidaEm: null },
+    });
+    const { dia, item } = itemNaAbertura(e, INICIO);
+    const d = aplicar(conferirEMarcar(dia, { itemId: item.id, resultado: "prioridade_nao_confere" }, INICIO + MIN));
+    const depois = itemDe(d, "ze");
+    if (!depois) throw new Error("sem item");
+    expect(depois.prioridade.grupos).toEqual(["idoso"]);
+    expect(conferenciaNaEntrada(e, depois).prioridade.grupos).toEqual([]);
+  });
+});
+
+describe("RN-RISCO-03: refazer o questionário", () => {
+  const URGENTE = problemaNovo("forte");
+
+  it("RN-RISCO-03: subir para urgente alerta o agendador; emergência orienta o 192", () => {
+    const e = entrada("ana");
+    const r = refazerQuestionario(e, null, { respostas: URGENTE }, T);
+    expect(aplicar(r).entrada.classificacao.nivel).toBe("urgente");
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "alerta_agendador", entradaId: "ana", motivo: "Problema novo forte" }),
+    );
+    // Já urgente: não alerta de novo.
+    const ja = aplicar(r).entrada;
+    expect(
+      eventos(refazerQuestionario(ja, null, { respostas: URGENTE }, T)).some((x) => x.tipo === "alerta_agendador"),
+    ).toBe(false);
+    expect(erro(refazerQuestionario(e, null, { respostas: respostas({ alarmes: ["dor_no_peito"] }) }, T))).toBe(
+      "emergencia",
+    );
+    // Só enquanto espera: entrada final não refaz.
+    expect(erro(refazerQuestionario(entrada("x", { estado: "concluida" }), null, { respostas: URGENTE }, T))).toBe(
+      "transicao_proibida",
+    );
+  });
+
+  it("RN-RISCO-03: na fila do dia, o item remoto passa a usar o risco sugerido novo", () => {
+    const conf = entrada("ana", { estado: "confirmada", sessaoId: "s1" });
+    const outro = entrada("bruno", { estado: "confirmada", sessaoId: "s1", dataEntradaOriginal: T - 30 * DIA });
+    const ab = aplicar(abrir(diaPlanejado(), congelar([outro, conf]), INICIO));
+    const naFila = ab.entradas.find((x) => x.id === "ana") as Entrada;
+    const r = refazerQuestionario(naFila, ab.dia, { respostas: URGENTE }, INICIO + MIN);
+    const { dia } = aplicar(r);
+    expect(itemDe(dia, "ana")).toMatchObject({ risco: "urgente", urgenciaConfirmada: false });
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "risco_sugerido", itemId: idDoItem("ana", "s1"), dados: { nivel: "urgente" } }),
+    );
+    // Risco confirmado (agendador ou triagem) vale sobre o sugerido: o item não muda.
+    const confirmada = { ...naFila, riscoConfirmado: "rotina" as const };
+    expect(
+      itemDe(aplicar(refazerQuestionario(confirmada, ab.dia, { respostas: URGENTE }, INICIO + MIN)).dia, "ana")?.risco,
+    ).toBe("rotina");
+    // Presente: segue no lugar com o risco que tinha; só a entrada muda.
+    const presente = aplicar(checkIn(ab.dia, { itemId: idDoItem("ana", "s1") }, INICIO + MIN));
+    const p = aplicar(refazerQuestionario(naFila, presente, { respostas: URGENTE }, INICIO + 2 * MIN));
+    expect(itemDe(p.dia, "ana")?.risco).toBe("rotina");
+    expect(p.entrada.classificacao.nivel).toBe("urgente");
   });
 });

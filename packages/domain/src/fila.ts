@@ -1,7 +1,16 @@
 import { type EstadoItem, type EstadoSessao, TRANSICOES_ITEM, transicionar } from "./contratos.ts";
 import type { Origem } from "./lista.ts";
 import { type ChaveOrdem, compararOrdem, type Risco } from "./ordem.ts";
-import { expirada, type PrioridadeLegal, temPrioridade } from "./prioridade.ts";
+import {
+  aConferir,
+  type ContextoDarPrioridade,
+  daIdade,
+  expirada,
+  type Grupo,
+  type PrioridadeLegal,
+  podeDarPrioridade,
+  temPrioridade,
+} from "./prioridade.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
 import type { ConfigUnidade } from "./tipos.ts";
 
@@ -9,6 +18,14 @@ export type Etapa = "triagem" | "atendimento";
 
 /** O que bloqueia o check-in (RN-FILA-05): só a recepção resolve. */
 export type Pendencia = "conta" | "pessoa_atendida" | "pre_cadastro" | "prioridade";
+
+/**
+ * Por que o item saiu da fila ("Saiu da fila"): decide a linha do contrato da entrada
+ * (`desfechoDaEntrada`). pulos = 3º "Não compareceu"; falta = vez passada no encerramento;
+ * nao_conferiu = identidade não confere (RN-FILA-05); cancelou = paciente cancelou ou desistiu;
+ * removido = agendador removeu o lançamento.
+ */
+export type MotivoSaida = "pulos" | "falta" | "nao_conferiu" | "cancelou" | "removido";
 
 export type ItemFila = {
   id: string;
@@ -23,8 +40,11 @@ export type ItemFila = {
   prioridade: PrioridadeLegal;
   pulos: number;
   travadoAtras: string[];
+  /** Remoto desde (entrada na fila, "Vou sair" ou 2º pulo); `null` enquanto presente na etapa. */
   saiuEm: number | null;
   atendidoEmEtapas: Etapa[];
+  /** Preenchido quando o item vai a "Saiu da fila"; `null` nos outros estados. */
+  motivoSaida: MotivoSaida | null;
 };
 
 export type Estacao = { id: string; etapa: Etapa; servicos: string[]; aberta: boolean; chamadoItemId: string | null };
@@ -122,9 +142,10 @@ export const emContingencia = (dia: DiaSessao, em: number): boolean =>
 
 /**
  * Chamadas que fazem a vez de X passar (AD-010): nesta etapa, de alguém que vem depois de X em
- * ordem. Só contam as feitas enquanto X estava remoto: depois de "Vou sair" ou do 2º pulo, as
- * anteriores a `saiuEm` saem; sem `saiuEm`, X nunca esteve presente nesta etapa, e todas as
- * chamadas dela foram feitas com ele fora. Não filtra contingência: quem usa decide (AD-033).
+ * ordem. Só contam as feitas enquanto X estava remoto, ou seja, desde `saiuEm` ("remoto desde"):
+ * a entrada na fila (`porNaFila`), "Vou sair" ou o 2º pulo. Sem `saiuEm` (item que passou da
+ * triagem ao atendimento estando na unidade), contam todas as da etapa. Não filtra contingência:
+ * quem usa decide (AD-033).
  */
 export function chamadasQuePassamAVez(dia: DiaSessao, x: ItemFila): Chamada[] {
   return dia.chamadas.filter((c) => {
@@ -144,7 +165,8 @@ function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
 }
 
 /**
- * X fica elegível: trava X atrás dos K primeiros da ordem de chamada real (janela protegida) e,
+ * Uso interno do pacote (não sai pelo index, m1): põe em presente sem consultar o contrato; quem
+ * chama já validou a transição. X fica elegível: trava X atrás dos K primeiros da ordem de chamada real (janela protegida) e,
  * com `aplicarAtraso`, aplica antes a regra de atraso. O atraso só vale para quem chega de fora
  * (check-in, presença pela recepção); no 1º pulo e na passagem da triagem ao atendimento a pessoa
  * estava na unidade, então não se aplica (RN-CHAM-03, RN-TRI-04). Urgência confirmada escapa dos dois.
@@ -188,11 +210,13 @@ export function ficarElegivel(
 
 /**
  * Pendências que bloqueiam o check-in (RN-FILA-05). Prioridade declarada e não conferida,
- * ou conferida e vencida, conta como "prioridade" mesmo que não esteja na lista.
+ * ou conferida e vencida, conta como "prioridade" mesmo que não esteja na lista. Idoso não conta
+ * (vem da data de nascimento, coberta pela conferência de identidade; DECISÃO F1).
  */
 function pendenciasEfetivas(dia: DiaSessao, item: ItemFila, agora: number): Pendencia[] {
   const p = item.prioridade;
-  const prioridadePendente = temPrioridade(p) && (!p.conferida || expirada(p, agora, dia.config.prazosPrioridade));
+  const prioridadePendente =
+    aConferir(p).length > 0 && (!p.conferida || expirada(p, agora, dia.config.prazosPrioridade));
   return prioridadePendente && !item.pendencias.includes("prioridade")
     ? [...item.pendencias, "prioridade"]
     : item.pendencias;
@@ -237,7 +261,10 @@ const EVENTO_CONFERENCIA = {
 
 /**
  * RN-FILA-05: a recepção confere e, na mesma ação, marca a presença (o atraso conta a partir daqui).
- * "nao_confere" tira da fila sem falta e sem remanejamento; a entrada é cancelada pelo chamador.
+ * A conferência da prioridade vale nas próximas idas: guarde-a com `conferenciaNaEntrada` (AD-024).
+ * "prioridade_nao_confere" retira os grupos declarados; idoso (da data de nascimento) fica.
+ * "nao_confere" tira da fila sem falta e sem remanejamento; a entrada vai a Cancelada com
+ * `desfechoDaEntrada` (ou no encerramento).
  */
 export function conferirEMarcar(
   dia: DiaSessao,
@@ -251,7 +278,7 @@ export function conferirEMarcar(
   const base = { itemId: item.id, entradaId: item.entradaId };
 
   if (cmd.resultado === "nao_confere") {
-    const saiu: ItemFila = { ...item, estado: "saiu_da_fila", travadoAtras: [] };
+    const saiu: ItemFila = { ...item, estado: "saiu_da_fila", travadoAtras: [], motivoSaida: "nao_conferiu" };
     return ok({ ...dia, itens: dia.itens.map((i) => (i.id === item.id ? saiu : i)) }, [
       { tipo: "nao_conferiu", ...base, ...(cmd.motivo === undefined ? {} : { motivo: cmd.motivo }) },
     ]);
@@ -260,7 +287,7 @@ export function conferirEMarcar(
   const tinhaPendencia = pendenciasEfetivas(dia, item, agora).length > 0;
   const prioridade: PrioridadeLegal =
     cmd.resultado === "prioridade_nao_confere"
-      ? { grupos: [], conferida: false, conferidaEm: null }
+      ? { grupos: item.prioridade.grupos.filter(daIdade), conferida: false, conferidaEm: null }
       : temPrioridade(item.prioridade)
         ? { ...item.prioridade, conferida: true, conferidaEm: agora }
         : item.prioridade;
@@ -277,8 +304,41 @@ export function conferirEMarcar(
   return ok(marcado.estado, [...eventos, ...marcado.eventos]);
 }
 
+/**
+ * RN-RISCO-04: a recepção dá prioridade legal só ao incluir no balcão ou na 1ª presença de paciente
+ * sem app (que vale como inclusão no balcão); a quem já está na lista ou na fila, não
+ * (`podeDarPrioridade`). Conferida na hora (documento visto); idoso não se dá (data de nascimento,
+ * AD-027). Item remoto ou presente, sessão aberta. Guarde na entrada com `conferenciaNaEntrada`.
+ */
+export function darPrioridade(
+  dia: DiaSessao,
+  cmd: { itemId: string; grupos: Grupo[]; contexto: ContextoDarPrioridade },
+  agora: number,
+): Resultado<DiaSessao> {
+  if (!podeDarPrioridade(cmd.contexto)) return falha("sem_permissao");
+  if (dia.estado !== "aberta") return falha("sessao_fechada");
+  const item = dia.itens.find((i) => i.id === cmd.itemId);
+  if (!item || (item.estado !== "remoto" && item.estado !== "presente")) return falha("transicao_proibida");
+  const dados = cmd.grupos.filter((g) => !daIdade(g));
+  const grupos = [...new Set([...item.prioridade.grupos, ...dados])];
+  const novo: ItemFila = {
+    ...item,
+    prioridade: { grupos, conferida: true, conferidaEm: agora },
+    pendencias: item.pendencias.filter((p) => p !== "prioridade"),
+  };
+  return ok({ ...dia, itens: dia.itens.map((i) => (i.id === item.id ? novo : i)) }, [
+    {
+      tipo: "prioridade_dada",
+      itemId: item.id,
+      entradaId: item.entradaId,
+      dados: { grupos: [...new Set(dados)], contexto: cmd.contexto },
+    },
+  ]);
+}
+
 /** RN-PRES-02: volta a remoto mantendo o número; quem sai não trava mais ninguém. */
 export function vouSair(dia: DiaSessao, cmd: { itemId: string }, agora: number): Resultado<DiaSessao> {
+  if (dia.estado !== "aberta") return falha("sessao_fechada");
   const item = dia.itens.find((i) => i.id === cmd.itemId);
   if (!item || transicionar(TRANSICOES_ITEM, item.estado, 'Paciente toca "Vou sair"') !== "remoto") {
     return falha("transicao_proibida");

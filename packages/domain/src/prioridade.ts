@@ -86,6 +86,15 @@ export function podeDarPrioridade(contexto: ContextoDarPrioridade): boolean {
   return contexto === "inclusao_balcao" || contexto === "primeira_presenca_sem_app";
 }
 
+/** Idoso e idoso80 vêm da data de nascimento (AD-027): não são declarados nem dados pela recepção. */
+export const daIdade = (g: Grupo): boolean => GRUPOS[g].conferencia === "nascimento";
+
+/**
+ * Grupos que a recepção confere (RN-FILA-05 (c)): os declarados. Idoso não entra: a idade vem da
+ * data de nascimento, coberta pela conferência de identidade (pendência (a)). DECISÃO F1.
+ */
+export const aConferir = (p: PrioridadeLegal): Grupo[] => p.grupos.filter((g) => !daIdade(g));
+
 /** Declarada vale até a conferência (AD-024/050). */
 export function temPrioridade(p: PrioridadeLegal): boolean {
   return p.grupos.length > 0;

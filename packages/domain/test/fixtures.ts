@@ -48,6 +48,7 @@ export function itemFila(id: string, numero: number, parcial: Partial<ItemFila> 
     travadoAtras: [],
     saiuEm: null,
     atendidoEmEtapas: [],
+    motivoSaida: null,
     ...parcial,
   };
 }

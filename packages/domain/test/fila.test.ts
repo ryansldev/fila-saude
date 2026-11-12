@@ -4,11 +4,13 @@ import {
   checkIn,
   conferirEMarcar,
   type DiaSessao,
+  darPrioridade,
   elegiveis,
   ficarElegivel,
   marcarPresencaSemApp,
   vouSair,
 } from "../src/fila.ts";
+import * as dominio from "../src/index.ts";
 import type { Resultado } from "../src/resultado.ts";
 import { chamar, comItem, congelar, diaCom } from "./fixtures.ts";
 
@@ -370,5 +372,54 @@ describe("pureza", () => {
     expect(elegiveis(d, "t1").map((i) => i.id)).toEqual(["joao"]);
     expect(elegiveis(d, "o1")).toEqual([]);
     expect(elegiveis(d, "nao_existe")).toEqual([]);
+  });
+});
+
+describe("RN-RISCO-04: dar prioridade (darPrioridade)", () => {
+  const erro = (r: Resultado<DiaSessao>) => (r.ok ? "ok" : r.erro);
+  it("RN-RISCO-04: só na 1ª presença de paciente sem app (ou inclusão no balcão); na fila, recusado", () => {
+    const d = diaCom(["joao", "ana"]);
+    expect(erro(darPrioridade(d, { itemId: "ana", grupos: ["pcd"], contexto: "ja_na_fila" }, T))).toBe("sem_permissao");
+    const r = darPrioridade(d, { itemId: "ana", grupos: ["pcd", "idoso"], contexto: "primeira_presenca_sem_app" }, T);
+    const dado = aplicar(r);
+    // Idoso vem da data de nascimento (AD-027): não se dá.
+    expect(item(dado, "ana").prioridade).toEqual({ grupos: ["pcd"], conferida: true, conferidaEm: T });
+    expect(r.ok && r.eventos).toEqual([
+      {
+        tipo: "prioridade_dada",
+        itemId: "ana",
+        entradaId: "ent-ana",
+        dados: { grupos: ["pcd"], contexto: "primeira_presenca_sem_app" },
+      },
+    ]);
+    // Já conferida pela recepção: a presença entra sem pendência e passa à frente de João.
+    const presente = aplicar(marcarPresencaSemApp(dado, { itemId: "ana" }, T + MIN));
+    expect(item(presente, "ana").estado).toBe("presente");
+    // Chamado, final ou sessão fechada: recusado.
+    expect(
+      erro(darPrioridade(chamar(d, "ana", T), { itemId: "ana", grupos: ["pcd"], contexto: "inclusao_balcao" }, T)),
+    ).toBe("transicao_proibida");
+    expect(
+      erro(
+        darPrioridade(
+          { ...d, estado: "encerrada" },
+          { itemId: "ana", grupos: ["pcd"], contexto: "inclusao_balcao" },
+          T,
+        ),
+      ),
+    ).toBe("sessao_fechada");
+  });
+});
+
+describe("minors m1/m5", () => {
+  it("m1: ficarElegivel é interno (põe em presente sem contrato); não sai pelo pacote", () => {
+    expect("ficarElegivel" in dominio).toBe(false);
+  });
+
+  it("m5/RN-PRES-02: Vou sair só com a sessão aberta", () => {
+    const d = comItem(diaCom(["ana"]), "ana", { estado: "presente" });
+    for (const estado of ["planejada", "encerrada", "cancelada"] as const) {
+      expect(vouSair({ ...d, estado }, { itemId: "ana" }, T)).toEqual({ ok: false, erro: "sessao_fechada" });
+    }
   });
 });
