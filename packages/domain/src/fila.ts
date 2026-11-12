@@ -10,6 +10,14 @@ export type Etapa = "triagem" | "atendimento";
 /** O que bloqueia o check-in (RN-FILA-05): só a recepção resolve. */
 export type Pendencia = "conta" | "pessoa_atendida" | "pre_cadastro" | "prioridade";
 
+/**
+ * Por que o item saiu da fila ("Saiu da fila"): decide a linha do contrato da entrada
+ * (`desfechoDaEntrada`). pulos = 3º "Não compareceu"; falta = vez passada no encerramento;
+ * nao_conferiu = identidade não confere (RN-FILA-05); cancelou = paciente cancelou ou desistiu;
+ * removido = agendador removeu o lançamento.
+ */
+export type MotivoSaida = "pulos" | "falta" | "nao_conferiu" | "cancelou" | "removido";
+
 export type ItemFila = {
   id: string;
   entradaId: string;
@@ -26,6 +34,8 @@ export type ItemFila = {
   /** Remoto desde (entrada na fila, "Vou sair" ou 2º pulo); `null` enquanto presente na etapa. */
   saiuEm: number | null;
   atendidoEmEtapas: Etapa[];
+  /** Preenchido quando o item vai a "Saiu da fila"; `null` nos outros estados. */
+  motivoSaida: MotivoSaida | null;
 };
 
 export type Estacao = { id: string; etapa: Etapa; servicos: string[]; aberta: boolean; chamadoItemId: string | null };
@@ -239,7 +249,8 @@ const EVENTO_CONFERENCIA = {
 
 /**
  * RN-FILA-05: a recepção confere e, na mesma ação, marca a presença (o atraso conta a partir daqui).
- * "nao_confere" tira da fila sem falta e sem remanejamento; a entrada é cancelada pelo chamador.
+ * "nao_confere" tira da fila sem falta e sem remanejamento; a entrada vai a Cancelada com
+ * `desfechoDaEntrada` (ou no encerramento).
  */
 export function conferirEMarcar(
   dia: DiaSessao,
@@ -253,7 +264,7 @@ export function conferirEMarcar(
   const base = { itemId: item.id, entradaId: item.entradaId };
 
   if (cmd.resultado === "nao_confere") {
-    const saiu: ItemFila = { ...item, estado: "saiu_da_fila", travadoAtras: [] };
+    const saiu: ItemFila = { ...item, estado: "saiu_da_fila", travadoAtras: [], motivoSaida: "nao_conferiu" };
     return ok({ ...dia, itens: dia.itens.map((i) => (i.id === item.id ? saiu : i)) }, [
       { tipo: "nao_conferiu", ...base, ...(cmd.motivo === undefined ? {} : { motivo: cmd.motivo }) },
     ]);

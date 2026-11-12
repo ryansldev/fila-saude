@@ -147,7 +147,8 @@ function destinoDoPulo(pulos: number): EstadoItem {
 /**
  * RN-CHAM-03: os pulos somam as etapas. 1º: presente atrás dos próximos K, sem atraso;
  * 2º: remoto, e ao voltar só contam as chamadas feitas depois daqui (`saiuEm`);
- * 3º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02).
+ * 3º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02); a entrada vai a "Encerrada sem
+ * atendimento" com `desfechoDaEntrada` (ou no encerramento).
  */
 export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<DiaSessao> {
   const achado = chamadoNaEstacao(dia, cmd.estacaoId);
@@ -169,6 +170,7 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
     pulos,
     travadoAtras: [],
     saiuEm: para === "remoto" ? agora : item.saiuEm,
+    motivoSaida: para === "saiu_da_fila" ? "pulos" : null,
   };
   const atual = soltarTravas(comItem(livre, fora), item.id);
   if (para === "remoto") return ok(atual, [pulado]);

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { chamarProximo, finalizar, naoCompareceu } from "../src/chamada.ts";
 import {
   cancelar,
+  cancelarEntrada,
+  desfechoDaEntrada,
   desistir,
   encerrar,
   escolherData,
@@ -11,11 +13,11 @@ import {
   registrarContingencia,
   titularDaFalta,
 } from "../src/encerramento.ts";
-import { checkIn, type DiaSessao, vouSair } from "../src/fila.ts";
-import { type Entrada, recusar, type Servico } from "../src/lista.ts";
+import { checkIn, conferirEMarcar, type DiaSessao, vouSair } from "../src/fila.ts";
+import { criarEntrada, type Entrada, recusar, type Servico } from "../src/lista.ts";
 import type { Resultado } from "../src/resultado.ts";
 import { preencherDaReserva, removerLancamento } from "../src/sessao.ts";
-import { chamar, comItem, congelar, diaCom, entrada, sessaoVagas } from "./fixtures.ts";
+import { chamar, comItem, congelar, diaCom, entrada, respostas, sessaoVagas } from "./fixtures.ts";
 
 const MIN = 60_000;
 const H = 60 * MIN;
@@ -97,9 +99,9 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     expect(item(d, "ana").estado).toBe("remanejado");
     expect(ent(entradas, "ent-ana").estado).toBe("remanejada");
     expect(eventos(r).some((e) => e.tipo === "falta")).toBe(false);
-    // Bruno já foi atendido: não muda.
+    // Bruno já foi atendido: o item não muda e a entrada é concluída (C1).
     expect(item(d, "bruno").estado).toBe("atendido_na_etapa");
-    expect(ent(entradas, "ent-bruno").estado).toBe("na_fila");
+    expect(ent(entradas, "ent-bruno").estado).toBe("concluida");
   });
 
   it("RN-SES-02: remoto com a vez passada leva falta", () => {
@@ -334,7 +336,7 @@ describe("cancelamento da sessão (RN-REM)", () => {
     expect(item(d, "bruno").estado).toBe("atendido_na_etapa"); // já atendido não é afetado
     expect(d.estacoes[0]?.chamadoItemId).toBeNull();
     expect(ent(entradas, "ent-caio").estado).toBe("remanejada");
-    expect(ent(entradas, "ent-bruno").estado).toBe("na_fila");
+    expect(ent(entradas, "ent-bruno").estado).toBe("concluida"); // atendido: concluída, não remanejada (C1)
     expect(eventos(r).some((e) => e.tipo === "falta")).toBe(false);
     // Já encerrada ou cancelada: não cancela de novo.
     expect(erro(cancelar(d, entradas, T + 3 * H, { origem: PRIVADA }))).toBe("transicao_proibida");
@@ -532,7 +534,7 @@ describe("remanejado (RN-REM-03..05)", () => {
     expect(ent(semVaga.entradas, "ana").estado).toBe("na_reserva");
   });
 
-  it("INV-02: desistir, outra data, recusa e remoção liberam exatamente uma vaga, no mesmo formato", () => {
+  it("INV-02: desistir, outra data, recusa, cancelamento e remoção liberam exatamente uma vaga, no mesmo formato", () => {
     // Toda saída que libera vaga devolve { entrada, sessao, dia } com a sessão já liberada;
     // quem chama depois só chama preencherDaReserva (RN-PUB-02, RN-CANC-02).
     const s = sessaoVagas({ id: "s2", ocupadas: 2 });
@@ -545,6 +547,7 @@ describe("remanejado (RN-REM-03..05)", () => {
       outraData(remanejada, s, T),
       recusar(alocada, s, T),
       removerLancamento(lancada, s, null, { servico: REGULADO, motivo: "x" }, T),
+      cancelarEntrada(entrada("eva", { estado: "confirmada", sessaoId: "s2" }), s, null, { servico: LIVRE }, T),
     ];
     for (const r of saidas) {
       const st = aplicar(r);
@@ -568,6 +571,149 @@ describe("remanejado (RN-REM-03..05)", () => {
       const f = aplicar(encerrar(dia, entradas, T + 5 * H, SEM_AVISO));
       registrarContingencia(f.dia, f.entradas, { inicio: T, fim: T + H, motivo: "x" }, T + 6 * H);
       cancelar(dia, entradas, T + 5 * H, { origem: PRIVADA });
+    }).not.toThrow();
+  });
+});
+
+describe("desfecho da fila do dia na entrada (C1)", () => {
+  /** Ana chamada e não compareceu 3 vezes (volta presente, depois remota, depois sai). */
+  function tresPulos(): DiaSessao {
+    let d = diaCom(["ana"]);
+    d = passo(checkIn(d, { itemId: "ana" }, T));
+    d = passo(chamarProximo(d, E1, T + MIN));
+    d = passo(naoCompareceu(d, E1, T + 6 * MIN)); // 1º: presente
+    d = passo(chamarProximo(d, E1, T + 7 * MIN));
+    d = passo(naoCompareceu(d, E1, T + 12 * MIN)); // 2º: remota
+    d = passo(checkIn(d, { itemId: "ana" }, T + 20 * MIN));
+    d = passo(chamarProximo(d, E1, T + 21 * MIN));
+    return passo(naoCompareceu(d, E1, T + 26 * MIN)); // 3º: sai da fila
+  }
+
+  const primeira = (ids: string[]): Entrada => {
+    const [e] = naFila(ids);
+    if (!e) throw new Error("sem entrada");
+    return e;
+  };
+
+  it("RN-CHAM-03: 3º pulo encerra a entrada e a pessoa pode criar entrada nova", () => {
+    const d = tresPulos();
+    expect(item(d, "ana")).toMatchObject({ estado: "saiu_da_fila", motivoSaida: "pulos" });
+    const fim = aplicar(desfechoDaEntrada(primeira(["ana"]), item(d, "ana")));
+    expect(fim.estado).toBe("encerrada_sem_atendimento");
+    // RN-CHAM-03: "Ele pode entrar de novo na lista como entrada nova".
+    const nova = criarEntrada(
+      [fim],
+      { servico: LIVRE, pessoa: fim.pessoa, responsavelId: "resp-1", respostas: respostas(), id: "ana-2" },
+      T + DIA,
+    );
+    expect(erro(nova)).toBe("ok");
+  });
+
+  it("RN-CHAM-02: atendido na última etapa → Concluída", () => {
+    const dia = brunoAtendido();
+    const bruno = primeira(["bruno"]);
+    expect(aplicar(desfechoDaEntrada(bruno, item(dia, "bruno"))).estado).toBe("concluida");
+    // Item de outra entrada, ou ainda na fila: não há desfecho.
+    expect(erro(desfechoDaEntrada(bruno, item(dia, "ana")))).toBe("transicao_proibida");
+    expect(erro(desfechoDaEntrada(primeira(["ana"]), item(dia, "ana")))).toBe("transicao_proibida");
+    // Entrada que já saiu de "Na fila": nada a fazer.
+    expect(erro(desfechoDaEntrada({ ...bruno, estado: "concluida" }, item(dia, "bruno")))).toBe("transicao_proibida");
+  });
+
+  it("RN-FILA-05: não conferiu → entrada Cancelada, sem falta", () => {
+    const d = passo(conferirEMarcar(diaCom(["ana"]), { itemId: "ana", resultado: "nao_confere", motivo: "doc" }, T));
+    expect(item(d, "ana")).toMatchObject({ estado: "saiu_da_fila", motivoSaida: "nao_conferiu" });
+    const r = desfechoDaEntrada(primeira(["ana"]), item(d, "ana"));
+    expect(aplicar(r).estado).toBe("cancelada");
+    expect(eventos(r).some((e) => e.tipo === "falta")).toBe(false);
+  });
+
+  it("C1: o encerramento e o cancelamento da sessão fecham a entrada de quem já teve desfecho no dia", () => {
+    const r = aplicar(encerrar(brunoAtendido(), naFila(["ana", "bruno", "caio"]), T + 5 * H, SEM_AVISO));
+    expect(ent(r.entradas, "ent-bruno").estado).toBe("concluida");
+    // Sessão cancelada também fecha quem já teve desfecho, sem remanejar.
+    const c = aplicar(cancelar(brunoAtendido(), naFila(["ana", "bruno", "caio"]), T + 5 * H, { origem: PRIVADA }));
+    expect(ent(c.entradas, "ent-bruno").estado).toBe("concluida");
+    expect(ent(c.entradas, "ent-ana").estado).toBe("remanejada");
+  });
+
+  it("C1: o encerramento fecha a entrada do 3º pulo e a do não conferiu", () => {
+    const r1 = aplicar(encerrar(tresPulos(), naFila(["ana"]), T + 5 * H, SEM_AVISO));
+    expect(ent(r1.entradas, "ent-ana").estado).toBe("encerrada_sem_atendimento");
+    expect(r1.dia.encerramento?.faltas).toEqual([]); // a falta foi do 3º pulo, não do encerramento
+    const conf = passo(conferirEMarcar(diaCom(["bia"]), { itemId: "bia", resultado: "nao_confere" }, T));
+    const r2 = aplicar(encerrar(conf, naFila(["bia"]), T + 5 * H, SEM_AVISO));
+    expect(ent(r2.entradas, "ent-bia").estado).toBe("cancelada");
+  });
+
+  it("RN-CANC-02: paciente cancela confirmada/na fila e a vaga vai para a reserva", () => {
+    const pub = sessaoVagas({ visibilidade: "publica", vagas: 1, ocupadas: 1 });
+    const ana = entrada("ana", { estado: "confirmada", sessaoId: "s1" });
+    const bia = entrada("bia", { estado: "na_reserva", sessaoId: "s1", dataEntradaOriginal: T - DIA });
+    const r = cancelarEntrada(ana, pub, null, { servico: LIVRE }, T);
+    const saida = aplicar(r);
+    expect([saida.entrada.estado, saida.sessao?.ocupadas, saida.dia]).toEqual(["cancelada", 0, null]);
+    expect(eventos(r).map((e) => e.tipo)).toEqual(["vaga_liberada", "cancelada"]);
+    if (!saida.sessao) throw new Error("sem sessão");
+    const res = aplicar(
+      preencherDaReserva(saida.sessao, null, congelar([saida.entrada, bia]), { servico: LIVRE, fotosAceitas: [] }, T),
+    );
+    expect(ent(res.entradas, "bia").estado).toBe("confirmada");
+    expect(res.sessao.ocupadas).toBe(1);
+
+    // Na fila (remota ou presente): o item sai da fila do dia; chamado, não.
+    const dia = diaCom(["ana"]);
+    const naFilaAna = entrada("ent-ana", { estado: "na_fila", sessaoId: "s1" });
+    for (const estado of ["remoto", "presente"] as const) {
+      const c = aplicar(cancelarEntrada(naFilaAna, pub, comItem(dia, "ana", { estado }), { servico: LIVRE }, T));
+      expect(c.entrada.estado).toBe("cancelada");
+      expect(c.dia && item(c.dia, "ana")).toMatchObject({ estado: "saiu_da_fila", motivoSaida: "cancelou" });
+    }
+    expect(erro(cancelarEntrada(naFilaAna, pub, chamar(dia, "ana", T), { servico: LIVRE }, T))).toBe(
+      "transicao_proibida",
+    );
+    // RN-CANC-03: quem cancela pode fazer entrada nova (sem a posição antiga).
+    const nova = criarEntrada(
+      [saida.entrada],
+      { servico: LIVRE, pessoa: ana.pessoa, responsavelId: "resp-1", respostas: respostas(), id: "ana-2" },
+      T,
+    );
+    expect(erro(nova)).toBe("ok");
+  });
+
+  it("RN-CANC-02: lista, reserva, regulado e remanejado", () => {
+    // Sem vaga (aguardando, na reserva): cancela sem sessão.
+    expect(aplicar(cancelarEntrada(entrada("a"), null, null, { servico: LIVRE }, T)).entrada.estado).toBe("cancelada");
+    const reserva = entrada("b", { estado: "na_reserva", sessaoId: "s1" });
+    const rr = cancelarEntrada(reserva, null, null, { servico: LIVRE }, T);
+    expect([aplicar(rr).entrada.estado, aplicar(rr).sessao]).toEqual(["cancelada", null]);
+    expect(eventos(rr).some((e) => e.tipo === "vaga_liberada")).toBe(false);
+    // Com vaga, a sessão tem de ser a da entrada.
+    const conf = entrada("c", { estado: "confirmada", sessaoId: "s1" });
+    expect(erro(cancelarEntrada(conf, null, null, { servico: LIVRE }, T))).toBe("transicao_proibida");
+    expect(erro(cancelarEntrada(conf, sessaoVagas({ id: "s9" }), null, { servico: LIVRE }, T))).toBe(
+      "transicao_proibida",
+    );
+    // Regulado: "Paciente desmarca ou desiste"; vaga liberada sem sugestão, agendador avisado.
+    const REGULADO: Servico = congelar({ id: "cli", modo: "regulado", exigeTriagem: false });
+    const reg = cancelarEntrada(conf, sessaoVagas({ ocupadas: 1 }), null, { servico: REGULADO }, T);
+    expect(aplicar(reg).entrada.estado).toBe("cancelada");
+    expect(eventos(reg)).toContainEqual(
+      expect.objectContaining({ tipo: "cancelada", motivo: "comunicar a regulação" }),
+    );
+    // Remanejada usa "Desistir" (RN-REM-03).
+    const rem = entrada("d", { estado: "confirmada", sessaoId: "s1", remanejada: "privada" });
+    expect(erro(cancelarEntrada(rem, sessaoVagas({ ocupadas: 1 }), null, { servico: LIVRE }, T))).toBe(
+      "transicao_proibida",
+    );
+  });
+
+  it("desfecho e cancelamento não alteram o que recebem", () => {
+    const d = congelar(tresPulos());
+    const naFilaAna = entrada("ent-ana", { estado: "na_fila", sessaoId: "s1" });
+    expect(() => {
+      desfechoDaEntrada(primeira(["ana"]), item(d, "ana"));
+      cancelarEntrada(naFilaAna, sessaoVagas({ ocupadas: 1 }), diaCom(["ana"]), { servico: LIVRE }, T);
     }).not.toThrow();
   });
 });

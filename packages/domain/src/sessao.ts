@@ -121,6 +121,7 @@ export function porNaFila(
     travadoAtras: [],
     saiuEm: agora,
     atendidoEmEtapas: [],
+    motivoSaida: null,
   };
   // INV-05: o número vem de um contador da sessão, então a senha não se repete.
   if (dia.itens.some((i) => i.entradaId === entrada.id || i.id === item.id || i.senha === item.senha)) {
@@ -578,7 +579,7 @@ export function removerLancamento(
       ...dia,
       itens: dia.itens.map((i) =>
         i.id === item.id
-          ? { ...i, estado: "saiu_da_fila" as const, travadoAtras: [] }
+          ? { ...i, estado: "saiu_da_fila" as const, travadoAtras: [], motivoSaida: "removido" as const }
           : { ...i, travadoAtras: i.travadoAtras.filter((t) => t !== item.id) },
       ),
     };
