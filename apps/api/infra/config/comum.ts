@@ -1,5 +1,5 @@
 import type { Acao } from "@fila-saude/domain";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { FastifyRequest } from "fastify";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import type { BancoDoTenant } from "infra/database/tenants";
@@ -20,7 +20,10 @@ export function idDoCaminho(req: FastifyRequest, nome: string): string {
 }
 
 export async function exigirUnidade(db: BancoDoTenant, id: string) {
-  const [u] = await db.select().from(unidade).where(eq(unidade.id, id));
+  const [u] = await db
+    .select()
+    .from(unidade)
+    .where(and(eq(unidade.id, id), isNull(unidade.arquivadaEm)));
   if (!u) throw new ErroApi(404, "nao_encontrado");
   return u;
 }

@@ -97,3 +97,13 @@ export function useLogin(navegar: (href: string) => void) {
 
   return { estado, enviar };
 }
+
+/** Sai do painel: encerra a sessão no better-auth do município e volta ao login, mesmo se a API falhar. */
+export async function sair(api: Api, navegar: (href: string) => void): Promise<void> {
+  try {
+    await api.post("/v1/painel/auth/sign-out", {});
+  } catch {
+    // Sem conexão: o cookie expira sozinho; a tela de login é o destino de qualquer jeito.
+  }
+  navegar("/login");
+}

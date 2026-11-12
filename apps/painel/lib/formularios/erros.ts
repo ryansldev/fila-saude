@@ -20,6 +20,10 @@ const MENSAGENS: Record<string, string | ((e: ErroDaApi) => string)> = {
     `As vagas não podem ficar abaixo das ${String(e.dados?.ocupadas ?? "")} já ocupadas.`,
   transicao_proibida: "Não dá para fazer isso no estado atual da sessão.",
   sessao_com_pacientes: "Há pacientes nesta sessão. Ela não pode ser cancelada agora.",
+  unidade_com_sessoes: "A unidade tem sessões planejadas ou abertas. Cancele ou encerre antes de remover.",
+  unidade_com_entradas: (e) =>
+    `A unidade tem ${String(e.dados?.entradasAtivas ?? "")} pacientes na lista de espera. Não dá para remover agora.`,
+  remover_a_si_mesmo: "Você não pode remover você mesmo da equipe.",
 };
 
 /** Texto para a pessoa a partir de qualquer erro da chamada. */

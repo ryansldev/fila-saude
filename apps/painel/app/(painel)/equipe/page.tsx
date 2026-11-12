@@ -202,6 +202,7 @@ export default function Equipe() {
   const [erros, setErros] = useState(SEM_ERROS);
   const [ok, setOk] = useState<string | null>(null);
   const [editando, setEditando] = useState<{ id: string; valor: Atribuicoes; erros: ErrosDoEnvio } | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
 
   if (eu.estado !== "autenticado") return null;
   const ator: Atribuicoes = { vinculos: eu.eu.vinculos, funcoes: eu.eu.funcoes };
@@ -225,6 +226,18 @@ export default function Equipe() {
     }
   }
 
+  async function remover(u: Usuario) {
+    if (!window.confirm(`Remover ${u.nome} da equipe? A pessoa não consegue mais entrar no painel.`)) return;
+    try {
+      await api.del(`/v1/painel/usuarios/${u.id}`);
+      setAviso(null);
+      if (editando?.id === u.id) setEditando(null);
+      usuarios.recarregar();
+    } catch (err) {
+      setAviso(mensagemDoErro(err));
+    }
+  }
+
   async function salvar() {
     if (!editando) return;
     const alvo = limpar(editando.valor);
@@ -244,7 +257,7 @@ export default function Equipe() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Equipe</h1>
-      <Aviso texto={usuarios.erro} />
+      <Aviso texto={usuarios.erro ?? aviso} />
       <Tabela cabecalho={["Nome", "Login", "Ocupações e funções", ""]}>
         {usuarios.itens.map((u) => (
           <tr key={u.id}>
@@ -261,6 +274,11 @@ export default function Equipe() {
               >
                 Alterar
               </Button>
+              {u.id !== eu.eu.id ? (
+                <Button variant="ghost" size="sm" onClick={() => remover(u)}>
+                  Remover
+                </Button>
+              ) : null}
             </td>
           </tr>
         ))}

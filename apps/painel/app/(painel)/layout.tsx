@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import { ConteudoProtegido } from "@/components/conteudo-protegido";
 import { Logo } from "@/components/logo";
+import { useApi } from "@/lib/api-context";
 import { menuDoPainel } from "@/lib/navegacao";
-import { useEu } from "@/lib/sessao";
+import { sair, useEu } from "@/lib/sessao";
 
 export default function LayoutDoPainel({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const api = useApi();
   const caminho = usePathname();
   const eu = useEu();
 
@@ -31,6 +33,13 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
             {item.rotulo}
           </Link>
         ))}
+        <button
+          type="button"
+          onClick={() => void sair(api, (href) => router.replace(href))}
+          className="mt-auto rounded-lg px-3 py-2 text-left text-gray-600 hover:bg-gray-100"
+        >
+          Sair
+        </button>
       </nav>
       <main className="flex-1 p-8">
         <ConteudoProtegido caminho={caminho} perfis={eu.eu.perfis}>

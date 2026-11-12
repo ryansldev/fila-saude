@@ -21,5 +21,7 @@ export const unidade = pgTable("unidade", {
   fuso: text("fuso").notNull(),
   horario: jsonb("horario").$type<Horario>().notNull().default({}),
   config: jsonb("config").$type<ConfigParcial>().notNull().default({}),
+  // Unidade removida pela SMS: fica no banco pelo histórico e some das listas.
+  arquivadaEm: timestamp("arquivada_em", { withTimezone: true }),
   criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
 });

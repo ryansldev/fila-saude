@@ -1,6 +1,10 @@
-import { type ConfigParcial, configEfetiva, validarConfig } from "@fila-saude/domain";
+import { type ConfigParcial, configEfetiva, contarAtivas, validarConfig } from "@fila-saude/domain";
 import type { ConfigEfetivaSaida, Endereco, Unidade, UnidadeEdicao, UnidadeEntrada } from "@fila-saude/schemas/unidade";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { entrada } from "infra/database/municipal/schema/entrada";
+import { funcaoUsuario, vinculo } from "infra/database/municipal/schema/equipe";
+import { servico } from "infra/database/municipal/schema/servico";
+import { sessao } from "infra/database/municipal/schema/sessao";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import { camposDoDominio, ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
@@ -86,8 +90,12 @@ export async function listarUnidades(ctx: ContextoDaAcao): Promise<Unidade[]> {
   const todas = ctx.ator.perfis.some((p) => p.unidadeId === null);
   const ids = ctx.ator.perfis.map((p) => p.unidadeId).filter((x): x is string => x !== null);
   if (!todas && ids.length === 0) return [];
-  const q = ctx.db.select().from(unidade).orderBy(asc(unidade.criadoEm), asc(unidade.nome));
-  const linhas = todas ? await q : await q.where(inArray(unidade.id, ids));
+  const ativa = isNull(unidade.arquivadaEm);
+  const linhas = await ctx.db
+    .select()
+    .from(unidade)
+    .where(todas ? ativa : and(ativa, inArray(unidade.id, ids)))
+    .orderBy(asc(unidade.criadoEm), asc(unidade.nome));
   return linhas.map(paraUnidade);
 }
 
@@ -104,4 +112,37 @@ export async function configDaUnidade(ctx: ContextoDaAcao, id: string): Promise<
 
 export function podeVerUnidade(ctx: ContextoDaAcao, id: string): boolean {
   return ctx.ator.perfis.some((p) => p.unidadeId === null || p.unidadeId === id);
+}
+
+// Remover = arquivar: a unidade some das listas e a equipe perde as atribuições nela; o histórico fica.
+// Recusa enquanto houver sessão planejada ou aberta, ou paciente na lista de espera.
+export async function removerUnidade(ctx: ContextoDaAcao, id: string): Promise<void> {
+  await exigirUnidade(ctx.db, id);
+  await executarAcao(
+    ctx,
+    { acao: UNIDADES_E_REGRAS, alvo: { tipo: "unidade", id }, unidadeId: id, dados: () => ({ removida: true }) },
+    async (tx) => {
+      const servicos = (await tx.select({ id: servico.id }).from(servico).where(eq(servico.unidadeId, id))).map(
+        (s) => s.id,
+      );
+      if (servicos.length > 0) {
+        const [comSessao] = await tx
+          .select({ id: sessao.id })
+          .from(sessao)
+          .where(and(inArray(sessao.servicoId, servicos), inArray(sessao.estado, ["planejada", "aberta"])));
+        if (comSessao) throw new ErroApi(409, "unidade_com_sessoes");
+        const ativas = contarAtivas(
+          await tx.select({ estado: entrada.estado }).from(entrada).where(inArray(entrada.servicoId, servicos)),
+        );
+        if (ativas > 0)
+          throw new ErroApi(409, "unidade_com_entradas", undefined, undefined, { entradasAtivas: ativas });
+      }
+      await tx.delete(vinculo).where(eq(vinculo.unidadeId, id));
+      await tx.delete(funcaoUsuario).where(eq(funcaoUsuario.unidadeId, id));
+      await tx
+        .update(unidade)
+        .set({ arquivadaEm: new Date(ctx.agora) })
+        .where(eq(unidade.id, id));
+    },
+  );
 }

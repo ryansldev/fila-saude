@@ -9,6 +9,8 @@ export const usuarioPainel = pgTable("usuario_painel", {
   image: text("image"),
   username: text("username").unique(),
   displayUsername: text("display_username"),
+  // Pessoa removida da equipe: sem senha, sessões nem atribuições; o registro fica pela auditoria.
+  removidoEm: timestamp("removido_em", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

@@ -4,7 +4,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { type ErrosDoEnvio, errosDoEnvio } from "@/lib/formularios/erros";
+import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
 import { opcoesDeFuso } from "@/lib/formularios/fusos";
 import { CAMPOS_CONFIG, type ConfigEfetiva, campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
 import { useLista } from "@/lib/use-lista";
@@ -188,13 +188,28 @@ function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: ()
 }
 
 export default function Unidades() {
+  const api = useApi();
   const { itens, erro, recarregar } = useLista<Unidade>("/v1/painel/unidades");
   const [aberta, setAberta] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  async function remover(u: Unidade) {
+    if (!window.confirm(`Remover a unidade ${u.nome}? A equipe perde o acesso a ela. O histórico fica guardado.`))
+      return;
+    try {
+      await api.del(`/v1/painel/unidades/${u.id}`);
+      setAviso(null);
+      if (aberta === u.id) setAberta(null);
+      recarregar();
+    } catch (err) {
+      setAviso(mensagemDoErro(err));
+    }
+  }
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
-      <Aviso texto={erro} />
+      <Aviso texto={erro ?? aviso} />
       <Tabela cabecalho={["Nome", "Tipo", "CNES", "Endereço", ""]}>
         {itens.map((u) => (
           <tr key={u.id}>
@@ -205,6 +220,9 @@ export default function Unidades() {
             <td className="py-2">
               <Button variant="ghost" size="sm" onClick={() => setAberta(aberta === u.id ? null : u.id)}>
                 {aberta === u.id ? "Fechar" : "Configurar"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => remover(u)}>
+                Remover
               </Button>
             </td>
           </tr>
