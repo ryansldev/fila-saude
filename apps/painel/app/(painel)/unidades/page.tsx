@@ -1,11 +1,11 @@
 "use client";
 
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio } from "@/lib/formularios/erros";
-import { FUSOS_DO_BRASIL } from "@/lib/formularios/fusos";
+import { gruposDeFusos } from "@/lib/formularios/fusos";
 import { CAMPOS_CONFIG, type ConfigEfetiva, campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
 import { useLista } from "@/lib/use-lista";
 
@@ -44,6 +44,7 @@ const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
   const api = useApi();
   const [v, setV] = useState(VAZIA);
+  const fusos = useMemo(() => gruposDeFusos(), []);
   const [erros, setErros] = useState(SEM_ERROS);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -99,10 +100,14 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
         {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
         <Campo rotulo="Fuso horário" erro={erros.campos.fuso}>
           <select className={classeDoCampo} value={v.fuso} onChange={(e) => setV({ ...v, fuso: e.target.value })}>
-            {FUSOS_DO_BRASIL.map((f) => (
-              <option key={f.fuso} value={f.fuso}>
-                {f.rotulo}
-              </option>
+            {fusos.map((g) => (
+              <optgroup key={g.grupo} label={g.grupo}>
+                {g.fusos.map((f) => (
+                  <option key={`${g.grupo}-${f.fuso}`} value={f.fuso}>
+                    {f.rotulo}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </Campo>
