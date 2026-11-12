@@ -264,7 +264,7 @@ Presente com pendência é elegível; o app manda passar na recepção; se chama
 
 ### AD-051 · Estrutura das specs
 2026-11-10 · ativa · Muda: constituição
-Specs por capacidade com só a verdade atual, regras "QUANDO … O SISTEMA DEVE …" com cenários, este registro curto de decisões, `changes/` para mudança grande, núcleo executável na fase 1 e checagem automática. Discovery: [estrutura](discovery-estrutura-specs.md).
+Specs por capacidade com só a verdade atual, regras "QUANDO … O SISTEMA DEVE …" com cenários, este registro curto de decisões, `changes/` para mudança grande, núcleo executável na fase 1 e checagem automática.
 
 ### AD-052 · Licença AGPL-3.0 e receita por município
 2026-11-10 · ativa · Muda: constituição (produto)

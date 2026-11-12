@@ -1,6 +1,6 @@
 # Decisões para revisar
 
-Decisões tomadas durante a implementação autônoma das fases 1 e 2 (a partir de 2026-11-11). Cada uma ficou **provisória e reversível**: o código segue o que está aqui até você confirmar ou mudar. Quando confirmar, a regra vai para a spec da capacidade e a decisão vai para `decisions.md` (constituição, processo 6).
+Decisões tomadas durante a implementação autônoma das fases 1 e 2 (a partir de 2026-11-11). Cada uma ficou **provisória e reversível**: o código segue o que está aqui até você confirmar ou mudar. As já decididas saíram daqui e estão nas specs. Quando confirmar, a regra vai para a spec da capacidade e a decisão vai para `decisions.md` (constituição, processo 6).
 
 Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se errado**.
 
@@ -8,12 +8,9 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
-| G1 | Janela protegida (RN-ORD-01): "os K primeiros de ordem(elegíveis)" | Conta pela **ordem real de chamada**, com as travas de atraso. A ordem pura quebra o exemplo da RN-ORD-03 | Ordem pura e reescrever o exemplo | A janela protege outra pessoa em casos raros |
 | G2 | RN-ORD-05 diz que a posição "nunca piora", e o exemplo da RN-ORD-03 piora | Segue o exemplo da RN-ORD-03 | Ajustar o texto da RN-ORD-05 | Só o texto da spec |
-| G3 | "Vou sair" e as travas de quem estava atrás | Ao sair, a pessoa libera as travas que apontavam para ela, como no protótipo. A spec não diz nada, e sem isso a fila pode travar | Manter as travas | Fila travada em sair/voltar repetido |
 | G4 | Atraso no 1º pulo e na passagem triagem → atendimento | Não aplica atraso nesses dois casos, como no protótipo (`applyLate: false`) | Aplicar atraso | Ordem diferente após um pulo |
 | G5 | "Vem depois de X" usa a chave atual de X ou a do momento da chamada? | Chave atual | Foto no momento da chamada | Só muda se o risco ou a prioridade de X mudar depois de chamado |
-| G6 | "Chamar próximo" sem ninguém elegível | Não muda nada. A chamada anterior continua aberta (Review Focus 2 do plano); o protótipo fechava | Fechar a anterior | Um toque a mais para liberar a estação |
 | G7 | Código de erro para estação desconhecida | Inconsistente (`nenhum_elegivel` em um lugar, `transicao_proibida` em outro) | Um código próprio (`estacao_desconhecida`) | Mensagem de erro confusa na API |
 | G8 | "Aguardando início" (RN-ETA-02) | Esconde a posição; o protótipo mostrava | Mostrar a posição sem o tempo | O paciente não vê a posição antes da abertura |
 | G9 | Tempo médio inicial | Um valor por etapa na unidade; a spec sugere por serviço | Por serviço | Estimativa pior no início do dia |
@@ -60,13 +57,6 @@ A revisão de toda a fase 1A encontrou falhas na ligação entre a fila do dia e
 | F2 | Quem entra na fila com a sessão já aberta (inscrição, reserva, regulado) | Só conta como "vez passada" a chamada feita depois de a pessoa entrar na fila | Contar todas (como estava, gerava falta injusta) | Nenhum conhecido |
 | F3 | Conferência da prioridade | Fica guardada na entrada e vale nas próximas idas até o prazo (AD-024); a idade é recalculada no dia de cada sessão | Foto tirada na criação da entrada | Nenhum conhecido |
 
-Ficaram **para você decidir** (a revisão não julgou, e o código ficou como estava):
-
-- ~~Janela protegida~~ **decidido (2026-11-12):** K primeiros da ordem de chamada real, com as travas existentes; texto da regra corrigido em specs/fila-do-dia.
-- ~~"Vou sair"~~ **decidido (2026-11-12):** volta para a fila remota no mesmo lugar e perde as travas; ao voltar, segue a regra do check-in (RN-PRES-02).
-- ~~"Chamar próximo" sem ninguém elegível~~ **decidido (2026-11-12):** encerra o chamado anterior e a estação fica livre com "ninguém aguardando no momento" (RN-CHAM-01). **Muda o domínio:** entra como correção na fatia 1, antes da estação.
-- ~~Refazer o questionário estando presente~~ **decidido (2026-11-12):** o app de quem está na unidade mostra "Meus sintomas pioraram", que orienta avisar a recepção ou a enfermagem; a recepção reaplica o questionário no balcão e o risco é reclassificado na hora (RN-PIORA-01). **Muda o domínio:** reclassificar um item presente pela recepção; entra na fatia 2 (recepção na unidade).
-
 Pendências conhecidas do domínio (corrigir junto com a rota que as usa):
 
 - Refazer o questionário (Tela 5) hoje descarta os grupos de prioridade novos; deveria somá-los como "declarados, não conferidos" para quem está na lista ou remoto.
@@ -86,13 +76,6 @@ Pendências conhecidas do domínio (corrigir junto com a rota que as usa):
 | --- | --- | --- | --- | --- |
 | P1 | Células com ressalva ("próprios", "só ao aplicar no balcão", "na alocação ou lançamento") | `pode()` libera qualquer célula preenchida. A nova `condicoes()` devolve as ressalvas, e a API é obrigada a conferi-las | `pode()` só libera ✓ sem ressalva | Uma rota que use só `pode()` deixaria um paciente ver dados de outro: a revisão da API precisa cobrir isso |
 | P2 | "Chamar, rechamar, pular, finalizar" | Uma ação só (`operar_chamadas`), sem separar triagem de atendimento | Duas ações | A matriz não distingue a estação de triagem |
-
-## Processo e ambiente
-
-| # | Contexto | O que foi feito | Custa se errado |
-| --- | --- | --- | --- |
-| E1 | Branches | Fase 1 (1A + 1B) continua em `feat/domain-fase-1a`, que já está no GitHub e não foi renomeada. A fase 2 fica em `feat/fase-2-configuracao`, criada a partir do fim da fase 1 | Renomear depois |
-| E2 | Paralelismo | Tasks independentes rodam em worktrees separadas e são juntadas na branch da fase | Commits de merge no histórico |
 
 ## Fase 1B e fase 2 (arquitetura)
 

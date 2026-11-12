@@ -83,7 +83,6 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | `apps/web` | Landing (sem mudança) |
 | `packages/domain` | Regras puras (§6 deste plan) |
 | `packages/schemas` | Contratos Zod da API, compartilhados por api, painel e mobile |
-| `packages/configs` | Configurações compartilhadas (existente) |
 
 ## 4. Multi-tenant
 

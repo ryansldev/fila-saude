@@ -5,7 +5,7 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 ## Onde estamos (2026-11-11)
 
 - **Branches:** `feat/domain-fase-1a` (fases 1A e 1B) e `feat/fase-2-configuracao` (fase 2), sem PR.
-- **Specs reorganizadas** (AD-051, [discovery](discovery-estrutura-specs.md)): a antiga `features/mvp-filas/source.md` virou as specs por capacidade em `specs/`, as ADs saíram deste arquivo para `decisions.md` (AD-001..AD-051; PD-01..PD-31 no plan), e `scripts/specs-check.mjs` confere IDs, decisões substituídas e cobertura.
+- **Specs reorganizadas** (AD-051): a antiga `features/mvp-filas/source.md` virou as specs por capacidade em `specs/`, as ADs saíram deste arquivo para `decisions.md` (AD-001..AD-051; PD-01..PD-31 no plan), e `scripts/specs-check.mjs` confere IDs, decisões substituídas e cobertura.
 - **MVP:** `features/mvp-filas/` com `spec.md` (escopo e histórias), `plan.md` (PD-01..PD-33), `tasks.md` (47 tasks em 8 fases, TDD, discoveries D1–D10).
 - **Protótipo:** revisões 1–4 construídas e verificadas.
 

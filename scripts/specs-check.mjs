@@ -13,7 +13,7 @@ import { rodar as rodarSpecsGen } from "./specs-gen.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const SPECS = join(ROOT, ".specs");
-const SKIP = new Set(["LESSONS.md", "discovery-estrutura-specs.md", "source.md"]);
+const SKIP = new Set(["LESSONS.md", "source.md"]);
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
