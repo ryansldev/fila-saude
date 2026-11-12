@@ -272,3 +272,28 @@ describe("RN-ETA-05: tempo médio", () => {
     expect(tempoMedio(d, "atendimento", "cli", fim)).toBe(20);
   });
 });
+
+describe("I4: estimativa só para quem espera na sessão aberta", () => {
+  it('RN-ETA-01/RN-CHAM-02: chamado vê "chamado", não uma posição', () => {
+    const d = chamar(entrar(quatro(), "ana"));
+    expect(estimar(d, "ana", T, AUTO)).toEqual({ tipo: "chamado" });
+    expect(estimar(d, "ana", T, MANUAL)).toEqual({ tipo: "chamado" });
+  });
+
+  it("RN-ETA-01: atendido, fora da fila ou remanejado: fora da fila", () => {
+    const d = aplicar(finalizar(chamar(entrar(quatro(), "ana")), { estacaoId: "e1" }, T + MIN));
+    expect(estimar(d, "ana", T, AUTO)).toEqual({ tipo: "fora_da_fila" });
+    for (const estado of ["saiu_da_fila", "remanejado"] as const) {
+      expect(estimar(comItem(quatro(), "bruno", { estado }), "bruno", T, AUTO)).toEqual({ tipo: "fora_da_fila" });
+    }
+  });
+
+  it("RN-SES-05: sessão planejada aguarda o início; encerrada ou cancelada, fora da fila", () => {
+    expect(estimar(congelar({ ...quatro(), estado: "planejada" as const }), "ana", T, AUTO)).toEqual({
+      tipo: "aguardando_inicio",
+    });
+    for (const estado of ["encerrada", "cancelada"] as const) {
+      expect(estimar(congelar({ ...quatro(), estado }), "ana", T, AUTO)).toEqual({ tipo: "fora_da_fila" });
+    }
+  });
+});
