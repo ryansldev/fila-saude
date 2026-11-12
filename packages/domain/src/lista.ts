@@ -1,4 +1,4 @@
-import { type EstadoEntrada, TRANSICOES_ENTRADA, type Transicao, transicionar } from "./contratos.ts";
+import { type EstadoEntrada, TRANSICOES_ENTRADA, type Transicao, transicaoUnica, transicionar } from "./contratos.ts";
 import { CONFIG_PADRAO, type DiaSessao } from "./fila.ts";
 import { type ChaveSugestao, compararSugestao, type Risco } from "./ordem.ts";
 import { aConferir, type Grupo, grupoDeDeclarado, type PrioridadeLegal, prioridadeDaPessoa } from "./prioridade.ts";
@@ -93,15 +93,15 @@ const EVENTO_REATIVA = "Paciente reativa";
 /**
  * Destino da única linha do contrato que casa com (de, evento) e com o filtro da condição;
  * usado quando a transição depende da condição (vários destinos para o mesmo evento).
+ * Escolhe a linha com `transicaoUnica` (o mesmo seletor da fase 2); lança sem linha ou com mais de uma.
  */
 export function destinoPorCondicao(
   de: EstadoEntrada | "—",
   evento: string,
   filtro: (t: Transicao<EstadoEntrada>) => boolean,
 ): EstadoEntrada | "(mesmo)" | null {
-  const linhas = TRANSICOES_ENTRADA.filter((t) => t.de === de && t.evento === evento && filtro(t));
-  const [linha] = linhas;
-  if (!linha || linhas.length > 1) throw new Error(`contrato: sem linha única para "${de}" com "${evento}"`);
+  const linha = transicaoUnica(TRANSICOES_ENTRADA, de, evento, filtro);
+  if (!linha) throw new Error(`contrato: sem linha única para "${de}" com "${evento}"`);
   return linha.para === "(não cria)" ? null : linha.para;
 }
 
