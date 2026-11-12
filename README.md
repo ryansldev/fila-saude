@@ -10,8 +10,11 @@ Monorepo com a API (Fastify), o frontend (Next.js) e pacotes compartilhados. O g
 fila-saude/
 ├── apps/
 │   ├── api/           # API REST (Fastify + Drizzle + PostgreSQL)
-│   └── web/           # Frontend (Next.js + React + Tailwind CSS)
+│   ├── painel/        # Painel da equipe e estação de chamada (Next.js)
+│   ├── mobile/        # App do paciente (Expo + Expo Router)
+│   └── web/           # Landing (Next.js + React + Tailwind CSS)
 └── packages/
+    ├── domain/        # Regras de domínio puras (@fila-saude/domain)
     └── schemas/       # Schemas Zod compartilhados (@fila-saude/schemas)
 ```
 
@@ -108,6 +111,14 @@ Para rodar apenas um workspace:
 npm run dev -w @fila-saude/api
 npm run dev -w @fila-saude/web
 ```
+
+### App do paciente (Expo)
+
+```bash
+EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:3333 npm run dev:mobile
+```
+
+Abra no Expo Go (ou num emulador). No emulador Android, use `http://10.0.2.2:3333`. O roteiro completo da v0.1 está em [`.specs/features/mvp-filas/roteiro-v01.md`](.specs/features/mvp-filas/roteiro-v01.md).
 
 ## API
 

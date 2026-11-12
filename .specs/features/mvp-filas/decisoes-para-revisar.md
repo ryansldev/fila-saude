@@ -123,3 +123,20 @@ Decididos por você: ocupação + função de gestão; quem cria quem (RN-PERF-0
 | R1 | Remover unidade | Arquiva (some das listas, histórico fica); recusa com sessão planejada/aberta ou paciente na lista; tira as ocupações e funções da equipe naquela unidade | Apagar de verdade; ou só esconder sem mexer na equipe | Gerente de uma unidade removida fica sem tela |
 | R2 | Remover pessoa da equipe | Marca como removida; apaga senha, sessões e atribuições; o login continua ocupado | Apagar a pessoa; ou liberar o login para outro | Não dá para recadastrar alguém com o mesmo login |
 | R3 | Horário de funcionamento | Lista de intervalos por dia; intervalos do mesmo dia não podem se sobrepor (encostados valem); dia vazio = fechado | Um intervalo por dia | Nenhum |
+
+## Fatia 1 da v0.1 (2026-11-12)
+
+Execução rápida, como a fatia 0. Plano: [plano-fatia-1-publica](plano-fatia-1-publica.md) (PD-43 a PD-46).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| F1 | Quem vê a fila do dia e as sessões de hoje | Qualquer pessoa da equipe com papel na unidade (ou no município); a matriz não tem essa ação | Uma ação "ver fila do dia" na matriz | Baixo: ACS e saúde bucal veem nomes e senhas do dia |
+| F2 | Sem check-in (fatia 2), ninguém fica presente | A recepção usa "Conferir e marcar presença" (RN-FILA-05) na fila do painel; a tela só oferece "confere" | Esperar a fatia 2 | A conferência da prioridade não é guardada na entrada (`conferenciaNaEntrada`) ainda: vale só no dia |
+| F3 | Estação aberta ou fechada (RN-EST) | As estações da sessão abrem junto com a sessão; não há abrir/fechar estação | Botão na tela da estação | A estimativa conta estações que ninguém está usando |
+| F4 | Login do app nativo | Plugin `bearer` do better-auth: o app guarda o token no SecureStore e manda `Authorization` (sem cookie, sem Origin); o guard do paciente (PD-34) é o mesmo | Cookie no `fetch` do React Native | Baixo; o JWT da PD-17 entra no lugar depois |
+| F5 | Expo SDK 58 pede React 19.3 | React e React DOM 19.3.0 em todo o monorepo (`overrides` na raiz); painel testado e com `next build` ok | App fora dos workspaces | Uma atualização do Next pode exigir outra versão |
+| F6 | O que o app mostra em "minhas" | Entradas ativas da conta (inclusive na lista de espera) e as finais por 12 h depois do fim da sessão | Só as da sessão do dia | Baixo |
+| F7 | Inscrição em sessão privada pelo app | `409 sessao_privada` (código novo), antes do domínio | `transicao_proibida` | Só a mensagem |
+| F8 | Idade no questionário do app | Calculada no fuso de Brasília para decidir emergência/apoio na hora; o nível que vale é o da API | Fuso da unidade | Um dia de diferença na virada, só no aviso local |
+| F9 | Seed da fatia 1 | Serviço "Curativos" (sem triagem) e sessão pública "de agora" (hora cheia, 4 h) com Ana e Bruno inscritos pelo caminho do app | Sessão de hoje no Clínico (com triagem, fatia 3) | Baixo: só dados de exemplo |
+| F10 | Encerrar sessão | Sem o aviso de sinal perdido (`semSinalSemContingencia` sempre falso) | Calcular pelo `ultimo_sinal_em` das estações | O aviso RN-SES-04 não aparece |

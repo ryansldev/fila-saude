@@ -2,7 +2,7 @@
 
 Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). Regras: [specs/](specs/). Decisões: [decisions.md](decisions.md). Checagem: `npm run specs:check`.
 
-## Onde estamos (2026-11-11)
+## Onde estamos (2026-11-12)
 
 - **Branch:** `feat/v0.1` (tudo até aqui: 1A, 1B Tasks 1–10, fase 2 Tasks 1–8), sem PR.
 - **Specs reorganizadas** (AD-051): a antiga `features/mvp-filas/source.md` virou as specs por capacidade em `specs/`, as ADs saíram deste arquivo para `decisions.md` (AD-001..AD-051; PD-01..PD-31 no plan), e `scripts/specs-check.mjs` confere IDs, decisões substituídas e cobertura.
@@ -18,7 +18,8 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 - **Fase 2:** Tasks 1–8 prontas e juntadas (fatia 0, Task 1).
 - **Fatia 0 concluída (2026-11-12):** Tasks 1–20 em `feat/v0.1`, em modo rápido (sem revisão por task; ver V1–V5 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md#fatia-0-da-v01-execução-rápida-2026-11-12)). API 159 testes, painel 54, schemas 57. `npm run dev:seed` + `npm run dev` → `http://exemplo.localhost:3000/login` (senha `exemplo123`). Verificado por HTTP (login, telas respondendo, re-semear com a API no ar); falta o clique no navegador do Step 5 da Task 20.
 - **Revisão da fatia 0 (2026-11-12, feedback do usuário):** endereço estruturado + CNES da unidade; [discovery de papéis](features/mvp-filas/discovery-papeis-ubs.md) → perfis viraram ocupação por unidade + funções de gestão (SMS, Regulação, Gerente da UBS) + permissão "Agendar"; RN-PERF-04 (quem cadastra quem) e RN-PERF-05 (risco é do enfermeiro). Provisórios E1–E6 em decisoes-para-revisar. Testes da API na porta 3334 (rodam com `npm run dev` no ar).
-- **Próximo passo:** plano da fatia 1 (pública básica: fila do dia sobre `sessao`/`entrada`, abrir/encerrar sessão, app). Carregar os CARRY do ledger da fatia 0.
+- **Fatia 1 concluída (2026-11-12):** [plano](features/mvp-filas/plano-fatia-1-publica.md), modo rápido; provisórios F1–F10 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md#fatia-1-da-v01-2026-11-12). Fila do dia como `DiaSessao` em jsonb com trava pela sessão (PD-43); abrir/encerrar e presença no painel; estação de chamada; rotas do app (agenda, inscrição, "minhas"); app Expo em `apps/mobile` (login por token bearer). React 19.3 no monorepo. API 189 testes, painel 74, domínio 331, mobile 9. [Roteiro](features/mvp-filas/roteiro-v01.md) executado por HTTP; falta o clique no navegador e no celular.
+- **Próximo passo:** testar o app no celular (Expo Go) e o painel no navegador; depois o plano da fatia 2 (na unidade: TV, QR do check-in, "Vou sair", push). CARRY da fatia 0 para a fatia 2: RN-PIORA-01.
 
 ## Pendências fora do código
 
