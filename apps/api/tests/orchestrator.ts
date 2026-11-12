@@ -91,6 +91,10 @@ function bancoDoMunicipio(slug: string): DbDoTenant {
   return db;
 }
 
+function esquecerBanco(slug: string) {
+  bancos.delete(slug);
+}
+
 async function criarUsuarioComPerfis(slug: string, login: string, perfis: PerfilComEscopo[], senha = "senha-forte-1") {
   const db = bancoDoMunicipio(slug);
   const { id } = await criarUsuarioPainel(db, { login, nome: login, senha });
@@ -244,6 +248,7 @@ const orquestrator = {
   cadastrarPaciente,
   cookiesDe,
   bancoDoMunicipio,
+  esquecerBanco,
   criarUsuarioComPerfis,
   criarUnidadeDireto,
   loginPainel,

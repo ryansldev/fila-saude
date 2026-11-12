@@ -16,7 +16,8 @@
     "tenant:create": "tsx infra/scripts/tenant-create.ts",
     "test": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run $VITEST_ARGS\"",
     "test:watch": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest watch\"",
-    "test:coverage": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run --coverage\""
+    "test:coverage": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run --coverage\"",
+    "dev:seed": "npm run services:up && npm run services:wait:database && NODE_ENV=development tsx infra/scripts/dev-seed.ts"
   },
   "license": "AGPL-3.0-only",
   "type": "module",

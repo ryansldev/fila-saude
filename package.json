@@ -1,7 +1,7 @@
 {
   "name": "fila-saude",
   "version": "1.0.0",
-  "description": "Vamos tornar a espera nos postos de saúde mais tranquila? 💙",
+  "description": "Vamos tornar a espera nos postos de sa\u00fade mais tranquila? \ud83d\udc99",
   "packageManager": "npm@11.16.0",
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
@@ -34,7 +34,8 @@
     "prepare": "husky",
     "commit": "cz",
     "test:domain": "npm -w @fila-saude/domain run test",
-    "test:painel": "npm -w @fila-saude/painel run test"
+    "test:painel": "npm -w @fila-saude/painel run test",
+    "dev:seed": "npm -w @fila-saude/api run dev:seed"
   },
   "engines": {
     "node": "24.x"
