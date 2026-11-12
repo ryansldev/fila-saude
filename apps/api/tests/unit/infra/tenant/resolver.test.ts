@@ -107,10 +107,9 @@ describe("resolverTenant", () => {
       expect(resolverTenant(pelo("fila.prefeitura.gov.br", "pref-a"), single)).toEqual({ slug: "pref-a" });
     });
 
-    it("caminho diferente do slug fixo → municipio_divergente", () => {
-      expect(resolverTenant(pelo("fila.prefeitura.gov.br", "pref-b"), single)).toEqual({
-        erro: "municipio_divergente",
-      });
+    it("caminho com outro slug → sem_tenant (404: a VPS só conhece o próprio município)", () => {
+      expect(resolverTenant(pelo("fila.prefeitura.gov.br", "pref-b"), single)).toEqual({ erro: "sem_tenant" });
+      expect(resolverTenant(pelo("pref-b.localhost:3333", "pref-b"), single)).toEqual({ erro: "sem_tenant" });
     });
 
     it("sem slug fixo → sem_tenant", () => {

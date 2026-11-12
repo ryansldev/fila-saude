@@ -14,7 +14,14 @@ export const schemaMunicipal = { ...pessoaLocal };
 
 export type DbDoTenant = NodePgDatabase<typeof schemaMunicipal> & { $client: Pool };
 
-export type Tenant = { slug: string; municipioId: string; fuso: string; db: DbDoTenant };
+// `municipioId` é o id do município no central; null no modo single (PD-12), que não lê o central.
+export type Tenant = { slug: string; municipioId: string | null; fuso: string; db: DbDoTenant };
+
+// O que o plugin do tenant precisa: dado o slug resolvido, o tenant ativo (ou null) e o encerramento.
+export interface FonteDosTenants {
+  obter(slug: string): Promise<Tenant | null>;
+  encerrar(): Promise<void>;
+}
 
 type LinhaDoCatalogo = { id: string; fuso: string; bancoRef: string; status: "criando" | "ativo" | "suspenso" };
 
@@ -37,7 +44,7 @@ export type OpcoesDosPools = {
 // O tenant menos usado sai quando chega o `max + 1`-ésimo, e o pool dele é encerrado (`pool.end()`).
 // O catálogo (slug → linha de `municipio`) fica em cache por `ttlCatalogoMs`: suspender um município
 // passa a valer depois desse prazo. Com `ttlCatalogoMs` 0 o central é consultado a cada `obter`.
-export class PoolsDosTenants {
+export class PoolsDosTenants implements FonteDosTenants {
   private readonly opcoes: OpcoesDosPools;
   private readonly pools: LRUCache<string, Tenant>;
   private readonly catalogo: LRUCache<string, EntradaDoCatalogo> | null;
@@ -115,5 +122,64 @@ export class PoolsDosTenants {
       .where(eq(municipio.slug, slug));
     this.catalogo?.set(slug, linha ?? false);
     return linha ?? null;
+  }
+}
+
+export type OpcoesDaFonte = OpcoesDosPools & {
+  modo: "multi" | "single";
+  // Só no modo single (PD-12): o município fixo, a URL do banco dele e o fuso.
+  slugFixo?: string;
+  urlFixa?: string;
+  fuso: string;
+};
+
+// PD-12 / PD-15: modo multi lê o catálogo do central; modo single atende só `slugFixo`, no banco
+// `urlFixa`, sem nunca consultar o central (a VPS do município pode nem alcançá-lo).
+export function fonteDosTenants(opcoes: OpcoesDaFonte): FonteDosTenants {
+  if (opcoes.modo === "multi") return new PoolsDosTenants(opcoes);
+  if (!opcoes.slugFixo || !opcoes.urlFixa) {
+    throw new Error("modo single exige TENANT_SLUG e TENANT_DATABASE_URL");
+  }
+  return new TenantFixo({
+    slug: opcoes.slugFixo,
+    url: opcoes.urlFixa,
+    fuso: opcoes.fuso,
+    conexoes: opcoes.conexoesPorTenant,
+    registrar: opcoes.registrar ?? console.error,
+  });
+}
+
+// PD-12: o único município de uma VPS em modo single. O pool é criado na primeira requisição e só
+// encerrado com o app; `municipioId` fica null porque o id mora no central, que não é consultado.
+export class TenantFixo implements FonteDosTenants {
+  private tenant: Tenant | null = null;
+
+  constructor(
+    private readonly opcoes: {
+      slug: string;
+      url: string;
+      fuso: string;
+      conexoes: number;
+      registrar: (mensagem: string, erro: unknown) => void;
+    },
+  ) {}
+
+  async obter(slug: string): Promise<Tenant | null> {
+    if (slug !== this.opcoes.slug) return null;
+    if (this.tenant) return this.tenant;
+
+    const pool = new Pool({ connectionString: this.opcoes.url, max: this.opcoes.conexoes });
+    // Sem ouvinte, um cliente ocioso que cai derrubaria o processo; o pool se recompõe sozinho.
+    pool.on("error", (erro) => this.opcoes.registrar(`conexão do pool de ${slug} caiu`, erro));
+    this.tenant = { slug, municipioId: null, fuso: this.opcoes.fuso, db: drizzle(pool, { schema: schemaMunicipal }) };
+    return this.tenant;
+  }
+
+  async encerrar(): Promise<void> {
+    const tenant = this.tenant;
+    this.tenant = null;
+    await tenant?.db.$client
+      .end()
+      .catch((erro) => this.opcoes.registrar(`falha ao encerrar o pool de ${tenant.slug}`, erro));
   }
 }

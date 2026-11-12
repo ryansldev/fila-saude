@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import autoload from "@fastify/autoload";
 import Fastify from "fastify";
 import database from "infra/database";
-import { PoolsDosTenants } from "infra/database/tenants";
+import { fonteDosTenants } from "infra/database/tenants";
 import env from "infra/env";
 import { naoEncontrado, tratarErro } from "infra/erros";
 import pluginDoTenant from "infra/tenant/plugin";
@@ -17,16 +17,21 @@ const raiz = path.dirname(fileURLToPath(import.meta.url));
 app.setErrorHandler(tratarErro);
 app.setNotFoundHandler(naoEncontrado);
 
-// T1.7 / PD-03: um pool por município, em LRU; fechado junto com o app.
-const pools = new PoolsDosTenants({
+// T1.7 / PD-03: um pool por município, em LRU; fechado junto com o app. No modo single (PD-12), um
+// pool só, para TENANT_DATABASE_URL, sem consultar o catálogo do central.
+const pools = fonteDosTenants({
+  modo: env.TENANT_MODE,
   max: 50,
   conexoesPorTenant: 5,
   central: database,
   ttlCatalogoMs: env.TENANT_CACHE_TTL_MS,
+  ...(env.TENANT_SLUG ? { slugFixo: env.TENANT_SLUG } : {}),
+  ...(env.TENANT_DATABASE_URL ? { urlFixa: env.TENANT_DATABASE_URL } : {}),
+  fuso: env.TENANT_FUSO,
 });
 app.addHook("onClose", () => pools.encerrar());
 
-// PD-15: `app.exigirTenant` resolve o tenant pelo Host (e, na Task 8, pelo caminho).
+// PD-15: `app.exigirTenant` resolve o tenant pelo Host e pelo caminho (`municipios/:slug`).
 app.register(pluginDoTenant, {
   pools,
   config: {
@@ -36,11 +41,12 @@ app.register(pluginDoTenant, {
   },
 });
 
-app.register(autoload, { dir: path.join(raiz, "routes") });
+// `routeParams`: pastas `_slug` viram `:slug` (PD-15, `/v1/municipios/:slug/…`).
+app.register(autoload, { dir: path.join(raiz, "routes"), routeParams: true });
 
 // PD-19: rotas só de teste nunca existem fora de NODE_ENV=test.
 if (process.env.NODE_ENV === "test") {
-  app.register(autoload, { dir: path.join(raiz, "test-routes"), options: { prefix: "/v1/teste" } });
+  app.register(autoload, { dir: path.join(raiz, "test-routes"), routeParams: true, options: { prefix: "/v1/teste" } });
 }
 
 try {
