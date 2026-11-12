@@ -9,6 +9,7 @@ import { migrarTodos } from "infra/database/migrar";
 import env from "infra/env";
 import { bancoDoSlug } from "infra/tenant/slug";
 import { Client, escapeIdentifier } from "pg";
+import { ULTIMA_MUNICIPAL } from "tests/migracoes";
 import orchestrator from "tests/orchestrator";
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -40,7 +41,7 @@ async function linhaDoSlug(slug: string) {
 // Simula um município que perdeu as migrations: apaga o histórico do drizzle e as tabelas.
 async function zerarMigrations(banco: string) {
   await conectado(env.TENANT_DATABASE_URL_TEMPLATE.replace("{banco}", banco), (c) =>
-    c.query("drop schema drizzle cascade; drop table pessoa_local"),
+    c.query("drop schema drizzle cascade; drop schema public cascade; create schema public"),
   );
 }
 
@@ -76,8 +77,8 @@ describe("migrarTodos", () => {
 
     expect(resultado.central).toBe("0001_paciente");
     for (const { slug, banco } of [a, b]) {
-      expect(resultado.tenants).toContainEqual({ slug, ok: true, versao: "0000_municipal" });
-      expect(await linhaDoSlug(slug)).toMatchObject({ migracaoVersao: "0000_municipal", migracaoErro: null });
+      expect(resultado.tenants).toContainEqual({ slug, ok: true, versao: ULTIMA_MUNICIPAL });
+      expect(await linhaDoSlug(slug)).toMatchObject({ migracaoVersao: ULTIMA_MUNICIPAL, migracaoErro: null });
       expect(await tabelasDoTenant(banco)).toContain("pessoa_local");
     }
   });
@@ -102,7 +103,7 @@ describe("migrarTodos", () => {
       migracaoErro: expect.stringContaining("does not exist"),
     });
 
-    expect(resultado.tenants).toContainEqual({ slug: ok.slug, ok: true, versao: "0000_municipal" });
+    expect(resultado.tenants).toContainEqual({ slug: ok.slug, ok: true, versao: ULTIMA_MUNICIPAL });
     expect(await tabelasDoTenant(ok.banco)).toContain("pessoa_local");
 
     // Suspenso não entra na rodada.
@@ -124,8 +125,8 @@ describe("migrarTodos", () => {
     await conectado(urlDoServidor(), (c) => c.query(`create database ${escapeIdentifier(banco)}`));
     const segunda = await migrarTodos(deps);
 
-    expect(segunda.tenants).toContainEqual({ slug, ok: true, versao: "0000_municipal" });
-    expect(await linhaDoSlug(slug)).toMatchObject({ migracaoVersao: "0000_municipal", migracaoErro: null });
+    expect(segunda.tenants).toContainEqual({ slug, ok: true, versao: ULTIMA_MUNICIPAL });
+    expect(await linhaDoSlug(slug)).toMatchObject({ migracaoVersao: ULTIMA_MUNICIPAL, migracaoErro: null });
     expect(await tabelasDoTenant(banco)).toContain("pessoa_local");
   });
 

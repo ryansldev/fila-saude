@@ -6,6 +6,7 @@ import database from "infra/database";
 import { migrarBanco } from "infra/database/migrar";
 import env from "infra/env";
 import { Client, escapeIdentifier } from "pg";
+import { MIGRATIONS_MUNICIPAIS, ULTIMA_MUNICIPAL } from "tests/migracoes";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // PD-19: cada arquivo cria os próprios bancos com nome único e derruba no afterAll.
@@ -54,7 +55,7 @@ describe("migrarBanco", () => {
   it("PD-16: migrarBanco cria as tabelas municipais num banco vazio", async () => {
     const { versao } = await migrarBanco(urlDoTenant, "municipal");
     versaoDaPrimeira = versao;
-    expect(versao).toMatch(/^0000_/);
+    expect(versao).toBe(ULTIMA_MUNICIPAL);
 
     await conectado(urlDoTenant, async (tenant) => {
       const colunas = await tenant.query<{
@@ -99,7 +100,7 @@ describe("migrarBanco", () => {
 
     await conectado(urlDoTenant, async (tenant) => {
       const aplicadas = await tenant.query("select 1 from drizzle.__drizzle_migrations");
-      expect(aplicadas.rowCount).toBe(1);
+      expect(aplicadas.rowCount).toBe(MIGRATIONS_MUNICIPAIS);
       const pessoas = await tenant.query("select 1 from pessoa_local");
       expect(pessoas.rowCount).toBe(3);
     });

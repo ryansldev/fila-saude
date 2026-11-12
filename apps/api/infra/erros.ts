@@ -8,18 +8,31 @@ export class ErroApi extends Error {
   codigo: string;
   campos?: Record<string, string[]>;
   mensagem?: string;
+  dados?: Record<string, unknown>;
 
-  constructor(status: number, codigo: string, campos?: Record<string, string[]>, mensagem?: string) {
+  constructor(
+    status: number,
+    codigo: string,
+    campos?: Record<string, string[]>,
+    mensagem?: string,
+    dados?: Record<string, unknown>,
+  ) {
     super(codigo);
     this.name = "ErroApi";
     this.status = status;
     this.codigo = codigo;
     if (campos) this.campos = campos;
     if (mensagem) this.mensagem = mensagem;
+    if (dados) this.dados = dados;
   }
 }
 
-export type CorpoDoErro = { erro: string; mensagem?: string; campos?: Record<string, string[]> };
+export type CorpoDoErro = {
+  erro: string;
+  mensagem?: string;
+  campos?: Record<string, string[]>;
+  dados?: Record<string, unknown>;
+};
 
 // PD-22: o corpo da resposta de um `ErroApi`, sem chaves vazias.
 export function corpoDoErro(err: ErroApi): CorpoDoErro {
@@ -27,6 +40,7 @@ export function corpoDoErro(err: ErroApi): CorpoDoErro {
     erro: err.codigo,
     ...(err.mensagem ? { mensagem: err.mensagem } : {}),
     ...(err.campos ? { campos: err.campos } : {}),
+    ...(err.dados ? { dados: err.dados } : {}),
   };
 }
 
@@ -62,4 +76,9 @@ export function tratarErro(err: unknown, req: FastifyRequest, reply: FastifyRepl
 
 export function naoEncontrado(_req: FastifyRequest, reply: FastifyReply) {
   return reply.status(404).send({ erro: "nao_encontrado" });
+}
+
+// Campos do domínio (`Record<campo, mensagem>`) no formato da PD-22.
+export function camposDoDominio(campos: Record<string, string>): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(campos).map(([k, v]) => [k, [v]]));
 }

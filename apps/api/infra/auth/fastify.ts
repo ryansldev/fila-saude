@@ -74,10 +74,16 @@ function traduzirErroDoAuth(status: number, texto: string): Traducao {
 
 // AD-017: rota `GET|POST <prefixo>/*` que entrega a requisição ao `auth.handler` do better-auth e
 // devolve a resposta dele pelo Fastify (status, cabeçalhos, todos os `set-cookie` e corpo).
-export function montarAuth(app: FastifyInstance, prefixo: string, obterAuth: (req: FastifyRequest) => Auth) {
+export function montarAuth(
+  app: FastifyInstance,
+  prefixo: string,
+  obterAuth: (req: FastifyRequest) => Auth,
+  opcoes: { preHandler?: (req: FastifyRequest) => Promise<void> } = {},
+) {
   app.route({
     method: ["GET", "POST"],
     url: `${prefixo}/*`,
+    ...(opcoes.preHandler ? { preHandler: opcoes.preHandler } : {}),
     async handler(req, reply) {
       const resposta = await obterAuth(req).handler(requisicaoWeb(req));
 

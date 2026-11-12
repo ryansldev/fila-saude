@@ -31,6 +31,8 @@ const camposDoEnv = z.object({
   MAILER: z.enum(["banco", "smtp"]),
   TENANT_CACHE_TTL_MS: z.coerce.number().int().nonnegative(),
   AUTH_JWT_TTL: z.string().min(1).default("15m"),
+  // PD-39 / PD-24: origem do painel de cada município (`{slug}` trocado pelo slug), para CORS e trustedOrigins.
+  PAINEL_ORIGEM_TEMPLATE: z.string().includes("{slug}").default("http://{slug}.localhost:3000"),
 });
 
 // PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido e

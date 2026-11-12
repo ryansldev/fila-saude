@@ -10,6 +10,7 @@ import { ErroApi } from "infra/erros";
 import { criarTenant } from "infra/tenant/criar";
 import { bancoDoSlug, validarSlug } from "infra/tenant/slug";
 import { Client, escapeIdentifier } from "pg";
+import { ULTIMA_MUNICIPAL } from "tests/migracoes";
 import orchestrator from "tests/orchestrator";
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -77,7 +78,7 @@ describe("criarTenant", () => {
       fuso: "America/Sao_Paulo",
       status: "ativo",
       bancoRef: `template:${bancoDoSlug(slug)}`,
-      migracaoVersao: expect.stringMatching(/^0000_/),
+      migracaoVersao: ULTIMA_MUNICIPAL,
       migracaoErro: null,
     });
     expect(stdout).toContain(linha?.id);
@@ -169,7 +170,7 @@ describe("criarTenant", () => {
     expect(municipioId).toBe(interrompido?.id);
     const linhas = await linhasDoSlug(slug);
     expect(linhas).toHaveLength(1);
-    expect(linhas[0]).toMatchObject({ status: "ativo", migracaoVersao: expect.stringMatching(/^0000_/) });
+    expect(linhas[0]).toMatchObject({ status: "ativo", migracaoVersao: ULTIMA_MUNICIPAL });
     expect(await tabelasDoTenant(banco)).toContain("pessoa_local");
   });
 });

@@ -5,14 +5,35 @@ import { Pool } from "pg";
 import env from "../env";
 import { municipio } from "./central/schema/municipio";
 import type { Db } from "./index";
+import * as auditoria from "./municipal/schema/auditoria";
+import * as auth from "./municipal/schema/auth";
+import * as entrada from "./municipal/schema/entrada";
+import * as estacao from "./municipal/schema/estacao";
+import * as perfil from "./municipal/schema/perfil";
 import * as pessoaLocal from "./municipal/schema/pessoa-local";
+import * as servico from "./municipal/schema/servico";
+import * as sessao from "./municipal/schema/sessao";
+import * as unidade from "./municipal/schema/unidade";
 import { urlDoBanco } from "./url-do-banco";
 
 export { urlDoBanco } from "./url-do-banco";
 
-export const schemaMunicipal = { ...pessoaLocal };
+export const schemaMunicipal = {
+  ...pessoaLocal,
+  ...unidade,
+  ...servico,
+  ...estacao,
+  ...sessao,
+  ...entrada,
+  ...auth,
+  ...perfil,
+  ...auditoria,
+};
 
 export type DbDoTenant = NodePgDatabase<typeof schemaMunicipal> & { $client: Pool };
+export type TxDoTenant = Parameters<Parameters<DbDoTenant["transaction"]>[0]>[0];
+/** Banco ou transação do tenant: as funções de infra aceitam os dois. */
+export type BancoDoTenant = DbDoTenant | TxDoTenant;
 
 // `municipioId` é o id do município no central; null no modo single (PD-12), que não lê o central.
 export type Tenant = { slug: string; municipioId: string | null; fuso: string; db: DbDoTenant };
