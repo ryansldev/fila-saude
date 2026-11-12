@@ -26,6 +26,7 @@
     "services:down": "npm -w @fila-saude/api run services:down",
     "db:generate:central": "npm -w @fila-saude/api run db:generate:central",
     "db:generate:municipal": "npm -w @fila-saude/api run db:generate:municipal",
+    "db:migrate": "npm -w @fila-saude/api run db:migrate",
     "db:migrate:central": "npm -w @fila-saude/api run db:migrate:central",
     "tenant:create": "npm -w @fila-saude/api run tenant:create --",
     "specs:check": "node scripts/specs-check.mjs",

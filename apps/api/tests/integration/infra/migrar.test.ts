@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { sql } from "drizzle-orm";
 import database from "infra/database";
 import { migrarBanco } from "infra/database/migrar";
@@ -106,5 +109,21 @@ describe("migrarBanco", () => {
     const tabelasDepois = await tabelasDoCentral();
     expect(tabelasDepois).toEqual(tabelasDoCentralAntes);
     expect(tabelasDepois).not.toContain("pessoa_local");
+  });
+
+  it("PD-16: journal sem migrations dá erro claro", async () => {
+    const pasta = await mkdtemp(path.join(tmpdir(), "fila-journal-"));
+    try {
+      await mkdir(path.join(pasta, "meta"));
+      await writeFile(
+        path.join(pasta, "meta", "_journal.json"),
+        JSON.stringify({ version: "7", dialect: "postgresql", entries: [] }),
+      );
+      await expect(migrarBanco(urlDoTenant, "municipal", { pasta })).rejects.toThrow(
+        /nenhuma migração no journal de municipal/,
+      );
+    } finally {
+      await rm(pasta, { recursive: true, force: true });
+    }
   });
 });

@@ -1,27 +1,20 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
 // PD-19: roda uma vez antes da suíte, no processo principal do Vitest.
 // Cria e migra `fila_central` e apaga bancos `fila_t_%` deixados por execuções antigas.
 export default async function setup() {
   process.env.NODE_ENV ??= "test";
 
   const { default: env } = await import("../infra/env");
+  const { criarBancoSeNaoExiste } = await import("../infra/database/criar-banco");
+  const { migrarBanco } = await import("../infra/database/migrar");
   const { Client, escapeIdentifier } = await import("pg");
-  const { drizzle } = await import("drizzle-orm/node-postgres");
-  const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+
+  await criarBancoSeNaoExiste(env.DATABASE_URL, env.POSTGRES_DB);
 
   const servidor = new URL(env.DATABASE_URL);
   servidor.pathname = "/postgres";
   const admin = new Client({ connectionString: servidor.toString() });
   await admin.connect();
-
   try {
-    const existe = await admin.query("select 1 from pg_database where datname = $1", [env.POSTGRES_DB]);
-    if (existe.rowCount === 0) {
-      await admin.query(`create database ${escapeIdentifier(env.POSTGRES_DB)}`);
-    }
-
     const sobras = await admin.query<{ datname: string }>(
       "select datname from pg_database where datname like 'fila\\_t\\_%'",
     );
@@ -32,15 +25,6 @@ export default async function setup() {
     await admin.end();
   }
 
-  const central = new Client({ connectionString: env.DATABASE_URL });
-  await central.connect();
-  try {
-    const migrationsFolder = path.resolve(
-      path.dirname(fileURLToPath(import.meta.url)),
-      "../infra/database/central/migrations",
-    );
-    await migrate(drizzle(central), { migrationsFolder });
-  } finally {
-    await central.end();
-  }
+  // O mesmo runner do `db:migrate` (PD-16), então o conjunto central passa por ele em toda execução.
+  await migrarBanco(env.DATABASE_URL, "central");
 }

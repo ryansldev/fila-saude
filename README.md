@@ -79,12 +79,13 @@ Isso inicia um container PostgreSQL 18 via Docker Compose (`apps/api/infra/compo
 
 Ao rodar `npm run dev`, `npm run dev -w @fila-saude/api` ou `npm test`, o PostgreSQL é iniciado automaticamente.
 
-### 4. Aplicar o schema do banco central
+### 4. Aplicar as migrations
 
 ```bash
-npm run db:generate:central  # gera migration do banco central a partir do schema
-npm run db:migrate:central   # aplica as migrations pendentes no banco central
+npm run db:migrate   # cria fila_central se faltar, migra o central e todos os municípios
 ```
+
+Um município que falhar fica com `migracao_erro` no central e o comando sai com código 1; rodar de novo retoma.
 
 Os testes (`npm test`) criam e migram `fila_central` sozinhos.
 
@@ -169,6 +170,7 @@ npm run test:coverage  # cobertura de código
 | `services:down`     | Remove os containers                           |
 | `db:generate:central`   | Gera migrations do banco central           |
 | `db:generate:municipal` | Gera migrations dos bancos dos municípios  |
+| `db:migrate`            | Migra o central e todos os municípios      |
 | `db:migrate:central`    | Aplica migrations no banco central         |
 | `commit`            | Commit interativo com Commitizen               |
 
