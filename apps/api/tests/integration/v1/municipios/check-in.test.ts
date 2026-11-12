@@ -72,7 +72,7 @@ describe("QR de entrada (RN-PRES-01, RN-FILA-05)", () => {
     expect((await checkIn(bruno.cookie, [velho])).corpo.erro).toBe("qr_invalido");
   });
 
-  it("RN-PRES-01: conta verificada entra presente; a pessoa atendida não conferida fica pendente", async () => {
+  it("RN-PRES-01 / AD-055: uma leitura vale para a conta; verificada entra presente, a pessoa atendida não conferida fica pendente", async () => {
     const r = await checkIn(bruno.cookie, tokensDe((await qr()).corpo.conteudo));
     expect(r.status).toBe(200);
     expect(r.corpo.map((x: { pessoa: string; resultado: string }) => [x.pessoa, x.resultado]).sort()).toEqual([

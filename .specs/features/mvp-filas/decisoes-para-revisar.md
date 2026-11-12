@@ -126,7 +126,7 @@ Decididos por você: ocupação + função de gestão; quem cria quem (RN-PERF-0
 
 ## Fatia 1 da v0.1 (2026-11-12)
 
-Execução rápida, como a fatia 0. Plano: [plano-fatia-1-publica](plano-fatia-1-publica.md) (PD-43 a PD-46).
+Execução rápida, como a fatia 0. Q3 e Q5 aprovadas em 2026-11-12 (AD-055; RN-ID-05). Plano: [plano-fatia-1-publica](plano-fatia-1-publica.md) (PD-43 a PD-46).
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
@@ -134,9 +134,7 @@ Execução rápida, como a fatia 0. Plano: [plano-fatia-1-publica](plano-fatia-1
 | F2 | Presença (revisto por você: pelo QR) | Presença pelo QR (RN-PRES-01). A recepção só confere quem teve o QR recusado por pendência (RN-FILA-05); o botão aparece só para esses | Recepção marcando qualquer um | A conferência da prioridade ainda não é guardada na entrada (`conferenciaNaEntrada`): vale só no dia |
 | Q1 | Onde o QR aparece antes da TV (fatia 2) | Tela "QR de entrada" no painel, para o monitor da recepção, vista por recepção e gerente | Esperar a TV pareada | Baixo: a TV usa a mesma rota de dados depois |
 | Q2 | Um QR para várias sessões abertas da unidade | Segredo por sessão (criado na abertura, nunca sai da API); o QR é um link `filasaude://check-in?m=&u=&t=` com o token de cada sessão aberta; a câmera do celular abre o app | Um QR por sessão | QR mais denso com muitas sessões abertas ao mesmo tempo |
-| Q3 | Quem entra com a leitura | Todas as pessoas da conta com senha nas sessões do QR (ex.: a pessoa e o filho); cada uma recebe o próprio resultado | Só o dono da conta | Quem marcou para outra pessoa e não veio junto marca a presença dela |
 | Q4 | Pendências calculadas na leitura | Conta não verificada → "conta"; pessoa atendida que não é o dono e nunca foi conferida na unidade → "pessoa_atendida"; mais a prioridade a conferir (domínio). Pré-cadastro fica para a fatia 5 | Calcular na inscrição | Nenhum conhecido |
-| Q5 | O que a conferência da recepção grava | Dono da conta → verificada na central (`verificado_em`, método "recepcao", município); outra pessoa → `documento_conferido_*` na unidade. Vale nas próximas idas | Só marcar a presença | Na 1ª ida todo paciente passa na recepção (os do seed também) |
 | F3 | Estação aberta ou fechada (RN-EST) | As estações da sessão abrem junto com a sessão; não há abrir/fechar estação | Botão na tela da estação | A estimativa conta estações que ninguém está usando |
 | F4 | Login do app nativo | Plugin `bearer` do better-auth: o app guarda o token no SecureStore e manda `Authorization` (sem cookie, sem Origin); o guard do paciente (PD-34) é o mesmo | Cookie no `fetch` do React Native | Baixo; o JWT da PD-17 entra no lugar depois |
 | F5 | Expo SDK 58 pede React 19.3 | React e React DOM 19.3.0 em todo o monorepo (`overrides` na raiz); painel testado e com `next build` ok | App fora dos workspaces | Uma atualização do Next pode exigir outra versão |

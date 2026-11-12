@@ -60,6 +60,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-052 | Licença AGPL-3.0 e receita por município | ativa |
 | AD-053 | Pré-cadastro com foto ligado por padrão | ativa |
 | AD-054 | Conferência antes de entrar na fila presencial | ativa |
+| AD-055 | Uma leitura do QR vale para todas as pessoas da conta | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -277,6 +278,10 @@ Toda unidade começa exigindo o pré-cadastro (foto do documento com foto e do C
 ### AD-054 · Conferência antes de entrar na fila presencial
 2026-11-10 · ativa · Muda: RN-FILA-05, RN-ID-05, RN-PRE-03, RN-LE-06, RN-RISCO-03, RN-RISCO-04, permissões · Substitui: AD-050
 Com pendência, o check-in pelo QR é **recusado** ("passe na recepção"); a pessoa segue remota, com o lugar que tinha. A recepção confere e **marca a presença na mesma ação**; a regra de atraso conta a partir dela. O app avisa antes da chegada para passar na recepção primeiro. O profissional só chama e atende; a estação não confere nada. Prioridade nova declarada por quem já está presente só vale depois de conferida. **Por quê:** na rotina real quem está na sala controla a fila e não confere documento; tira o estado "presente com pendência" e a conferência na estação; a brecha de "congelar" o lugar continua fechada (quem nunca entrou presencialmente não tem lugar presencial). Custo: num balcão lento, quem leu o QR antes de passar na recepção pode ser ultrapassado; acontece uma vez por pessoa e a campanha de cadastro (AD-053) reduz.
+
+### AD-055 · Uma leitura do QR vale para todas as pessoas da conta
+2026-11-12 · ativa · Muda: RN-PRES-01
+Quem lê o QR marca a presença de todas as pessoas da conta com senha nas sessões abertas da unidade; cada uma tem o próprio resultado (presente ou pendente). Confirmada com a v0.1 (Q3); a conferência na 1ª ida (Q5) já era RN-ID-05 e AD-054. **Por quê:** quem leva o filho lê um QR só. Custo: quem marcou para alguém que não veio junto marca a presença dela; se ninguém aparecer na chamada, os pulos resolvem.
 
 ## Arquitetura
 

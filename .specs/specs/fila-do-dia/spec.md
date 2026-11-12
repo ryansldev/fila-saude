@@ -50,6 +50,9 @@ Ao encerrar, O SISTEMA DEVE separar quem faltou (RN-FALTA-01) de quem é remanej
 
 **RN-PRES-01 · Entrada pelo QR**
 QUANDO o paciente ler o QR rotativo da TV, O SISTEMA DEVE marcá-lo presente. O QR é um token assinado que troca a cada 30 s; a validade é conferida pelo relógio do servidor, que aceita o código atual e o imediatamente anterior. Uma foto antiga não funciona; o relógio do celular não importa.
+Uma leitura vale para **todas as pessoas da conta** com senha nas sessões abertas daquela unidade (ex.: a pessoa e o filho que ela marcou); cada uma recebe o próprio resultado, e quem tiver pendência fica remota (RN-FILA-05).
+*Decisões: AD-055.*
+- *Dado* Bruno, com conta verificada, inscrito e com a filha Bia inscrita por ele, *quando* ele lê o QR, *então* Bruno fica presente e Bia é recusada até a recepção conferir o documento dela (pessoa atendida não conferida).
 
 **RN-PRES-02 · "Vou sair"**
 QUANDO o paciente tocar "Vou sair" no app, de qualquer lugar, O SISTEMA DEVE devolvê-lo a remoto mantendo a posição. É como se ele voltasse para a fila remota no mesmo lugar: as travas da janela protegida que o deixavam à frente de outros presentes acabam, e ao voltar ele segue a regra de quem faz check-in (janela protegida e atraso).
