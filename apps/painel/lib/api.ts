@@ -1,17 +1,27 @@
+import { erroSchema } from "@fila-saude/schemas/erros";
+
 /** Erro no formato único da API (PD-22): `{ erro, mensagem?, campos? }` mais o status HTTP. */
 export class ErroDaApi extends Error {
   readonly status: number;
   readonly erro: string;
   readonly mensagem?: string;
   readonly campos?: Record<string, string[]>;
+  readonly dados?: Record<string, unknown>;
 
-  constructor(status: number, erro: string, mensagem?: string, campos?: Record<string, string[]>) {
+  constructor(
+    status: number,
+    erro: string,
+    mensagem?: string,
+    campos?: Record<string, string[]>,
+    dados?: Record<string, unknown>,
+  ) {
     super(mensagem ?? erro);
     this.name = "ErroDaApi";
     this.status = status;
     this.erro = erro;
     if (mensagem !== undefined) this.mensagem = mensagem;
     if (campos !== undefined) this.campos = campos;
+    if (dados !== undefined) this.dados = dados;
   }
 }
 
@@ -24,12 +34,6 @@ export type Api = {
 };
 
 type Metodo = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
-
-function ehCorpoDeErro(
-  valor: unknown,
-): valor is { erro: string; mensagem?: string; campos?: Record<string, string[]> } {
-  return typeof valor === "object" && valor !== null && typeof (valor as { erro?: unknown }).erro === "string";
-}
 
 const NAO_JSON = Symbol("nao_json");
 
@@ -62,7 +66,11 @@ export function criarApi(base: string, fetcher: typeof fetch = fetch): Api {
     const dados = await lerJson(resposta);
     if (resposta.ok && dados === NAO_JSON) throw new ErroDaApi(resposta.status, "resposta_invalida");
     if (!resposta.ok) {
-      if (ehCorpoDeErro(dados)) throw new ErroDaApi(resposta.status, dados.erro, dados.mensagem, dados.campos);
+      const corpo = erroSchema.safeParse(dados);
+      if (corpo.success) {
+        const { erro, mensagem, campos, dados: extra } = corpo.data;
+        throw new ErroDaApi(resposta.status, erro, mensagem, campos, extra);
+      }
       throw new ErroDaApi(resposta.status, "resposta_invalida");
     }
     return dados as T;

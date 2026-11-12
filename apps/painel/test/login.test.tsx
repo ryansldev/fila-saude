@@ -15,8 +15,8 @@ function apiComLogin(sign: () => Promise<unknown>, eu: unknown = undefined): Api
       return eu;
     }) as Api["get"],
     post: (async (caminho: string, corpo: unknown) => {
-      if (caminho !== "/v1/painel/auth/sign-in/email") throw new Error(`inesperado ${caminho}`);
-      expect(corpo).toEqual({ email: "a@b.com", password: "segredo123" });
+      if (caminho !== "/v1/painel/auth/sign-in/username") throw new Error(`inesperado ${caminho}`);
+      expect(corpo).toEqual({ username: "ana.souza", password: "segredo123" });
       return sign();
     }) as Api["post"],
     patch: nada,
@@ -26,7 +26,7 @@ function apiComLogin(sign: () => Promise<unknown>, eu: unknown = undefined): Api
 }
 
 function preencherEEnviar() {
-  fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "a@b.com" } });
+  fireEvent.change(screen.getByLabelText("Login"), { target: { value: "ana.souza" } });
   fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "segredo123" } });
   fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 }
@@ -47,7 +47,7 @@ describe("login", () => {
     });
     const navegar = montar(credenciais);
     preencherEEnviar();
-    expect(await screen.findByText(/e-mail ou senha inválidos/i)).toBeDefined();
+    expect(await screen.findByText(/login ou senha inválidos/i)).toBeDefined();
     expect(navegar).not.toHaveBeenCalled();
     cleanup();
 
@@ -62,7 +62,8 @@ describe("login", () => {
     const ok = apiComLogin(async () => ({}), {
       id: "p1",
       nome: "Ana",
-      perfis: [{ perfil: "admin", unidadeId: "u1" }],
+      login: "ana.souza",
+      perfis: [{ perfil: "admin", unidadeId: "6f1c1f0e-8f0a-4b5e-9d0e-1c2b3a4d5e6f" }],
     });
     const navegarOk = montar(ok);
     preencherEEnviar();
@@ -73,7 +74,7 @@ describe("login", () => {
     const navegar = montar(apiComLogin(async () => ({}), new ErroDaApi(401, "nao_autenticado")));
     preencherEEnviar();
     expect(await screen.findByText(/tente de novo/i)).toBeDefined();
-    expect(screen.queryByText(/e-mail ou senha inválidos/i)).toBeNull();
+    expect(screen.queryByText(/login ou senha inválidos/i)).toBeNull();
     expect(navegar).not.toHaveBeenCalled();
   });
 
@@ -101,6 +102,7 @@ describe("login", () => {
     const api = apiComLogin(() => new Promise((r) => (liberar = r)), {
       id: "p1",
       nome: "Ana",
+      login: "ana.souza",
       perfis: [{ perfil: "gestor", unidadeId: null }],
     });
     const navegar = montar(api);

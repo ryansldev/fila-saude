@@ -5,20 +5,20 @@ import { Button } from "@/components/ui/button";
 import { type ErroDeLogin, useLogin } from "@/lib/sessao";
 
 const MENSAGENS: Record<ErroDeLogin, string> = {
-  credenciais: "E-mail ou senha inválidos.",
+  credenciais: "Login ou senha inválidos.",
   bloqueado: "Conta bloqueada. Procure o gestor do município.",
   rede: "Não foi possível entrar agora. Tente de novo.",
 };
 
 export function FormularioDeLogin({ navegar }: { navegar: (href: string) => void }) {
   const { estado, enviar } = useLogin(navegar);
-  const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [senha, setSenha] = useState("");
   const enviando = estado.estado === "enviando";
 
   function aoEnviar(e: FormEvent) {
     e.preventDefault();
-    void enviar(email, senha);
+    void enviar(login, senha);
   }
 
   const campo =
@@ -27,13 +27,14 @@ export function FormularioDeLogin({ navegar }: { navegar: (href: string) => void
   return (
     <form onSubmit={aoEnviar} className="flex w-full max-w-sm flex-col gap-4">
       <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
-        E-mail
+        Login
         <input
-          type="email"
+          type="text"
           autoComplete="username"
+          autoCapitalize="none"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
           className={campo}
         />
       </label>
