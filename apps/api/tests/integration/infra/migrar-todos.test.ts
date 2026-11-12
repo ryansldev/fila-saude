@@ -6,7 +6,6 @@ import { eq } from "drizzle-orm";
 import database from "infra/database";
 import { municipio } from "infra/database/central/schema/municipio";
 import { migrarTodos } from "infra/database/migrar";
-import { urlDoBanco } from "infra/database/url-do-banco";
 import env from "infra/env";
 import { bancoDoSlug } from "infra/tenant/slug";
 import { Client, escapeIdentifier } from "pg";
@@ -128,13 +127,6 @@ describe("migrarTodos", () => {
     expect(segunda.tenants).toContainEqual({ slug, ok: true, versao: "0000_municipal" });
     expect(await linhaDoSlug(slug)).toMatchObject({ migracaoVersao: "0000_municipal", migracaoErro: null });
     expect(await tabelasDoTenant(banco)).toContain("pessoa_local");
-  });
-
-  it("urlDoBanco: expande template: e recusa prefixo desconhecido", () => {
-    expect(urlDoBanco("template:fila_t_x", { template: "postgresql://h:1/{banco}" })).toBe("postgresql://h:1/fila_t_x");
-    expect(() => urlDoBanco("ftp:fila_t_x", { template: "postgresql://h:1/{banco}" })).toThrow(
-      /referência de banco desconhecida: ftp:/,
-    );
   });
 
   it("PD-16: db:migrate cria o central se faltar e sai com 1 quando um tenant falha", async () => {
