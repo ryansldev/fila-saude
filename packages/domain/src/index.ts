@@ -6,11 +6,19 @@ export {
   rechamar,
   toleranciaEsgotada,
 } from "./chamada.ts";
+export type {
+  ConfigEfetiva,
+  ConfigParcial,
+  OrigemConfig,
+  ResultadoValidacao,
+} from "./configuracao.ts";
+export { configEfetiva, validarConfig } from "./configuracao.ts";
 export type { EstadoEntrada, EstadoItem, EstadoSessao, Transicao } from "./contratos.ts";
 export {
   TRANSICOES_ENTRADA,
   TRANSICOES_ITEM,
   TRANSICOES_SESSAO,
+  transicaoUnica,
   transicionar,
 } from "./contratos.ts";
 export {
@@ -75,8 +83,12 @@ export {
 } from "./prioridade.ts";
 export { tokenQr, validarQr } from "./qr.ts";
 export { alternarOpcao, classificar } from "./questionario.ts";
+export type { Janela, Ocorrencia, Serie } from "./recorrencia.ts";
+export { expandir, JANELA_MATERIALIZACAO_DIAS, janelaDeMaterializacao } from "./recorrencia.ts";
 export type { CodigoErro, Evento, Resultado, TipoEvento } from "./resultado.ts";
 export { falha, ok } from "./resultado.ts";
+export type { ModoServico } from "./servico.ts";
+export { contarAtivas, mudarModoServico, podeMudarExigeTriagem } from "./servico.ts";
 export type { CmdReserva } from "./sessao.ts";
 export {
   abrir,
@@ -93,7 +105,9 @@ export {
   trocarReserva,
   vagasSegurasNaAbertura,
 } from "./sessao.ts";
-export { idadeEm, mesmoDia, vespera } from "./tempo.ts";
+export type { ConfigSessao, ValidacaoSessao, Visibilidade } from "./sessao-config.ts";
+export { mudarVisibilidade, validarSessao } from "./sessao-config.ts";
+export { idadeEm, instanteParaLocal, localParaInstante, mesmoDia, vespera } from "./tempo.ts";
 export type {
   Alarme,
   Classificacao,

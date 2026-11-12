@@ -43,17 +43,52 @@ function dataLocal(instante: number, fuso: string): DataLocal {
   return { ano: d.getUTCFullYear(), mes: d.getUTCMonth() + 1, dia: d.getUTCDate() };
 }
 
+const DIA = 86_400_000;
+
+/**
+ * Instante em que o relógio local do fuso marca `alvo` (relógio local expresso como se fosse UTC).
+ * Hora que não existe (salto do horário de verão) avança pelo tamanho do salto; hora repetida
+ * (volta do horário de verão) fica com o primeiro instante — como o `compatible` do Temporal.
+ */
+function instanteDoRelogio(alvo: number, fuso: string): number {
+  const deslocamento = (t: number) => relogioLocalComoUtc(t, fuso) - Math.floor(t / 1000) * 1000;
+  const antes = alvo - deslocamento(alvo - DIA);
+  const depois = alvo - deslocamento(alvo + DIA);
+  const validos = [antes, depois].filter((t) => relogioLocalComoUtc(t, fuso) === alvo);
+  // Nenhum válido: hora pulada; com o deslocamento de antes do salto, cai depois dele.
+  return validos.length > 0 ? Math.min(...validos) : antes;
+}
+
 /** Epoch ms de 00:00 da data local no fuso. */
 function meiaNoite({ ano, mes, dia }: DataLocal, fuso: string): number {
-  const alvo = Date.UTC(ano, mes - 1, dia);
-  let chute = alvo;
-  // O deslocamento do fuso pode mudar entre o chute e o resultado (horário de verão): refina.
-  for (let i = 0; i < 3; i++) {
-    const proximo = alvo - (relogioLocalComoUtc(chute, fuso) - chute);
-    if (proximo === chute) break;
-    chute = proximo;
-  }
-  return chute;
+  return instanteDoRelogio(Date.UTC(ano, mes - 1, dia), fuso);
+}
+
+const FORMATO_LOCAL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
+
+/** Hora local "flutuante" `AAAA-MM-DDTHH:mm` lida como se fosse UTC (sem fuso). */
+export function localComoUtc(local: string): number {
+  const m = FORMATO_LOCAL.exec(local);
+  if (!m) throw new Error(`hora local fora do formato AAAA-MM-DDTHH:mm: ${local}`);
+  const [, a, me, d, h, mi] = m.map(Number) as [number, number, number, number, number, number];
+  const t = Date.UTC(a, me - 1, d, h, mi);
+  if (utcComoLocal(t) !== local) throw new Error(`hora local inexistente no calendário: ${local}`);
+  return t;
+}
+
+/** Inverso de `localComoUtc`: `AAAA-MM-DDTHH:mm` (segundos descartados). */
+export function utcComoLocal(t: number): string {
+  return new Date(t).toISOString().slice(0, 16);
+}
+
+/** Instante (epoch ms) da hora local `AAAA-MM-DDTHH:mm` no fuso. */
+export function localParaInstante(local: string, fuso: string): number {
+  return instanteDoRelogio(localComoUtc(local), fuso);
+}
+
+/** Hora local `AAAA-MM-DDTHH:mm` do instante no fuso. */
+export function instanteParaLocal(instante: number, fuso: string): string {
+  return utcComoLocal(relogioLocalComoUtc(instante, fuso));
 }
 
 /** Idade em anos completos no dia local de `agora`; o aniversário vale desde 00:00 do dia. */
