@@ -5,7 +5,7 @@ import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formul
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio } from "@/lib/formularios/erros";
-import { gruposDeFusos } from "@/lib/formularios/fusos";
+import { opcoesDeFuso } from "@/lib/formularios/fusos";
 import { CAMPOS_CONFIG, type ConfigEfetiva, campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
 import { useLista } from "@/lib/use-lista";
 
@@ -44,7 +44,7 @@ const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
   const api = useApi();
   const [v, setV] = useState(VAZIA);
-  const fusos = useMemo(() => gruposDeFusos(), []);
+  const fusos = useMemo(() => opcoesDeFuso(), []);
   const [erros, setErros] = useState(SEM_ERROS);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -100,14 +100,10 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
         {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
         <Campo rotulo="Fuso horário" erro={erros.campos.fuso}>
           <select className={classeDoCampo} value={v.fuso} onChange={(e) => setV({ ...v, fuso: e.target.value })}>
-            {fusos.map((g) => (
-              <optgroup key={g.grupo} label={g.grupo}>
-                {g.fusos.map((f) => (
-                  <option key={`${g.grupo}-${f.fuso}`} value={f.fuso}>
-                    {f.rotulo}
-                  </option>
-                ))}
-              </optgroup>
+            {fusos.map((f) => (
+              <option key={f.fuso} value={f.fuso}>
+                {f.rotulo}
+              </option>
             ))}
           </select>
         </Campo>
