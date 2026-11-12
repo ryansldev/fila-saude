@@ -218,8 +218,12 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
   ]);
 }
 
-/** RN-EST-05: não fecha com paciente chamado (de qualquer sessão); finalize ou marque "Não compareceu". */
+/**
+ * RN-EST-05: não fecha com paciente chamado (de qualquer sessão); finalize ou marque "Não compareceu".
+ * Como as ações vizinhas, só com a sessão aberta (m5).
+ */
 export function fecharEstacao(dia: DiaSessao, cmd: Cmd): Resultado<DiaSessao> {
+  if (dia.estado !== "aberta") return falha("sessao_fechada");
   const estacao = dia.estacoes.find((e) => e.id === cmd.estacaoId);
   if (!estacao) return falha("transicao_proibida");
   if (estacao.chamadoItemId !== null) return falha("estacao_com_chamado");

@@ -10,6 +10,7 @@ import {
   marcarPresencaSemApp,
   vouSair,
 } from "../src/fila.ts";
+import * as dominio from "../src/index.ts";
 import type { Resultado } from "../src/resultado.ts";
 import { chamar, comItem, congelar, diaCom } from "./fixtures.ts";
 
@@ -407,5 +408,18 @@ describe("RN-RISCO-04: dar prioridade (darPrioridade)", () => {
         ),
       ),
     ).toBe("sessao_fechada");
+  });
+});
+
+describe("minors m1/m5", () => {
+  it("m1: ficarElegivel é interno (põe em presente sem contrato); não sai pelo pacote", () => {
+    expect("ficarElegivel" in dominio).toBe(false);
+  });
+
+  it("m5/RN-PRES-02: Vou sair só com a sessão aberta", () => {
+    const d = comItem(diaCom(["ana"]), "ana", { estado: "presente" });
+    for (const estado of ["planejada", "encerrada", "cancelada"] as const) {
+      expect(vouSair({ ...d, estado }, { itemId: "ana" }, T)).toEqual({ ok: false, erro: "sessao_fechada" });
+    }
   });
 });

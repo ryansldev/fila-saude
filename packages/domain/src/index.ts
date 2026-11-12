@@ -34,7 +34,6 @@ export {
   conferirEMarcar,
   darPrioridade,
   elegiveis,
-  ficarElegivel,
   marcarPresencaSemApp,
   vouSair,
 } from "./fila.ts";

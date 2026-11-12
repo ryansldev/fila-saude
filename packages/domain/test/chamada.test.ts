@@ -474,3 +474,14 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     expect(item(aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN)), "caio").risco).toBe("rotina");
   });
 });
+
+describe("m5: estação com a sessão aberta", () => {
+  it("m5/RN-EST-05: fechar estação só com a sessão aberta, como as ações vizinhas", () => {
+    for (const estado of ["planejada", "encerrada", "cancelada"] as const) {
+      expect(fecharEstacao({ ...diaCom(["ana"]), estado }, { estacaoId: "e1" })).toEqual({
+        ok: false,
+        erro: "sessao_fechada",
+      });
+    }
+  });
+});

@@ -165,7 +165,8 @@ function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
 }
 
 /**
- * X fica elegível: trava X atrás dos K primeiros da ordem de chamada real (janela protegida) e,
+ * Uso interno do pacote (não sai pelo index, m1): põe em presente sem consultar o contrato; quem
+ * chama já validou a transição. X fica elegível: trava X atrás dos K primeiros da ordem de chamada real (janela protegida) e,
  * com `aplicarAtraso`, aplica antes a regra de atraso. O atraso só vale para quem chega de fora
  * (check-in, presença pela recepção); no 1º pulo e na passagem da triagem ao atendimento a pessoa
  * estava na unidade, então não se aplica (RN-CHAM-03, RN-TRI-04). Urgência confirmada escapa dos dois.
@@ -337,6 +338,7 @@ export function darPrioridade(
 
 /** RN-PRES-02: volta a remoto mantendo o número; quem sai não trava mais ninguém. */
 export function vouSair(dia: DiaSessao, cmd: { itemId: string }, agora: number): Resultado<DiaSessao> {
+  if (dia.estado !== "aberta") return falha("sessao_fechada");
   const item = dia.itens.find((i) => i.id === cmd.itemId);
   if (!item || transicionar(TRANSICOES_ITEM, item.estado, 'Paciente toca "Vou sair"') !== "remoto") {
     return falha("transicao_proibida");
