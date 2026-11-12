@@ -215,4 +215,108 @@ describe("POST /v1/auth/sign-up/email (cadastro do paciente)", () => {
     expect(linha?.username).toBe(dados.cpf);
     expect(await pacientesComCpf(outroCpf)).toHaveLength(0);
   });
+
+  it("RN-ID-05: o paciente não marca a própria conta como verificada pelo update-user", async () => {
+    const dados = orchestrator.dadosDeCadastro();
+    const cadastro = await orchestrator.cadastrarPaciente(dados);
+    expect(cadastro.status).toBe(200);
+    const casos: Array<[string, unknown]> = [
+      ["verificadoEm", new Date().toISOString()],
+      ["verificadoMetodo", "presencial"],
+      ["verificadoMunicipio", "00000000-0000-4000-8000-000000000000"],
+    ];
+
+    for (const [campo, valor] of casos) {
+      const resposta = await atualizarPaciente(orchestrator.cookiesDe(cadastro), { [campo]: valor });
+      expect(resposta.status).toBe(400);
+      expect(await resposta.json()).toEqual({ erro: "entrada_invalida", campos: { [campo]: ["campo_imutavel"] } });
+    }
+
+    const [linha] = await pacientesComCpf(dados.cpf);
+    expect(linha?.verificado_em).toBeNull();
+    expect(linha?.verificado_metodo).toBeNull();
+    expect(linha?.verificado_municipio).toBeNull();
+  });
+
+  it("PD-23: update-user valida telefone e nascimento como o cadastro", async () => {
+    const dados = orchestrator.dadosDeCadastro();
+    const cadastro = await orchestrator.cadastrarPaciente(dados);
+    expect(cadastro.status).toBe(200);
+    const cookie = orchestrator.cookiesDe(cadastro);
+    const amanha = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const casos: Array<[Record<string, unknown>, string]> = [
+      [{ telefone: "123" }, "telefone"],
+      [{ telefone: 11987654321 }, "telefone"],
+      [{ nascimento: "1990-13-45" }, "nascimento"],
+      [{ nascimento: amanha }, "nascimento"],
+    ];
+
+    for (const [corpo, chave] of casos) {
+      const resposta = await atualizarPaciente(cookie, corpo);
+      expect(resposta.status).toBe(400);
+      const erro = erroSchema.parse(await resposta.json());
+      expect(erro.erro).toBe("entrada_invalida");
+      expect(Object.keys(erro.campos ?? {})).toEqual([chave]);
+    }
+
+    const valida = await atualizarPaciente(cookie, { telefone: "(21) 3456-7890", nascimento: "1985-01-02" });
+    expect(valida.status).toBe(200);
+    const [linha] = await pacientesComCpf(dados.cpf);
+    expect(linha).toMatchObject({ telefone: "2134567890", nascimento: "1985-01-02" });
+  });
+
+  it("PD-22: e-mail já usado por outra conta → 409 email_em_uso", async () => {
+    const primeira = orchestrator.dadosDeCadastro();
+    expect((await orchestrator.cadastrarPaciente(primeira)).status).toBe(200);
+
+    const resposta = await orchestrator.cadastrarPaciente(orchestrator.dadosDeCadastro({ email: primeira.email }));
+
+    expect(resposta.status).toBe(409);
+    expect(await resposta.json()).toEqual({ erro: "email_em_uso" });
+  });
+
+  it("PD-22: erros do próprio better-auth saem em português (senha curta, sem sessão, credenciais)", async () => {
+    const dados = orchestrator.dadosDeCadastro();
+    const cadastro = await orchestrator.cadastrarPaciente(dados);
+    expect(cadastro.status).toBe(200);
+
+    const senhaCurta = await chamarAuth("/change-password", {
+      cookie: orchestrator.cookiesDe(cadastro),
+      corpo: { currentPassword: dados.senha, newPassword: "1234567" },
+    });
+    expect(senhaCurta.status).toBe(400);
+    expect(await senhaCurta.json()).toEqual({ erro: "entrada_invalida", campos: { senha: ["senha_curta"] } });
+
+    const semSessao = await atualizarPaciente("", { nome: "Outra" });
+    expect(semSessao.status).toBe(401);
+    expect(await semSessao.json()).toEqual({ erro: "nao_autenticado" });
+
+    const senhaErrada = await chamarAuth("/sign-in/email", {
+      corpo: { email: dados.email, password: "senha-errada-1" },
+    });
+    expect(senhaErrada.status).toBe(401);
+    expect(await senhaErrada.json()).toEqual({ erro: "credenciais_invalidas" });
+  });
+
+  it("PD-22: is-username-available não existe (não revela se o CPF tem conta)", async () => {
+    const dados = orchestrator.dadosDeCadastro();
+    expect((await orchestrator.cadastrarPaciente(dados)).status).toBe(200);
+
+    const resposta = await chamarAuth("/is-username-available", { corpo: { username: dados.cpf } });
+
+    expect(resposta.status).toBe(404);
+    expect(await resposta.json()).toEqual({ erro: "nao_encontrado" });
+  });
 });
+
+function chamarAuth(caminho: string, { cookie, corpo }: { cookie?: string; corpo: unknown }) {
+  return fetch(`${webserver.origin}/v1/auth${caminho}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: webserver.origin, ...(cookie ? { cookie } : {}) },
+    body: JSON.stringify(corpo),
+  });
+}
+
+function atualizarPaciente(cookie: string, corpo: unknown) {
+  return chamarAuth("/update-user", { cookie, corpo });
+}

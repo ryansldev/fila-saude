@@ -13,8 +13,29 @@ import { corpoDoErro, ErroApi, validar } from "infra/erros";
 // RN-ID-02: texto exato da orientação ao paciente quando o CPF já tem conta.
 export const MENSAGEM_CPF_EM_USO = "Procure a recepção da sua unidade para contestar.";
 
-// Campos que só a central grava: o CPF é a identidade da conta (RN-ID-02) e não muda pelo app.
-const CAMPOS_IMUTAVEIS = ["username", "displayUsername", "cpf"] as const;
+// Campos que o app nunca muda: o CPF é a identidade da conta (RN-ID-02) e a verificação só a
+// recepção marca (RN-ID-05).
+const CAMPOS_IMUTAVEIS = [
+  "username",
+  "displayUsername",
+  "cpf",
+  "verificadoEm",
+  "verificadoMetodo",
+  "verificadoMunicipio",
+] as const;
+
+// PD-23: o que o paciente pode trocar no próprio cadastro, com as mesmas regras do sign-up.
+const atualizacaoPacienteSchema = cadastroPacienteSchema
+  .pick({ nome: true, telefone: true, nascimento: true })
+  .partial();
+
+// Erros do sign-up que, com o CPF já gravado por outra requisição, significam "CPF em uso".
+const ERROS_DE_CONTA_EXISTENTE = new Set([
+  "FAILED_TO_CREATE_USER",
+  "USER_ALREADY_EXISTS",
+  "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL",
+  "USERNAME_IS_ALREADY_TAKEN",
+]);
 
 async function cpfEmUso(cpf: string) {
   const linhas = await database.select({ id: paciente.id }).from(paciente).where(eq(paciente.cpf, cpf)).limit(1);
@@ -49,15 +70,22 @@ async function prepararCadastro(corpo: Record<string, unknown>) {
   });
 }
 
-function barrarTrocaDeCpf(corpo: Record<string, unknown>) {
+function prepararAtualizacao(corpo: Record<string, unknown>) {
   const campos: Record<string, string[]> = {};
   for (const chave of CAMPOS_IMUTAVEIS) if (chave in corpo) campos[chave] = ["campo_imutavel"];
   if (Object.keys(campos).length > 0) throw new ErroApi(400, "entrada_invalida", campos);
+  const editaveis = Object.fromEntries(
+    Object.entries(corpo).filter(([chave]) => chave in atualizacaoPacienteSchema.shape),
+  );
+  const dados = validar(atualizacaoPacienteSchema, editaveis);
+  // Grava os valores normalizados (telefone só com dígitos, nome sem espaços nas pontas).
+  for (const [chave, valor] of Object.entries(dados)) if (valor !== undefined) corpo[chave] = valor;
 }
 
 // O better-auth responde direto, sem passar pelo handler de erros do Fastify: o `ErroApi` vira um
 // `APIError` com o corpo já no formato da PD-22.
 function comoErroDoAuth(err: unknown): unknown {
+  // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
   return err instanceof ErroApi ? new APIError(err.status as 400, corpoDoErro(err)) : err;
 }
 
@@ -84,12 +112,14 @@ export const authCentral = betterAuth({
     },
   },
   emailAndPassword: { enabled: true, minPasswordLength: 8 },
+  // Responderia sem login se um CPF tem conta (oráculo de CPF): fica 404.
+  disabledPaths: ["/is-username-available"],
   plugins: [username({ usernameValidator: cpfValido, minUsernameLength: 11, maxUsernameLength: 11 })],
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       try {
         if (ctx.path === "/sign-up/email") await prepararCadastro(corpoDe(ctx));
-        if (ctx.path === "/update-user") barrarTrocaDeCpf(corpoDe(ctx));
+        if (ctx.path === "/update-user") prepararAtualizacao(corpoDe(ctx));
       } catch (err) {
         throw comoErroDoAuth(err);
       }
@@ -99,7 +129,9 @@ export const authCentral = betterAuth({
     // Volta um `Response` pronto porque, num hook `after`, o better-auth mantém o status do erro
     // original mesmo quando o hook lança outro `APIError` (better-auth 1.6.23).
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-up/email" || !isAPIError(ctx.context.returned)) return;
+      const retorno = ctx.context.returned;
+      if (ctx.path !== "/sign-up/email" || !isAPIError(retorno)) return;
+      if (!ERROS_DE_CONTA_EXISTENTE.has(String(retorno.body?.code))) return;
       const cpf = corpoDe(ctx).cpf;
       if (typeof cpf !== "string" || !(await cpfEmUso(cpf))) return;
       const erro = erroCpfEmUso();

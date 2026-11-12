@@ -17,27 +17,59 @@ function requisicaoWeb(req: FastifyRequest): Request {
   return new Request(url, { method: req.method, headers, ...(temCorpo ? { body: JSON.stringify(req.body) } : {}) });
 }
 
+type CorpoPd22 = { erro: string; mensagem?: string; campos?: Record<string, string[]> };
+type Traducao = { status: number; corpo: CorpoPd22 };
+
+const entradaInvalida = (campo?: string, motivo = "invalido"): Traducao => ({
+  status: 400,
+  corpo: campo ? { erro: "entrada_invalida", campos: { [campo]: [motivo] } } : { erro: "entrada_invalida" },
+});
+
+// PD-22: códigos do better-auth (core e plugin username) alcançáveis em `/v1/auth/*`, em português.
+const TRADUCOES: Record<string, Traducao> = {
+  USER_ALREADY_EXISTS: { status: 409, corpo: { erro: "email_em_uso" } },
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: { status: 409, corpo: { erro: "email_em_uso" } },
+  INVALID_EMAIL_OR_PASSWORD: { status: 401, corpo: { erro: "credenciais_invalidas" } },
+  INVALID_USERNAME_OR_PASSWORD: { status: 401, corpo: { erro: "credenciais_invalidas" } },
+  PASSWORD_TOO_SHORT: entradaInvalida("senha", "senha_curta"),
+  PASSWORD_TOO_LONG: entradaInvalida("senha", "senha_longa"),
+  INVALID_PASSWORD: entradaInvalida("senha"),
+  INVALID_EMAIL: entradaInvalida("email"),
+  EMAIL_CAN_NOT_BE_UPDATED: entradaInvalida("email", "campo_imutavel"),
+  INVALID_USERNAME: entradaInvalida("cpf", "cpf_invalido"),
+  USERNAME_TOO_SHORT: entradaInvalida("cpf", "cpf_invalido"),
+  USERNAME_TOO_LONG: entradaInvalida("cpf", "cpf_invalido"),
+  FIELD_NOT_ALLOWED: entradaInvalida(),
+  VALIDATION_ERROR: entradaInvalida(),
+  MISSING_FIELD: entradaInvalida(),
+  BODY_MUST_BE_AN_OBJECT: entradaInvalida(),
+  SESSION_EXPIRED: { status: 401, corpo: { erro: "nao_autenticado" } },
+  UNAUTHORIZED: { status: 401, corpo: { erro: "nao_autenticado" } },
+};
+
+// Sem código reconhecido: o status decide; nunca vaza o código em inglês.
 function codigoPeloStatus(status: number) {
   if (status === 401) return "nao_autenticado";
   if (status === 403) return "sem_permissao";
   if (status === 404) return "nao_encontrado";
   if (status === 429) return "muitas_tentativas";
   if (status >= 500) return "erro_interno";
-  return "entrada_invalida";
+  return "erro_autenticacao";
 }
 
-// PD-22: erro do próprio better-auth (`{ code, message }` ou corpo vazio) vira `{ erro }`. Os erros
-// dos hooks da Fila Saúde já saem no formato e passam como vieram.
-function corpoDoErroDoAuth(status: number, texto: string): string {
+// PD-22: erro do próprio better-auth (`{ code, message }` ou corpo vazio) vira `{ erro, campos? }`
+// com o status da tabela acima. Os erros dos hooks da Fila Saúde já saem no formato e passam como vieram.
+function traduzirErroDoAuth(status: number, texto: string): Traducao {
   let corpo: unknown = null;
   try {
     corpo = texto ? JSON.parse(texto) : null;
   } catch {
     corpo = null;
   }
-  if (corpo && typeof corpo === "object" && "erro" in corpo) return texto;
+  if (corpo && typeof corpo === "object" && "erro" in corpo) return { status, corpo: corpo as CorpoPd22 };
   const codigo = (corpo as { code?: unknown } | null)?.code;
-  return JSON.stringify({ erro: typeof codigo === "string" ? codigo.toLowerCase() : codigoPeloStatus(status) });
+  const traducao = typeof codigo === "string" ? TRADUCOES[codigo] : undefined;
+  return traducao ?? { status, corpo: { erro: codigoPeloStatus(status) } };
 }
 
 // AD-017: rota `GET|POST <prefixo>/*` que entrega a requisição ao `auth.handler` do better-auth e
@@ -58,8 +90,10 @@ export function montarAuth(app: FastifyInstance, prefixo: string, obterAuth: (re
 
       const texto = await resposta.text();
       if (resposta.status >= 400) {
+        const { status, corpo } = traduzirErroDoAuth(resposta.status, texto);
+        reply.status(status);
         reply.header("content-type", "application/json; charset=utf-8");
-        return reply.send(corpoDoErroDoAuth(resposta.status, texto));
+        return reply.send(corpo);
       }
       return reply.send(texto === "" ? undefined : texto);
     },

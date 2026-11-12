@@ -22,6 +22,8 @@ describe("GET /api/v1/status", () => {
     // O pool do servidor é compartilhado com os outros arquivos (PD-19); requisições simultâneas
     // anteriores (ex.: cadastro concorrente) deixam conexões ociosas por alguns segundos.
     expect(responseBody.dependencies.database.connections.total).toBeGreaterThanOrEqual(1);
+    // `pg.Pool` padrão: no máximo 10 conexões; acima disso há vazamento.
+    expect(responseBody.dependencies.database.connections.total).toBeLessThanOrEqual(10);
     expect(responseBody.dependencies.database.connections.waiting).toEqual(0);
   });
 });
