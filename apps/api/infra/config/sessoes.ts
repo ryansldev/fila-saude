@@ -13,7 +13,7 @@ import { exigirServico } from "./servicos";
 
 type Linha = typeof sessao.$inferSelect;
 
-async function paraSessao(db: BancoDoTenant, s: Linha): Promise<Sessao> {
+export async function paraSessao(db: BancoDoTenant, s: Linha): Promise<Sessao> {
   const estacoes = await db
     .select({ id: sessaoEstacao.estacaoId })
     .from(sessaoEstacao)
