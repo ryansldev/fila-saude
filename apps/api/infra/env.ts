@@ -3,8 +3,9 @@ import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import dotEnvExpand from "dotenv-expand";
 import { z } from "zod";
+import { validarSlug } from "./tenant/slug";
 
-const envSchema = z.object({
+const camposDoEnv = z.object({
   NODE_ENV: z.enum(["development", "production", "test", "staging"]).default("development"),
   VERCEL_URL: z.string().optional(),
   POSTGRES_USER: z.string(),
@@ -29,7 +30,25 @@ const envSchema = z.object({
   AUTH_JWT_TTL: z.string().min(1).default("15m"),
 });
 
-const NODE_ENV = envSchema.pick({ NODE_ENV: true }).parse(process.env).NODE_ENV;
+// PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido o boot falha.
+export const envSchema = camposDoEnv.superRefine((valores, ctx) => {
+  if (valores.TENANT_MODE !== "single") return;
+  if (!valores.TENANT_SLUG) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["TENANT_SLUG"],
+      message: "TENANT_SLUG é obrigatório quando TENANT_MODE=single",
+    });
+  } else if (!validarSlug(valores.TENANT_SLUG)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["TENANT_SLUG"],
+      message: "TENANT_SLUG fora do formato de slug (TENANT_MODE=single)",
+    });
+  }
+});
+
+const NODE_ENV = camposDoEnv.pick({ NODE_ENV: true }).parse(process.env).NODE_ENV;
 
 const envFilename = `.env.${NODE_ENV}`;
 

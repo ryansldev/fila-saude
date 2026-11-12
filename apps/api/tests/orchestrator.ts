@@ -75,12 +75,20 @@ async function derrubarMunicipios() {
   }
 }
 
+// PD-15: origem do painel do município `slug` (`http://<slug>.localhost:3333` em teste).
+function origemDoTenant(slug: string) {
+  const url = new URL(webserver.origin);
+  url.hostname = `${slug}.${env.TENANT_BASE_DOMAIN}`;
+  return url.origin;
+}
+
 const orquestrator = {
   waitForAllServices,
   clearDatabase,
   slugUnico,
   criarMunicipio,
   derrubarMunicipios,
+  origemDoTenant,
 };
 
 export default orquestrator;
