@@ -14,12 +14,13 @@ import {
   entradaAtivaDa,
   type Pessoa,
   pendentesNaAbertura,
+  prioridadeDaEntrada,
   riscoVigente,
   type Saida,
   type Servico,
   type SessaoVagas,
 } from "./lista.ts";
-import { prioridadeDaPessoa, temPrioridade } from "./prioridade.ts";
+import { temPrioridade } from "./prioridade.ts";
 import { type CodigoErro, type Evento, falha, ok, type Resultado } from "./resultado.ts";
 import type { ConfigUnidade, NivelRisco, Respostas } from "./tipos.ts";
 
@@ -116,7 +117,8 @@ export function porNaFila(
     pendencias: [],
     urgenciaConfirmada: entrada.riscoConfirmado === "urgente",
     risco: riscoVigente(entrada),
-    prioridade: entrada.prioridade,
+    // AD-027/AD-024: idade no dia desta sessão, mais a conferência guardada na entrada.
+    prioridade: prioridadeDaEntrada(entrada, agora, dia.config.fuso),
     pulos: 0,
     travadoAtras: [],
     saiuEm: agora,
@@ -463,7 +465,7 @@ export function incluirNoBalcao(
     ...base,
     estado: para,
     sessaoId: sessao.id,
-    prioridade: temPrioridade(base.prioridade)
+    prioridade: temPrioridade(prioridadeDaEntrada(base, agora, dia.config.fuso))
       ? { ...base.prioridade, conferida: true, conferidaEm: agora }
       : base.prioridade,
   };
@@ -495,7 +497,6 @@ export function lancarRegulado(
     entradasAtivas: Entrada[];
   },
   agora: number,
-  config: ConfigUnidade = dia?.config ?? CONFIG_PADRAO,
 ): Resultado<{ entrada: Entrada; sessao: SessaoVagas; dia: DiaSessao | null }> {
   const { servico } = cmd;
   if (servico.modo !== "regulado" || servico.id !== sessao.servicoId || sessao.visibilidade !== "privada") {
@@ -524,11 +525,8 @@ export function lancarRegulado(
     dataEntradaOriginal: agora,
     classificacao: { nivel: risco, regra: "Classificação informada pela regulação", apoio: false },
     riscoConfirmado: risco,
-    prioridade: {
-      grupos: prioridadeDaPessoa(cmd.pessoa, [], agora, config.fuso),
-      conferida: false,
-      conferidaEm: null,
-    },
+    // Nada declarado; idoso entra pela data de nascimento no dia da sessão (AD-027).
+    prioridade: { grupos: [], conferida: false, conferidaEm: null },
     remanejada: null,
     recusas: 0,
     sessaoId: sessao.id,

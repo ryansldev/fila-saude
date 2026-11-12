@@ -32,6 +32,7 @@ export {
   CONFIG_PADRAO,
   checkIn,
   conferirEMarcar,
+  darPrioridade,
   elegiveis,
   ficarElegivel,
   marcarPresencaSemApp,
@@ -41,6 +42,7 @@ export type { Entrada, ItemLigacao, Origem, Pessoa, Saida, Servico, SessaoVagas,
 export {
   alocar,
   arquivar,
+  conferenciaNaEntrada,
   confirmar,
   criarEntrada,
   destinoPorCondicao,
@@ -49,6 +51,7 @@ export {
   pendentesNaAbertura,
   perguntarAindaPrecisa,
   prazoConfirmacao,
+  prioridadeDaEntrada,
   reativar,
   recusar,
   responderAindaPrecisa,
@@ -61,6 +64,8 @@ export type { Acao, Celula, LinhaMatriz, Perfil } from "./permissoes.ts";
 export { condicoes, MATRIZ, pode, textoDaCelula } from "./permissoes.ts";
 export type { ContextoDarPrioridade, Grupo, PrioridadeLegal } from "./prioridade.ts";
 export {
+  aConferir,
+  daIdade,
   expirada,
   GRUPOS,
   grupoDeDeclarado,

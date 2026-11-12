@@ -1,7 +1,7 @@
 import { type EstadoEntrada, TRANSICOES_ENTRADA, type Transicao, transicionar } from "./contratos.ts";
 import { CONFIG_PADRAO, type DiaSessao } from "./fila.ts";
 import { type ChaveSugestao, compararSugestao, type Risco } from "./ordem.ts";
-import { type Grupo, grupoDeDeclarado, type PrioridadeLegal, prioridadeDaPessoa } from "./prioridade.ts";
+import { aConferir, type Grupo, grupoDeDeclarado, type PrioridadeLegal, prioridadeDaPessoa } from "./prioridade.ts";
 import { classificar } from "./questionario.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
 import { idadeEm, mesmoDia } from "./tempo.ts";
@@ -23,6 +23,11 @@ export type Entrada = {
   classificacao: Classificacao;
   /** Gravado só por agendador ou triagem (INV-07). */
   riscoConfirmado: NivelRisco | null;
+  /**
+   * Prioridade guardada: só os grupos declarados (ou dados pela recepção) e a conferência deles,
+   * que vale nas próximas idas até o prazo (AD-024). Idoso e idoso80 não ficam aqui: vêm da data
+   * de nascimento em cada uso (`prioridadeDaEntrada`, AD-027).
+   */
   prioridade: PrioridadeLegal;
   /** Origem da remanejada (RN-REM-03); `null` = não remanejada. */
   remanejada: null | Origem;
@@ -119,8 +124,8 @@ export function entradaAtivaDa(entradas: Entrada[], pessoa: Pessoa, servicoId: s
 }
 
 /**
- * RN-LE-01/02/03/05: cria a entrada da pessoa atendida com o nível sugerido e a prioridade dela
- * (idade pela data de nascimento, AD-027). Regulado e emergência não criam; duplicada é recusada.
+ * RN-LE-01/02/03/05: cria a entrada da pessoa atendida com o nível sugerido e a prioridade
+ * declarada (a idade entra em cada uso, AD-027). Regulado e emergência não criam; duplicada é recusada.
  */
 export function criarEntrada(
   entradasAtivas: Entrada[],
@@ -143,7 +148,7 @@ export function criarEntrada(
   );
   if (estado === null || estado === "(mesmo)") throw new Error("contrato: criação sem estado");
 
-  const declarados: Grupo[] = respostas.grupos.map(grupoDeDeclarado);
+  const declarados: Grupo[] = [...new Set(respostas.grupos.map(grupoDeDeclarado))];
   const entrada: Entrada = {
     id: cmd.id,
     servicoId: servico.id,
@@ -153,11 +158,7 @@ export function criarEntrada(
     dataEntradaOriginal: agora,
     classificacao,
     riscoConfirmado: null,
-    prioridade: {
-      grupos: prioridadeDaPessoa(pessoa, declarados, agora, config.fuso),
-      conferida: false,
-      conferidaEm: null,
-    },
+    prioridade: { grupos: declarados, conferida: false, conferidaEm: null },
     remanejada: null,
     recusas: 0,
     sessaoId: null,
@@ -174,17 +175,35 @@ export function criarEntrada(
   return ok(entrada, eventos);
 }
 
+/**
+ * Prioridade legal da entrada em `agora` (AD-027, RN-RISCO-04): idoso/idoso80 pela idade de agora
+ * no fuso da unidade, mais os grupos guardados, com a conferência guardada (AD-024).
+ */
+export function prioridadeDaEntrada(e: Entrada, agora: number, fuso: string): PrioridadeLegal {
+  return { ...e.prioridade, grupos: prioridadeDaPessoa(e.pessoa, e.prioridade.grupos, agora, fuso) };
+}
+
+/**
+ * Guarda na entrada a conferência que a recepção fez no item (RN-FILA-05, AD-024): grupos
+ * conferidos, retirados ou dados, e a hora. Chame depois de `conferirEMarcar` ou `darPrioridade`.
+ */
+export function conferenciaNaEntrada(e: Entrada, item: { entradaId: string; prioridade: PrioridadeLegal }): Entrada {
+  if (item.entradaId !== e.id) throw new Error(`item da entrada ${item.entradaId}, não de ${e.id}`);
+  const p = item.prioridade;
+  return { ...e, prioridade: { grupos: aConferir(p), conferida: p.conferida, conferidaEm: p.conferidaEm } };
+}
+
 /** Risco vigente: confirmado, se houver; senão, sugerido. Emergência não fica na lista. */
 export function riscoVigente(e: Entrada): Risco {
   const nivel = e.riscoConfirmado ?? e.classificacao.nivel;
   return nivel === "emergencia" ? "urgente" : nivel;
 }
 
-const chaveSugestao = (e: Entrada): ChaveSugestao => ({
+const chaveSugestao = (e: Entrada, agora: number, fuso: string): ChaveSugestao => ({
   urgenciaConfirmada: e.riscoConfirmado === "urgente",
   remanejada: e.remanejada !== null,
   risco: riscoVigente(e),
-  prioridade: e.prioridade,
+  prioridade: prioridadeDaEntrada(e, agora, fuso),
   dataEntradaOriginal: e.dataEntradaOriginal,
   id: e.id,
 });
@@ -205,7 +224,7 @@ const ROTULO_GRUPO: Record<Exclude<Grupo, "idoso" | "idoso80">, string> = {
 function motivos(e: Entrada, agora: number, fuso: string): string[] {
   const m = [`${ROTULO_RISCO[riscoVigente(e)]} ${e.riscoConfirmado ? "confirmado" : "sugerido"}`];
   if (e.remanejada !== null) m.push("remanejada");
-  for (const g of e.prioridade.grupos) {
+  for (const g of prioridadeDaEntrada(e, agora, fuso).grupos) {
     m.push(
       g === "idoso" || g === "idoso80"
         ? `pessoa idosa, ${idadeEm(e.pessoa.nascimento, agora, fuso)} anos`
@@ -228,7 +247,13 @@ export function sugerir(entradas: Entrada[], sessao: SessaoVagas, config: Config
         transicionar(TRANSICOES_ENTRADA, e.estado, EVENTO_ALOCA) === "alocada" &&
         !e.sessoesRecusadas.includes(sessao.id),
     )
-    .sort((a, b) => compararSugestao(chaveSugestao(a), chaveSugestao(b), config.ordemMunicipio))
+    .sort((a, b) =>
+      compararSugestao(
+        chaveSugestao(a, agora, config.fuso),
+        chaveSugestao(b, agora, config.fuso),
+        config.ordemMunicipio,
+      ),
+    )
     .map((e) => ({ entradaId: e.id, motivos: motivos(e, agora, config.fuso) }));
 }
 

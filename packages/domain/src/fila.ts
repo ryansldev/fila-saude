@@ -1,7 +1,16 @@
 import { type EstadoItem, type EstadoSessao, TRANSICOES_ITEM, transicionar } from "./contratos.ts";
 import type { Origem } from "./lista.ts";
 import { type ChaveOrdem, compararOrdem, type Risco } from "./ordem.ts";
-import { expirada, type PrioridadeLegal, temPrioridade } from "./prioridade.ts";
+import {
+  aConferir,
+  type ContextoDarPrioridade,
+  daIdade,
+  expirada,
+  type Grupo,
+  type PrioridadeLegal,
+  podeDarPrioridade,
+  temPrioridade,
+} from "./prioridade.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
 import type { ConfigUnidade } from "./tipos.ts";
 
@@ -200,11 +209,13 @@ export function ficarElegivel(
 
 /**
  * Pendências que bloqueiam o check-in (RN-FILA-05). Prioridade declarada e não conferida,
- * ou conferida e vencida, conta como "prioridade" mesmo que não esteja na lista.
+ * ou conferida e vencida, conta como "prioridade" mesmo que não esteja na lista. Idoso não conta
+ * (vem da data de nascimento, coberta pela conferência de identidade; DECISÃO F1).
  */
 function pendenciasEfetivas(dia: DiaSessao, item: ItemFila, agora: number): Pendencia[] {
   const p = item.prioridade;
-  const prioridadePendente = temPrioridade(p) && (!p.conferida || expirada(p, agora, dia.config.prazosPrioridade));
+  const prioridadePendente =
+    aConferir(p).length > 0 && (!p.conferida || expirada(p, agora, dia.config.prazosPrioridade));
   return prioridadePendente && !item.pendencias.includes("prioridade")
     ? [...item.pendencias, "prioridade"]
     : item.pendencias;
@@ -249,6 +260,8 @@ const EVENTO_CONFERENCIA = {
 
 /**
  * RN-FILA-05: a recepção confere e, na mesma ação, marca a presença (o atraso conta a partir daqui).
+ * A conferência da prioridade vale nas próximas idas: guarde-a com `conferenciaNaEntrada` (AD-024).
+ * "prioridade_nao_confere" retira os grupos declarados; idoso (da data de nascimento) fica.
  * "nao_confere" tira da fila sem falta e sem remanejamento; a entrada vai a Cancelada com
  * `desfechoDaEntrada` (ou no encerramento).
  */
@@ -273,7 +286,7 @@ export function conferirEMarcar(
   const tinhaPendencia = pendenciasEfetivas(dia, item, agora).length > 0;
   const prioridade: PrioridadeLegal =
     cmd.resultado === "prioridade_nao_confere"
-      ? { grupos: [], conferida: false, conferidaEm: null }
+      ? { grupos: item.prioridade.grupos.filter(daIdade), conferida: false, conferidaEm: null }
       : temPrioridade(item.prioridade)
         ? { ...item.prioridade, conferida: true, conferidaEm: agora }
         : item.prioridade;
@@ -288,6 +301,38 @@ export function conferirEMarcar(
     { aplicarAtraso: true },
   );
   return ok(marcado.estado, [...eventos, ...marcado.eventos]);
+}
+
+/**
+ * RN-RISCO-04: a recepção dá prioridade legal só ao incluir no balcão ou na 1ª presença de paciente
+ * sem app (que vale como inclusão no balcão); a quem já está na lista ou na fila, não
+ * (`podeDarPrioridade`). Conferida na hora (documento visto); idoso não se dá (data de nascimento,
+ * AD-027). Item remoto ou presente, sessão aberta. Guarde na entrada com `conferenciaNaEntrada`.
+ */
+export function darPrioridade(
+  dia: DiaSessao,
+  cmd: { itemId: string; grupos: Grupo[]; contexto: ContextoDarPrioridade },
+  agora: number,
+): Resultado<DiaSessao> {
+  if (!podeDarPrioridade(cmd.contexto)) return falha("sem_permissao");
+  if (dia.estado !== "aberta") return falha("sessao_fechada");
+  const item = dia.itens.find((i) => i.id === cmd.itemId);
+  if (!item || (item.estado !== "remoto" && item.estado !== "presente")) return falha("transicao_proibida");
+  const dados = cmd.grupos.filter((g) => !daIdade(g));
+  const grupos = [...new Set([...item.prioridade.grupos, ...dados])];
+  const novo: ItemFila = {
+    ...item,
+    prioridade: { grupos, conferida: true, conferidaEm: agora },
+    pendencias: item.pendencias.filter((p) => p !== "prioridade"),
+  };
+  return ok({ ...dia, itens: dia.itens.map((i) => (i.id === item.id ? novo : i)) }, [
+    {
+      tipo: "prioridade_dada",
+      itemId: item.id,
+      entradaId: item.entradaId,
+      dados: { grupos: [...new Set(dados)], contexto: cmd.contexto },
+    },
+  ]);
 }
 
 /** RN-PRES-02: volta a remoto mantendo o número; quem sai não trava mais ninguém. */

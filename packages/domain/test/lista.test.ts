@@ -11,6 +11,7 @@ import {
   pendentesNaAbertura,
   perguntarAindaPrecisa,
   prazoConfirmacao,
+  prioridadeDaEntrada,
   reativar,
   recusar,
   responderAindaPrecisa,
@@ -136,7 +137,8 @@ describe("entrada na lista", () => {
       dataEntradaOriginal: T,
       classificacao: { nivel: "urgente", regra: "Problema novo forte" },
       riscoConfirmado: null,
-      prioridade: { grupos: ["idoso80", "pcd"], conferida: false, conferidaEm: null },
+      // Só os grupos declarados ficam na entrada; idoso vem da data de nascimento em cada uso (AD-027).
+      prioridade: { grupos: ["pcd"], conferida: false, conferidaEm: null },
       remanejada: null,
       recusas: 0,
       sessaoId: null,
@@ -439,5 +441,31 @@ describe("lista parada", () => {
       erro: "duplicada",
     });
     expect(reativar([], base, LIVRE, T)).toEqual({ ok: false, erro: "transicao_proibida" });
+  });
+});
+
+describe("I1: idade na lista de espera (AD-027)", () => {
+  it("AD-027: a prioridade da entrada usa a idade de agora, não a da criação", () => {
+    // Criada aos 59 anos; a sugestão de 30 dias depois já mostra 60.
+    const criada = aplicar(
+      criarEntrada(
+        [],
+        {
+          servico: LIVRE,
+          pessoa: pessoa("Zé", { nascimento: "1966-11-20" }),
+          responsavelId: "ze",
+          respostas: respostas(),
+          id: "ze",
+        },
+        T,
+      ),
+    );
+    expect(prioridadeDaEntrada(criada, T, CONFIG_PADRAO.fuso).grupos).toEqual([]);
+    const depois = T + 30 * DIA;
+    expect(prioridadeDaEntrada(criada, depois, CONFIG_PADRAO.fuso).grupos).toEqual(["idoso"]);
+    const outra = entrada("ana", { dataEntradaOriginal: T - DIA });
+    const sugestao = sugerir(congelar([outra, criada]), sessaoVagas({ vagas: 5 }), CONFIG_PADRAO, depois);
+    expect(sugestao.map((s) => s.entradaId)).toEqual(["ze", "ana"]);
+    expect(sugestao[0]?.motivos).toContain("pessoa idosa, 60 anos");
   });
 });

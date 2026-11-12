@@ -5,6 +5,7 @@ import { encerrar } from "../src/encerramento.ts";
 import { CONFIG_PADRAO, checkIn, conferirEMarcar, type DiaSessao, elegiveis } from "../src/fila.ts";
 import {
   alocar,
+  conferenciaNaEntrada,
   confirmar,
   destinoPorCondicao,
   type Entrada,
@@ -539,10 +540,9 @@ describe("lançamento regulado (RN-ENC-06)", () => {
   });
 
   it("RN-ENC-06/RN-FILA-05: lançamento com prioridade a conferir não é liberado; só o check-in espera a recepção", () => {
-    // José (76 anos) tem prioridade de idoso pela data de nascimento, ainda não conferida.
+    // José (76 anos): idoso vem da data de nascimento no dia da sessão (AD-027) e não é pendência (F1).
     const { entrada: ze, sessao } = aplicar(lancarRegulado(privada(), null, cmd(), T));
-    expect(ze.prioridade.grupos).toEqual(["idoso"]);
-    expect(ze.prioridade.conferida).toBe(false);
+    expect(ze.prioridade.grupos).toEqual([]);
     const dia0 = diaPlanejado({ servicoId: "reg" });
     const r = abrirSessao(dia0, sessao, congelar([ze]), { servico: REGULADO, fotosAceitas: [] }, INICIO);
     const ab = aplicar(r);
@@ -550,9 +550,15 @@ describe("lançamento regulado (RN-ENC-06)", () => {
     expect([ab.entradas[0]?.estado, ab.sessao.ocupadas]).toEqual(["na_fila", 1]);
     const itemZe = itemDe(ab.dia, "ze");
     if (!itemZe) throw new Error("José fora da fila");
-    // A pendência efetiva só recusa o check-in: ele continua na fila, remoto.
-    expect(erro(checkIn(ab.dia, { itemId: itemZe.id }, INICIO + 10 * MIN))).toBe("pendencia");
-    const conferido = aplicar(conferirEMarcar(ab.dia, { itemId: itemZe.id, resultado: "confere" }, INICIO + 12 * MIN));
+    expect(itemZe.prioridade.grupos).toEqual(["idoso"]);
+    expect(erro(checkIn(ab.dia, { itemId: itemZe.id }, INICIO + 10 * MIN))).toBe("ok");
+
+    // Com prioridade declarada ainda não conferida (PcD): a pendência só recusa o check-in.
+    const pcd = congelar({ ...ze, prioridade: { grupos: ["pcd" as const], conferida: false, conferidaEm: null } });
+    const ab2 = aplicar(abrirSessao(dia0, sessao, congelar([pcd]), { servico: REGULADO, fotosAceitas: [] }, INICIO));
+    expect([ab2.entradas[0]?.estado, ab2.sessao.ocupadas]).toEqual(["na_fila", 1]);
+    expect(erro(checkIn(ab2.dia, { itemId: itemZe.id }, INICIO + 10 * MIN))).toBe("pendencia");
+    const conferido = aplicar(conferirEMarcar(ab2.dia, { itemId: itemZe.id, resultado: "confere" }, INICIO + 12 * MIN));
     expect(itemDe(conferido, "ze")?.estado).toBe("presente");
     expect(itemDe(conferido, "ze")?.prioridade.conferida).toBe(true);
   });
@@ -911,5 +917,78 @@ describe("AD-010: quem entra na fila com a sessão aberta", () => {
     expect(eventos(r)).toContainEqual(
       expect.objectContaining({ tipo: "presente", dados: expect.objectContaining({ perdeuAVez: false }) }),
     );
+  });
+});
+
+describe("I1: prioridade montada no dia de cada sessão (AD-024, AD-027, RN-RISCO-04)", () => {
+  /** Abre a sessão "s1" com a entrada confirmada e devolve o item dela. */
+  const itemNaAbertura = (e: Entrada, agora: number, config = CONFIG_PADRAO) => {
+    const conf = congelar({ ...e, estado: "confirmada" as const, sessaoId: "s1" });
+    const r = aplicar(abrir(diaPlanejado({ config }), [conf], agora));
+    const item = itemDe(r.dia, e.id);
+    if (!item) throw new Error("sem item");
+    return { dia: r.dia, item };
+  };
+  /** 13/11/2026 00:30 e 12/11/2026 23:30 em Brasília (UTC-3). */
+  const POS_MEIA_NOITE = Date.UTC(2026, 10, 13, 3, 30);
+  const PRE_MEIA_NOITE = Date.UTC(2026, 10, 13, 2, 30);
+
+  it("AD-027: quem faz 60 anos entre a entrada na lista e a sessão entra como idoso (fuso da unidade)", () => {
+    const e = entrada("ze", {
+      pessoa: { nome: "Zé", nascimento: "1966-11-13", cpf: null },
+      dataEntradaOriginal: T - 90 * DIA,
+    });
+    expect(itemNaAbertura(e, POS_MEIA_NOITE).item.prioridade.grupos).toEqual(["idoso"]);
+    expect(itemNaAbertura(e, PRE_MEIA_NOITE).item.prioridade.grupos).toEqual([]);
+  });
+
+  it("AD-027: quem faz 80 anos na espera passa a idoso80 (80+ antes dos demais)", () => {
+    const e = entrada("dora", {
+      pessoa: { nome: "Dora", nascimento: "1946-11-13", cpf: null },
+      prioridade: { grupos: ["pcd"], conferida: true, conferidaEm: T - 90 * DIA },
+    });
+    expect(itemNaAbertura(e, POS_MEIA_NOITE).item.prioridade.grupos).toEqual(["idoso80", "pcd"]);
+    expect(itemNaAbertura(e, PRE_MEIA_NOITE).item.prioridade.grupos).toEqual(["idoso", "pcd"]);
+  });
+
+  it("RN-FILA-05/F1: idoso sem outra prioridade faz check-in sem passar na recepção", () => {
+    const e = entrada("ze", { pessoa: { nome: "Zé", nascimento: "1950-01-01", cpf: null } });
+    const { dia, item } = itemNaAbertura(e, INICIO);
+    expect(item.prioridade.grupos).toEqual(["idoso"]);
+    expect(itemDe(aplicar(checkIn(dia, { itemId: item.id }, INICIO + MIN)), "ze")?.estado).toBe("presente");
+  });
+
+  it("AD-024: conferida na recepção, vale nas próximas idas; com prazo, expira e volta a ser conferida", () => {
+    const gestante = entrada("bia", { prioridade: { grupos: ["gestante"], conferida: false, conferidaEm: null } });
+    const ida1 = itemNaAbertura(gestante, INICIO);
+    expect(erro(checkIn(ida1.dia, { itemId: ida1.item.id }, INICIO + MIN))).toBe("pendencia");
+    const conferido = aplicar(
+      conferirEMarcar(ida1.dia, { itemId: ida1.item.id, resultado: "confere" }, INICIO + 2 * MIN),
+    );
+    const itemConferido = itemDe(conferido, "bia");
+    if (!itemConferido) throw new Error("sem item");
+    const guardada = conferenciaNaEntrada(gestante, itemConferido);
+    expect(guardada.prioridade).toEqual({ grupos: ["gestante"], conferida: true, conferidaEm: INICIO + 2 * MIN });
+
+    // Próxima ida, 20 dias depois: já conferida, check-in direto.
+    const ida2 = itemNaAbertura(guardada, INICIO + 20 * DIA);
+    expect(erro(checkIn(ida2.dia, { itemId: ida2.item.id }, INICIO + 20 * DIA + MIN))).toBe("ok");
+    // Com prazo de 30 dias (D5, configuração): na ida de 40 dias depois, expirou.
+    const comPrazo = { ...CONFIG_PADRAO, prazosPrioridade: { gestante: 30 } };
+    const ida3 = itemNaAbertura(guardada, INICIO + 40 * DIA, comPrazo);
+    expect(erro(checkIn(ida3.dia, { itemId: ida3.item.id }, INICIO + 40 * DIA + MIN))).toBe("pendencia");
+  });
+
+  it("RN-RISCO-04: prioridade não conferida é retirada da entrada; a idade continua valendo", () => {
+    const e = entrada("ze", {
+      pessoa: { nome: "Zé", nascimento: "1950-01-01", cpf: null },
+      prioridade: { grupos: ["pcd"], conferida: false, conferidaEm: null },
+    });
+    const { dia, item } = itemNaAbertura(e, INICIO);
+    const d = aplicar(conferirEMarcar(dia, { itemId: item.id, resultado: "prioridade_nao_confere" }, INICIO + MIN));
+    const depois = itemDe(d, "ze");
+    if (!depois) throw new Error("sem item");
+    expect(depois.prioridade.grupos).toEqual(["idoso"]);
+    expect(conferenciaNaEntrada(e, depois).prioridade.grupos).toEqual([]);
   });
 });
