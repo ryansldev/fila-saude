@@ -276,6 +276,8 @@ export function alocar(
 ): Resultado<{ entrada: Entrada; sessao: SessaoVagas }> {
   if (entrada.servicoId !== sessao.servicoId || sessao.visibilidade !== "privada") return falha("transicao_proibida");
   if (transicionar(TRANSICOES_ENTRADA, entrada.estado, EVENTO_ALOCA) !== "alocada") return falha("transicao_proibida");
+  // Emergência não entra em lista nem fila (RN-LE-01), como em `lancarRegulado`.
+  if (cmd.riscoConfirmado === "emergencia") return falha("emergencia");
   if (agora >= sessao.inicio || mesmoDia(agora, sessao.inicio, config.fuso)) return falha("fora_do_prazo");
   if (sessao.vagas !== null && sessao.ocupadas >= sessao.vagas) return falha("sem_vaga");
 

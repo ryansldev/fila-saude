@@ -469,3 +469,10 @@ describe("I1: idade na lista de espera (AD-027)", () => {
     expect(sugestao[0]?.motivos).toContain("pessoa idosa, 60 anos");
   });
 });
+
+describe("m4: alocar com emergência", () => {
+  it("RN-LE-01: o agendador não confirma emergência na alocação (vai ao SAMU, não à fila)", () => {
+    const r = alocar(entrada("ana"), sessaoVagas(), { riscoConfirmado: "emergencia" }, T);
+    expect(r).toEqual({ ok: false, erro: "emergencia" });
+  });
+});
