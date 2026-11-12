@@ -50,6 +50,22 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 | E6 | Desistir | Em "aguardando remarcação" usa a linha "Paciente cancela"; na fila, aceita remoto ou presente. "Outra data" só aceita remoto | Restringir desistir a remoto | Só o estado aceito |
 | E7 | Assinatura de encerrar/cancelar | Recebem as entradas e a origem da sessão e devolvem {dia, entradas}, porque falta e remanejamento mudam a entrada | Assinatura do plano (só a sessão) | Só a forma da chamada |
 
+## Revisão final do domínio (fase 1A)
+
+A revisão de toda a fase 1A encontrou falhas na ligação entre a fila do dia e a lista de espera (entrada presa em "Na fila" depois do atendimento; falta por chamada feita antes de a pessoa entrar na fila). A correção trouxe estas decisões:
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| F1 | Idoso (60+ e 80+) e a pendência "prioridade" no check-in | Idoso **não** gera pendência de conferência de prioridade: vem da data de nascimento, que a conferência de identidade já cobre. Gestante, PcD, colo etc. continuam pendentes até a recepção conferir | Idoso também pendente (como estava) | Se a UBS quiser conferir idade à parte, todo idoso com app volta a passar no balcão em toda ida |
+| F2 | Quem entra na fila com a sessão já aberta (inscrição, reserva, regulado) | Só conta como "vez passada" a chamada feita depois de a pessoa entrar na fila | Contar todas (como estava, gerava falta injusta) | Nenhum conhecido |
+| F3 | Conferência da prioridade | Fica guardada na entrada e vale nas próximas idas até o prazo (AD-024); a idade é recalculada no dia de cada sessão | Foto tirada na criação da entrada | Nenhum conhecido |
+
+Ficaram **para você decidir** (a revisão não julgou, e o código ficou como estava):
+
+- **Janela protegida:** hoje são os K primeiros da ordem de chamada real, respeitando as travas (decisão da Task 5). Confirme se é essa a intenção.
+- **"Vou sair":** hoje solta as travas de quem estava atrás. A spec não diz.
+- **"Chamar próximo" sem ninguém elegível:** hoje a chamada anterior continua aberta na estação. Alternativa: fechar e mostrar "ninguém na vez".
+
 ## Configurações (fase 2, Task 4)
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
