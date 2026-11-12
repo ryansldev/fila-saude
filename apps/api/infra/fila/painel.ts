@@ -4,15 +4,19 @@ import {
   type DiaSessao,
   desfechoDaEntrada,
   encerrar,
+  mesmoDia,
   origemDaSessao,
   temPrioridade,
 } from "@fila-saude/domain";
-import type { FilaDaSessao } from "@fila-saude/schemas/fila";
-import { eq, inArray } from "drizzle-orm";
-import { SESSAO } from "infra/config/comum";
+import type { FilaDaSessao, HojeNaUnidade } from "@fila-saude/schemas/fila";
+import { and, asc, eq, gt, inArray, isNull, lt } from "drizzle-orm";
+import { exigirUnidade, SESSAO } from "infra/config/comum";
 import { exigirSessao, paraSessao } from "infra/config/sessoes";
 import { entrada } from "infra/database/municipal/schema/entrada";
+import { estacao } from "infra/database/municipal/schema/estacao";
 import { pessoaLocal } from "infra/database/municipal/schema/pessoa-local";
+import { servico } from "infra/database/municipal/schema/servico";
+import { sessao } from "infra/database/municipal/schema/sessao";
 import type { BancoDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
@@ -58,9 +62,7 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
 // Qualquer pessoa da equipe com papel na unidade (ou no município) vê a fila do dia (decisão F1).
 export async function filaDaSessao(ctx: ContextoDaAcao, sessaoId: string): Promise<FilaDaSessao> {
   const { servico } = await exigirSessao(ctx.db, sessaoId);
-  if (!ctx.ator.perfis.some((p) => p.unidadeId === null || p.unidadeId === servico.unidadeId)) {
-    throw new ErroApi(403, "sem_permissao");
-  }
+  daEquipeDaUnidade(ctx, servico.unidadeId);
   return paraFila(ctx.db, sessaoId, await lerDia(ctx.db, sessaoId));
 }
 
@@ -157,4 +159,39 @@ export async function marcarPresencaNaFila(
       return paraFila(tx, sessaoId, dia);
     },
   );
+}
+
+function daEquipeDaUnidade(ctx: ContextoDaAcao, unidadeId: string) {
+  if (!ctx.ator.perfis.some((p) => p.unidadeId === null || p.unidadeId === unidadeId)) {
+    throw new ErroApi(403, "sem_permissao");
+  }
+}
+
+// F1: sessões de hoje (dia local da unidade) e estações, para quem tem papel na unidade.
+export async function hojeNaUnidade(ctx: ContextoDaAcao, unidadeId: string): Promise<HojeNaUnidade> {
+  const u = await exigirUnidade(ctx.db, unidadeId);
+  daEquipeDaUnidade(ctx, unidadeId);
+  const linhas = await ctx.db
+    .select({ s: sessao, servico: servico.nome })
+    .from(sessao)
+    .innerJoin(servico, eq(sessao.servicoId, servico.id))
+    .where(
+      and(
+        eq(servico.unidadeId, unidadeId),
+        gt(sessao.fim, new Date(ctx.agora - 36 * 3600_000)),
+        lt(sessao.inicio, new Date(ctx.agora + 36 * 3600_000)),
+      ),
+    )
+    .orderBy(asc(sessao.inicio));
+  const sessoes = [];
+  for (const { s, servico: nome } of linhas) {
+    if (s.estado === "cancelada" || !mesmoDia(s.inicio.getTime(), ctx.agora, u.fuso)) continue;
+    sessoes.push({ ...(await paraSessao(ctx.db, s)), servico: nome });
+  }
+  const estacoes = await ctx.db
+    .select({ id: estacao.id, nome: estacao.nome, etapa: estacao.etapa })
+    .from(estacao)
+    .where(and(eq(estacao.unidadeId, unidadeId), isNull(estacao.arquivadaEm)))
+    .orderBy(asc(estacao.criadoEm));
+  return { sessoes, estacoes };
 }

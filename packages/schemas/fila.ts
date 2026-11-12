@@ -148,3 +148,10 @@ export const presencaEntradaSchema = z.object({
   resultado: z.enum(["confere", "nao_confere", "prioridade_nao_confere"]),
   motivo: z.string().trim().min(1).optional(),
 });
+
+/** O dia da unidade para a equipe: sessões de hoje (com o nome do serviço) e as estações. */
+export const hojeNaUnidadeSchema = z.object({
+  sessoes: z.array(sessaoSchema.extend({ servico: z.string() })),
+  estacoes: z.array(z.object({ id: z.uuid(), nome: z.string(), etapa: etapaSchema })),
+});
+export type HojeNaUnidade = z.infer<typeof hojeNaUnidadeSchema>;

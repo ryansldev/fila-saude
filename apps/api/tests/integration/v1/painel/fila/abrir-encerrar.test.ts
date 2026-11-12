@@ -11,6 +11,17 @@ beforeAll(async () => {
 afterAll(() => orchestrator.derrubarMunicipios());
 
 describe("abrir, ver a fila e encerrar a sessão (T3.4, T3.9)", () => {
+  it("F1: a equipe da unidade vê as sessões de hoje e as estações; de fora, 403", async () => {
+    const r = await c.pedir("GET", `/v1/painel/unidades/${c.unidadeId}/hoje`, c.enfermeiro);
+    expect(r.status).toBe(200);
+    expect(r.corpo.sessoes.map((s: { id: string; servico: string }) => [s.id, s.servico])).toEqual([
+      [c.sessaoId, "Clínico"],
+    ]);
+    expect(r.corpo.estacoes.map((e: { nome: string }) => e.nome)).toEqual(["Sala 1", "Sala 2"]);
+    const outra = await orchestrator.criarUnidadeDireto(c.slug, "UBS Norte");
+    expect((await c.pedir("GET", `/v1/painel/unidades/${outra}/hoje`, c.enfermeiro)).status).toBe(403);
+  });
+
   it("RN-FILA-01: abrir põe as confirmadas na fila, remotas e numeradas pela inscrição", async () => {
     await inscreverPessoa(c.slug, c.sessaoId, "Ana Lima");
     await inscreverPessoa(c.slug, c.sessaoId, "Bruno Reis");
