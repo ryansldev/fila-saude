@@ -17,6 +17,7 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 - **Fase 1B:** Tasks 1–10 prontas. As Tasks 15–18 entram na fatia 0; 11–14 ficam para depois da v0.1.
 - **Fase 2:** Tasks 1–8 prontas e juntadas (fatia 0, Task 1).
 - **Fatia 0 concluída (2026-11-12):** Tasks 1–20 em `feat/v0.1`, em modo rápido (sem revisão por task; ver V1–V5 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md#fatia-0-da-v01-execução-rápida-2026-11-12)). API 159 testes, painel 54, schemas 57. `npm run dev:seed` + `npm run dev` → `http://exemplo.localhost:3000/login` (senha `exemplo123`). Verificado por HTTP (login, telas respondendo, re-semear com a API no ar); falta o clique no navegador do Step 5 da Task 20.
+- **Revisão da fatia 0 (2026-11-12, feedback do usuário):** endereço estruturado + CNES da unidade; [discovery de papéis](features/mvp-filas/discovery-papeis-ubs.md) → perfis viraram ocupação por unidade + funções de gestão (SMS, Regulação, Gerente da UBS) + permissão "Agendar"; RN-PERF-04 (quem cadastra quem) e RN-PERF-05 (risco é do enfermeiro). Provisórios E1–E6 em decisoes-para-revisar. Testes da API na porta 3334 (rodam com `npm run dev` no ar).
 - **Próximo passo:** plano da fatia 1 (pública básica: fila do dia sobre `sessao`/`entrada`, abrir/encerrar sessão, app). Carregar os CARRY do ledger da fatia 0.
 
 ## Pendências fora do código
