@@ -16,8 +16,19 @@ export const intervaloSchema = z
   .object({ abre: hhmm, fecha: hhmm })
   .refine((h) => h.fecha > h.abre, { message: "fecha deve ser depois de abre", path: ["fecha"] });
 
+/** Intervalos de um dia, sem sobreposição (encostados valem: 07:00–13:00 e 13:00–17:00). Vazio = fechado. */
+const intervalosDoDia = z.array(intervaloSchema).superRefine((lista, ctx) => {
+  const ordenados = [...lista].sort((a, b) => a.abre.localeCompare(b.abre));
+  for (let i = 1; i < ordenados.length; i++) {
+    if ((ordenados[i]?.abre ?? "") < (ordenados[i - 1]?.fecha ?? "")) {
+      ctx.addIssue({ code: "custom", message: "intervalos sobrepostos no mesmo dia" });
+      return;
+    }
+  }
+});
+
 /** Chaves "0" (domingo) a "6" (sábado); cada dia pode ter vários intervalos. */
-export const horarioSchema = z.partialRecord(z.enum(["0", "1", "2", "3", "4", "5", "6"]), z.array(intervaloSchema));
+export const horarioSchema = z.partialRecord(z.enum(["0", "1", "2", "3", "4", "5", "6"]), intervalosDoDia);
 
 // Endereço da unidade; cidade e UF vêm do município.
 export const enderecoSchema = z.object({

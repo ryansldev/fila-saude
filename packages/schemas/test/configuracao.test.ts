@@ -37,6 +37,37 @@ describe("unidadeEntradaSchema", () => {
     expect(ok(unidadeEntradaSchema, semCoordenadas)).toBe(true);
     expect(ok(unidadeEntradaSchema, { ...semCoordenadas, lat: null, lng: null })).toBe(true);
   });
+  it("horário: vários intervalos no dia; sobrepostos recusados; encostados aceitos; dia vazio é fechado", () => {
+    const h = (intervalos: { abre: string; fecha: string }[]) => ({ ...unidade, horario: { "1": intervalos } });
+    expect(
+      ok(
+        unidadeEntradaSchema,
+        h([
+          { abre: "07:00", fecha: "12:00" },
+          { abre: "13:00", fecha: "17:00" },
+        ]),
+      ),
+    ).toBe(true);
+    expect(
+      ok(
+        unidadeEntradaSchema,
+        h([
+          { abre: "07:00", fecha: "12:00" },
+          { abre: "11:00", fecha: "17:00" },
+        ]),
+      ),
+    ).toBe(false);
+    expect(
+      ok(
+        unidadeEntradaSchema,
+        h([
+          { abre: "13:00", fecha: "17:00" },
+          { abre: "07:00", fecha: "13:00" },
+        ]),
+      ),
+    ).toBe(true);
+    expect(ok(unidadeEntradaSchema, h([]))).toBe(true);
+  });
   it("CNES da unidade: 7 dígitos ou nulo", () => {
     expect(ok(unidadeEntradaSchema, { ...unidade, cnes: "2077485" })).toBe(true);
     expect(ok(unidadeEntradaSchema, { ...unidade, cnes: "207748" })).toBe(false);

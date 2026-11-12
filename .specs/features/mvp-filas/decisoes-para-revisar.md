@@ -115,3 +115,11 @@ Decididos por você: ocupação + função de gestão; quem cria quem (RN-PERF-0
 | E4 | ACS e saúde bucal (técnico/auxiliar) | Entram na equipe sem ação no painel | Dar alguma ação | Nenhum por enquanto |
 | E5 | Gerente edita alguém com atribuições fora da UBS dele | Recusado (403); só a SMS mexe | O gerente mexe só na parte da UBS dele | A SMS precisa ajustar quem trabalha em duas UBS |
 | E6 | CBO | Ocupações sem o código CBO por enquanto | Guardar o CBO de cada ocupação | Importar do CNES depois pede o mapeamento |
+
+## Remoções e horário (2026-11-12)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| R1 | Remover unidade | Arquiva (some das listas, histórico fica); recusa com sessão planejada/aberta ou paciente na lista; tira as ocupações e funções da equipe naquela unidade | Apagar de verdade; ou só esconder sem mexer na equipe | Gerente de uma unidade removida fica sem tela |
+| R2 | Remover pessoa da equipe | Marca como removida; apaga senha, sessões e atribuições; o login continua ocupado | Apagar a pessoa; ou liberar o login para outro | Não dá para recadastrar alguém com o mesmo login |
+| R3 | Horário de funcionamento | Lista de intervalos por dia; intervalos do mesmo dia não podem se sobrepor (encostados valem); dia vazio = fechado | Um intervalo por dia | Nenhum |

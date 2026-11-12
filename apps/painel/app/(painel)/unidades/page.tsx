@@ -1,11 +1,13 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { EditorDeHorario } from "@/components/editor-de-horario";
 import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
 import { opcoesDeFuso } from "@/lib/formularios/fusos";
+import { HORARIO_PADRAO, type Horario, problemasDoHorario, resumoDoHorario } from "@/lib/formularios/horario";
 import { CAMPOS_CONFIG, type ConfigEfetiva, campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
 import { useLista } from "@/lib/use-lista";
 
@@ -16,6 +18,7 @@ type Unidade = {
   cnes: string | null;
   endereco: Endereco;
   fuso: string;
+  horario: Horario;
   config: Record<string, unknown>;
 };
 
@@ -38,12 +41,12 @@ function enderecoEmTexto(e: Endereco) {
   return `${e.logradouro}, ${e.numero}${e.complemento ? ` (${e.complemento})` : ""} · ${e.bairro} · ${cep}`;
 }
 
-const DIAS_UTEIS = Object.fromEntries(["1", "2", "3", "4", "5"].map((d) => [d, [{ abre: "07:00", fecha: "17:00" }]]));
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 
 function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
   const api = useApi();
   const [v, setV] = useState(VAZIA);
+  const [horario, setHorario] = useState<Horario>(HORARIO_PADRAO);
   const fusos = useMemo(() => opcoesDeFuso(), []);
   const [erros, setErros] = useState(SEM_ERROS);
   const [ok, setOk] = useState<string | null>(null);
@@ -51,6 +54,8 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
   async function enviar(e: FormEvent) {
     e.preventDefault();
     setOk(null);
+    const problemas = problemasDoHorario(horario);
+    if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
     try {
       await api.post("/v1/painel/unidades", {
         nome: v.nome,
@@ -64,11 +69,12 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
           bairro: v.bairro,
         },
         fuso: v.fuso,
-        horario: DIAS_UTEIS,
+        horario,
       });
       setErros(SEM_ERROS);
       setOk(`Unidade ${v.nome} criada.`);
       setV({ ...VAZIA, tipo: v.tipo, fuso: v.fuso });
+      setHorario(HORARIO_PADRAO);
       aoCriar();
     } catch (err) {
       setErros(errosDoEnvio(err));
@@ -108,7 +114,7 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
           </select>
         </Campo>
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <p className="text-xs text-gray-500">Horário inicial: segunda a sexta, 07:00 às 17:00.</p>
+          <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
           <Aviso texto={erros.geral} />
           <Aviso texto={ok} tipo="ok" />
           <Button type="submit" className="self-start">
@@ -117,6 +123,39 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
         </div>
       </form>
     </Cartao>
+  );
+}
+
+function HorarioDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: () => void }) {
+  const api = useApi();
+  const [horario, setHorario] = useState<Horario>(unidade.horario);
+  const [erros, setErros] = useState(SEM_ERROS);
+  const [ok, setOk] = useState<string | null>(null);
+
+  async function salvar(e: FormEvent) {
+    e.preventDefault();
+    setOk(null);
+    const problemas = problemasDoHorario(horario);
+    if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
+    try {
+      await api.patch(`/v1/painel/unidades/${unidade.id}`, { horario });
+      setErros(SEM_ERROS);
+      setOk("Horário salvo.");
+      aoSalvar();
+    } catch (err) {
+      setErros(errosDoEnvio(err));
+    }
+  }
+
+  return (
+    <form onSubmit={salvar} className="flex flex-col gap-3">
+      <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
+      <Aviso texto={erros.geral} />
+      <Aviso texto={ok} tipo="ok" />
+      <Button type="submit" variant="outline" className="self-start">
+        Salvar horário
+      </Button>
+    </form>
   );
 }
 
@@ -210,13 +249,14 @@ export default function Unidades() {
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
       <Aviso texto={erro ?? aviso} />
-      <Tabela cabecalho={["Nome", "Tipo", "CNES", "Endereço", ""]}>
+      <Tabela cabecalho={["Nome", "Tipo", "CNES", "Endereço", "Horário", ""]}>
         {itens.map((u) => (
           <tr key={u.id}>
             <td className="py-2 pr-4 font-medium">{u.nome}</td>
             <td className="py-2 pr-4 uppercase">{u.tipo}</td>
             <td className="py-2 pr-4">{u.cnes ?? "—"}</td>
             <td className="py-2 pr-4">{enderecoEmTexto(u.endereco)}</td>
+            <td className="py-2 pr-4">{resumoDoHorario(u.horario)}</td>
             <td className="py-2">
               <Button variant="ghost" size="sm" onClick={() => setAberta(aberta === u.id ? null : u.id)}>
                 {aberta === u.id ? "Fechar" : "Configurar"}
@@ -232,6 +272,7 @@ export default function Unidades() {
         .filter((u) => u.id === aberta)
         .map((u) => (
           <Cartao key={u.id} titulo={`Configuração · ${u.nome}`}>
+            <HorarioDaUnidade unidade={u} aoSalvar={recarregar} />
             <ConfigDaUnidade unidade={u} aoSalvar={recarregar} />
           </Cartao>
         ))}
