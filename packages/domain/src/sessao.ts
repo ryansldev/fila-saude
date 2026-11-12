@@ -21,7 +21,9 @@ import {
   type SessaoVagas,
 } from "./lista.ts";
 import { temPrioridade } from "./prioridade.ts";
+import { classificar } from "./questionario.ts";
 import { type CodigoErro, type Evento, falha, ok, type Resultado } from "./resultado.ts";
+import { idadeEm } from "./tempo.ts";
 import type { ConfigUnidade, NivelRisco, Respostas } from "./tipos.ts";
 
 // Eventos das tabelas de transição (textos copiados das specs).
@@ -587,4 +589,43 @@ export function removerLancamento(
     { tipo: "removida", ...ids, motivo: cmd.motivo, dados: { push: entrada.responsavelId !== null } },
     { tipo: "vaga_liberada", ...ids, motivo: "lançamento removido; sem sugestão", dados: { em: agora } },
   ]);
+}
+
+const ESPERA_ENCERRADA: EstadoEntrada[] = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"];
+
+/**
+ * RN-RISCO-03: o paciente refaz o questionário enquanto espera; o nível sugerido muda (RN-RISCO-01).
+ * Subir para urgente alerta o agendador; emergência é recusada (o app orienta ligar 192) e nada
+ * muda. Na fila do dia (`dia` = o da sessão da entrada, aberta), o item remoto passa a usar o
+ * risco vigente (o confirmado, se houver, continua valendo); presente segue no lugar até a
+ * triagem. DECISÃO: grupos da Tela 5 não mudam aqui (prioridade nova só vale depois de conferida).
+ */
+export function refazerQuestionario(
+  entrada: Entrada,
+  dia: DiaSessao | null,
+  cmd: { respostas: Respostas },
+  agora: number,
+  config: ConfigUnidade = dia?.config ?? CONFIG_PADRAO,
+): Resultado<{ entrada: Entrada; dia: DiaSessao | null }> {
+  if (ESPERA_ENCERRADA.includes(entrada.estado)) return falha("transicao_proibida");
+  if (dia !== null && dia.sessaoId !== entrada.sessaoId) return falha("transicao_proibida");
+  const classificacao = classificar(cmd.respostas, idadeEm(entrada.pessoa.nascimento, agora, config.fuso));
+  if (classificacao.nivel === "emergencia") return falha("emergencia");
+  const nova: Entrada = { ...entrada, classificacao };
+  const eventos: Evento[] = [];
+  if (classificacao.nivel === "urgente" && entrada.classificacao.nivel !== "urgente") {
+    eventos.push({ tipo: "alerta_agendador", entradaId: entrada.id, motivo: classificacao.regra });
+  }
+  const item = dia?.estado === "aberta" ? dia.itens.find((i) => i.entradaId === entrada.id) : undefined;
+  const risco = riscoVigente(nova);
+  if (dia === null || item?.estado !== "remoto" || item.risco === risco) return ok({ entrada: nova, dia }, eventos);
+  eventos.push({
+    tipo: "risco_sugerido",
+    itemId: item.id,
+    entradaId: entrada.id,
+    sessaoId: dia.sessaoId,
+    dados: { nivel: risco },
+  });
+  const novoDia: DiaSessao = { ...dia, itens: dia.itens.map((i) => (i.id === item.id ? { ...i, risco } : i)) };
+  return ok({ entrada: nova, dia: novoDia }, eventos);
 }

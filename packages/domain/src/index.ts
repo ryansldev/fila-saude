@@ -88,6 +88,7 @@ export {
   inscreverPublica,
   lancarRegulado,
   preencherDaReserva,
+  refazerQuestionario,
   removerLancamento,
   senhaDe,
   trocarReserva,

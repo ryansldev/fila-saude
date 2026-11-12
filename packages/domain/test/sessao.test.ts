@@ -25,6 +25,7 @@ import {
   inscreverPublica,
   lancarRegulado,
   preencherDaReserva,
+  refazerQuestionario,
   removerLancamento,
   trocarReserva,
 } from "../src/sessao.ts";
@@ -990,5 +991,53 @@ describe("I1: prioridade montada no dia de cada sessão (AD-024, AD-027, RN-RISC
     if (!depois) throw new Error("sem item");
     expect(depois.prioridade.grupos).toEqual(["idoso"]);
     expect(conferenciaNaEntrada(e, depois).prioridade.grupos).toEqual([]);
+  });
+});
+
+describe("RN-RISCO-03: refazer o questionário", () => {
+  const URGENTE = problemaNovo("forte");
+
+  it("RN-RISCO-03: subir para urgente alerta o agendador; emergência orienta o 192", () => {
+    const e = entrada("ana");
+    const r = refazerQuestionario(e, null, { respostas: URGENTE }, T);
+    expect(aplicar(r).entrada.classificacao.nivel).toBe("urgente");
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "alerta_agendador", entradaId: "ana", motivo: "Problema novo forte" }),
+    );
+    // Já urgente: não alerta de novo.
+    const ja = aplicar(r).entrada;
+    expect(
+      eventos(refazerQuestionario(ja, null, { respostas: URGENTE }, T)).some((x) => x.tipo === "alerta_agendador"),
+    ).toBe(false);
+    expect(erro(refazerQuestionario(e, null, { respostas: respostas({ alarmes: ["dor_no_peito"] }) }, T))).toBe(
+      "emergencia",
+    );
+    // Só enquanto espera: entrada final não refaz.
+    expect(erro(refazerQuestionario(entrada("x", { estado: "concluida" }), null, { respostas: URGENTE }, T))).toBe(
+      "transicao_proibida",
+    );
+  });
+
+  it("RN-RISCO-03: na fila do dia, o item remoto passa a usar o risco sugerido novo", () => {
+    const conf = entrada("ana", { estado: "confirmada", sessaoId: "s1" });
+    const outro = entrada("bruno", { estado: "confirmada", sessaoId: "s1", dataEntradaOriginal: T - 30 * DIA });
+    const ab = aplicar(abrir(diaPlanejado(), congelar([outro, conf]), INICIO));
+    const naFila = ab.entradas.find((x) => x.id === "ana") as Entrada;
+    const r = refazerQuestionario(naFila, ab.dia, { respostas: URGENTE }, INICIO + MIN);
+    const { dia } = aplicar(r);
+    expect(itemDe(dia, "ana")).toMatchObject({ risco: "urgente", urgenciaConfirmada: false });
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "risco_sugerido", itemId: idDoItem("ana", "s1"), dados: { nivel: "urgente" } }),
+    );
+    // Risco confirmado (agendador ou triagem) vale sobre o sugerido: o item não muda.
+    const confirmada = { ...naFila, riscoConfirmado: "rotina" as const };
+    expect(
+      itemDe(aplicar(refazerQuestionario(confirmada, ab.dia, { respostas: URGENTE }, INICIO + MIN)).dia, "ana")?.risco,
+    ).toBe("rotina");
+    // Presente: segue no lugar com o risco que tinha; só a entrada muda.
+    const presente = aplicar(checkIn(ab.dia, { itemId: idDoItem("ana", "s1") }, INICIO + MIN));
+    const p = aplicar(refazerQuestionario(naFila, presente, { respostas: URGENTE }, INICIO + 2 * MIN));
+    expect(itemDe(p.dia, "ana")?.risco).toBe("rotina");
+    expect(p.entrada.classificacao.nivel).toBe("urgente");
   });
 });
