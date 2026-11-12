@@ -16,7 +16,7 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 - **Fase 1A** concluída, com a revisão final e as correções (domínio, 234 testes).
 - **Fase 1B** (branch `feat/domain-fase-1a`): Tasks 1–10 prontas. As Tasks 15–18 entram na fatia 0; 11–14 ficam para depois da v0.1.
 - **Fase 2** (branch `feat/fase-2-configuracao`): Tasks 1–8 prontas; juntar na fatia 0.
-- **Próximo passo:** executar o [plano da fatia 0](features/mvp-filas/plano-fatia-0-base.md).
+- **Próximo passo:** executar o [plano da fatia 0](features/mvp-filas/plano-fatia-0-base.md) (20 tasks, aprovado em 2026-11-12, com PD-40 e PD-42 confirmadas), a partir da Task 1, pelo fluxo de agentes com revisão.
 
 ## Pendências fora do código
 
