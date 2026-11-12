@@ -9,6 +9,8 @@ const camposDoEnv = z.object({
   NODE_ENV: z.enum(["development", "production", "test", "staging"]).default("development"),
   // Porta da API. Os testes usam outra (3334) para rodar com o `npm run dev` no ar.
   PORTA: z.coerce.number().int().positive().default(3333),
+  // Endereço em que a API escuta; 0.0.0.0 para o celular na mesma rede alcançar em dev.
+  HOST: z.string().default("localhost"),
   VERCEL_URL: z.string().optional(),
   POSTGRES_USER: z.string(),
   POSTGRES_PASSWORD: z.string(),
