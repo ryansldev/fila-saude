@@ -22,6 +22,7 @@ import { paciente } from "infra/database/central/schema/auth";
 import { type DbDoTenant, schemaMunicipal } from "infra/database/tenants";
 import env from "infra/env";
 import { entrarNaLista, type PessoaInformada } from "infra/fila/entradas";
+import { inscrever } from "infra/fila/inscricao";
 import { type ContextoDaAcao, contextoDoUsuario, executarAcao } from "infra/painel/acao";
 import { origemDoPainel } from "infra/painel/origem";
 import { criarTenant } from "infra/tenant/criar";
@@ -62,6 +63,12 @@ function amanha(agora: number, hora: string): { instante: number; local: string 
   const [a, m, d] = hoje.split("-").map(Number) as [number, number, number];
   const dia = new Date(Date.UTC(a, m - 1, d + 1)).toISOString().slice(0, 10);
   const local = `${dia}T${hora}`;
+  return { instante: localParaInstante(local, FUSO), local };
+}
+
+// Hora cheia de `agora` no fuso da unidade (sessão "de agora" da fatia 1).
+function horaCheia(agora: number): { instante: number; local: string } {
+  const local = `${instanteParaLocal(agora, FUSO).slice(0, 13)}:00`;
   return { instante: localParaInstante(local, FUSO), local };
 }
 
@@ -192,6 +199,13 @@ export async function semearExemplo(deps: {
       modo: "livre",
       tempoMedioMin: { atendimento: 20 },
     });
+    const curativos = await criarServico(comoAdmin, ubs.id, {
+      nome: "Curativos",
+      prefixo: "V",
+      exigeTriagem: false,
+      modo: "livre",
+      tempoMedioMin: { atendimento: 10 },
+    });
     const triagem1 = await criarEstacao(comoAdmin, ubs.id, {
       nome: "Triagem 1",
       etapa: "triagem",
@@ -207,7 +221,24 @@ export async function semearExemplo(deps: {
       etapa: "atendimento",
       servicos: [odonto.id],
     });
+    const procedimentos = await criarEstacao(comoAdmin, ubs.id, {
+      nome: "Sala de procedimentos",
+      etapa: "atendimento",
+      servicos: [curativos.id],
+    });
     const manha = { ini: amanha(agora, "08:00"), fim: amanha(agora, "12:00") };
+    // Fatia 1: sessão pública "de agora" (4 h) para abrir no painel e chamar na estação.
+    const deAgora = horaCheia(agora);
+    const sessaoDeAgora = await criarSessao(comoAdmin, ubs.id, {
+      servicoId: curativos.id,
+      inicio: new Date(deAgora.instante).toISOString(),
+      fim: new Date(deAgora.instante + 4 * 3600_000).toISOString(),
+      vagas: 10,
+      visibilidade: "publica",
+      dispensaPreCadastro: false,
+      profissional: "Enf. Carla",
+      estacoes: [procedimentos.id],
+    });
     const tarde = { ini: amanha(agora, "13:00"), fim: amanha(agora, "17:00") };
     await criarSessao(comoAdmin, ubs.id, {
       servicoId: clinico.id,
@@ -231,8 +262,10 @@ export async function semearExemplo(deps: {
     });
 
     // Pacientes: cadastro na central e entrada na lista pelo caminho do app (sem auditoria).
+    const contas = new Map<string, string>();
     for (const p of PACIENTES) {
       const pacienteId = await cadastrarPaciente(central, p);
+      contas.set(p.cpf, pacienteId);
       const pessoa: PessoaInformada = { nome: p.nome, nascimento: p.nascimento, cpf: p.cpf, pacienteId };
       const r = await entrarNaLista(db, {
         servicoId: odonto.id,
@@ -242,6 +275,17 @@ export async function semearExemplo(deps: {
         agora,
       });
       if (!r.ok) throw new Error(`entrada de ${p.nome}: ${r.erro}`);
+    }
+
+    // Ana e Bruno se inscrevem na sessão de agora pelo caminho do app (sem auditoria).
+    for (const p of PACIENTES.slice(0, 2)) {
+      const pacienteId = contas.get(p.cpf) as string;
+      await inscrever(db, sessaoDeAgora.id, {
+        pessoa: { nome: p.nome, nascimento: p.nascimento, cpf: p.cpf, pacienteId },
+        responsavelPacienteId: pacienteId,
+        respostas: respostas(p.grupos),
+        agora,
+      });
     }
 
     // Como recepção: a pessoa sem app.
@@ -267,6 +311,7 @@ export async function semearExemplo(deps: {
       usuarios,
       pacientes: PACIENTES.map((p) => ({ nome: p.nome, cpf: p.cpf, senha: SENHA_EXEMPLO })),
       sessoes: [
+        { servico: curativos.nome, visibilidade: "publica", inicioLocal: deAgora.local },
         { servico: clinico.nome, visibilidade: "publica", inicioLocal: manha.ini.local },
         { servico: odonto.nome, visibilidade: "privada", inicioLocal: tarde.ini.local },
       ],

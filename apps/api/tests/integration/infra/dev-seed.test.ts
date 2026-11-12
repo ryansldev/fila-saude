@@ -40,8 +40,8 @@ async function contagens() {
 }
 
 describe("dev:seed", () => {
-  it("exemplo: unidade, dois serviços (um com triagem), três estações e as duas sessões", async () => {
-    expect(await contagens()).toEqual({ unidades: 1, servicos: 2, estacoes: 3, sessoes: 2, entradas: 4 });
+  it("exemplo: unidade, três serviços (um com triagem), quatro estações e três sessões", async () => {
+    expect(await contagens()).toEqual({ unidades: 1, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
     const servicos = await db().select().from(servico);
     expect(servicos.filter((s) => s.exigeTriagem)).toHaveLength(1);
   });
@@ -52,7 +52,25 @@ describe("dev:seed", () => {
     const privada = sessoes.find((s) => s.visibilidade === "privada");
     expect(publica?.inicio.toISOString()).toBe("2026-11-12T11:00:00.000Z");
     expect(privada?.inicio.toISOString()).toBe("2026-11-12T16:00:00.000Z");
-    expect(resumo.sessoes.map((s) => s.inicioLocal).sort()).toEqual(["2026-11-12T08:00", "2026-11-12T13:00"]);
+    expect(resumo.sessoes.map((s) => s.inicioLocal).sort()).toEqual([
+      "2026-11-11T23:00",
+      "2026-11-12T08:00",
+      "2026-11-12T13:00",
+    ]);
+  });
+
+  it("fatia 1: sessão pública de agora (hora cheia, 4 h) em serviço sem triagem, com Ana e Bruno inscritos", async () => {
+    const [agora] = await db()
+      .select()
+      .from(sessao)
+      .where(eq(sessao.inicio, new Date("2026-11-12T02:00:00.000Z")));
+    expect(agora).toMatchObject({ visibilidade: "publica", estado: "planejada", ocupadas: 2 });
+    expect(agora?.fim.toISOString()).toBe("2026-11-12T06:00:00.000Z");
+    const inscritas = await db()
+      .select()
+      .from(entrada)
+      .where(eq(entrada.sessaoId, agora?.id as string));
+    expect(inscritas.map((e) => e.estado)).toEqual(["confirmada", "confirmada"]);
   });
 
   it("exemplo: cada pessoa da equipe loga no painel com os seus papéis", async () => {
@@ -88,7 +106,7 @@ describe("dev:seed", () => {
       .select()
       .from(entrada)
       .where(eq(entrada.servicoId, odonto?.id as string));
-    expect(entradas.map((e) => e.estado)).toEqual(["aguardando", "aguardando", "aguardando", "aguardando"]);
+    expect(entradas.filter((e) => e.estado === "aguardando")).toHaveLength(4);
   });
 
   it("PD-40 / RN-PERF-04: auditoria atribuída a quem fez (SMS → gerente → equipe); nenhuma linha para as entradas dos pacientes", async () => {
@@ -104,8 +122,11 @@ describe("dev:seed", () => {
       "estacao",
       "estacao",
       "estacao",
+      "estacao",
       "servico",
       "servico",
+      "servico",
+      "sessao",
       "sessao",
       "sessao",
       "usuario",
@@ -115,7 +136,7 @@ describe("dev:seed", () => {
       "usuario",
     ]);
     expect(por("recepcao")).toEqual(["entrada"]);
-    expect(linhas).toHaveLength(16);
+    expect(linhas).toHaveLength(19);
   });
 
   it("PD-40: rodar de novo apaga e recria — mesmas contagens, ids novos, sessão antiga inválida", async () => {
@@ -126,7 +147,7 @@ describe("dev:seed", () => {
     resumo = await semearExemplo(deps());
     const [depois] = await db().select().from(unidade);
     expect(depois?.id).not.toBe(antes?.id);
-    expect(await contagens()).toEqual({ unidades: 1, servicos: 2, estacoes: 3, sessoes: 2, entradas: 4 });
+    expect(await contagens()).toEqual({ unidades: 1, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
     expect((await orchestrator.pedirPainel(slug, "GET", "/v1/painel/eu", { cookie })).status).toBe(401);
     const novo = await orchestrator.loginPainel(slug, "gestor", "exemplo123");
     expect((await orchestrator.pedirPainel(slug, "GET", "/v1/painel/eu", { cookie: novo })).status).toBe(200);
@@ -141,7 +162,7 @@ describe("dev:seed", () => {
     resumo = await semearExemplo(deps());
     const [linha] = await database.select().from(municipio).where(eq(municipio.slug, slug));
     expect(linha?.status).toBe("ativo");
-    expect(await contagens()).toEqual({ unidades: 1, servicos: 2, estacoes: 3, sessoes: 2, entradas: 4 });
+    expect(await contagens()).toEqual({ unidades: 1, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
     const r = await database.execute<{ n: number }>(sql`select count(*)::int as n from paciente where email_verified`);
     expect(r.rows[0]?.n).toBeGreaterThanOrEqual(3);
   }, 60_000);
