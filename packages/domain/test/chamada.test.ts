@@ -92,12 +92,15 @@ describe("RN-CHAM-01/02: chamar, encerrar a chamada anterior", () => {
     expect(item(d, "bruno").estado).toBe("chamado");
     expect(r2.eventos.map((e) => e.tipo)).toEqual(["atendido", "chamado"]);
     expect(r2.eventos[0]).toMatchObject({ itemId: "joao", dados: { etapa: "atendimento", proximaEtapa: null } });
-    // Review Focus 2: sem elegível, erro sem mudar nada (o protótipo encerrava o Bruno aqui).
-    expect(chamarProximo(d, { estacaoId: "e1" }, T + 3 * MIN)).toEqual({ ok: false, erro: "nenhum_elegivel" });
-    expect(item(d, "bruno").estado).toBe("chamado");
-    d = aplicar(finalizar(d, { estacaoId: "e1" }, T + 3 * MIN));
+    // RN-CHAM-01 (2026-11-12): sem elegível, o chamado anterior é finalizado e a estação fica livre.
+    const r3 = chamarProximo(d, { estacaoId: "e1" }, T + 3 * MIN);
+    d = aplicar(r3);
+    expect(r3.ok && r3.eventos.map((e) => e.tipo)).toEqual(["atendido"]);
     expect(item(d, "bruno").estado).toBe("atendido_na_etapa");
+    expect(chamadoEm(d, "e1")).toBeNull();
     expect(item(d, "ana").estado).toBe("remoto");
+    // Sem chamado aberto e sem elegível: aí sim o erro, sem mudar nada.
+    expect(chamarProximo(d, { estacaoId: "e1" }, T + 4 * MIN)).toEqual({ ok: false, erro: "nenhum_elegivel" });
   });
 
   it("RN-CHAM-02: Finalizar encerra o atendimento atual sem chamar outro", () => {

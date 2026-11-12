@@ -108,8 +108,8 @@ function encerrarChamado(
 /**
  * RN-CHAM-01/02: encerra o chamado anterior desta estação e chama o 1º elegível dela. Na triagem,
  * `riscoConfirmado` confirma ou reclassifica o risco de quem sai (RN-TRI-03).
- * Sem elegível (ou estação fechada), `nenhum_elegivel` sem mudar nada, nem o chamado anterior
- * (Review Focus 2); use `finalizar`. A seleção usa o estado recebido: uma 2ª estação chamando
+ * Sem elegível, o chamado anterior é finalizado e a estação fica livre (ok, sem evento "chamado");
+ * sem chamado anterior (ou estação fechada), `nenhum_elegivel` sem mudar nada. A seleção usa o estado recebido: uma 2ª estação chamando
  * sobre o estado devolvido pela 1ª não pega o mesmo paciente (INV-04).
  */
 export function chamarProximo(dia: DiaSessao, cmd: CmdFechar, agora: number): Resultado<DiaSessao> {
@@ -130,7 +130,8 @@ export function chamarProximo(dia: DiaSessao, cmd: CmdFechar, agora: number): Re
     eventos.push(...fechado.eventos);
   }
   const proximo = elegiveis(atual, estacao.id)[0];
-  if (!proximo) return falha("nenhum_elegivel");
+  // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").
+  if (!proximo) return eventos.length > 0 ? ok(atual, eventos) : falha("nenhum_elegivel");
   if (transicionar(TRANSICOES_ITEM, proximo.estado, EVENTO_CHAMAR) !== "chamado") {
     throw new Error(`contrato: ${proximo.estado} não é chamado`);
   }
