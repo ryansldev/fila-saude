@@ -25,7 +25,7 @@ Cada pessoa do painel tem **ocupações** (o que ela é em cada unidade, alinhad
 | Entidade | Pertence a | Atributos principais |
 | --- | --- | --- |
 | Município | — | nome, UF, regras municipais |
-| Unidade | Município | tipo (UBS, Policlínica, UPA), endereço, coordenadas, fuso, horário de funcionamento, configurações |
+| Unidade | Município | tipo (UBS, Policlínica, UPA), CNES, endereço (CEP, logradouro, número, complemento, bairro), coordenadas (opcionais), fuso, horário de funcionamento, configurações |
 | Serviço | Unidade | nome, prefixo de senha, exige triagem, como é marcado (livre, requisição pelo app, regulado), tempo médio inicial |
 | Série de sessões | Serviço | DTSTART/DTEND, RRULE, EXDATE, RDATE (RFC 5545), configuração padrão das ocorrências (vagas, visibilidade, profissional, estações) |
 | Sessão | Serviço (e opcionalmente uma série) | data, horário, vagas (opcional), visibilidade, dispensa pré-cadastro, profissional (texto), estações, estado |

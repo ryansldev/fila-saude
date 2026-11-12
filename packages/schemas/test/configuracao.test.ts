@@ -32,6 +32,11 @@ describe("unidadeEntradaSchema", () => {
     expect(ok(unidadeEntradaSchema, { ...unidade, endereco: { ...unidade.endereco, numero: "s/n" } })).toBe(true);
     expect(ok(unidadeEntradaSchema, { ...unidade, endereco: "Rua A, 1" })).toBe(false);
   });
+  it("latitude e longitude são opcionais", () => {
+    const { lat: _lat, lng: _lng, ...semCoordenadas } = unidade;
+    expect(ok(unidadeEntradaSchema, semCoordenadas)).toBe(true);
+    expect(ok(unidadeEntradaSchema, { ...semCoordenadas, lat: null, lng: null })).toBe(true);
+  });
   it("CNES da unidade: 7 dígitos ou nulo", () => {
     expect(ok(unidadeEntradaSchema, { ...unidade, cnes: "2077485" })).toBe(true);
     expect(ok(unidadeEntradaSchema, { ...unidade, cnes: "207748" })).toBe(false);

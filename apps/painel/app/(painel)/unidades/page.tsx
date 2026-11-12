@@ -5,6 +5,7 @@ import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formul
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio } from "@/lib/formularios/erros";
+import { FUSOS_DO_BRASIL } from "@/lib/formularios/fusos";
 import { CAMPOS_CONFIG, type ConfigEfetiva, campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
 import { useLista } from "@/lib/use-lista";
 
@@ -14,8 +15,6 @@ type Unidade = {
   tipo: string;
   cnes: string | null;
   endereco: Endereco;
-  lat: number;
-  lng: number;
   fuso: string;
   config: Record<string, unknown>;
 };
@@ -31,8 +30,6 @@ const VAZIA = {
   numero: "",
   complemento: "",
   bairro: "",
-  lat: "",
-  lng: "",
   fuso: "America/Sao_Paulo",
 };
 
@@ -65,8 +62,6 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
           complemento: v.complemento.trim() || null,
           bairro: v.bairro,
         },
-        lat: Number(v.lat),
-        lng: Number(v.lng),
         fuso: v.fuso,
         horario: DIAS_UTEIS,
       });
@@ -102,9 +97,15 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
         {campo("numero", "Número", { required: true, placeholder: "ou s/n" }, "endereco.numero")}
         {campo("complemento", "Complemento", {}, "endereco.complemento")}
         {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
-        {campo("fuso", "Fuso horário")}
-        {campo("lat", "Latitude", { inputMode: "decimal", required: true })}
-        {campo("lng", "Longitude", { inputMode: "decimal", required: true })}
+        <Campo rotulo="Fuso horário" erro={erros.campos.fuso}>
+          <select className={classeDoCampo} value={v.fuso} onChange={(e) => setV({ ...v, fuso: e.target.value })}>
+            {FUSOS_DO_BRASIL.map((f) => (
+              <option key={f.fuso} value={f.fuso}>
+                {f.rotulo}
+              </option>
+            ))}
+          </select>
+        </Campo>
         <div className="flex flex-col gap-2 sm:col-span-2">
           <p className="text-xs text-gray-500">Horário inicial: segunda a sexta, 07:00 às 17:00.</p>
           <Aviso texto={erros.geral} />

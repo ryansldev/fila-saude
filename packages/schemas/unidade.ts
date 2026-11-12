@@ -41,8 +41,9 @@ export const unidadeEntradaSchema = z.object({
     .nullable()
     .optional(),
   endereco: enderecoSchema,
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
+  // Coordenadas opcionais (mapa e distância, depois).
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
   fuso: z.string().refine(fusoValido, "Fuso IANA inválido"),
   horario: horarioSchema,
   config: configEntradaSchema.optional(),

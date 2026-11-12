@@ -43,6 +43,13 @@
       "when": 1794484861377,
       "tag": "0005_sem_perfil_usuario",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794486038056,
+      "tag": "0006_coordenadas_opcionais",
+      "breakpoints": true
     }
   ]
 }
