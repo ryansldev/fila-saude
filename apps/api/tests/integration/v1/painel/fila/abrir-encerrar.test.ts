@@ -1,5 +1,6 @@
 import { cenarioDaFila, inscreverPessoa } from "tests/fila";
 import orchestrator from "tests/orchestrator";
+import { ocupacao, usuarioLogado } from "tests/painel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let c: Awaited<ReturnType<typeof cenarioDaFila>>;
@@ -11,7 +12,17 @@ beforeAll(async () => {
 afterAll(() => orchestrator.derrubarMunicipios());
 
 describe("abrir, ver a fila e encerrar a sessão (T3.4, T3.9)", () => {
-  it("F1: a equipe da unidade vê as sessões de hoje e as estações; de fora, 403", async () => {
+  it("F1: a fila depende da atribuição — ACS e gestão SMS (sem ação da fila) levam 403; recepção vê", async () => {
+    const acs = (await usuarioLogado(c.slug, c.gestor, "acs", ocupacao(c.unidadeId, "acs"))).cookie;
+    expect((await c.pedir("GET", `/v1/painel/sessoes/${c.sessaoId}/fila`, c.gestor)).status).toBe(403);
+    expect((await c.pedir("GET", `/v1/painel/unidades/${c.unidadeId}/hoje`, c.gestor)).status).toBe(403);
+    const recepcao = (await usuarioLogado(c.slug, c.gestor, "recep", ocupacao(c.unidadeId, "recepcao"))).cookie;
+    expect((await c.pedir("GET", `/v1/painel/unidades/${c.unidadeId}/hoje`, acs)).status).toBe(403);
+    expect((await c.pedir("GET", `/v1/painel/sessoes/${c.sessaoId}/fila`, acs)).status).toBe(403);
+    expect((await c.pedir("GET", `/v1/painel/sessoes/${c.sessaoId}/fila`, recepcao)).status).toBe(200);
+  });
+
+  it("F1: quem opera vê as sessões de hoje e as estações; de outra unidade, 403", async () => {
     const r = await c.pedir("GET", `/v1/painel/unidades/${c.unidadeId}/hoje`, c.enfermeiro);
     expect(r.status).toBe(200);
     expect(r.corpo.sessoes.map((s: { id: string; servico: string }) => [s.id, s.servico])).toEqual([

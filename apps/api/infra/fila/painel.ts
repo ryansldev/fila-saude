@@ -1,4 +1,5 @@
 import {
+  type Acao,
   abrirSessao,
   conferirEMarcar,
   type DiaSessao,
@@ -20,6 +21,7 @@ import { sessao } from "infra/database/municipal/schema/sessao";
 import type { BancoDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
+import { condicoesNaUnidade } from "infra/painel/guard";
 import { lerDia, montarDia, naSessao } from "./dia";
 
 export async function nomesDasEntradas(db: BancoDoTenant, ids: string[]): Promise<Map<string, string>> {
@@ -63,7 +65,7 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
 // Qualquer pessoa da equipe com papel na unidade (ou no município) vê a fila do dia (decisão F1).
 export async function filaDaSessao(ctx: ContextoDaAcao, sessaoId: string): Promise<FilaDaSessao> {
   const { servico } = await exigirSessao(ctx.db, sessaoId);
-  daEquipeDaUnidade(ctx, servico.unidadeId);
+  await daEquipeDaUnidade(ctx, servico.unidadeId);
   return paraFila(ctx.db, sessaoId, await lerDia(ctx.db, sessaoId));
 }
 
@@ -162,16 +164,24 @@ export async function marcarPresencaNaFila(
   );
 }
 
-function daEquipeDaUnidade(ctx: ContextoDaAcao, unidadeId: string) {
-  if (!ctx.ator.perfis.some((p) => p.unidadeId === null || p.unidadeId === unidadeId)) {
-    throw new ErroApi(403, "sem_permissao");
+// F1 (revisto): a fila do dia é de quem tem, na unidade, alguma ação dela (como o menu do painel).
+export const ACOES_DA_FILA: Acao[] = [
+  "abrir_cancelar_encerrar_sessao",
+  "conferir_e_marcar_presenca",
+  "operar_chamadas",
+];
+
+async function daEquipeDaUnidade(ctx: ContextoDaAcao, unidadeId: string) {
+  for (const acao of ACOES_DA_FILA) {
+    if (condicoesNaUnidade(ctx.ator.perfis, acao, unidadeId) !== null) return;
   }
+  throw new ErroApi(403, "sem_permissao");
 }
 
 // F1: sessões de hoje (dia local da unidade) e estações, para quem tem papel na unidade.
 export async function hojeNaUnidade(ctx: ContextoDaAcao, unidadeId: string): Promise<HojeNaUnidade> {
   const u = await exigirUnidade(ctx.db, unidadeId);
-  daEquipeDaUnidade(ctx, unidadeId);
+  await daEquipeDaUnidade(ctx, unidadeId);
   const linhas = await ctx.db
     .select({ s: sessao, servico: servico.nome })
     .from(sessao)
