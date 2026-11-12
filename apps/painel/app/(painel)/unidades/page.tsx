@@ -12,19 +12,41 @@ type Unidade = {
   id: string;
   nome: string;
   tipo: string;
-  endereco: string;
+  cnes: string | null;
+  endereco: Endereco;
   lat: number;
   lng: number;
   fuso: string;
   config: Record<string, unknown>;
 };
 
+type Endereco = { cep: string; logradouro: string; numero: string; complemento: string | null; bairro: string };
+
+const VAZIA = {
+  nome: "",
+  tipo: "ubs",
+  cnes: "",
+  cep: "",
+  logradouro: "",
+  numero: "",
+  complemento: "",
+  bairro: "",
+  lat: "",
+  lng: "",
+  fuso: "America/Sao_Paulo",
+};
+
+function enderecoEmTexto(e: Endereco) {
+  const cep = e.cep.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+  return `${e.logradouro}, ${e.numero}${e.complemento ? ` (${e.complemento})` : ""} · ${e.bairro} · ${cep}`;
+}
+
 const DIAS_UTEIS = Object.fromEntries(["1", "2", "3", "4", "5"].map((d) => [d, [{ abre: "07:00", fecha: "17:00" }]]));
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 
 function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
   const api = useApi();
-  const [v, setV] = useState({ nome: "", tipo: "ubs", endereco: "", lat: "", lng: "", fuso: "America/Sao_Paulo" });
+  const [v, setV] = useState(VAZIA);
   const [erros, setErros] = useState(SEM_ERROS);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -35,7 +57,14 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
       await api.post("/v1/painel/unidades", {
         nome: v.nome,
         tipo: v.tipo,
-        endereco: v.endereco,
+        cnes: v.cnes.trim() || null,
+        endereco: {
+          cep: v.cep,
+          logradouro: v.logradouro,
+          numero: v.numero,
+          complemento: v.complemento.trim() || null,
+          bairro: v.bairro,
+        },
         lat: Number(v.lat),
         lng: Number(v.lng),
         fuso: v.fuso,
@@ -43,15 +72,15 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
       });
       setErros(SEM_ERROS);
       setOk(`Unidade ${v.nome} criada.`);
-      setV({ ...v, nome: "", endereco: "", lat: "", lng: "" });
+      setV({ ...VAZIA, tipo: v.tipo, fuso: v.fuso });
       aoCriar();
     } catch (err) {
       setErros(errosDoEnvio(err));
     }
   }
 
-  const campo = (k: keyof typeof v, rotulo: string, extra: object = {}) => (
-    <Campo rotulo={rotulo} erro={erros.campos[k]}>
+  const campo = (k: keyof typeof VAZIA, rotulo: string, extra: object = {}, chaveDoErro: string = k) => (
+    <Campo rotulo={rotulo} erro={erros.campos[chaveDoErro]}>
       <input className={classeDoCampo} value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} {...extra} />
     </Campo>
   );
@@ -67,7 +96,12 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
             <option value="upa">UPA</option>
           </select>
         </Campo>
-        {campo("endereco", "Endereço", { required: true })}
+        {campo("cnes", "Código CNES (opcional)", { inputMode: "numeric", maxLength: 7 })}
+        {campo("cep", "CEP", { inputMode: "numeric", required: true }, "endereco.cep")}
+        {campo("logradouro", "Logradouro", { required: true, placeholder: "Rua, avenida…" }, "endereco.logradouro")}
+        {campo("numero", "Número", { required: true, placeholder: "ou s/n" }, "endereco.numero")}
+        {campo("complemento", "Complemento", {}, "endereco.complemento")}
+        {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
         {campo("fuso", "Fuso horário")}
         {campo("lat", "Latitude", { inputMode: "decimal", required: true })}
         {campo("lng", "Longitude", { inputMode: "decimal", required: true })}
@@ -159,12 +193,13 @@ export default function Unidades() {
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
       <Aviso texto={erro} />
-      <Tabela cabecalho={["Nome", "Tipo", "Endereço", ""]}>
+      <Tabela cabecalho={["Nome", "Tipo", "CNES", "Endereço", ""]}>
         {itens.map((u) => (
           <tr key={u.id}>
             <td className="py-2 pr-4 font-medium">{u.nome}</td>
             <td className="py-2 pr-4 uppercase">{u.tipo}</td>
-            <td className="py-2 pr-4">{u.endereco}</td>
+            <td className="py-2 pr-4">{u.cnes ?? "—"}</td>
+            <td className="py-2 pr-4">{enderecoEmTexto(u.endereco)}</td>
             <td className="py-2">
               <Button variant="ghost" size="sm" onClick={() => setAberta(aberta === u.id ? null : u.id)}>
                 {aberta === u.id ? "Fechar" : "Configurar"}

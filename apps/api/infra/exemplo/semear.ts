@@ -111,7 +111,8 @@ export async function semearExemplo(deps: {
     const ubs = await criarUnidade(comoGestor, {
       nome: "UBS Centro",
       tipo: "ubs",
-      endereco: "Rua das Flores, 100 - Centro",
+      cnes: null,
+      endereco: { cep: "01001000", logradouro: "Rua das Flores", numero: "100", complemento: null, bairro: "Centro" },
       lat: -23.5505,
       lng: -46.6333,
       fuso: FUSO,

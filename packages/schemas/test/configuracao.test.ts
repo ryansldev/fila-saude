@@ -14,7 +14,8 @@ const id = "6f1c1f0e-8f0a-4b5e-9d0e-1c2b3a4d5e6f";
 const unidade = {
   nome: "UBS Centro",
   tipo: "ubs",
-  endereco: "Rua A, 1",
+  endereco: { cep: "01001-000", logradouro: "Praça da Sé", numero: "100", complemento: null, bairro: "Sé" },
+  cnes: null,
   lat: -23.5,
   lng: -46.6,
   fuso: "America/Sao_Paulo",
@@ -23,6 +24,19 @@ const unidade = {
 
 describe("unidadeEntradaSchema", () => {
   it("aceita unidade válida", () => expect(ok(unidadeEntradaSchema, unidade)).toBe(true));
+  it("endereço: CEP com ou sem máscara vira 8 dígitos; logradouro, número e bairro obrigatórios", () => {
+    const r = unidadeEntradaSchema.safeParse(unidade);
+    expect(r.success && r.data.endereco.cep).toBe("01001000");
+    expect(ok(unidadeEntradaSchema, { ...unidade, endereco: { ...unidade.endereco, cep: "0100100" } })).toBe(false);
+    expect(ok(unidadeEntradaSchema, { ...unidade, endereco: { ...unidade.endereco, bairro: "" } })).toBe(false);
+    expect(ok(unidadeEntradaSchema, { ...unidade, endereco: { ...unidade.endereco, numero: "s/n" } })).toBe(true);
+    expect(ok(unidadeEntradaSchema, { ...unidade, endereco: "Rua A, 1" })).toBe(false);
+  });
+  it("CNES da unidade: 7 dígitos ou nulo", () => {
+    expect(ok(unidadeEntradaSchema, { ...unidade, cnes: "2077485" })).toBe(true);
+    expect(ok(unidadeEntradaSchema, { ...unidade, cnes: "207748" })).toBe(false);
+    expect(ok(unidadeEntradaSchema, { ...unidade, cnes: null })).toBe(true);
+  });
   it("lat 90 / 90.0001", () => {
     expect(ok(unidadeEntradaSchema, { ...unidade, lat: 90 })).toBe(true);
     expect(ok(unidadeEntradaSchema, { ...unidade, lat: 90.0001 })).toBe(false);

@@ -39,6 +39,20 @@ describe("unidades", () => {
     expect(u2.status).toBe(201);
   });
 
+  it("endereço estruturado e CNES voltam como foram gravados; edição troca o endereço", async () => {
+    const r = await pedir("GET", `/v1/painel/unidades/${unidadeId}`, gestor);
+    expect(r.corpo.endereco).toEqual({ ...UNIDADE.endereco, cep: "01001000" });
+    const novo = {
+      cep: "20040020",
+      logradouro: "Av. Rio Branco",
+      numero: "1",
+      complemento: "sala 2",
+      bairro: "Centro",
+    };
+    const e = await pedir("PATCH", `/v1/painel/unidades/${unidadeId}`, gestor, { endereco: novo, cnes: "2077485" });
+    expect(e.corpo).toMatchObject({ endereco: novo, cnes: "2077485" });
+  });
+
   it("fuso inválido → 400; K 0 → 400 no campo; K 1 aceito", async () => {
     const fuso = await pedir("POST", "/v1/painel/unidades", gestor, { ...UNIDADE, fuso: "Brasil/Lua" });
     expect(fuso).toMatchObject({ status: 400, corpo: { erro: "entrada_invalida" } });

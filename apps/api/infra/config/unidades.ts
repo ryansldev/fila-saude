@@ -1,5 +1,5 @@
 import { type ConfigParcial, configEfetiva, validarConfig } from "@fila-saude/domain";
-import type { ConfigEfetivaSaida, Unidade, UnidadeEdicao, UnidadeEntrada } from "@fila-saude/schemas/unidade";
+import type { ConfigEfetivaSaida, Endereco, Unidade, UnidadeEdicao, UnidadeEntrada } from "@fila-saude/schemas/unidade";
 import { asc, eq, inArray } from "drizzle-orm";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import { camposDoDominio, ErroApi } from "infra/erros";
@@ -13,12 +13,24 @@ export function paraUnidade(u: Linha): Unidade {
     id: u.id,
     nome: u.nome,
     tipo: u.tipo,
-    endereco: u.endereco,
+    cnes: u.cnes,
+    endereco: { cep: u.cep, logradouro: u.logradouro, numero: u.numero, complemento: u.complemento, bairro: u.bairro },
     lat: u.lat,
     lng: u.lng,
     fuso: u.fuso,
     horario: u.horario,
     config: u.config as Unidade["config"],
+  };
+}
+
+// O endereço do contrato em colunas.
+function colunasDoEndereco(e: Endereco) {
+  return {
+    cep: e.cep,
+    logradouro: e.logradouro,
+    numero: e.numero,
+    complemento: e.complemento ?? null,
+    bairro: e.bairro,
   };
 }
 
@@ -45,9 +57,10 @@ export async function criarUnidade(ctx: ContextoDaAcao, dados: UnidadeEntrada): 
   const config = mesclar({}, dados.config ?? {});
   validar(config);
   return executarAcao(ctx, { acao: GESTAO, alvo: { tipo: "unidade", id: (u) => u.id } }, async (tx) => {
+    const { endereco, ...resto } = dados;
     const [u] = await tx
       .insert(unidade)
-      .values({ ...dados, config })
+      .values({ ...resto, ...colunasDoEndereco(endereco), config })
       .returning();
     return paraUnidade(u as Linha);
   });
@@ -57,11 +70,11 @@ export async function editarUnidade(ctx: ContextoDaAcao, id: string, dados: Unid
   const atual = await exigirUnidade(ctx.db, id);
   const config = mesclar(atual.config, dados.config ?? {});
   validar(config);
-  const { config: _c, ...resto } = dados;
+  const { config: _c, endereco, ...resto } = dados;
   return executarAcao(ctx, { acao: GESTAO, alvo: { tipo: "unidade", id }, unidadeId: id }, async (tx) => {
     const [u] = await tx
       .update(unidade)
-      .set({ ...resto, config })
+      .set({ ...resto, ...(endereco ? colunasDoEndereco(endereco) : {}), config })
       .where(eq(unidade.id, id))
       .returning();
     return paraUnidade(u as Linha);

@@ -3,7 +3,8 @@ import orchestrator from "tests/orchestrator";
 export const UNIDADE = {
   nome: "UBS Centro",
   tipo: "ubs",
-  endereco: "Rua A, 1",
+  endereco: { cep: "01001-000", logradouro: "Praça da Sé", numero: "100", complemento: null, bairro: "Sé" },
+  cnes: null,
   lat: -23.5,
   lng: -46.6,
   fuso: "America/Sao_Paulo",

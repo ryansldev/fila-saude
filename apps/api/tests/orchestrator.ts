@@ -106,7 +106,16 @@ async function criarUsuarioComPerfis(slug: string, login: string, perfis: Perfil
 async function criarUnidadeDireto(slug: string, nome = "UBS Teste") {
   const [linha] = await bancoDoMunicipio(slug)
     .insert(unidade)
-    .values({ nome, endereco: "Rua A, 1", lat: -23.5, lng: -46.6, fuso: "America/Sao_Paulo" })
+    .values({
+      nome,
+      cep: "01001000",
+      logradouro: "Rua A",
+      numero: "1",
+      bairro: "Centro",
+      lat: -23.5,
+      lng: -46.6,
+      fuso: "America/Sao_Paulo",
+    })
     .returning({ id: unidade.id });
   if (!linha) throw new Error("unidade não criada");
   return linha.id;
