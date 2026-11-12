@@ -41,6 +41,13 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | PD-31 | **Testes do painel com Vitest, jsdom e Testing Library**, API injetada ([plano 2](plano-fase-2-configuracao.md#decisões-desta-fase)) | Sem servidor nos testes de tela |
 | PD-32 | **Trilha da demo** (2026-11-11): antes do piloto, uma demo **local, com dados de teste**, construída em fatias verticais (ver [tasks](tasks.md#trilha-da-demo-2026-11-11)). Cobre sessão pública, sessão privada, triagem e pré-cadastro; app do paciente em Expo nativo no celular, painel, estações e TV no web | Mostrar algo funcionando a uma prefeitura cedo, sem construir o que a demo não usa. Nada é descartado: o resto do backlog volta depois na ordem original |
 | PD-33 | **Simplificações da demo, cada uma atrás de uma peça única**: a API confere a sessão do paciente direto, num guard só (o JWT da PD-17 entra depois no lugar dele); tempo real por consulta a cada ~3 s num endpoint de estado com o mesmo formato que o SSE (PD-07) terá; sessão aberta e encerrada por botão no painel (o worker chama a mesma função depois); sessões avulsas criadas pelo `demo:seed` (séries e telas de configuração depois); fotos do pré-cadastro no disco local atrás de uma interface de armazenamento | Completar depois troca uma peça, sem espalhar mudança. **Mantidos inteiros:** multi-tenant, auth do painel, perfis, guard pela matriz e auditoria na mesma transação (PD-18), para não haver retrabalho |
+| PD-34 | **Guard da sessão do paciente (PD-33)** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-35 | **Configuração da unidade numa coluna `config jsonb`** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-36 | **Toda entrada aponta para uma `pessoa_local`** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-37 | **`sessao.ocupadas` é um contador gravado** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-38 | **Guard com ressalvas fechado por padrão** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-39 | **Auth do painel no banco do tenant** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-40 | **`demo:seed`** ([fatia 0](plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 
 ## 2. Visão geral
 
