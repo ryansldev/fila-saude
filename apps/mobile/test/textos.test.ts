@@ -14,6 +14,7 @@ const base: MinhaEntrada = {
   itemEstado: "remoto",
   estimativa: null,
   chamada: null,
+  pendencias: [],
 };
 
 describe("textos da tela da vez (T3.4)", () => {
@@ -32,6 +33,13 @@ describe("textos da tela da vez (T3.4)", () => {
         chamada: { estacao: "Sala 1", em: "2026-11-12T12:00:00.000Z" },
       }),
     ).toEqual({ destaque: "vez", titulo: "É a sua vez!", detalhe: "Vá para Sala 1 com a senha C-001" });
+  });
+
+  it("RN-FILA-05: QR recusado por pendência → passe na recepção", () => {
+    expect(situacaoDaEntrada({ ...base, pendencias: ["conta"] })).toMatchObject({
+      destaque: "venha",
+      titulo: "Passe na recepção",
+    });
   });
 
   it("antes de abrir, confirmada e reserva; depois, atendido e remanejado", () => {

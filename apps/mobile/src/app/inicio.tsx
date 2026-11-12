@@ -64,7 +64,10 @@ export default function MinhaVez() {
           </View>
         );
       })}
-      <Botao texto="Ver agenda e me inscrever" onPress={() => router.push("/agenda")} />
+      {entradas?.some((en) => en.itemEstado === "remoto") ? (
+        <Botao texto="Cheguei · ler o QR da unidade" onPress={() => router.push("/check-in")} />
+      ) : null}
+      <Botao texto="Ver agenda e me inscrever" tipo="secundario" onPress={() => router.push("/agenda")} />
       <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12 }}>
         <Pressable onPress={() => router.push("/municipio")}>
           <Text style={[e.suave, { padding: 8 }]}>Trocar município</Text>

@@ -12,6 +12,7 @@ export default function Raiz() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="entrar" options={{ headerShown: false }} />
           <Stack.Screen name="inicio" options={{ headerShown: false }} />
+          <Stack.Screen name="check-in" options={{ headerShown: false }} />
         </Stack>
       </ProvedorDeSessao>
     </SafeAreaProvider>

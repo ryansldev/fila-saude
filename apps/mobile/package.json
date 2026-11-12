@@ -6,6 +6,7 @@
     "@fila-saude/domain": "*",
     "@fila-saude/schemas": "*",
     "expo": "~58.0.25",
+    "expo-camera": "~58.0.14",
     "expo-constants": "~58.0.16",
     "expo-linking": "~58.0.17",
     "expo-router": "~58.0.31",

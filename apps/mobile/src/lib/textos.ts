@@ -8,6 +8,12 @@ export function situacaoDaEntrada(e: MinhaEntrada): Situacao {
   if (e.itemEstado === "chamado" && e.chamada) {
     return { destaque: "vez", titulo: "É a sua vez!", detalhe: `Vá para ${e.chamada.estacao} com a senha ${e.senha}` };
   }
+  if (e.itemEstado === "remoto" && e.pendencias.length > 0)
+    return {
+      destaque: "venha",
+      titulo: "Passe na recepção",
+      detalhe: "Confirme seus documentos na recepção · você ainda não entrou na fila da unidade.",
+    };
   if (e.estado === "concluida") return { destaque: "fim", titulo: "Atendimento concluído", detalhe: "Obrigado!" };
   if (e.estado === "remanejada")
     return {
@@ -51,6 +57,7 @@ const MENSAGENS: Record<string, string> = {
   servico_regulado: "Este atendimento é marcado pela central de regulação.",
   requisicao_pendente: "Este atendimento pede requisição médica.",
   cpf_invalido: "CPF inválido.",
+  qr_invalido: "QR vencido. Leia de novo o QR da unidade.",
   entrada_invalida: "Confira os dados preenchidos.",
 };
 
