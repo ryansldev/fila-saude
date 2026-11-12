@@ -20,6 +20,7 @@ export const ITENS_DO_MENU: Candidato[] = [
   { rotulo: "Estações", href: "/estacoes", acoes: [CONFIGURAR] },
   { rotulo: "Sessões", href: "/sessoes", acoes: [CONFIGURAR] },
   { rotulo: "Fila do dia", href: "/fila", acoes: [SESSAO, PRESENCA, OPERAR] },
+  { rotulo: "QR de entrada", href: "/qr", acoes: [PRESENCA, SESSAO] },
   { rotulo: "Estação", href: "/estacao", acoes: [OPERAR] },
 ];
 

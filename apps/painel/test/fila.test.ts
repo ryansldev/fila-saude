@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acoesDaFila, cronometro, ordenarFila, rotuloDoEstado } from "@/lib/fila";
+import { acoesDaFila, cronometro, ordenarFila, rotuloDoEstado, textoDasPendencias } from "@/lib/fila";
 
 const item = (senha: string, estado: string) => ({ senha, estado });
 
@@ -32,5 +32,13 @@ describe("fila do dia no painel (T3.4, T3.7)", () => {
     const em = "2026-11-12T12:00:00.000Z";
     expect(cronometro(em, Date.parse(em) + 65_000)).toBe("01:05");
     expect(cronometro(em, Date.parse(em) - 1000)).toBe("00:00");
+  });
+
+  it("RN-FILA-05: pendências do QR recusado em texto para a recepção; sem pendência, nada", () => {
+    expect(textoDasPendencias(["conta"])).toBe("Passe na recepção: conferir a conta");
+    expect(textoDasPendencias(["pessoa_atendida", "prioridade"])).toBe(
+      "Passe na recepção: conferir a pessoa atendida, a prioridade",
+    );
+    expect(textoDasPendencias([])).toBeNull();
   });
 });

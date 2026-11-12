@@ -6,7 +6,7 @@ import { Aviso, Campo, classeDoCampo, Tabela } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { acoesDaFila, ordenarFila, rotuloDoEstado } from "@/lib/fila";
+import { acoesDaFila, ordenarFila, rotuloDoEstado, textoDasPendencias } from "@/lib/fila";
 import { mensagemDoErro } from "@/lib/formularios/erros";
 import { horarioParaTela } from "@/lib/formularios/sessao";
 import { useEu } from "@/lib/sessao";
@@ -118,9 +118,12 @@ export default function FilaDoDia() {
                   <td className="py-2 pr-4">
                     {rotuloDoEstado(i.estado)}
                     {i.pulos > 0 ? ` · ${i.pulos} pulo(s)` : ""}
+                    {i.estado === "remoto" && textoDasPendencias(i.pendencias) ? (
+                      <span className="block text-xs text-orange-700">{textoDasPendencias(i.pendencias)}</span>
+                    ) : null}
                   </td>
                   <td className="py-2">
-                    {pode.presenca && i.estado === "remoto" ? (
+                    {pode.presenca && i.estado === "remoto" && i.pendencias.length > 0 ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -131,7 +134,7 @@ export default function FilaDoDia() {
                           })
                         }
                       >
-                        Conferir e marcar presença
+                        Conferir documentos e marcar presença
                       </Button>
                     ) : null}
                   </td>

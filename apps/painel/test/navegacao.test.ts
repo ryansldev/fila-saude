@@ -13,6 +13,7 @@ describe("menuDoPainel", () => {
       "Estações",
       "Sessões",
       "Fila do dia",
+      "QR de entrada",
     ]);
   });
 
@@ -31,13 +32,14 @@ describe("menuDoPainel", () => {
       "Estações",
       "Sessões",
       "Fila do dia",
+      "QR de entrada",
       "Estação",
     ]);
     expect(new Set(menu.map((i) => i.href)).size).toBe(menu.length);
   });
 
   it("fatia 1: recepção vê a fila; quem atende vê a fila e a estação; sem item, 'Em breve'; sem perfis, vazio", () => {
-    expect(rotulos([{ perfil: "recepcao", unidadeId: "u1" }])).toEqual(["Fila do dia"]);
+    expect(rotulos([{ perfil: "recepcao", unidadeId: "u1" }])).toEqual(["Fila do dia", "QR de entrada"]);
     expect(rotulos([{ perfil: "atendimento", unidadeId: "u1" }])).toEqual(["Fila do dia", "Estação"]);
     expect(rotulos([{ perfil: "agendar", unidadeId: "u1" }])).toEqual(["Em breve"]);
     expect(rotulos([])).toEqual([]);

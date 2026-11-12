@@ -38,3 +38,16 @@ export function cronometro(desde: string, agora: number): string {
   const s = Math.max(0, Math.floor((agora - Date.parse(desde)) / 1000));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
+
+const PENDENCIAS: Record<string, string> = {
+  conta: "a conta",
+  pessoa_atendida: "a pessoa atendida",
+  pre_cadastro: "o pré-cadastro",
+  prioridade: "a prioridade",
+};
+
+/** RN-FILA-05: o QR foi recusado e a recepção precisa conferir isto antes da presença. */
+export function textoDasPendencias(pendencias: string[]): string | null {
+  if (pendencias.length === 0) return null;
+  return `Passe na recepção: conferir ${pendencias.map((p) => PENDENCIAS[p] ?? p).join(", ")}`;
+}
