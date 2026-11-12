@@ -3,7 +3,7 @@ import { cpfValido } from "@fila-saude/schemas/cpf";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
-import { username } from "better-auth/plugins";
+import { bearer, username } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import database, { schemaCentral } from "infra/database";
 import { paciente } from "infra/database/central/schema/auth";
@@ -114,7 +114,8 @@ export const authCentral = betterAuth({
   emailAndPassword: { enabled: true, minPasswordLength: 8 },
   // Responderia sem login se um CPF tem conta (oráculo de CPF): fica 404.
   disabledPaths: ["/is-username-available"],
-  plugins: [username({ usernameValidator: cpfValido, minUsernameLength: 11, maxUsernameLength: 11 })],
+  // bearer: o app nativo guarda o token e o manda em Authorization (sem cookie, sem Origin).
+  plugins: [username({ usernameValidator: cpfValido, minUsernameLength: 11, maxUsernameLength: 11 }), bearer()],
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       try {
