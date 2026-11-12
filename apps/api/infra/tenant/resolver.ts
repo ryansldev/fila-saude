@@ -6,14 +6,17 @@ export type ResultadoDaResolucao = { slug: string } | { erro: "sem_tenant" | "mu
 
 // PD-15: o painel e a TV chegam por `<slug>.<dominioBase>` (Host); o app, por `/v1/municipios/:slug/…`.
 // Com os dois presentes e diferentes → `municipio_divergente`. No modo `single` (PD-12) o tenant é
-// sempre `slugFixo` e o Host é ignorado (a VPS do município pode ter qualquer domínio).
+// sempre `slugFixo` e o Host é ignorado (a VPS do município pode ter qualquer domínio); caminho com
+// outro slug → `sem_tenant`.
 // Função pura: não consulta o catálogo; existir ou estar ativo é decidido depois (`PoolsDosTenants`).
 export function resolverTenant(entrada: EntradaDaResolucao, config: ConfigDaResolucao): ResultadoDaResolucao {
   const doCaminho = entrada.slugDoCaminho;
 
   if (config.modo === "single") {
     if (!config.slugFixo) return { erro: "sem_tenant" };
-    if (doCaminho !== undefined && doCaminho !== config.slugFixo) return { erro: "municipio_divergente" };
+    // A VPS do município não conhece outros municípios: outro slug no caminho é desconhecido (404),
+    // com a mesma resposta de um slug que não existe em lugar nenhum.
+    if (doCaminho !== undefined && doCaminho !== config.slugFixo) return { erro: "sem_tenant" };
     return { slug: config.slugFixo };
   }
 

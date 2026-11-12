@@ -21,7 +21,10 @@ const camposDoEnv = z.object({
   // PD-12: `single` fixa o tenant por TENANT_SLUG (VPS do município).
   TENANT_MODE: z.enum(["multi", "single"]).default("multi"),
   TENANT_SLUG: z.string().min(1).optional(),
+  // PD-12: no modo `single` o banco do município vem direto do ambiente, sem passar pelo central.
   TENANT_DATABASE_URL: z.string().min(1).optional(),
+  // PD-12: fuso do município no modo `single` (o schema municipal não guarda o fuso; o central, sim).
+  TENANT_FUSO: z.string().min(1).default("America/Sao_Paulo"),
   // PD-17: emissor do JWT do paciente e origem do JWKS.
   CENTRAL_URL: z.string().min(1),
   // PD-20: `banco` grava os e-mails em `correio_dev` no central.
@@ -30,7 +33,8 @@ const camposDoEnv = z.object({
   AUTH_JWT_TTL: z.string().min(1).default("15m"),
 });
 
-// PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido o boot falha.
+// PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido e
+// TENANT_DATABASE_URL o boot falha.
 export const envSchema = camposDoEnv.superRefine((valores, ctx) => {
   if (valores.TENANT_MODE !== "single") return;
   if (!valores.TENANT_SLUG) {
@@ -44,6 +48,13 @@ export const envSchema = camposDoEnv.superRefine((valores, ctx) => {
       code: "custom",
       path: ["TENANT_SLUG"],
       message: "TENANT_SLUG fora do formato de slug (TENANT_MODE=single)",
+    });
+  }
+  if (!valores.TENANT_DATABASE_URL) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["TENANT_DATABASE_URL"],
+      message: "TENANT_DATABASE_URL é obrigatório quando TENANT_MODE=single",
     });
   }
 });

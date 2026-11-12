@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import type { PoolsDosTenants, Tenant } from "infra/database/tenants";
+import type { FonteDosTenants, Tenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
 import { type ConfigDaResolucao, resolverTenant } from "./resolver";
 
@@ -13,7 +13,18 @@ declare module "fastify" {
   }
 }
 
-export type OpcoesDoPluginDoTenant = { pools: PoolsDosTenants; config: ConfigDaResolucao };
+// `pools`: `PoolsDosTenants` no modo multi, `TenantFixo` no single (veja `fonteDosTenants`).
+export type OpcoesDoPluginDoTenant = { pools: FonteDosTenants; config: ConfigDaResolucao };
+
+// PD-15: só rotas `…/municipios/:slug/…` (pasta `municipios/_slug`) levam o município no caminho.
+// Um `:slug` em outra rota não é município e não entra na resolução.
+const ROTA_DE_MUNICIPIO = /\/municipios\/:slug(\/|$)/;
+
+function slugDoCaminho(req: FastifyRequest): string | undefined {
+  if (!ROTA_DE_MUNICIPIO.test(req.routeOptions.url ?? "")) return undefined;
+  const slug = (req.params as { slug?: unknown } | undefined)?.slug;
+  return typeof slug === "string" ? slug : undefined;
+}
 
 // PD-15: resolução preguiçosa. Só as rotas que declaram `preHandler: app.exigirTenant` resolvem o
 // tenant e consultam o catálogo; as da raiz nunca tocam no catálogo nem falham por falta de tenant.
@@ -23,11 +34,7 @@ async function pluginDoTenant(app: FastifyInstance, opcoes: OpcoesDoPluginDoTena
   app.decorateRequest("tenant", null);
 
   app.decorate("exigirTenant", async (req: FastifyRequest) => {
-    const resolucao = resolverTenant(
-      // Task 8 passa o `:slug` de `/v1/municipios/:slug/…`; até lá só o Host decide.
-      { host: req.headers.host, slugDoCaminho: undefined },
-      opcoes.config,
-    );
+    const resolucao = resolverTenant({ host: req.headers.host, slugDoCaminho: slugDoCaminho(req) }, opcoes.config);
     if ("erro" in resolucao) {
       if (resolucao.erro === "municipio_divergente") throw new ErroApi(400, "municipio_divergente");
       throw new ErroApi(404, "municipio_desconhecido");
