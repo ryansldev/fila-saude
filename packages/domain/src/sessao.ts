@@ -94,6 +94,9 @@ export function situacao(dia: DiaSessao | null, sessao: SessaoVagas): Situacao {
 /**
  * Põe a entrada na fila do dia com o próximo número livre (RN-FILA-02) e a senha dele (RN-FILA-04).
  * Quem entra presente (balcão) fica elegível na hora, com a janela protegida e sem atraso (número novo).
+ * O item nasce remoto "desde agora" (`saiuEm = agora`): para a regra de atraso e para a falta no
+ * encerramento só contam as chamadas feitas depois de a pessoa entrar na fila (AD-010, RN-SES-02).
+ * Na abertura ainda não houve chamadas, então nada muda ali.
  */
 export function porNaFila(
   dia: DiaSessao,
@@ -115,7 +118,7 @@ export function porNaFila(
     prioridade: entrada.prioridade,
     pulos: 0,
     travadoAtras: [],
-    saiuEm: null,
+    saiuEm: agora,
     atendidoEmEtapas: [],
   };
   // INV-05: o número vem de um contador da sessão, então a senha não se repete.

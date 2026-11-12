@@ -23,6 +23,7 @@ export type ItemFila = {
   prioridade: PrioridadeLegal;
   pulos: number;
   travadoAtras: string[];
+  /** Remoto desde (entrada na fila, "Vou sair" ou 2º pulo); `null` enquanto presente na etapa. */
   saiuEm: number | null;
   atendidoEmEtapas: Etapa[];
 };
@@ -122,9 +123,10 @@ export const emContingencia = (dia: DiaSessao, em: number): boolean =>
 
 /**
  * Chamadas que fazem a vez de X passar (AD-010): nesta etapa, de alguém que vem depois de X em
- * ordem. Só contam as feitas enquanto X estava remoto: depois de "Vou sair" ou do 2º pulo, as
- * anteriores a `saiuEm` saem; sem `saiuEm`, X nunca esteve presente nesta etapa, e todas as
- * chamadas dela foram feitas com ele fora. Não filtra contingência: quem usa decide (AD-033).
+ * ordem. Só contam as feitas enquanto X estava remoto, ou seja, desde `saiuEm` ("remoto desde"):
+ * a entrada na fila (`porNaFila`), "Vou sair" ou o 2º pulo. Sem `saiuEm` (item que passou da
+ * triagem ao atendimento estando na unidade), contam todas as da etapa. Não filtra contingência:
+ * quem usa decide (AD-033).
  */
 export function chamadasQuePassamAVez(dia: DiaSessao, x: ItemFila): Chamada[] {
   return dia.chamadas.filter((c) => {

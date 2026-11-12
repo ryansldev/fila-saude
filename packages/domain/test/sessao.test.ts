@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { chamarProximo, finalizar } from "../src/chamada.ts";
 import { TRANSICOES_ENTRADA } from "../src/contratos.ts";
+import { encerrar } from "../src/encerramento.ts";
 import { CONFIG_PADRAO, checkIn, conferirEMarcar, type DiaSessao, elegiveis } from "../src/fila.ts";
 import {
   alocar,
@@ -25,7 +27,7 @@ import {
   removerLancamento,
   trocarReserva,
 } from "../src/sessao.ts";
-import { congelar, entrada, respostas, sessaoVagas } from "./fixtures.ts";
+import { congelar, entrada, problemaNovo, respostas, sessaoVagas } from "./fixtures.ts";
 
 const MIN = 60_000;
 const H = 60 * MIN;
@@ -755,5 +757,144 @@ describe("invariantes", () => {
         INICIO,
       ),
     ).not.toThrow();
+  });
+});
+
+describe("AD-010: quem entra na fila com a sessão aberta", () => {
+  const E1 = { estacaoId: "e1" };
+  const ATENCAO = problemaNovo("moderado");
+
+  /** Bruno (rotina) inscrito antes, sessão aberta às 07:00 e Bruno chamado às 07:01. */
+  function brunoChamado(vagas: number): Estado {
+    let st: Estado = { sessao: publica({ vagas }), dia: null, entradas: [] };
+    st = inscrever(st, "bruno", T);
+    st = {
+      ...st,
+      ...aplicar(abrirSessao(diaPlanejado(), st.sessao, st.entradas, { servico: LIVRE, fotosAceitas: [] }, INICIO)),
+    };
+    const brunoItem = itemDe(st.dia, "bruno");
+    if (!brunoItem || !st.dia) throw new Error("Bruno fora da fila");
+    let dia = aplicar(checkIn(st.dia, { itemId: brunoItem.id }, INICIO));
+    dia = aplicar(chamarProximo(dia, E1, INICIO + MIN));
+    return { ...st, dia };
+  }
+
+  /** Zé (atenção, antes de Bruno na ordem) se inscreve na sessão aberta. */
+  function zeInscreve(st: Estado, agora: number): Estado {
+    const {
+      entrada: ze,
+      sessao,
+      dia,
+    } = aplicar(
+      inscreverPublica(
+        st.sessao,
+        st.dia,
+        {
+          servico: LIVRE,
+          pessoa: { nome: "Zé", nascimento: "1990-01-01", cpf: null },
+          responsavelId: "ze",
+          respostas: ATENCAO,
+          id: "ze",
+          entradasAtivas: st.entradas,
+          fotoAceita: false,
+        },
+        agora,
+      ),
+    );
+    return { sessao, dia, entradas: [...st.entradas, ze] };
+  }
+
+  const diaDe = (st: Estado): DiaSessao => {
+    if (!st.dia) throw new Error("sem dia");
+    return st.dia;
+  };
+
+  it("AD-010: inscrito com a sessão aberta não perde a vez por chamadas anteriores à inscrição (check-in)", () => {
+    const st = zeInscreve(brunoChamado(3), INICIO + H);
+    const ze = itemDe(st.dia, "ze");
+    expect(ze?.numero).toBe(2);
+    const r = checkIn(diaDe(st), { itemId: idDoItem("ze", "s1") }, INICIO + 90 * MIN);
+    expect(itemDe(aplicar(r), "ze")).toMatchObject({ estado: "presente", numero: 2 });
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "presente", dados: expect.objectContaining({ perdeuAVez: false }) }),
+    );
+  });
+
+  it("AD-010/RN-SES-02: inscrito com a sessão aberta que não veio é remanejado, não faltoso", () => {
+    const st = zeInscreve(brunoChamado(3), INICIO + H);
+    const dia = aplicar(finalizar(diaDe(st), E1, INICIO + 2 * H));
+    const fim = aplicar(
+      encerrar(dia, st.entradas, INICIO + 3 * H, { semSinalSemContingencia: false, origem: "publica" }),
+    );
+    expect(fim.dia.encerramento?.faltas).toEqual([]);
+    expect(itemDe(fim.dia, "ze")?.estado).toBe("remanejado");
+    expect(fim.entradas.find((e) => e.id === "ze")?.estado).toBe("remanejada");
+  });
+
+  it("AD-010: vaga da reserva preenchida com a sessão aberta não perde a vez por chamadas anteriores", () => {
+    // Uma vaga só: Zé vai para a reserva; Bruno é chamado; a vaga da Carla abre às 08:00.
+    let st: Estado = { sessao: publica({ vagas: 2 }), dia: null, entradas: [] };
+    st = inscrever(st, "bruno", T);
+    st = inscrever(st, "carla", T + MIN);
+    st = zeInscreve(st, T + 2 * MIN);
+    expect(ent(st, "ze").estado).toBe("na_reserva");
+    st = {
+      ...st,
+      ...aplicar(abrirSessao(diaPlanejado(), st.sessao, st.entradas, { servico: LIVRE, fotosAceitas: [] }, INICIO)),
+    };
+    let dia = aplicar(checkIn(diaDe(st), { itemId: idDoItem("bruno", "s1") }, INICIO));
+    dia = aplicar(chamarProximo(dia, E1, INICIO + MIN));
+    const semCarla = st.entradas.map((e) => (e.id === "carla" ? { ...e, estado: "cancelada" as const } : e));
+    const rs = aplicar(
+      liberarVaga(st.sessao, dia, congelar(semCarla), { servico: LIVRE, fotosAceitas: [] }, INICIO + H),
+    );
+    expect(rs.entradas.find((e) => e.id === "ze")?.estado).toBe("na_fila");
+    const r = checkIn(diaDe(rs), { itemId: idDoItem("ze", "s1") }, INICIO + 90 * MIN);
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "presente", dados: expect.objectContaining({ perdeuAVez: false }) }),
+    );
+  });
+
+  it("AD-010: lançamento regulado com a sessão aberta não perde a vez por chamadas anteriores", () => {
+    const diaReg = diaPlanejado({
+      servicoId: "reg",
+      estacoes: [{ id: "e1", etapa: "atendimento", servicos: ["reg"], aberta: true, chamadoItemId: null }],
+    });
+    const lancar = (
+      s: SessaoVagas,
+      d: DiaSessao | null,
+      id: string,
+      risco: "rotina" | "atencao",
+      agora: number,
+      ativas: Entrada[],
+    ) =>
+      aplicar(
+        lancarRegulado(
+          s,
+          d,
+          {
+            servico: REGULADO,
+            id,
+            pessoa: { nome: id, nascimento: "1990-01-01", cpf: null },
+            contaId: null,
+            contaVerificada: false,
+            riscoDaRegulacao: risco,
+            entradasAtivas: ativas,
+          },
+          agora,
+        ),
+      );
+    const bruno = lancar(sessaoVagas({ servicoId: "reg" }), null, "bruno", "rotina", T, []);
+    const ab = aplicar(
+      abrirSessao(diaReg, bruno.sessao, congelar([bruno.entrada]), { servico: REGULADO, fotosAceitas: [] }, INICIO),
+    );
+    let dia = aplicar(checkIn(ab.dia, { itemId: idDoItem("bruno", "s1") }, INICIO));
+    dia = aplicar(chamarProximo(dia, E1, INICIO + MIN));
+    const ze = lancar(ab.sessao, dia, "ze", "atencao", INICIO + H, ab.entradas);
+    if (!ze.dia) throw new Error("sem dia");
+    const r = checkIn(ze.dia, { itemId: idDoItem("ze", "s1") }, INICIO + 90 * MIN);
+    expect(eventos(r)).toContainEqual(
+      expect.objectContaining({ tipo: "presente", dados: expect.objectContaining({ perdeuAVez: false }) }),
+    );
   });
 });
