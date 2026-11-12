@@ -8,6 +8,13 @@
       "when": 1794396070986,
       "tag": "0000_central",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794450584353,
+      "tag": "0001_paciente",
+      "breakpoints": true
     }
   ]
 }

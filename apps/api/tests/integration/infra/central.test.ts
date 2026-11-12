@@ -28,6 +28,21 @@ const colunasPermitidas = [
   "municipio.slug",
   "municipio.status",
   "municipio.uf",
+  "paciente.cpf",
+  "paciente.created_at",
+  "paciente.display_username",
+  "paciente.email",
+  "paciente.email_verified",
+  "paciente.id",
+  "paciente.image",
+  "paciente.name",
+  "paciente.nascimento",
+  "paciente.telefone",
+  "paciente.updated_at",
+  "paciente.username",
+  "paciente.verificado_em",
+  "paciente.verificado_metodo",
+  "paciente.verificado_municipio",
   "session.created_at",
   "session.expires_at",
   "session.id",
@@ -36,13 +51,6 @@ const colunasPermitidas = [
   "session.updated_at",
   "session.user_agent",
   "session.user_id",
-  "user.created_at",
-  "user.email",
-  "user.email_verified",
-  "user.id",
-  "user.image",
-  "user.name",
-  "user.updated_at",
   "verification.created_at",
   "verification.expires_at",
   "verification.id",
@@ -62,7 +70,7 @@ describe("banco central", () => {
 
     expect(resultado.rows[0]?.banco).toBe("fila_central");
     const tabelas = resultado.rows.map((linha) => linha.table_name);
-    expect(tabelas).toEqual(["account", "municipio", "session", "user", "verification"]);
+    expect(tabelas).toEqual(["account", "municipio", "paciente", "session", "verification"]);
   });
 
   it("INV-11: o central só tem colunas permitidas", async () => {
