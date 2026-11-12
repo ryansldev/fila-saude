@@ -52,7 +52,7 @@ Ao encerrar, O SISTEMA DEVE separar quem faltou (RN-FALTA-01) de quem é remanej
 QUANDO o paciente ler o QR rotativo da TV, O SISTEMA DEVE marcá-lo presente. O QR é um token assinado que troca a cada 30 s; a validade é conferida pelo relógio do servidor, que aceita o código atual e o imediatamente anterior. Uma foto antiga não funciona; o relógio do celular não importa.
 
 **RN-PRES-02 · "Vou sair"**
-QUANDO o paciente tocar "Vou sair" no app, de qualquer lugar, O SISTEMA DEVE devolvê-lo a remoto mantendo a posição.
+QUANDO o paciente tocar "Vou sair" no app, de qualquer lugar, O SISTEMA DEVE devolvê-lo a remoto mantendo a posição. É como se ele voltasse para a fila remota no mesmo lugar: as travas da janela protegida que o deixavam à frente de outros presentes acabam, e ao voltar ele segue a regra de quem faz check-in (janela protegida e atraso).
 
 **RN-PRES-03 · Presença pela recepção**
 A recepção PODE marcar presença para quem não tem app, não conseguiu ler o QR ou está validando o pré-cadastro. Para pessoa sem app, ela confere o documento e a pessoa vai direto para presente.
@@ -81,7 +81,8 @@ chamar proximo = primeiro de ordem(elegiveis)
 
 janela protegida (K, padrao 1):
   no instante em que X fica elegivel (check-in ou 1o pulo),
-  os K primeiros de ordem(elegiveis) ficam travados a frente de X,
+  os K primeiros da ordem de chamada real (ordem(elegiveis) ja com as
+  travas existentes) ficam travados a frente de X,
   mesmo que X venha antes deles na ordem.
   excecao: X tem urgencia confirmada.
   a trava acaba quando esses K forem chamados.

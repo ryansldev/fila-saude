@@ -62,10 +62,10 @@ A revisão de toda a fase 1A encontrou falhas na ligação entre a fila do dia e
 
 Ficaram **para você decidir** (a revisão não julgou, e o código ficou como estava):
 
-- **Janela protegida:** hoje são os K primeiros da ordem de chamada real, respeitando as travas (decisão da Task 5). Confirme se é essa a intenção.
-- **"Vou sair":** hoje solta as travas de quem estava atrás. A spec não diz.
-- **"Chamar próximo" sem ninguém elegível:** hoje a chamada anterior continua aberta na estação. Alternativa: fechar e mostrar "ninguém na vez".
-- **Refazer o questionário estando presente:** hoje o risco da pessoa já presente não muda naquele dia (só a triagem muda). Em serviço sem triagem, quem piorou não sobe no dia. Sugestão da revisão: o risco novo vale para quem está presente só em serviço sem triagem.
+- ~~Janela protegida~~ **decidido (2026-11-12):** K primeiros da ordem de chamada real, com as travas existentes; texto da regra corrigido em specs/fila-do-dia.
+- ~~"Vou sair"~~ **decidido (2026-11-12):** volta para a fila remota no mesmo lugar e perde as travas; ao voltar, segue a regra do check-in (RN-PRES-02).
+- ~~"Chamar próximo" sem ninguém elegível~~ **decidido (2026-11-12):** encerra o chamado anterior e a estação fica livre com "ninguém aguardando no momento" (RN-CHAM-01). **Muda o domínio:** entra como correção na fatia 1, antes da estação.
+- ~~Refazer o questionário estando presente~~ **decidido (2026-11-12):** o app de quem está na unidade mostra "Meus sintomas pioraram", que orienta avisar a recepção ou a enfermagem; a recepção reaplica o questionário no balcão e o risco é reclassificado na hora (RN-PIORA-01). **Muda o domínio:** reclassificar um item presente pela recepção; entra na fatia 2 (recepção na unidade).
 
 Pendências conhecidas do domínio (corrigir junto com a rota que as usa):
 

@@ -23,7 +23,7 @@ Ao fim da tolerância a estação avisa, mas não pula sozinha. Uma estação co
 ## Chamar
 
 **RN-CHAM-01 · Chamar próximo**
-QUANDO o profissional clicar em **Chamar próximo**, O SISTEMA DEVE pegar o primeiro elegível da etapa e dos serviços daquela estação, mostrá-lo na TV e enviar push. A seleção é atômica: duas estações chamando ao mesmo tempo recebem pacientes diferentes (INV-04).
+QUANDO o profissional clicar em **Chamar próximo**, O SISTEMA DEVE pegar o primeiro elegível da etapa e dos serviços daquela estação, mostrá-lo na TV e enviar push. A seleção é atômica: duas estações chamando ao mesmo tempo recebem pacientes diferentes (INV-04). Se a estação tinha um chamado aberto, ele é encerrado como finalizado antes. Sem ninguém elegível, o chamado anterior é encerrado do mesmo jeito e a estação fica livre com o aviso "ninguém aguardando no momento".
 
 **RN-CHAM-02 · Encerrar a chamada**
 Chamar o próximo encerra a chamada anterior como **atendido** (ou triado). **Rechamar** repete o anúncio sem reiniciar a tolerância. **Finalizar** encerra o atendimento atual sem chamar outro.

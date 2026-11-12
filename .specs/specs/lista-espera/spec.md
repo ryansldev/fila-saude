@@ -61,7 +61,7 @@ O nível calculado pelo app é sempre **sugerido**. QUANDO o agendador alocar a 
 Em sessão pública e no balcão não há agendador: o nível fica sugerido até a triagem confirmar, e em serviço sem triagem permanece sugerido. No balcão, a recepção aplica o mesmo questionário com o paciente; QUANDO o resultado for emergência, O SISTEMA DEVE orientar encaminhá-lo à emergência.
 
 **RN-RISCO-03 · Refazer o questionário**
-O paciente PODE refazer o questionário enquanto espera. QUANDO subir para urgente, O SISTEMA DEVE alertar o agendador; QUANDO cair em emergência, orientar ligar para o SAMU (192). Prioridade legal nova declarada por quem já está presente só vale depois que a recepção conferir; até lá ele segue no lugar, sem ela.
+O paciente PODE refazer o questionário enquanto espera. QUANDO subir para urgente, O SISTEMA DEVE alertar o agendador; QUANDO cair em emergência, orientar ligar para o SAMU (192). Prioridade legal nova declarada por quem já está presente só vale depois que a recepção conferir; até lá ele segue no lugar, sem ela. Quem já está presente não muda o risco pelo app (RN-PIORA-01).
 *Decisões: AD-054.*
 
 **RN-RISCO-04 · Prioridade legal**
@@ -109,7 +109,7 @@ A resposta sobre pensamentos de tirar a própria vida só é visível para agend
 *Decisões: AD-044.*
 
 **RN-PIORA-01 · Situação piorou**
-Ver RN-RISCO-03.
+Remoto: refaz o questionário pelo app (RN-RISCO-03). Presente: o app não muda o risco de quem já está na unidade; no lugar de "Refazer questionário", mostra o botão **"Meus sintomas pioraram"**, que orienta avisar a recepção ou a enfermagem no local (e ligar para o SAMU, 192, em caso de emergência). A recepção reaplica o questionário no balcão e o risco é reclassificado na hora, com auditoria; num serviço com triagem, a triagem continua com a palavra final (RN-TRI-03).
 
 ## Alocação em sessão privada
 
