@@ -7,6 +7,7 @@ import { municipio } from "./central/schema/municipio";
 import type { Db } from "./index";
 import * as auditoria from "./municipal/schema/auditoria";
 import * as auth from "./municipal/schema/auth";
+import * as diaSessao from "./municipal/schema/dia-sessao";
 import * as entrada from "./municipal/schema/entrada";
 import * as equipe from "./municipal/schema/equipe";
 import * as estacao from "./municipal/schema/estacao";
@@ -25,6 +26,7 @@ export const schemaMunicipal = {
   ...estacao,
   ...sessao,
   ...entrada,
+  ...diaSessao,
   ...auth,
   ...equipe,
   ...auditoria,

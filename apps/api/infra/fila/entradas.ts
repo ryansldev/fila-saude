@@ -144,3 +144,29 @@ export async function entrarNaLista(db: DbDoTenant | TxDoTenant, cmd: CmdEntrarN
   if (db instanceof PgTransaction) return entrar(db, cmd);
   return db.transaction((tx) => entrar(tx, cmd));
 }
+
+// O que o domínio pode mudar numa entrada existente (a pessoa e a data original nunca mudam, INV-09).
+export async function atualizarEntrada(db: BancoDoTenant, e: Entrada): Promise<void> {
+  await db
+    .update(entrada)
+    .set({
+      estado: e.estado,
+      classificacao: e.classificacao,
+      riscoConfirmado: e.riscoConfirmado,
+      prioridade: e.prioridade,
+      remanejada: e.remanejada,
+      recusas: e.recusas,
+      sessaoId: e.sessaoId,
+      alocadaEm: data(e.alocadaEm),
+      perguntadoEm: data(e.perguntadoEm),
+      respondidoEm: data(e.respondidoEm),
+      arquivadaEm: data(e.arquivadaEm),
+      sessoesRecusadas: e.sessoesRecusadas,
+    })
+    .where(eq(entrada.id, e.id));
+}
+
+export async function entradasDaSessao(db: BancoDoTenant, sessaoId: string): Promise<Entrada[]> {
+  const linhas = await comPessoa(db).where(eq(entrada.sessaoId, sessaoId));
+  return linhas.map(paraEntrada);
+}

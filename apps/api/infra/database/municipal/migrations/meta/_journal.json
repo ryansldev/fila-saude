@@ -57,6 +57,13 @@
       "when": 1794487836376,
       "tag": "0007_remocoes",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794508153171,
+      "tag": "0008_fila_do_dia",
+      "breakpoints": true
     }
   ]
 }
