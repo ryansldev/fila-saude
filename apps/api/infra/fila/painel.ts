@@ -1,4 +1,12 @@
-import { abrirSessao, type DiaSessao, encerrar, origemDaSessao, temPrioridade } from "@fila-saude/domain";
+import {
+  abrirSessao,
+  conferirEMarcar,
+  type DiaSessao,
+  desfechoDaEntrada,
+  encerrar,
+  origemDaSessao,
+  temPrioridade,
+} from "@fila-saude/domain";
 import type { FilaDaSessao } from "@fila-saude/schemas/fila";
 import { eq, inArray } from "drizzle-orm";
 import { SESSAO } from "infra/config/comum";
@@ -105,6 +113,46 @@ export async function encerrarSessaoDoDia(ctx: ContextoDaAcao, sessaoId: string)
         });
         if (!r.ok) throw new ErroApi(409, r.erro);
         return { dia: r.estado.dia, entradas: r.estado.entradas, resultado: r.estado.dia };
+      });
+      return paraFila(tx, sessaoId, dia);
+    },
+  );
+}
+
+// RN-FILA-05: a recepção confere e marca a presença na mesma ação (o QR do check-in vem na fatia 2).
+export async function marcarPresencaNaFila(
+  ctx: ContextoDaAcao,
+  sessaoId: string,
+  dados: {
+    entradaId: string;
+    resultado: "confere" | "nao_confere" | "prioridade_nao_confere";
+    motivo?: string | undefined;
+  },
+): Promise<FilaDaSessao> {
+  const { servico } = await exigirSessao(ctx.db, sessaoId);
+  return executarAcao(
+    ctx,
+    {
+      acao: "conferir_e_marcar_presenca",
+      alvo: { tipo: "entrada", id: dados.entradaId },
+      unidadeId: servico.unidadeId,
+      motivo: dados.motivo ?? null,
+      dados: () => ({ resultado: dados.resultado }),
+    },
+    async (tx) => {
+      const dia = await naSessao(tx, sessaoId, async (c) => {
+        const item = c.dia?.itens.find((i) => i.entradaId === dados.entradaId);
+        if (!c.dia || !item) throw new ErroApi(404, "nao_encontrado");
+        const cmd = { itemId: item.id, resultado: dados.resultado, ...(dados.motivo ? { motivo: dados.motivo } : {}) };
+        const r = conferirEMarcar(c.dia, cmd, ctx.agora);
+        if (!r.ok) throw new ErroApi(409, r.erro);
+        const entradas = c.entradas.map((en) => {
+          const it = r.estado.itens.find((i) => i.entradaId === en.id);
+          if (!it || en.estado !== "na_fila") return en;
+          const d = desfechoDaEntrada(en, it);
+          return d.ok ? d.estado : en;
+        });
+        return { dia: r.estado, entradas, resultado: r.estado };
       });
       return paraFila(tx, sessaoId, dia);
     },

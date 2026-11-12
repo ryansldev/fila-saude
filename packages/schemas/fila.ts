@@ -141,3 +141,10 @@ export const inscricaoSchema = z.object({
   estado: z.string(),
   classificacao: z.object({ nivel: z.string(), apoio: z.boolean() }),
 });
+
+/** RN-FILA-05: resultado da conferência da recepção ao marcar presença. */
+export const presencaEntradaSchema = z.object({
+  entradaId: z.uuid(),
+  resultado: z.enum(["confere", "nao_confere", "prioridade_nao_confere"]),
+  motivo: z.string().trim().min(1).optional(),
+});
