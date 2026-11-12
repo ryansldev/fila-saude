@@ -1,9 +1,9 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { Db } from "infra/database";
 import { municipio } from "infra/database/central/schema/municipio";
+import { criarBancoSeNaoExiste } from "infra/database/criar-banco";
 import { migrarBanco } from "infra/database/migrar";
 import { ErroApi } from "infra/erros";
-import { escapeIdentifier } from "pg";
 import { bancoDoSlug, validarSlug } from "./slug";
 
 export type DadosDoTenant = { slug: string; nome: string; uf: string; fuso?: string };
@@ -44,11 +44,14 @@ export async function criarTenant(
       throw new ErroApi(409, "municipio_existe");
     }
 
-    // Passo 2: `CREATE DATABASE` não roda em transação, então vai por outra conexão do pool.
-    await criarBancoSeNaoExiste(central, banco);
+    const url = template.replace("{banco}", banco);
+
+    // Passo 2: `CREATE DATABASE` não roda em transação; vai por um cliente próprio, fora do pool do central,
+    // para não disputar conexão com a transação que segura a linha.
+    await criarBancoSeNaoExiste(url, banco);
 
     // Passo 3: o migrador guarda o estado no próprio banco; migrar de novo não refaz nada.
-    const { versao } = await migrarBanco(template.replace("{banco}", banco), "municipal");
+    const { versao } = await migrarBanco(url, "municipal");
 
     // Passo 4.
     await tx
@@ -58,25 +61,4 @@ export async function criarTenant(
 
     return { municipioId: linha.id };
   });
-}
-
-async function criarBancoSeNaoExiste(central: Db, banco: string) {
-  const existe = await central.execute(sql`select 1 from pg_database where datname = ${banco}`);
-  if (existe.rows.length > 0) return;
-
-  try {
-    await central.execute(sql.raw(`create database ${escapeIdentifier(banco)}`));
-  } catch (erro) {
-    // 42P04 (duplicate_database): alguém criou entre a consulta e o CREATE; o resultado é o mesmo.
-    if (codigoPostgres(erro) !== "42P04") throw erro;
-  }
-}
-
-function codigoPostgres(erro: unknown): string | undefined {
-  // O drizzle embrulha o erro do pg em `cause`.
-  for (let atual: unknown = erro; atual instanceof Error; atual = atual.cause) {
-    const codigo = (atual as { code?: unknown }).code;
-    if (typeof codigo === "string") return codigo;
-  }
-  return undefined;
 }
