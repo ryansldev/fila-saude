@@ -39,3 +39,9 @@ export function pluginDoPaciente(app: FastifyInstance) {
     req.paciente = p;
   });
 }
+
+// Depois de `exigirTenant` e `exigirPaciente`: o tenant e o paciente da requisição.
+export function doPaciente(req: FastifyRequest) {
+  if (!req.tenant || !req.paciente) throw new ErroApi(401, "nao_autenticado");
+  return { db: req.tenant.db, paciente: req.paciente };
+}
