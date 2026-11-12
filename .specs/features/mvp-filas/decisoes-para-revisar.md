@@ -90,3 +90,15 @@ Os planos detalhados ([1B](plano-fase-1b-fundacao-api.md), [fase 2](plano-fase-2
 | PD-29 | TV pareada por código de 6 dígitos válido por 10 min; até o SSE, consulta o estado a cada 5 s | Detalhe de operação na unidade |
 | PD-24 | Em dev, painel em `:3000` e landing (`apps/web`) movida para `:3001` | Muda o seu `npm run dev` da landing |
 | PD-14, 16, 18, 19, 20, 22, 23, 25, 26, 28, 30, 31 | Bancos por município, migrations, auditoria, testes, mailer de dev, formato de erro, tabelas de conta, worker/outbox, recorrência em hora local, herança de config, tabela mínima `entrada`, testes do painel | Técnicas e de baixo custo para trocar |
+
+## Fatia 0 da v0.1 (execução rápida, 2026-11-12)
+
+Pedido: "o mais rápido possível, menos perfeccionista". Tasks 2–20 feitas direto, sem o ciclo de subagente + revisão por task.
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| V1 | Processo | TDD mantido, mas um arquivo de teste por recurso (não por rota/método) e só os casos principais de cada task; sem revisão de código por task | Revisão por task (fluxo SDD) | Bug que a revisão pegaria; vale um `/code-review` da branch antes do PR |
+| V2 | Rota de teste das ressalvas (Task 8) | Ressalvas testadas só na unidade (`permitido`); a 403 por escopo é testada nas rotas reais | A rota `/v1/teste/painel/…/protegida` | Baixo |
+| V3 | CORS (Task 10) | Hook próprio em vez de `@fastify/cors`; mutação em `/v1/painel` com `Origin` de outro município → 403 antes da rota (CSRF) | `@fastify/cors` | Baixo: um arquivo |
+| V4 | Login do painel | Plugin username do better-auth: login só com letras, números, `.` e `_` (3–30) | Validador próprio que aceite hífen | Login com hífen dá 400 |
+| V5 | `GET /v1/painel/unidades` e `/config` | Qualquer usuário logado vê as unidades dos seus perfis (gestor: todas) | Exigir uma ação da matriz | Baixo |
