@@ -41,9 +41,12 @@ describe("fusos", () => {
       expect(() => new Intl.DateTimeFormat("pt-BR", { timeZone: fuso })).not.toThrow();
   });
 
-  it("o rótulo mostra os estados e o deslocamento UTC", () => {
-    expect(rotuloDoFuso("America/Recife", AGORA)).toBe("Pernambuco · Recife (UTC−3)");
-    expect(rotuloDoFuso("America/Cuiaba", AGORA)).toBe("Mato Grosso · Cuiabá (UTC−4)");
-    expect(rotuloDoFuso("Europe/Lisbon", AGORA)).toBe("Europe/Lisbon (UTC)");
+  it("rótulo como nos apps: (GMT-03:00) Horário de Brasília - Cidade", () => {
+    expect(rotuloDoFuso("America/Recife", AGORA)).toBe("(GMT-03:00) Horário de Brasília - Recife");
+    expect(rotuloDoFuso("America/Sao_Paulo", AGORA)).toBe("(GMT-03:00) Horário de Brasília - São Paulo");
+    expect(rotuloDoFuso("America/Cuiaba", AGORA)).toBe("(GMT-04:00) Horário do Amazonas - Cuiabá");
+    expect(rotuloDoFuso("America/Rio_Branco", AGORA)).toBe("(GMT-05:00) Horário do Acre - Rio Branco");
+    expect(rotuloDoFuso("America/Noronha", AGORA)).toBe("(GMT-02:00) Horário de Fernando de Noronha");
+    expect(rotuloDoFuso("Asia/Kolkata", AGORA)).toBe("(GMT+05:30) Asia/Kolkata");
   });
 });

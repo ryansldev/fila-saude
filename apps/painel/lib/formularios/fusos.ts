@@ -1,49 +1,57 @@
 /**
- * Os 16 fusos IANA do Brasil (tzdata, zone1970.tab), com os estados de cada um.
- * Brasília (America/Sao_Paulo) é o padrão.
+ * Os 16 fusos IANA do Brasil (tzdata, zone1970.tab). Rótulo como nos apps (Google Agenda, iOS):
+ * "(GMT-03:00) Horário de Brasília - Recife". Brasília (America/Sao_Paulo) é o padrão.
  */
+const BRASILIA = "Horário de Brasília";
+const AMAZONAS = "Horário do Amazonas";
+const ACRE = "Horário do Acre";
+
 export const FUSOS_DO_BRASIL = [
-  { fuso: "America/Noronha", nome: "Fernando de Noronha" },
-  { fuso: "America/Belem", nome: "Pará (leste) e Amapá · Belém" },
-  { fuso: "America/Fortaleza", nome: "Maranhão, Piauí, Ceará, Rio Grande do Norte e Paraíba · Fortaleza" },
-  { fuso: "America/Recife", nome: "Pernambuco · Recife" },
-  { fuso: "America/Araguaina", nome: "Tocantins · Araguaína" },
-  { fuso: "America/Maceio", nome: "Alagoas e Sergipe · Maceió" },
-  { fuso: "America/Bahia", nome: "Bahia · Salvador" },
-  {
-    fuso: "America/Sao_Paulo",
-    nome: "Horário de Brasília · GO, DF, MG, ES, RJ, SP, PR, SC, RS",
-  },
-  { fuso: "America/Santarem", nome: "Pará (oeste) · Santarém" },
-  { fuso: "America/Campo_Grande", nome: "Mato Grosso do Sul · Campo Grande" },
-  { fuso: "America/Cuiaba", nome: "Mato Grosso · Cuiabá" },
-  { fuso: "America/Porto_Velho", nome: "Rondônia · Porto Velho" },
-  { fuso: "America/Boa_Vista", nome: "Roraima · Boa Vista" },
-  { fuso: "America/Manaus", nome: "Amazonas (leste) · Manaus" },
-  { fuso: "America/Eirunepe", nome: "Amazonas (oeste) · Eirunepé" },
-  { fuso: "America/Rio_Branco", nome: "Acre · Rio Branco" },
+  { fuso: "America/Noronha", horario: "Horário de Fernando de Noronha", cidade: null },
+  { fuso: "America/Araguaina", horario: BRASILIA, cidade: "Araguaína" },
+  { fuso: "America/Belem", horario: BRASILIA, cidade: "Belém" },
+  { fuso: "America/Fortaleza", horario: BRASILIA, cidade: "Fortaleza" },
+  { fuso: "America/Maceio", horario: BRASILIA, cidade: "Maceió" },
+  { fuso: "America/Recife", horario: BRASILIA, cidade: "Recife" },
+  { fuso: "America/Bahia", horario: BRASILIA, cidade: "Salvador" },
+  { fuso: "America/Santarem", horario: BRASILIA, cidade: "Santarém" },
+  { fuso: "America/Sao_Paulo", horario: BRASILIA, cidade: "São Paulo" },
+  { fuso: "America/Boa_Vista", horario: AMAZONAS, cidade: "Boa Vista" },
+  { fuso: "America/Campo_Grande", horario: AMAZONAS, cidade: "Campo Grande" },
+  { fuso: "America/Cuiaba", horario: AMAZONAS, cidade: "Cuiabá" },
+  { fuso: "America/Manaus", horario: AMAZONAS, cidade: "Manaus" },
+  { fuso: "America/Porto_Velho", horario: AMAZONAS, cidade: "Porto Velho" },
+  { fuso: "America/Eirunepe", horario: ACRE, cidade: "Eirunepé" },
+  { fuso: "America/Rio_Branco", horario: ACRE, cidade: "Rio Branco" },
 ] as const;
 
-/** Deslocamento do fuso no instante `agora`, em minutos e em texto ("UTC−3", "UTC+5:30", "UTC"). */
+/** Deslocamento no instante `agora`: minutos e o texto "GMT-03:00". */
 function deslocamento(fuso: string, agora: number): { minutos: number; texto: string } {
   const parte =
     new Intl.DateTimeFormat("en-US", { timeZone: fuso, timeZoneName: "shortOffset" })
       .formatToParts(agora)
       .find((p) => p.type === "timeZoneName")?.value ?? "GMT";
   const m = /GMT([+-])(\d+)(?::(\d+))?/.exec(parte);
-  const minutos = m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) : 0;
-  const texto = minutos === 0 ? "UTC" : parte.replace("GMT", "UTC").replace("-", "−");
-  return { minutos, texto };
+  const sinal = m?.[1] === "-" ? "-" : "+";
+  const horas = Number(m?.[2] ?? 0);
+  const mins = Number(m?.[3] ?? 0);
+  const minutos = (sinal === "-" ? -1 : 1) * (horas * 60 + mins);
+  return { minutos, texto: `GMT${sinal}${String(horas).padStart(2, "0")}:${String(mins).padStart(2, "0")}` };
 }
 
 export function rotuloDoFuso(fuso: string, agora = Date.now()): string {
   const conhecido = FUSOS_DO_BRASIL.find((f) => f.fuso === fuso);
-  return `${conhecido ? conhecido.nome : fuso} (${deslocamento(fuso, agora).texto})`;
+  const nome = conhecido ? (conhecido.cidade ? `${conhecido.horario} - ${conhecido.cidade}` : conhecido.horario) : fuso;
+  return `(${deslocamento(fuso, agora).texto}) ${nome}`;
 }
 
-/** Opções do select: do leste (Noronha) ao oeste (Acre); no mesmo horário, pelo nome. */
+/** Opções do select: do leste (Noronha) ao oeste (Acre); no mesmo horário, pela cidade. */
 export function opcoesDeFuso(agora = Date.now()): { fuso: string; rotulo: string }[] {
-  return FUSOS_DO_BRASIL.map(({ fuso, nome }) => ({ fuso, nome, minutos: deslocamento(fuso, agora).minutos }))
-    .sort((a, b) => b.minutos - a.minutos || a.nome.localeCompare(b.nome, "pt-BR"))
+  return FUSOS_DO_BRASIL.map((f) => ({
+    fuso: f.fuso,
+    cidade: f.cidade ?? "",
+    minutos: deslocamento(f.fuso, agora).minutos,
+  }))
+    .sort((a, b) => b.minutos - a.minutos || a.cidade.localeCompare(b.cidade, "pt-BR"))
     .map(({ fuso }) => ({ fuso, rotulo: rotuloDoFuso(fuso, agora) }));
 }
