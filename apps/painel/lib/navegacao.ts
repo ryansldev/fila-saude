@@ -11,11 +11,9 @@ const CONFIGURAR: Acao = "configurar_servicos_sessoes_estacoes_tv";
 export const ITENS_DO_MENU: Candidato[] = [
   { rotulo: "Unidades", href: "/unidades", acao: GESTAO },
   { rotulo: "Usuários", href: "/usuarios", acao: GESTAO },
-  { rotulo: "Regras do município", href: "/regras", acao: GESTAO },
   { rotulo: "Serviços", href: "/servicos", acao: CONFIGURAR },
   { rotulo: "Estações", href: "/estacoes", acao: CONFIGURAR },
   { rotulo: "Sessões", href: "/sessoes", acao: CONFIGURAR },
-  { rotulo: "TVs", href: "/tvs", acao: CONFIGURAR },
 ];
 
 const EM_BREVE: ItemDeMenu = { rotulo: "Em breve", href: "/em-breve" };

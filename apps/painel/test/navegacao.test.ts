@@ -5,9 +5,9 @@ import { ITENS_DO_MENU, menuDoPainel } from "@/lib/navegacao";
 const rotulos = (perfis: Parameters<typeof menuDoPainel>[0]) => menuDoPainel(perfis).map((i) => i.rotulo);
 
 describe("menuDoPainel", () => {
-  it("menu do gestor tem unidades, usuários e regras; do admin, serviços, estações, sessões e TVs", () => {
-    expect(rotulos([{ perfil: "gestor", unidadeId: null }])).toEqual(["Unidades", "Usuários", "Regras do município"]);
-    expect(rotulos([{ perfil: "admin", unidadeId: "u1" }])).toEqual(["Serviços", "Estações", "Sessões", "TVs"]);
+  it("menu do gestor tem unidades e usuários; do admin, serviços, estações e sessões", () => {
+    expect(rotulos([{ perfil: "gestor", unidadeId: null }])).toEqual(["Unidades", "Usuários"]);
+    expect(rotulos([{ perfil: "admin", unidadeId: "u1" }])).toEqual(["Serviços", "Estações", "Sessões"]);
   });
 
   it("perfil acumulado soma os itens sem repetir", () => {
@@ -18,16 +18,7 @@ describe("menuDoPainel", () => {
       { perfil: "recepcao", unidadeId: "u1" },
       { perfil: "triagem", unidadeId: "u1" },
     ]);
-    expect(menu.map((i) => i.rotulo)).toEqual([
-      "Unidades",
-      "Usuários",
-      "Regras do município",
-      "Serviços",
-      "Estações",
-      "Sessões",
-      "TVs",
-      "Em breve",
-    ]);
+    expect(menu.map((i) => i.rotulo)).toEqual(["Unidades", "Usuários", "Serviços", "Estações", "Sessões", "Em breve"]);
     expect(new Set(menu.map((i) => i.href)).size).toBe(menu.length);
   });
 
