@@ -9,6 +9,7 @@ export const estadoItemSchema = z.enum(["remoto", "presente", "chamado", "atendi
 /** Item da fila como o painel vê: nome para a equipe; nada clínico além do nível de risco usado na ordem. */
 export const itemDaFilaSchema = z.object({
   id: z.string(),
+  entradaId: z.uuid(),
   senha: z.string(),
   nome: z.string(),
   etapa: etapaSchema,

@@ -12,6 +12,7 @@ describe("menuDoPainel", () => {
       "Serviços",
       "Estações",
       "Sessões",
+      "Fila do dia",
     ]);
   });
 
@@ -23,12 +24,22 @@ describe("menuDoPainel", () => {
       { perfil: "recepcao", unidadeId: "u1" },
       { perfil: "enfermeiro", unidadeId: "u1" },
     ]);
-    expect(menu.map((i) => i.rotulo)).toEqual(["Unidades", "Equipe", "Serviços", "Estações", "Sessões", "Em breve"]);
+    expect(menu.map((i) => i.rotulo)).toEqual([
+      "Unidades",
+      "Equipe",
+      "Serviços",
+      "Estações",
+      "Sessões",
+      "Fila do dia",
+      "Estação",
+    ]);
     expect(new Set(menu.map((i) => i.href)).size).toBe(menu.length);
   });
 
-  it("demais perfis têm só o item em breve; sem perfis, menu vazio", () => {
-    expect(rotulos([{ perfil: "atendimento", unidadeId: "u1" }])).toEqual(["Em breve"]);
+  it("fatia 1: recepção vê a fila; quem atende vê a fila e a estação; sem item, 'Em breve'; sem perfis, vazio", () => {
+    expect(rotulos([{ perfil: "recepcao", unidadeId: "u1" }])).toEqual(["Fila do dia"]);
+    expect(rotulos([{ perfil: "atendimento", unidadeId: "u1" }])).toEqual(["Fila do dia", "Estação"]);
+    expect(rotulos([{ perfil: "agendar", unidadeId: "u1" }])).toEqual(["Em breve"]);
     expect(rotulos([])).toEqual([]);
   });
 
@@ -40,7 +51,7 @@ describe("menuDoPainel", () => {
     for (const perfil of PERFIS) {
       const presentes = new Set(menuDoPainel([{ perfil, unidadeId: null }]).map((i) => i.href));
       for (const item of ITENS_DO_MENU) {
-        expect(presentes.has(item.href), `${perfil} ${item.rotulo}`).toBe(pode([perfil], item.acao));
+        expect(presentes.has(item.href), `${perfil} ${item.rotulo}`).toBe(item.acoes.some((a) => pode([perfil], a)));
       }
     }
   });

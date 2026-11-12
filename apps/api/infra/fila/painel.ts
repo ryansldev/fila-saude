@@ -46,6 +46,7 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
     sessao: await paraSessao(db, s),
     itens: itens.map((i) => ({
       id: i.id,
+      entradaId: i.entradaId,
       senha: i.senha,
       nome: nomes.get(i.entradaId) ?? "",
       etapa: i.etapa,

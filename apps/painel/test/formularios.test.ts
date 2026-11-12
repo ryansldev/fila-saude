@@ -149,6 +149,6 @@ describe("menu", () => {
     ]).map((i) => i.rotulo);
     expect(rotulos).not.toContain("Regras do município");
     expect(rotulos).not.toContain("TVs");
-    expect(rotulos).toEqual(["Unidades", "Equipe", "Serviços", "Estações", "Sessões"]);
+    expect(rotulos).toEqual(["Unidades", "Equipe", "Serviços", "Estações", "Sessões", "Fila do dia"]);
   });
 });

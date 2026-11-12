@@ -34,7 +34,7 @@ describe("acesso às páginas do painel", () => {
     );
     expect(screen.queryByText("conteúdo secreto")).toBeNull();
     expect(screen.getByRole("heading", { name: /sem acesso/i })).toBeDefined();
-    expect(screen.getByRole("link", { name: /em breve/i }).getAttribute("href")).toBe("/em-breve");
+    expect(screen.getByRole("link", { name: /fila do dia/i }).getAttribute("href")).toBe("/fila");
   });
 
   it("com permissão a página renderiza", () => {
