@@ -304,7 +304,7 @@ export function registrarContingencia(
   // DECISÃO: o item volta ao desfecho que o encerramento daria (remanejado), para a fila do dia
   // mostrar o mesmo que a entrada; o contrato do item não tem linha de reversão própria.
   const paraItem = garantido(TRANSICOES_ITEM, "remoto", ITEM_ENCERRADA, (t) => t.spec === "contingencia");
-  const itens = comPeriodo.itens.map((i) => (apagadas.has(i.id) ? { ...i, estado: paraItem } : i));
+  const itens = comPeriodo.itens.map((i) => (apagadas.has(i.id) ? { ...i, estado: paraItem, motivoSaida: null } : i));
   const novaDe = new Map([...apagadas.values()].map((e) => [e.id, e]));
   const novas = entradas.map((e) => novaDe.get(e.id) ?? e);
   const recalculado: DiaSessao = {

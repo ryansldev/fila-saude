@@ -226,7 +226,8 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     const r = registrarContingencia(fechado.dia, fechado.entradas, periodo, T + 6 * H);
     const { dia, entradas } = aplicar(r);
     expect(dia.contingencias).toEqual([periodo]);
-    expect(item(dia, "ana").estado).toBe("remanejado");
+    expect(item(fechado.dia, "ana").motivoSaida).toBe("falta");
+    expect(item(dia, "ana")).toMatchObject({ estado: "remanejado", motivoSaida: null });
     const ana = ent(entradas, "ent-ana");
     expect([ana.estado, ana.remanejada, ana.sessaoId]).toEqual(["remanejada", "privada", null]);
     expect(eventos(r)).toContainEqual(expect.objectContaining({ tipo: "falta_apagada", entradaId: "ent-ana" }));
