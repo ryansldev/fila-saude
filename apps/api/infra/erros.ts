@@ -2,19 +2,32 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ZodType } from "zod";
 
 // PD-22: erro de negócio com status HTTP e código `snake_case`; `tratarErro` o converte em
-// `{ erro: codigo, campos? }`.
+// `{ erro: codigo, mensagem?, campos? }`. `mensagem` é texto para a pessoa (ex.: RN-ID-02).
 export class ErroApi extends Error {
   status: number;
   codigo: string;
   campos?: Record<string, string[]>;
+  mensagem?: string;
 
-  constructor(status: number, codigo: string, campos?: Record<string, string[]>) {
+  constructor(status: number, codigo: string, campos?: Record<string, string[]>, mensagem?: string) {
     super(codigo);
     this.name = "ErroApi";
     this.status = status;
     this.codigo = codigo;
     if (campos) this.campos = campos;
+    if (mensagem) this.mensagem = mensagem;
   }
+}
+
+export type CorpoDoErro = { erro: string; mensagem?: string; campos?: Record<string, string[]> };
+
+// PD-22: o corpo da resposta de um `ErroApi`, sem chaves vazias.
+export function corpoDoErro(err: ErroApi): CorpoDoErro {
+  return {
+    erro: err.codigo,
+    ...(err.mensagem ? { mensagem: err.mensagem } : {}),
+    ...(err.campos ? { campos: err.campos } : {}),
+  };
 }
 
 // PD-22: valida com um schema Zod de `packages/schemas`; `campos` mapeia o caminho do campo
@@ -33,10 +46,10 @@ export function validar<T>(schema: ZodType<T>, valor: unknown): T {
   throw new ErroApi(400, "entrada_invalida", campos);
 }
 
-// PD-22: serializa qualquer erro no formato `{ erro, campos? }`; erro desconhecido não vaza mensagem.
+// PD-22: serializa qualquer erro no formato `{ erro, mensagem?, campos? }`; erro desconhecido não vaza mensagem.
 export function tratarErro(err: unknown, req: FastifyRequest, reply: FastifyReply) {
   if (err instanceof ErroApi) {
-    return reply.status(err.status).send(err.campos ? { erro: err.codigo, campos: err.campos } : { erro: err.codigo });
+    return reply.status(err.status).send(corpoDoErro(err));
   }
   // Erros do próprio Fastify (JSON malformado, corpo grande, tipo não suportado).
   const status = (err as { statusCode?: number } | null)?.statusCode;

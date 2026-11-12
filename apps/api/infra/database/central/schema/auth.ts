@@ -1,12 +1,24 @@
 import { relations } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-export const user = pgTable("user", {
+// PD-23: a tabela do usuário do better-auth central é o paciente (`user.modelName = "paciente"`).
+// `username` (plugin username) e `cpf` guardam o mesmo CPF só com dígitos; o UNIQUE dos dois
+// fecha a corrida de dois cadastros simultâneos (RN-ID-02). INV-11: nada de sintoma, documento ou fila.
+export const paciente = pgTable("paciente", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").default(false).notNull(),
   image: text("image"),
+  username: text("username").unique(),
+  displayUsername: text("display_username"),
+  cpf: text("cpf").notNull().unique(),
+  nascimento: date("nascimento", { mode: "string" }).notNull(),
+  telefone: text("telefone").notNull(),
+  // RN-ID-05: nulos até a recepção conferir o documento; nunca vêm do cliente.
+  verificadoEm: timestamp("verificado_em", { withTimezone: true }),
+  verificadoMetodo: text("verificado_metodo"),
+  verificadoMunicipio: uuid("verificado_municipio"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -28,7 +40,7 @@ export const session = pgTable(
     userAgent: text("user_agent"),
     userId: text("user_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => paciente.id, { onDelete: "cascade" }),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -41,7 +53,7 @@ export const account = pgTable(
     providerId: text("provider_id").notNull(),
     userId: text("user_id")
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => paciente.id, { onDelete: "cascade" }),
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
@@ -73,21 +85,21 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const userRelations = relations(user, ({ many }) => ({
+export const pacienteRelations = relations(paciente, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
-  user: one(user, {
+  paciente: one(paciente, {
     fields: [session.userId],
-    references: [user.id],
+    references: [paciente.id],
   }),
 }));
 
 export const accountRelations = relations(account, ({ one }) => ({
-  user: one(user, {
+  paciente: one(paciente, {
     fields: [account.userId],
-    references: [user.id],
+    references: [paciente.id],
   }),
 }));

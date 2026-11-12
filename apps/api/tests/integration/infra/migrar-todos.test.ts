@@ -74,7 +74,7 @@ describe("migrarTodos", () => {
 
     const resultado = await migrarTodos(deps);
 
-    expect(resultado.central).toBe("0000_central");
+    expect(resultado.central).toBe("0001_paciente");
     for (const { slug, banco } of [a, b]) {
       expect(resultado.tenants).toContainEqual({ slug, ok: true, versao: "0000_municipal" });
       expect(await linhaDoSlug(slug)).toMatchObject({ migracaoVersao: "0000_municipal", migracaoErro: null });
@@ -140,7 +140,7 @@ describe("migrarTodos", () => {
 
     // Banco central ainda não existe: o script cria, migra e, sem tenants, sai com 0.
     const { stdout } = await rodar();
-    expect(stdout).toContain("central: 0000_central");
+    expect(stdout).toContain("central: 0001_paciente");
     const tabelas = await conectado(ambiente.DATABASE_URL, async (c) => {
       const r = await c.query<{ table_name: string }>(
         "select table_name from information_schema.tables where table_schema = 'public'",
