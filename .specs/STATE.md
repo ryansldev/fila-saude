@@ -11,12 +11,12 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 
 ## Próximo (2026-11-11)
 
-**Trilha da demo** (PD-32, PD-33; [tasks](features/mvp-filas/tasks.md#trilha-da-demo-2026-11-11)): demo local com dados de teste, em fatias verticais: 0 Base → 1 Pública básica → 2 Na unidade → 3 Triagem → 4 Privada → 5 Pré-cadastro → roteiro.
+**Trilha da v0.1** (PD-32, PD-33; [tasks](features/mvp-filas/tasks.md#trilha-da-v01-2026-11-11)): v0.1 do sistema real, rodando local com dados de exemplo (ainda não pronta para produção), em fatias verticais: 0 Base → 1 Pública básica → 2 Na unidade → 3 Triagem → 4 Privada → 5 Pré-cadastro → roteiro.
 
 - **Fase 1A** concluída, com a revisão final e as correções (domínio, 234 testes).
-- **Fase 1B** (branch `feat/domain-fase-1a`): Tasks 1–10 prontas. As Tasks 15–18 entram na fatia 0; 11–14 ficam para depois da demo.
+- **Fase 1B** (branch `feat/domain-fase-1a`): Tasks 1–10 prontas. As Tasks 15–18 entram na fatia 0; 11–14 ficam para depois da v0.1.
 - **Fase 2** (branch `feat/fase-2-configuracao`): Tasks 1–8 prontas; juntar na fatia 0.
-- **Próximo passo:** plano detalhado da fatia 0.
+- **Próximo passo:** executar o [plano da fatia 0](features/mvp-filas/plano-fatia-0-base.md).
 
 ## Pendências fora do código
 
