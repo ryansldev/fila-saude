@@ -35,7 +35,7 @@ export {
   marcarPresencaSemApp,
   vouSair,
 } from "./fila.ts";
-export type { Entrada, ItemLigacao, Origem, Pessoa, Servico, SessaoVagas, Sugestao } from "./lista.ts";
+export type { Entrada, ItemLigacao, Origem, Pessoa, Saida, Servico, SessaoVagas, Sugestao } from "./lista.ts";
 export {
   alocar,
   arquivar,
@@ -80,7 +80,6 @@ export {
   incluirNoBalcao,
   inscreverPublica,
   lancarRegulado,
-  liberarVaga,
   preencherDaReserva,
   removerLancamento,
   senhaDe,

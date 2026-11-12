@@ -14,7 +14,7 @@ import {
 import { checkIn, type DiaSessao, vouSair } from "../src/fila.ts";
 import { type Entrada, recusar, type Servico } from "../src/lista.ts";
 import type { Resultado } from "../src/resultado.ts";
-import { liberarVaga } from "../src/sessao.ts";
+import { preencherDaReserva, removerLancamento } from "../src/sessao.ts";
 import { chamar, comItem, congelar, diaCom, entrada, sessaoVagas } from "./fixtures.ts";
 
 const MIN = 60_000;
@@ -415,8 +415,7 @@ describe("remanejado (RN-REM-03..05)", () => {
         const a = recusar(e, s, T);
         const b = outraData(e, s, T);
         if (!a.ok || !b.ok) throw new Error("recusado");
-        expect({ entrada: b.estado.entrada, sessao: b.estado.sessao }).toEqual(a.estado);
-        expect(b.estado.dia).toBeNull();
+        expect(b.estado).toEqual(a.estado);
         expect(b.eventos).toEqual(a.eventos);
       }
     }
@@ -424,25 +423,28 @@ describe("remanejado (RN-REM-03..05)", () => {
 
   it("RN-REM-03: Desistir cancela de vez", () => {
     const conf = entrada("ana", { estado: "confirmada", sessaoId: "s2", remanejada: "regulada" });
-    const r = desistir(conf, T);
+    const r = desistir(conf, sessaoVagas({ id: "s2", ocupadas: 1 }), T);
     expect([aplicar(r).entrada.estado, aplicar(r).entrada.remanejada]).toEqual(["cancelada", null]);
     expect(eventos(r)).toContainEqual(expect.objectContaining({ tipo: "vaga_liberada", sessaoId: "s2" }));
     expect(eventos(r)).toContainEqual(expect.objectContaining({ tipo: "cancelada", motivo: "comunicar a regulação" }));
     // Aguardando remarcação também desiste.
-    expect(aplicar(desistir(entrada("b", { estado: "remanejada", remanejada: "publica" }), T)).entrada.estado).toBe(
-      "cancelada",
+    expect(
+      aplicar(desistir(entrada("b", { estado: "remanejada", remanejada: "publica" }), null, T)).entrada.estado,
+    ).toBe("cancelada");
+    expect(erro(desistir(entrada("c", { estado: "confirmada", sessaoId: "s2" }), sessaoVagas({ id: "s2" }), T))).toBe(
+      "transicao_proibida",
     );
-    expect(erro(desistir(entrada("c", { estado: "confirmada", sessaoId: "s2" }), T))).toBe("transicao_proibida");
 
     // Na fila (remoto ou presente): sai da fila do dia; chamado, não.
     const dia = diaCom(["ana"]);
     const naFilaAna = entrada("ent-ana", { estado: "na_fila", sessaoId: "s1", remanejada: "privada" });
+    const s1Ocupada = sessaoVagas({ ocupadas: 1 });
     for (const estado of ["remoto", "presente"] as const) {
-      const d = aplicar(desistir(naFilaAna, T, comItem(dia, "ana", { estado })));
+      const d = aplicar(desistir(naFilaAna, s1Ocupada, T, comItem(dia, "ana", { estado })));
       expect([d.entrada.estado, d.dia && item(d.dia, "ana").estado]).toEqual(["cancelada", "saiu_da_fila"]);
     }
-    expect(erro(desistir(naFilaAna, T, chamar(dia, "ana", T)))).toBe("transicao_proibida");
-    expect(erro(desistir(naFilaAna, T))).toBe("transicao_proibida");
+    expect(erro(desistir(naFilaAna, s1Ocupada, T, chamar(dia, "ana", T)))).toBe("transicao_proibida");
+    expect(erro(desistir(naFilaAna, s1Ocupada, T))).toBe("transicao_proibida");
   });
 
   it("RN-REM-05: remanejado de pública escolhe; lotada → topo da reserva", () => {
@@ -479,8 +481,9 @@ describe("remanejado (RN-REM-03..05)", () => {
       sessaoId: "s2",
       dataEntradaOriginal: res.entrada.dataEntradaOriginal - 30 * DIA,
     });
+    const liberada = { ...res.sessao, ocupadas: res.sessao.ocupadas - 1 }; // alguém saiu
     const lib = aplicar(
-      liberarVaga(res.sessao, null, congelar([antiga, res.entrada]), { servico: LIVRE, fotosAceitas: [] }, T + H),
+      preencherDaReserva(liberada, null, congelar([antiga, res.entrada]), { servico: LIVRE, fotosAceitas: [] }, T + H),
     );
     expect(ent(lib.entradas, "ana").estado).toBe("confirmada");
     expect(ent(lib.entradas, "antiga").estado).toBe("na_reserva");
@@ -514,8 +517,8 @@ describe("remanejado (RN-REM-03..05)", () => {
     expect(r2.dia).toBe(dia);
     // A reserva só recebe vaga livre: sem liberação, os confirmados ficam.
     const semVaga = aplicar(
-      liberarVaga(
-        { ...cheia, ocupadas: 3 },
+      preencherDaReserva(
+        cheia,
         null,
         congelar([...confirmados, r.entrada]),
         {
@@ -527,6 +530,34 @@ describe("remanejado (RN-REM-03..05)", () => {
     );
     expect(semVaga.entradas.filter((e) => e.estado === "confirmada").map((e) => e.id)).toEqual(["a", "b"]);
     expect(ent(semVaga.entradas, "ana").estado).toBe("na_reserva");
+  });
+
+  it("INV-02: desistir, outra data, recusa e remoção liberam exatamente uma vaga, no mesmo formato", () => {
+    // Toda saída que libera vaga devolve { entrada, sessao, dia } com a sessão já liberada;
+    // quem chama depois só chama preencherDaReserva (RN-PUB-02, RN-CANC-02).
+    const s = sessaoVagas({ id: "s2", ocupadas: 2 });
+    const REGULADO: Servico = congelar({ id: "cli", modo: "regulado", exigeTriagem: false });
+    const remanejada = entrada("ana", { estado: "confirmada", sessaoId: "s2", remanejada: "privada" });
+    const alocada = entrada("bia", { estado: "alocada", sessaoId: "s2", alocadaEm: T });
+    const lancada = entrada("caio", { estado: "confirmada", sessaoId: "s2", riscoConfirmado: "rotina" });
+    const saidas = [
+      desistir(remanejada, s, T),
+      outraData(remanejada, s, T),
+      recusar(alocada, s, T),
+      removerLancamento(lancada, s, null, { servico: REGULADO, motivo: "x" }, T),
+    ];
+    for (const r of saidas) {
+      const st = aplicar(r);
+      expect(Object.keys(st).sort()).toEqual(["dia", "entrada", "sessao"]);
+      expect(st.sessao?.ocupadas).toBe(1);
+      expect(eventos(r).filter((e) => e.tipo === "vaga_liberada")).toHaveLength(1);
+    }
+    // Desistir de quem não tem data não mexe em sessão nenhuma.
+    const semData = aplicar(desistir(entrada("d", { estado: "remanejada", remanejada: "publica" }), null, T));
+    expect(semData.sessao).toBeNull();
+    // Com data, a sessão tem de ser a da entrada.
+    expect(erro(desistir(remanejada, null, T))).toBe("transicao_proibida");
+    expect(erro(desistir(remanejada, sessaoVagas({ id: "s9", ocupadas: 1 }), T))).toBe("transicao_proibida");
   });
 
   it("ações de encerramento não alteram o que recebem", () => {

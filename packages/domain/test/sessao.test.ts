@@ -23,7 +23,7 @@ import {
   incluirNoBalcao,
   inscreverPublica,
   lancarRegulado,
-  liberarVaga,
+  preencherDaReserva,
   removerLancamento,
   trocarReserva,
 } from "../src/sessao.ts";
@@ -70,6 +70,9 @@ function diaPlanejado(parcial: Partial<DiaSessao> = {}): DiaSessao {
     ...parcial,
   });
 }
+
+/** A sessão com uma vaga a menos ocupada: quem saiu já a liberou (a saída do teste é feita à mão). */
+const livre = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas - 1 });
 
 const publica = (parcial: Partial<SessaoVagas> = {}) => sessaoVagas({ visibilidade: "publica", ...parcial });
 
@@ -291,7 +294,7 @@ describe("lista de reserva (RN-PUB-02)", () => {
 
     // Ana cancela (o cancelamento é da Task 10); a vaga dela vai para Bruno.
     const semAna = st.entradas.map((e) => (e.id === "ana" ? { ...e, estado: "cancelada" as const } : e));
-    const r = liberarVaga(st.sessao, null, congelar(semAna), { servico: LIVRE, fotosAceitas: [] }, T + H);
+    const r = preencherDaReserva(livre(st.sessao), null, congelar(semAna), { servico: LIVRE, fotosAceitas: [] }, T + H);
     const { entradas, sessao } = aplicar(r);
     expect(entradas.find((e) => e.id === "bruno")?.estado).toBe("confirmada");
     expect(entradas.find((e) => e.id === "carla")?.estado).toBe("na_reserva");
@@ -309,7 +312,7 @@ describe("lista de reserva (RN-PUB-02)", () => {
           : e,
     );
     const { entradas: depois } = aplicar(
-      liberarVaga(st.sessao, null, congelar(entradas), { servico: LIVRE, fotosAceitas: [] }, T + H),
+      preencherDaReserva(livre(st.sessao), null, congelar(entradas), { servico: LIVRE, fotosAceitas: [] }, T + H),
     );
     expect(depois.find((e) => e.id === "carla")?.estado).toBe("confirmada");
   });
@@ -326,7 +329,13 @@ describe("lista de reserva (RN-PUB-02)", () => {
     };
     const semAna = st.entradas.map((e) => (e.id === "ana" ? { ...e, estado: "cancelada" as const } : e));
     const r = aplicar(
-      liberarVaga(st.sessao, st.dia, congelar(semAna), { servico: REQUISICAO, fotosAceitas: ["carla"] }, INICIO + H),
+      preencherDaReserva(
+        livre(st.sessao),
+        st.dia,
+        congelar(semAna),
+        { servico: REQUISICAO, fotosAceitas: ["carla"] },
+        INICIO + H,
+      ),
     );
     expect(r.entradas.find((e) => e.id === "bruno")?.estado).toBe("na_reserva");
     expect(r.entradas.find((e) => e.id === "carla")?.estado).toBe("na_fila");
@@ -339,7 +348,9 @@ describe("lista de reserva (RN-PUB-02)", () => {
     st = inscrever(st, "ana", T, { servico: REQUISICAO, fotoAceita: true });
     st = inscrever(st, "bruno", T + MIN, { servico: REQUISICAO });
     const semAna = st.entradas.map((e) => (e.id === "ana" ? { ...e, estado: "cancelada" as const } : e));
-    const r = aplicar(liberarVaga(st.sessao, null, congelar(semAna), { servico: REQUISICAO, fotosAceitas: [] }, T + H));
+    const r = aplicar(
+      preencherDaReserva(livre(st.sessao), null, congelar(semAna), { servico: REQUISICAO, fotosAceitas: [] }, T + H),
+    );
     const bruno = r.entradas.find((e) => e.id === "bruno");
     expect([bruno?.estado, bruno?.sessaoId]).toEqual(["aguardando_encaminhamento", "s1"]);
     expect(r.sessao.ocupadas).toBe(1);
@@ -605,7 +616,9 @@ describe("invariantes", () => {
     for (const [i, n] of ["a", "b", "c", "d"].entries()) st = inscrever(st, n, T + i * MIN);
     expect(st.sessao.ocupadas).toBe(1);
     const semA = st.entradas.map((e) => (e.id === "a" ? { ...e, estado: "cancelada" as const } : e));
-    const lib = aplicar(liberarVaga(st.sessao, null, congelar(semA), { servico: LIVRE, fotosAceitas: [] }, T + H));
+    const lib = aplicar(
+      preencherDaReserva(livre(st.sessao), null, congelar(semA), { servico: LIVRE, fotosAceitas: [] }, T + H),
+    );
     expect(lib.sessao.ocupadas).toBe(1);
     expect(lib.entradas.filter((e) => e.estado === "confirmada")).toHaveLength(1);
     // Troca para sessão cheia, balcão e lançamento sem vaga: recusados.
@@ -661,7 +674,9 @@ describe("invariantes", () => {
     const semB = st.entradas.map((e) => (e.id === "b" ? { ...e, estado: "cancelada" as const } : e));
     st = {
       ...st,
-      ...aplicar(liberarVaga(st.sessao, st.dia, congelar(semB), { servico: LIVRE, fotosAceitas: [] }, INICIO + H)),
+      ...aplicar(
+        preencherDaReserva(livre(st.sessao), st.dia, congelar(semB), { servico: LIVRE, fotosAceitas: [] }, INICIO + H),
+      ),
     };
     const semC = st.entradas.map((e) => (e.id === "c" ? { ...e, estado: "cancelada" as const } : e));
     const sessao = { ...st.sessao, ocupadas: st.sessao.ocupadas - 1 };
@@ -846,7 +861,7 @@ describe("AD-010: quem entra na fila com a sessão aberta", () => {
     dia = aplicar(chamarProximo(dia, E1, INICIO + MIN));
     const semCarla = st.entradas.map((e) => (e.id === "carla" ? { ...e, estado: "cancelada" as const } : e));
     const rs = aplicar(
-      liberarVaga(st.sessao, dia, congelar(semCarla), { servico: LIVRE, fotosAceitas: [] }, INICIO + H),
+      preencherDaReserva(livre(st.sessao), dia, congelar(semCarla), { servico: LIVRE, fotosAceitas: [] }, INICIO + H),
     );
     expect(rs.entradas.find((e) => e.id === "ze")?.estado).toBe("na_fila");
     const r = checkIn(diaDe(rs), { itemId: idDoItem("ze", "s1") }, INICIO + 90 * MIN);

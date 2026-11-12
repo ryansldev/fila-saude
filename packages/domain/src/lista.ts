@@ -1,5 +1,5 @@
 import { type EstadoEntrada, TRANSICOES_ENTRADA, type Transicao, transicionar } from "./contratos.ts";
-import { CONFIG_PADRAO } from "./fila.ts";
+import { CONFIG_PADRAO, type DiaSessao } from "./fila.ts";
 import { type ChaveSugestao, compararSugestao, type Risco } from "./ordem.ts";
 import { type Grupo, grupoDeDeclarado, type PrioridadeLegal, prioridadeDaPessoa } from "./prioridade.ts";
 import { classificar } from "./questionario.ts";
@@ -53,6 +53,15 @@ export type SessaoVagas = {
   inicio: number;
   ocupadas: number;
 };
+
+/**
+ * Formato único de toda saída que libera vaga (recusa, "Outra data", "Desistir", cancelamento do
+ * paciente, remoção de lançamento): a entrada nova, a sessão **já com a vaga liberada** e o dia
+ * sem o item (ou como veio). Regra para quem chama: depois de qualquer saída, chame
+ * `preencherDaReserva` com a sessão devolvida (RN-PUB-02, RN-CANC-02); nunca libere de novo.
+ * `sessao` só é `null` em saída de quem não tinha vaga (ex.: desistir sem data).
+ */
+export type Saida<S extends SessaoVagas | null = SessaoVagas> = { entrada: Entrada; sessao: S; dia: DiaSessao | null };
 
 export type Sugestao = { entradaId: string; motivos: string[] };
 
@@ -340,18 +349,17 @@ export function outraDataNaSessao(
 }
 
 /**
- * RN-CONF-04: a recusa libera a vaga na hora e a entrada não volta a ser sugerida para esta
- * sessão; não remanejada volta à lista com a data original. Remanejada alocada: é o "Outra data"
+ * RN-CONF-04: a recusa libera a vaga na hora (formato `Saida`, sem dia: alocada não tem item) e
+ * a entrada não volta a ser sugerida para esta sessão; não remanejada volta à lista com a data original. Remanejada alocada: é o "Outra data"
  * (RN-REM-03) e delega a `outraDataNaSessao`. O app chama `outraData` (encerramento.ts) para
  * qualquer remanejada com data, inclusive alocada; `recusar` dá o mesmo resultado para ela.
  */
-export function recusar(
-  entrada: Entrada,
-  sessao: SessaoVagas,
-  agora: number,
-): Resultado<{ entrada: Entrada; sessao: SessaoVagas }> {
+export function recusar(entrada: Entrada, sessao: SessaoVagas, agora: number): Resultado<Saida> {
   if (!alocadaNesta(entrada, sessao)) return falha("transicao_proibida");
-  if (entrada.remanejada !== null) return outraDataNaSessao(entrada, sessao, agora);
+  if (entrada.remanejada !== null) {
+    const r = outraDataNaSessao(entrada, sessao, agora);
+    return r.ok ? ok({ ...r.estado, dia: null }, r.eventos) : r;
+  }
   const para = transicionar(TRANSICOES_ENTRADA, entrada.estado, EVENTO_RECUSA);
   if (para !== "aguardando") return falha("transicao_proibida");
 
@@ -363,7 +371,7 @@ export function recusar(
     sessoesRecusadas: [...entrada.sessoesRecusadas, sessao.id],
   };
   const ids = { entradaId: entrada.id, sessaoId: sessao.id };
-  return ok({ entrada: nova, sessao: { ...sessao, ocupadas: Math.max(0, sessao.ocupadas - 1) } }, [
+  return ok({ entrada: nova, sessao: { ...sessao, ocupadas: Math.max(0, sessao.ocupadas - 1) }, dia: null }, [
     { tipo: "recusada", ...ids, dados: { para, em: agora } },
     { tipo: "vaga_liberada", ...ids },
   ]);

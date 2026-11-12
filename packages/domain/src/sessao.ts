@@ -15,6 +15,7 @@ import {
   type Pessoa,
   pendentesNaAbertura,
   riscoVigente,
+  type Saida,
   type Servico,
   type SessaoVagas,
 } from "./lista.ts";
@@ -46,14 +47,14 @@ export const idDoItem = (entradaId: string, sessaoId: string): string => `${sess
 /** RN-FILA-04: prefixo do serviço e número com 3 dígitos (ex.: "C-012"). */
 export const senhaDe = (prefixo: string, numero: number): string => `${prefixo}-${String(numero).padStart(3, "0")}`;
 
-// Os auxiliares exportados abaixo (temVaga, ocupar, itemCriado, comAbertura, situacao, porNaFila,
+// Os auxiliares exportados abaixo (temVaga, ocupar, desocupar, itemCriado, comAbertura, situacao, porNaFila,
 // jaNaSessao) são de uso interno do pacote (encerramento.ts); não saem pelo index.
 
 /** INV-02: a sessão ainda tem vaga (`null` = sem limite). "Na reserva" não ocupa. */
 export const temVaga = (s: SessaoVagas): boolean => s.vagas === null || s.ocupadas < s.vagas;
 
 export const ocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: s.ocupadas + 1 });
-const desocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: Math.max(0, s.ocupadas - 1) });
+export const desocupar = (s: SessaoVagas): SessaoVagas => ({ ...s, ocupadas: Math.max(0, s.ocupadas - 1) });
 
 /** Estado do item na linha de criação ("—") do contrato da fila do dia. */
 export function itemCriado(evento: string): EstadoItem {
@@ -242,6 +243,8 @@ type Vagas = { sessao: SessaoVagas; dia: DiaSessao | null; entradas: Entrada[] }
  * RN-PUB-02: enquanto houver vaga livre, ela vai ao primeiro da reserva, que entra confirmado
  * (na fila, se a sessão já abriu). Sem a foto aceita: antes da abertura, recebe vaga segura
  * (RN-ENC-04); com a sessão aberta, a vaga passa ao próximo. Sessão privada não tem reserva.
+ * Regra única (RN-CANC-02): toda saída que libera vaga devolve `Saida` com a sessão já liberada;
+ * depois de qualquer saída, chame esta função com essa sessão (ela não libera nada).
  */
 export function preencherDaReserva(
   sessao: SessaoVagas,
@@ -284,20 +287,6 @@ export function preencherDaReserva(
     );
   }
   return ok(estado, eventos);
-}
-
-/**
- * Uma vaga ocupada da sessão foi liberada (quem saiu já mudou de estado com o chamador) e vai
- * para a reserva (RN-PUB-02). Quem já desocupou a vaga (ex.: `recusar`) usa `preencherDaReserva`.
- */
-export function liberarVaga(
-  sessao: SessaoVagas,
-  dia: DiaSessao | null,
-  entradas: Entrada[],
-  cmd: CmdReserva,
-  agora: number,
-): Resultado<Vagas> {
-  return preencherDaReserva(desocupar(sessao), dia, entradas, cmd, agora);
 }
 
 /** Dados de quem se inscreve (RN-LE-05: a pessoa atendida), como em `criarEntrada`. */
@@ -562,7 +551,8 @@ export function lancarRegulado(
 
 /**
  * RN-ENC-06, AD-037: o agendador remove, com motivo, um lançamento nunca chamado no dia. A vaga é
- * liberada sem sugestão (não há lista); push só para conta verificada (ligada).
+ * liberada sem sugestão (não há lista; `Saida` com a sessão já liberada); push só para conta
+ * verificada (ligada).
  */
 export function removerLancamento(
   entrada: Entrada,
@@ -570,7 +560,7 @@ export function removerLancamento(
   dia: DiaSessao | null,
   cmd: { servico: Servico; motivo: string },
   agora: number,
-): Resultado<{ entrada: Entrada; sessao: SessaoVagas; dia: DiaSessao | null }> {
+): Resultado<Saida> {
   const { servico } = cmd;
   if (servico.modo !== "regulado" || entrada.servicoId !== servico.id || entrada.sessaoId !== sessao.id) {
     return falha("transicao_proibida");

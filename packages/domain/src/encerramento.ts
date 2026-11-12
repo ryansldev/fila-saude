@@ -8,9 +8,9 @@ import {
   transicionar,
 } from "./contratos.ts";
 import { chamadasQuePassamAVez, type DiaSessao, emContingencia, type ItemFila } from "./fila.ts";
-import { type Entrada, type Origem, outraDataNaSessao, type Servico, type SessaoVagas } from "./lista.ts";
+import { type Entrada, type Origem, outraDataNaSessao, type Saida, type Servico, type SessaoVagas } from "./lista.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
-import { comAbertura, itemCriado, jaNaSessao, ocupar, porNaFila, situacao, temVaga } from "./sessao.ts";
+import { comAbertura, desocupar, itemCriado, jaNaSessao, ocupar, porNaFila, situacao, temVaga } from "./sessao.ts";
 import { mesmoDia } from "./tempo.ts";
 
 export type { Origem } from "./lista.ts";
@@ -281,8 +281,6 @@ export function titularDaFalta(
   return entrada.responsavelId !== null && responsavelVerificado ? "responsavel" : "ninguem";
 }
 
-type ComDia = { entrada: Entrada; dia: DiaSessao | null };
-
 /**
  * Tira da fila do dia o item da entrada "Na fila" (o "Paciente cancela" do item), a partir dos
  * estados aceitos. Fora da fila, devolve o dia como veio.
@@ -314,16 +312,16 @@ function sairDaFila(
  * RN-REM-03, AD-045: "Outra data" do remanejado com data na sessão `sessao` (confirmada, alocada,
  * vaga segura ou na fila ainda remoto; `dia` = o da sessão, se aberta). Só em sessão privada ou
  * regulada. 1ª vez: continua remanejado, com a preferência. 2ª (só confirmada ou alocada): privada
- * volta à lista com a data original; pública e regulada são encerradas com aviso. A vaga volta à
- * sessão devolvida. É a entrada do app para qualquer remanejada com data, inclusive alocada; a
- * regra (`outraDataNaSessao`, lista.ts) é a mesma de `recusar`.
+ * volta à lista com a data original; pública e regulada são encerradas com aviso. Devolve `Saida`
+ * (sessão já liberada). É a entrada do app para qualquer remanejada com data, inclusive alocada;
+ * a regra (`outraDataNaSessao`, lista.ts) é a mesma de `recusar`.
  */
 export function outraData(
   entrada: Entrada,
   sessao: SessaoVagas,
   agora: number,
   dia: DiaSessao | null = null,
-): Resultado<{ entrada: Entrada; sessao: SessaoVagas; dia: DiaSessao | null }> {
+): Resultado<Saida> {
   const r = outraDataNaSessao(entrada, sessao, agora);
   if (!r.ok) return r;
   const saida = sairDaFila(entrada, dia, ["remoto"]);
@@ -333,18 +331,23 @@ export function outraData(
 
 /**
  * RN-REM-03: "Desistir" cancela de vez. Com data (confirmada, alocada, vaga segura ou na fila), a
- * vaga é liberada; aguardando remarcação, é o cancelamento do paciente. Em serviço regulado, o
- * agendador é avisado para comunicar a regulação.
+ * vaga de `sessao` (a da entrada) é liberada e devolvida em `Saida`; aguardando remarcação, é o
+ * cancelamento do paciente e `sessao` é `null`. Em serviço regulado, o agendador é avisado para
+ * comunicar a regulação.
  */
-export function desistir(entrada: Entrada, agora: number, dia: DiaSessao | null = null): Resultado<ComDia> {
+export function desistir(
+  entrada: Entrada,
+  sessao: SessaoVagas | null,
+  agora: number,
+  dia: DiaSessao | null = null,
+): Resultado<Saida<SessaoVagas | null>> {
   const origem = entrada.remanejada;
   if (origem === null) return falha("transicao_proibida");
   const semData = entrada.estado === "remanejada";
-  const para = semData
-    ? linhaUnica(TRANSICOES_ENTRADA, entrada.estado, ENTRADA_PACIENTE_CANCELA)
-    : entrada.sessaoId === null
-      ? null
-      : linhaUnica(TRANSICOES_ENTRADA, entrada.estado, ENTRADA_DESISTIR);
+  if (semData ? sessao !== null : sessao === null || entrada.sessaoId !== sessao.id) {
+    return falha("transicao_proibida");
+  }
+  const para = linhaUnica(TRANSICOES_ENTRADA, entrada.estado, semData ? ENTRADA_PACIENTE_CANCELA : ENTRADA_DESISTIR);
   if (para !== "cancelada") return falha("transicao_proibida");
   const saida = sairDaFila(entrada, dia, ["remoto", "presente"]);
   if (!saida.ok) return falha("transicao_proibida");
@@ -359,7 +362,11 @@ export function desistir(entrada: Entrada, agora: number, dia: DiaSessao | null 
     dados: { desistiu: true, em: agora },
   });
   return ok(
-    { entrada: { ...entrada, estado: para, remanejada: null, sessaoId: null, alocadaEm: null }, dia: saida.dia },
+    {
+      entrada: { ...entrada, estado: para, remanejada: null, sessaoId: null, alocadaEm: null },
+      sessao: sessao === null ? null : desocupar(sessao),
+      dia: saida.dia,
+    },
     eventos,
   );
 }
