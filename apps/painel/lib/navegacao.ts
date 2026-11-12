@@ -32,3 +32,17 @@ export function menuDoPainel(perfis: PerfilDoUsuario[]): ItemDeMenu[] {
   if (lista.some((p) => p !== "gestao_sms" && p !== "gerente_ubs" && p !== "paciente")) menu.push(EM_BREVE);
   return menu;
 }
+
+/**
+ * RN-PERF-01 no front: a página de um item do menu (e os subcaminhos dela) só abre para quem pode a ação
+ * do item. "Em breve" é de quem está logado; caminho fora do menu segue (o 404 do Next responde).
+ * A API confere de novo: isto só evita mostrar a tela.
+ */
+export function podeAcessar(caminho: string, perfis: PerfilDoUsuario[]): boolean {
+  const item = ITENS_DO_MENU.find((c) => caminho === c.href || caminho.startsWith(`${c.href}/`));
+  if (!item) return true;
+  return pode(
+    perfis.map((p) => p.perfil),
+    item.acao,
+  );
+}

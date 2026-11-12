@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
+import { ConteudoProtegido } from "@/components/conteudo-protegido";
 import { Logo } from "@/components/logo";
 import { menuDoPainel } from "@/lib/navegacao";
 import { useEu } from "@/lib/sessao";
 
 export default function LayoutDoPainel({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const caminho = usePathname();
   const eu = useEu();
 
   useEffect(() => {
@@ -30,7 +32,11 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
           </Link>
         ))}
       </nav>
-      <main className="flex-1 p-8">{children}</main>
+      <main className="flex-1 p-8">
+        <ConteudoProtegido caminho={caminho} perfis={eu.eu.perfis}>
+          {children}
+        </ConteudoProtegido>
+      </main>
     </div>
   );
 }
