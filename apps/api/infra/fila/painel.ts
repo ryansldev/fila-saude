@@ -13,6 +13,8 @@ import type { FilaDaSessao, HojeNaUnidade } from "@fila-saude/schemas/fila";
 import { and, asc, eq, gt, inArray, isNull, lt } from "drizzle-orm";
 import { exigirUnidade, SESSAO } from "infra/config/comum";
 import { exigirSessao, paraSessao } from "infra/config/sessoes";
+import database from "infra/database";
+import { paciente } from "infra/database/central/schema/auth";
 import { entrada } from "infra/database/municipal/schema/entrada";
 import { estacao } from "infra/database/municipal/schema/estacao";
 import { pessoaLocal } from "infra/database/municipal/schema/pessoa-local";
@@ -57,6 +59,7 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
       risco: i.risco,
       prioridade: temPrioridade(i.prioridade),
       estacaoId: dia?.estacoes.find((e) => e.chamadoItemId === i.id)?.id ?? null,
+      pendencias: i.pendencias,
     })),
     reserva: naReserva,
   };
@@ -124,7 +127,8 @@ export async function encerrarSessaoDoDia(ctx: ContextoDaAcao, sessaoId: string)
   );
 }
 
-// RN-FILA-05: a recepção confere e marca a presença na mesma ação (o QR do check-in vem na fatia 2).
+// RN-FILA-05 / RN-ID-05: a recepção confere e marca a presença na mesma ação (quem teve o QR recusado).
+// A conferência fica: o dono da conta fica verificado na central; outra pessoa, conferida na unidade.
 export async function marcarPresencaNaFila(
   ctx: ContextoDaAcao,
   sessaoId: string,
@@ -133,9 +137,11 @@ export async function marcarPresencaNaFila(
     resultado: "confere" | "nao_confere" | "prioridade_nao_confere";
     motivo?: string | undefined;
   },
+  municipioId: string | null = null,
 ): Promise<FilaDaSessao> {
   const { servico } = await exigirSessao(ctx.db, sessaoId);
-  return executarAcao(
+  let contaVerificada: string | null = null;
+  const fila = await executarAcao(
     ctx,
     {
       acao: "conferir_e_marcar_presenca",
@@ -159,9 +165,33 @@ export async function marcarPresencaNaFila(
         });
         return { dia: r.estado, entradas, resultado: r.estado };
       });
+      if (dados.resultado !== "nao_confere") {
+        const [linha] = await tx
+          .select({
+            pessoaId: pessoaLocal.id,
+            pacienteId: pessoaLocal.pacienteId,
+            responsavel: entrada.responsavelPacienteId,
+          })
+          .from(entrada)
+          .innerJoin(pessoaLocal, eq(entrada.pessoaLocalId, pessoaLocal.id))
+          .where(eq(entrada.id, dados.entradaId));
+        if (linha?.pacienteId && linha.pacienteId === linha.responsavel) contaVerificada = linha.pacienteId;
+        else if (linha)
+          await tx
+            .update(pessoaLocal)
+            .set({ documentoConferidoPor: ctx.ator.usuarioId, documentoConferidoEm: new Date(ctx.agora) })
+            .where(eq(pessoaLocal.id, linha.pessoaId));
+      }
       return paraFila(tx, sessaoId, dia);
     },
   );
+  if (contaVerificada) {
+    await database
+      .update(paciente)
+      .set({ verificadoEm: new Date(ctx.agora), verificadoMetodo: "recepcao", verificadoMunicipio: municipioId })
+      .where(and(eq(paciente.id, contaVerificada), isNull(paciente.verificadoEm)));
+  }
+  return fila;
 }
 
 // F1 (revisto): a fila do dia é de quem tem, na unidade, alguma ação dela (como o menu do painel).
@@ -178,7 +208,7 @@ async function daEquipeDaUnidade(ctx: ContextoDaAcao, unidadeId: string) {
   throw new ErroApi(403, "sem_permissao");
 }
 
-// F1: sessões de hoje (dia local da unidade) e estações, para quem tem papel na unidade.
+// F1: sessões de hoje (dia local da unidade) e estações, para quem tem ação da fila na unidade.
 export async function hojeNaUnidade(ctx: ContextoDaAcao, unidadeId: string): Promise<HojeNaUnidade> {
   const u = await exigirUnidade(ctx.db, unidadeId);
   await daEquipeDaUnidade(ctx, unidadeId);

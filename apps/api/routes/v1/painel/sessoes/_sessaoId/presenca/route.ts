@@ -13,6 +13,7 @@ export default async function (app: FastifyInstance) {
         await contextoDoPainel(req),
         idDoCaminho(req, "sessaoId"),
         validar(presencaEntradaSchema, req.body),
+        req.tenant?.municipioId ?? null,
       ),
     ),
   );

@@ -136,6 +136,7 @@ export async function minhas(db: DbDoTenant, pacienteId: string, agora: number):
         item?.estado === "chamado" && ultima
           ? { estacao: nomesDeEstacao.get(ultima.estacaoId) ?? "", em: new Date(ultima.em).toISOString() }
           : null,
+      pendencias: item?.estado === "remoto" ? item.pendencias : [],
     });
   }
   return saida;

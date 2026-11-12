@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import {
   CONFIG_PADRAO,
   type ConfigUnidade,
@@ -146,7 +147,7 @@ export async function naSessao<T>(
     if (m.dia && m.dia.estado !== "planejada") {
       await tx
         .insert(diaSessao)
-        .values({ sessaoId, dia: m.dia })
+        .values({ sessaoId, dia: m.dia, segredoQr: randomBytes(32).toString("base64url") })
         .onConflictDoUpdate({ target: diaSessao.sessaoId, set: { dia: m.dia, atualizadoEm: new Date() } });
       if (m.dia.estado !== s.estado) mudancas.estado = m.dia.estado;
     }

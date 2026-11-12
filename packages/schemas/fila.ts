@@ -18,6 +18,8 @@ export const itemDaFilaSchema = z.object({
   risco: z.enum(["urgente", "atencao", "rotina"]),
   prioridade: z.boolean(),
   estacaoId: z.string().nullable(),
+  /** RN-FILA-05: o que a recepção precisa conferir antes da presença. */
+  pendencias: z.array(z.string()),
 });
 
 export const filaDaSessaoSchema = z.object({
@@ -134,6 +136,7 @@ export const minhaEntradaSchema = z.object({
   itemEstado: estadoItemSchema.nullable(),
   estimativa: estimativaSchema.nullable(),
   chamada: z.object({ estacao: z.string(), em: z.iso.datetime() }).nullable(),
+  pendencias: z.array(z.string()),
 });
 export type MinhaEntrada = z.infer<typeof minhaEntradaSchema>;
 
@@ -156,3 +159,29 @@ export const hojeNaUnidadeSchema = z.object({
   estacoes: z.array(z.object({ id: z.uuid(), nome: z.string(), etapa: etapaSchema })),
 });
 export type HojeNaUnidade = z.infer<typeof hojeNaUnidadeSchema>;
+
+/** QR de entrada da unidade (RN-PRES-01): link que abre o app; muda a cada `intervaloSegundos`. */
+export const qrDaUnidadeSchema = z.object({
+  conteudo: z.string().nullable(),
+  intervaloSegundos: z.number().int().min(1),
+  expiraEm: z.iso.datetime().nullable(),
+  sessoes: z.array(z.object({ id: z.uuid(), servico: z.string() })),
+});
+export type QrDaUnidade = z.infer<typeof qrDaUnidadeSchema>;
+
+export const checkInEntradaSchema = z.object({ unidadeId: z.uuid(), tokens: z.array(z.string().max(64)).min(1).max(20) });
+export type CheckInEntrada = z.infer<typeof checkInEntradaSchema>;
+
+export const pendenciaSchema = z.enum(["conta", "pessoa_atendida", "pre_cadastro", "prioridade"]);
+
+/** Resultado do check-in por pessoa da conta: presente, ou recusado com as pendências (RN-FILA-05). */
+export const checkInSchema = z.array(
+  z.object({
+    entradaId: z.uuid(),
+    pessoa: z.string(),
+    senha: z.string(),
+    resultado: z.enum(["presente", "pendencia", "ja_na_unidade"]),
+    pendencias: z.array(pendenciaSchema),
+  }),
+);
+export type CheckIn = z.infer<typeof checkInSchema>;
