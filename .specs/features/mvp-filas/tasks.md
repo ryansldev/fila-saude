@@ -22,6 +22,22 @@ Origem: [plan.md](plan.md) (PD-01..PD-13), regras nas [specs por capacidade](../
 
 **Ordem das fases:** 1 Fundação → 2 Configuração → 3 Fatia vertical da sessão pública → 4 Infra e deploy → 5 Sessão privada → 6 Triagem → 7 Recepção → 8 P2. A infra fica depois da primeira fatia rodando local (decisão de 2026-11-10); até lá, desenvolvimento no `compose.yml` atual.
 
+## Trilha da demo (2026-11-11)
+
+**Esta ordem vale antes da "Ordem das fases" acima** ([PD-32](plan.md#1-decisões-de-arquitetura), [PD-33](plan.md#1-decisões-de-arquitetura)). Objetivo: uma demo **local, com dados de teste**, para mostrar a uma prefeitura ou UBS. Sem deploy. Cada fatia entrega um pedaço da demo funcionando de ponta a ponta (API, painel e app) e termina com o seu trecho do roteiro executado à mão uma vez. As regras não mudam: as tasks continuam citando as specs, e o TDD vale igual. Cada fatia ganha seu plano detalhado quando começar.
+
+| Fatia | O que dá para mostrar no fim | Tasks (deste backlog) | Simplificado na demo |
+| --- | --- | --- | --- |
+| **0. Base** | Login do painel por perfil no município "demo"; `npm run demo:seed` cria unidade, serviços (um com triagem), estações, uma sessão pública amanhã, uma privada, usuários por perfil e pacientes na lista de espera | Junta a `feat/fase-2-configuracao` e adapta o painel ao domínio revisado; 1B Tasks 15–18 (auth do painel, perfis, guard, auditoria); fase 2 Task 9 (CORS); tabelas de unidade, serviço, estação e sessão (sem telas); guard da sessão do paciente | Configuração só pelo seed (PD-33) |
+| **1. Pública básica** | Paciente se cadastra no app, vê a agenda, responde o questionário e se inscreve; o painel abre a sessão; o app mostra posição e tempo; a estação chama, rechama, finaliza e "não compareceu"; o app mostra "sua vez"; o painel encerra a sessão | T3.1 (sem push), T3.2 (agenda lida do município, sem projeção no central), T3.3 (sem captcha), T3.4 (abertura por botão, consulta periódica), T3.7 (sem mini-janela e modo celular), T3.9 | Tempo real por consulta; abertura e encerramento por botão |
+| **2. Na unidade** | TV pareada com QR rotativo, chamada com som e fila de anúncios; check-in pelo QR; recepção confere conta e prioridade; "Vou sair"; push de "saia de casa", "venha agora", "sua vez" | T2.6, T3.5, T3.6, T3.8 com T2.4 (outbox e envio) | — |
+| **3. Triagem** | Estação de triagem chama primeiro, confirma ou reclassifica o risco; o paciente volta à fila do atendimento com a mesma senha | T6.1 | — |
+| **4. Privada** | Paciente entra na lista de espera pelo app; o agendador vê a sugestão com motivos, aloca e o paciente confirma; no dia segue a fila | T5.1, T5.3, T5.4 | Sem requisição com foto (T5.2), lista parada (T5.5) e serviço regulado (T5.6) |
+| **5. Pré-cadastro** | Paciente envia o formulário com fotos pelo app; a recepção vê, valida com auditoria de cada visualização e o check-in passa a ser aceito | T7.2 | Fotos no disco local (PD-33) |
+| **Roteiro** | `roteiro-demo.md`: o passo a passo da apresentação, tela a tela | — | — |
+
+**Ficam para depois da demo** (sem descarte, na ordem original): 1B Tasks 11–14 (e-mail confirmado, recuperação de senha, bloqueio de conta, JWT da PD-17); fase 2 Tasks 10–30, exceto o que a fatia 0 usa (telas de configuração, séries, worker de materialização); T3.4 por SSE (D1); fase 4; T5.2, T5.5, T5.6; T7.1, T7.3, T7.4; fase 8. Pendências do domínio da revisão final da 1A: em [decisoes-para-revisar](decisoes-para-revisar.md#revisão-final-do-domínio-fase-1a).
+
 **Testes do protótipo:** os 51 testes de `prototype/tests/engine.test.js` são reescritos em Vitest. As regras puras vão para `packages/domain` (fase 1). Os de TV, agenda e privacidade viram testes de API nas fases que constroem essas telas. `simulate` não é portado (é só da demo).
 
 ## Discoveries e spikes

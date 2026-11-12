@@ -9,12 +9,14 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 - **MVP:** `features/mvp-filas/` com `spec.md` (escopo e histórias), `plan.md` (PD-01..PD-31), `tasks.md` (47 tasks em 8 fases, TDD, discoveries D1–D10).
 - **Protótipo:** revisões 1–4 construídas e verificadas.
 
-## Próximo
+## Próximo (2026-11-11)
 
-1. **Fase 1A** (`packages/domain`, [plano](features/mvp-filas/plano-fase-1a-dominio.md)) em execução; as Tasks 11 (QR) e 12 (matriz de permissões) são pré-requisito da Task 17 da 1B.
-2. **Fase 1B** (T1.7–T1.9: multi-tenant, auth do paciente e do painel, permissões e auditoria): [plano-fase-1b-fundacao-api.md](features/mvp-filas/plano-fase-1b-fundacao-api.md), 18 tasks, decisões PD-14..PD-23. API em sequência; a Task 9 (CPF em `packages/schemas`) corre em paralelo.
-3. **Fase 2** (T2.1–T2.6: painel, unidades, serviços, worker, sessões e séries, TV): [plano-fase-2-configuracao.md](features/mvp-filas/plano-fase-2-configuracao.md), 30 tasks, decisões PD-24..PD-31. `recorrencia`, `configuracao` e regras no domínio (Tasks 1–5), schemas (6) e a base do painel (7–8) podem começar já, em paralelo com a 1B; a API segue em sequência depois da 1B.
-4. Em paralelo: roteiro da visita à unidade piloto juntando D4, D6 e D9.
+**Trilha da demo** (PD-32, PD-33; [tasks](features/mvp-filas/tasks.md#trilha-da-demo-2026-11-11)): demo local com dados de teste, em fatias verticais: 0 Base → 1 Pública básica → 2 Na unidade → 3 Triagem → 4 Privada → 5 Pré-cadastro → roteiro.
+
+- **Fase 1A** concluída, com a revisão final e as correções (domínio, 234 testes).
+- **Fase 1B** (branch `feat/domain-fase-1a`): Tasks 1–10 prontas. As Tasks 15–18 entram na fatia 0; 11–14 ficam para depois da demo.
+- **Fase 2** (branch `feat/fase-2-configuracao`): Tasks 1–8 prontas; juntar na fatia 0.
+- **Próximo passo:** plano detalhado da fatia 0.
 
 ## Pendências fora do código
 
