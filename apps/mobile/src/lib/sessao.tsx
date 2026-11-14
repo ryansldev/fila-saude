@@ -2,6 +2,7 @@ import * as SecureStore from "expo-secure-store";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { type Api, cadastrar, criarApi, type DadosDoCadastro, entrar } from "./api";
 import { API_URL } from "./config";
+import { registrarPush } from "./push";
 
 const CHAVE_TOKEN = "fila-saude.token";
 const CHAVE_MUNICIPIO = "fila-saude.municipio";
@@ -48,6 +49,8 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
       .get<{ user: { name: string; nascimento: string } } | null>("/v1/auth/get-session")
       .then((s) => setConta(s ? { nome: s.user.name, nascimento: s.user.nascimento } : null))
       .catch(() => setConta(null));
+    // T3.8: a cada login (ou abertura com conta), o aparelho avisa a conta certa.
+    void registrarPush(api);
   }, [api, token]);
 
   const guardarToken = useCallback(async (t: string) => {

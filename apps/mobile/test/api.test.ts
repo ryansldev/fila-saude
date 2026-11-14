@@ -29,6 +29,14 @@ describe("cliente da API do app (PD-34, token)", () => {
     expect(pedidos[0]?.init.body).toBe('{"a":1}');
   });
 
+  it("put manda o corpo com o token (registro do push, T3.8)", async () => {
+    const { pedidos, fetcher } = falso([json({ ok: true })]);
+    const api = criarApi("http://api", async () => "tok", fetcher);
+    await api.put("/v1/paciente/push", { token: "ExponentPushToken[a]" });
+    expect(pedidos[0]?.init.method).toBe("PUT");
+    expect(pedidos[0]?.init.body).toBe('{"token":"ExponentPushToken[a]"}');
+  });
+
   it("erro no formato da API vira ErroDaApi; sem rede, sem_conexao", async () => {
     const { fetcher } = falso([json({ erro: "duplicada" }, 409)]);
     const api = criarApi("http://api", async () => null, fetcher);

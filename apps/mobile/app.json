@@ -31,7 +31,8 @@
           "barcodeScannerEnabled": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      ["expo-notifications", { "color": "#1a6fd1" }]
     ],
     "scheme": "filasaude",
     "experiments": {

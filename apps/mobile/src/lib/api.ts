@@ -16,6 +16,7 @@ export class ErroDaApi extends Error {
 export type Api = {
   get<T = unknown>(caminho: string): Promise<T>;
   post<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
+  put<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
 };
 
 async function lerCorpo(r: Response): Promise<Record<string, unknown> | undefined> {
@@ -31,7 +32,7 @@ async function lerCorpo(r: Response): Promise<Record<string, unknown> | undefine
 async function pedir(
   fetcher: typeof fetch,
   url: string,
-  metodo: "GET" | "POST",
+  metodo: "GET" | "POST" | "PUT",
   token: string | null,
   corpo?: unknown,
 ): Promise<{ resposta: Response; dados: Record<string, unknown> | undefined }> {
@@ -63,6 +64,8 @@ export function criarApi(base: string, token: () => Promise<string | null>, fetc
     get: async <T>(caminho: string) => (await pedir(fetcher, `${base}${caminho}`, "GET", await token())).dados as T,
     post: async <T>(caminho: string, corpo?: unknown) =>
       (await pedir(fetcher, `${base}${caminho}`, "POST", await token(), corpo ?? {})).dados as T,
+    put: async <T>(caminho: string, corpo?: unknown) =>
+      (await pedir(fetcher, `${base}${caminho}`, "PUT", await token(), corpo ?? {})).dados as T,
   };
 }
 
