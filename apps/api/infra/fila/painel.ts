@@ -26,6 +26,19 @@ import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
 import { condicoesNaUnidade } from "infra/painel/guard";
 import { lerDia, montarDia, naSessao } from "./dia";
 
+// "52998224725" → "•••.982.247-••": o bastante para conferir com o documento sem expor o CPF inteiro.
+const cpfMascarado = (cpf: string | null) => (cpf ? `•••.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-••` : null);
+
+async function documentosDasEntradas(db: BancoDoTenant, ids: string[]) {
+  if (ids.length === 0) return new Map<string, { nascimento: string; cpf: string | null }>();
+  const linhas = await db
+    .select({ id: entrada.id, nascimento: pessoaLocal.nascimento, cpf: pessoaLocal.cpf })
+    .from(entrada)
+    .innerJoin(pessoaLocal, eq(entrada.pessoaLocalId, pessoaLocal.id))
+    .where(inArray(entrada.id, ids));
+  return new Map(linhas.map((l) => [l.id, { nascimento: l.nascimento, cpf: cpfMascarado(l.cpf) }]));
+}
+
 export async function nomesDasEntradas(db: BancoDoTenant, ids: string[]): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
   const linhas = await db
@@ -40,6 +53,10 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
   const { s } = await exigirSessao(db, sessaoId);
   const itens = dia?.itens ?? [];
   const nomes = await nomesDasEntradas(
+    db,
+    itens.map((i) => i.entradaId),
+  );
+  const documentos = await documentosDasEntradas(
     db,
     itens.map((i) => i.entradaId),
   );
@@ -60,6 +77,7 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
       prioridade: temPrioridade(i.prioridade),
       estacaoId: dia?.estacoes.find((e) => e.chamadoItemId === i.id)?.id ?? null,
       pendencias: i.pendencias,
+      documento: documentos.get(i.entradaId) ?? { nascimento: "", cpf: null },
     })),
     reserva: naReserva,
   };

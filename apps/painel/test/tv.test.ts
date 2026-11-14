@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANUNCIOS_VAZIOS, avancarAnuncios, receberChamadas } from "@/lib/tv";
+import { ANUNCIOS_VAZIOS, avancarAnuncios, receberChamadas, ultimasAnunciadas } from "@/lib/tv";
 
 const ch = (senha: string, em: number) => ({
   id: `${senha}:${em}`,
@@ -43,5 +43,24 @@ describe("fila de anúncios da TV (RN-TV-07, RN-TV-04)", () => {
     expect(e.fila).toEqual([]);
     e = receberChamadas(e, [ch("C-001", 5), ch("C-001", 1)]);
     expect(e.fila.map((c) => c.id)).toEqual(["C-001:5"]);
+  });
+});
+
+describe("TV (revisão 2026-11-13)", () => {
+  it("depois de reconectar, chamada velha não é anunciada de novo (só entra no histórico)", () => {
+    let e = receberChamadas(ANUNCIOS_VAZIOS, []);
+    const agora = 100_000;
+    e = receberChamadas(e, [ch("C-009", agora - 1000), ch("C-008", agora - 60_000)], agora, 20_000);
+    expect(e.fila.map((c) => c.senha)).toEqual(["C-009"]);
+    expect(e.vistas).toContain("C-008:40000");
+  });
+
+  it("'últimas chamadas' só mostra o que já foi anunciado", () => {
+    let e = receberChamadas(ANUNCIOS_VAZIOS, [ch("C-001", 1)]);
+    e = receberChamadas(e, [ch("C-003", 3), ch("C-002", 2), ch("C-001", 1)]);
+    const a = avancarAnuncios(e, 10, 10_000).estado; // C-002 em destaque, C-003 na fila
+    expect(ultimasAnunciadas(a, [ch("C-003", 3), ch("C-002", 2), ch("C-001", 1)]).map((c) => c.senha)).toEqual([
+      "C-001",
+    ]);
   });
 });

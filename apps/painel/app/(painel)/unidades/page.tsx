@@ -166,17 +166,28 @@ function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: ()
   const [erros, setErros] = useState(SEM_ERROS);
   const [ok, setOk] = useState<string | null>(null);
 
+  const [erroAoLer, setErroAoLer] = useState<string | null>(null);
   useEffect(() => {
-    api.get<ConfigEfetiva>(`/v1/painel/unidades/${unidade.id}/config`).then((c) => {
-      setEfetiva(c);
-      setValores(
-        Object.fromEntries(
-          CAMPOS_CONFIG.map(({ campo }) => [campo, c.origem[campo] === "unidade" ? String(c.valores[campo]) : ""]),
-        ),
-      );
-    });
+    let ativo = true;
+    api
+      .get<ConfigEfetiva>(`/v1/painel/unidades/${unidade.id}/config`)
+      .then((c) => {
+        if (!ativo) return;
+        setEfetiva(c);
+        setErroAoLer(null);
+        setValores(
+          Object.fromEntries(
+            CAMPOS_CONFIG.map(({ campo }) => [campo, c.origem[campo] === "unidade" ? String(c.valores[campo]) : ""]),
+          ),
+        );
+      })
+      .catch((e) => ativo && setErroAoLer(mensagemDoErro(e)));
+    return () => {
+      ativo = false;
+    };
   }, [api, unidade.id]);
 
+  if (erroAoLer) return <Aviso texto={erroAoLer} />;
   if (!efetiva) return null;
   const proprios = CAMPOS_CONFIG.map((c) => c.campo).filter((c) => campoHerdado(efetiva, c).proprio);
 

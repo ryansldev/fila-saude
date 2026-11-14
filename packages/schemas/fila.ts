@@ -29,6 +29,8 @@ export const itemDaFilaSchema = z.object({
   estacaoId: z.string().nullable(),
   /** RN-FILA-05: o que a recepção precisa conferir antes da presença. */
   pendencias: z.array(z.string()),
+  /** RN-PRES-03: para comparar com o documento; CPF mascarado (LGPD), só os dígitos do meio. */
+  documento: z.object({ nascimento: z.string(), cpf: z.string().nullable() }),
 });
 
 export const filaDaSessaoSchema = z.object({
@@ -58,6 +60,8 @@ export const operacaoEstacaoSchema = z.object({
   remotos: z.number().int().min(0),
   toleranciaMin: z.number().int().min(0),
   aviso: z.enum(["ninguem_aguardando"]).nullable(),
+  /** Hora do servidor: o cronômetro conta por ela (o relógio do computador pode estar errado). */
+  agora: z.iso.datetime(),
 });
 export type OperacaoEstacao = z.infer<typeof operacaoEstacaoSchema>;
 

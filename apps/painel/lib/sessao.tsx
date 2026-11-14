@@ -51,8 +51,9 @@ export type EstadoDoLogin = { estado: "ocioso" } | { estado: "enviando" } | { es
 
 function classificarSignIn(e: unknown): ErroDeLogin {
   if (e instanceof ErroDaApi) {
-    if (e.status === 423 || e.erro === "bloqueado") return "bloqueado";
-    if (e.status === 401) return "credenciais";
+    if (e.status === 423 || e.status === 429 || e.erro === "bloqueado") return "bloqueado";
+    // 422: o plugin username recusa o formato do login (ex.: com espaço): para quem digita, é login errado.
+    if (e.status === 401 || e.status === 422) return "credenciais";
   }
   return "rede";
 }

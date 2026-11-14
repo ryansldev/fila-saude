@@ -1,4 +1,4 @@
-import { type Acao, pode } from "@fila-saude/domain";
+import { type Acao, condicoes, type Perfil, pode } from "@fila-saude/domain";
 import type { PerfilDoUsuario } from "@/lib/navegacao";
 
 const naUnidade = (perfis: PerfilDoUsuario[], unidadeId: string) =>
@@ -50,4 +50,42 @@ const PENDENCIAS: Record<string, string> = {
 export function textoDasPendencias(pendencias: string[]): string | null {
   if (pendencias.length === 0) return null;
   return `Passe na recepção: conferir ${pendencias.map((p) => PENDENCIAS[p] ?? p).join(", ")}`;
+}
+
+/**
+ * RN-PRES-03 / RN-FILA-05: a recepção marca a presença de qualquer remoto (sem app, não conseguiu ler
+ * o QR); com pendência, confere os documentos na mesma ação e pode recusar ("não confere", com motivo).
+ */
+export function botoesDePresenca(
+  item: { estado: string; pendencias: string[] },
+  podePresenca: boolean,
+): { marcar: string; naoConfere: boolean } | null {
+  if (!podePresenca || item.estado !== "remoto") return null;
+  const pendente = item.pendencias.length > 0;
+  return { marcar: pendente ? "Conferir documentos e marcar presença" : "Marcar presença", naoConfere: pendente };
+}
+
+/** O que comparar com o documento: nascimento e CPF mascarado. */
+export function textoDoDocumento(d: { nascimento: string; cpf: string | null }): string {
+  const [a, m, dia] = d.nascimento.split("-");
+  return `nasc. ${dia}/${m}/${a} · ${d.cpf ? `CPF ${d.cpf}` : "sem CPF"}`;
+}
+
+const ETAPA_DA_RESSALVA: Record<string, "triagem" | "atendimento"> = {
+  "acolhimento na triagem": "triagem",
+  atendimento: "atendimento",
+};
+
+/** PD-46: as estações da unidade que o perfil pode operar (a API recusaria as outras com 403). */
+export function estacoesQueOpera<E extends { etapa: "triagem" | "atendimento" }>(
+  estacoes: E[],
+  perfis: { perfil: Perfil; unidadeId: string | null }[],
+  unidadeId: string,
+): E[] {
+  const validos = perfis.filter((p) => p.unidadeId === null || p.unidadeId === unidadeId).map((p) => p.perfil);
+  const c = condicoes(validos, "operar_chamadas");
+  if (c === null) return [];
+  if (c === "livre") return estacoes;
+  const etapas = new Set(c.map((r) => ETAPA_DA_RESSALVA[r]));
+  return estacoes.filter((e) => etapas.has(e.etapa));
 }

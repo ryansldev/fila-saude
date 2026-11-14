@@ -18,7 +18,12 @@ const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 
 export default function Estacoes() {
   const api = useApi();
-  const { unidades, atual, escolher } = useUnidadeAtual();
+  const {
+    unidades,
+    atual,
+    escolher,
+    erro: erroDasUnidades,
+  } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const estacoes = useLista<Estacao>(atual ? `/v1/painel/unidades/${atual}/estacoes` : null);
   const { itens: servicos } = useLista<Servico>(atual ? `/v1/painel/unidades/${atual}/servicos` : null);
   const [v, setV] = useState<{ nome: string; etapa: Etapa; servicos: string[] }>({
@@ -58,17 +63,16 @@ export default function Estacoes() {
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Estações</h1>
-      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} />
+      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={estacoes.erro ?? aviso} />
       {atual ? (
         <>
-          <Tabela cabecalho={["Nome", "Etapa", "Serviços", "Situação", ""]}>
+          <Tabela cabecalho={["Nome", "Etapa", "Serviços", ""]}>
             {estacoes.itens.map((est) => (
               <tr key={est.id}>
                 <td className="py-2 pr-4 font-medium">{est.nome}</td>
                 <td className="py-2 pr-4">{est.etapa === "triagem" ? "Triagem" : "Atendimento"}</td>
                 <td className="py-2 pr-4">{est.servicos.map(nomeDoServico).join(", ")}</td>
-                <td className="py-2 pr-4">{est.aberta ? "Aberta" : "Fechada"}</td>
                 <td className="py-2">
                   <Button variant="ghost" size="sm" onClick={() => arquivar(est)}>
                     Arquivar

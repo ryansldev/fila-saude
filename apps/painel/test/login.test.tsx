@@ -72,6 +72,15 @@ describe("login", () => {
     await waitFor(() => expect(navegarOk).toHaveBeenCalledWith("/equipe"));
   });
 
+  it("login com formato inválido (422 do better-auth) é credencial errada, não falha de rede", async () => {
+    const formato = apiComLogin(async () => {
+      throw new ErroDaApi(422, "INVALID_USERNAME");
+    });
+    montar(formato);
+    preencherEEnviar();
+    expect(await screen.findByText(/login ou senha inválidos/i)).toBeDefined();
+  });
+
   it("login: sign-in ok mas /eu com 401 mostra erro genérico, não credenciais", async () => {
     const navegar = montar(apiComLogin(async () => ({}), new ErroDaApi(401, "nao_autenticado")));
     preencherEEnviar();

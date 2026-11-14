@@ -142,14 +142,19 @@ function FormularioDeServico({
 
 export default function Servicos() {
   const api = useApi();
-  const { unidades, atual, escolher } = useUnidadeAtual();
+  const {
+    unidades,
+    atual,
+    escolher,
+    erro: erroDasUnidades,
+  } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const { itens, erro, recarregar } = useLista<Servico>(atual ? `/v1/painel/unidades/${atual}/servicos` : null);
   const [editando, setEditando] = useState<Servico | null>(null);
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Serviços</h1>
-      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} />
+      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={erro} />
       {atual ? (
         <>

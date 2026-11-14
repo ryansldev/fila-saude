@@ -6,7 +6,14 @@ import { Aviso, Campo, classeDoCampo, Tabela } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { acoesDaFila, ordenarFila, rotuloDoEstado, textoDasPendencias } from "@/lib/fila";
+import {
+  acoesDaFila,
+  botoesDePresenca,
+  ordenarFila,
+  rotuloDoEstado,
+  textoDasPendencias,
+  textoDoDocumento,
+} from "@/lib/fila";
 import { mensagemDoErro } from "@/lib/formularios/erros";
 import { horarioParaTela } from "@/lib/formularios/sessao";
 import { useEu } from "@/lib/sessao";
@@ -22,7 +29,13 @@ const ESTADO_DA_SESSAO: Record<string, string> = {
 export default function FilaDoDia() {
   const api = useApi();
   const eu = useEu();
-  const { unidades, atual, escolher, unidade } = useUnidadeAtual();
+  const {
+    unidades,
+    atual,
+    escolher,
+    unidade,
+    erro: erroDasUnidades,
+  } = useUnidadeAtual(["abrir_cancelar_encerrar_sessao", "conferir_e_marcar_presenca", "operar_chamadas"]);
   const fuso = unidade?.fuso ?? "America/Sao_Paulo";
   const hoje = useConsulta<HojeNaUnidade>(atual ? `/v1/painel/unidades/${atual}/hoje` : null, 15_000);
   const [sessaoId, setSessaoId] = useState<string | null>(null);
@@ -31,10 +44,12 @@ export default function FilaDoDia() {
 
   const sessoes = hoje.dado?.sessoes ?? [];
   useEffect(() => {
+    // Enquanto /hoje carrega, mantém a sessão escolhida (antes ela era trocada a cada ação).
+    if (!hoje.dado) return;
     if (sessoes.length === 0) setSessaoId(null);
     else if (!sessoes.some((s) => s.id === sessaoId))
       setSessaoId((sessoes.find((s) => s.estado === "aberta") ?? sessoes[0])?.id ?? null);
-  }, [sessoes, sessaoId]);
+  }, [hoje.dado, sessoes, sessaoId]);
 
   const perfis = eu.estado === "autenticado" ? eu.eu.perfis : [];
   const estado = fila.dado?.sessao.estado ?? "planejada";
@@ -55,7 +70,7 @@ export default function FilaDoDia() {
     <div className="flex max-w-5xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Fila do dia</h1>
       <div className="flex flex-wrap items-end gap-4">
-        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} />
+        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         {sessoes.length > 0 ? (
           <Campo rotulo="Sessão">
             <select className={classeDoCampo} value={sessaoId ?? ""} onChange={(e) => setSessaoId(e.target.value)}>
@@ -113,6 +128,9 @@ export default function FilaDoDia() {
                   <td className="py-2 pr-4">
                     {i.nome}
                     {i.prioridade ? <span className="ml-2 text-xs text-primary">prioridade</span> : null}
+                    {i.estado === "remoto" && pode.presenca ? (
+                      <span className="block text-xs text-gray-500">{textoDoDocumento(i.documento)}</span>
+                    ) : null}
                   </td>
                   <td className="py-2 pr-4">{i.etapa === "triagem" ? "Triagem" : "Atendimento"}</td>
                   <td className="py-2 pr-4">
@@ -123,20 +141,44 @@ export default function FilaDoDia() {
                     ) : null}
                   </td>
                   <td className="py-2">
-                    {pode.presenca && i.estado === "remoto" && i.pendencias.length > 0 ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          agir(`/v1/painel/sessoes/${sessaoId}/presenca`, {
-                            entradaId: i.entradaId,
-                            resultado: "confere",
-                          })
-                        }
-                      >
-                        Conferir documentos e marcar presença
-                      </Button>
-                    ) : null}
+                    {(() => {
+                      const b = botoesDePresenca(i, pode.presenca);
+                      if (!b) return null;
+                      return (
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              agir(`/v1/painel/sessoes/${sessaoId}/presenca`, {
+                                entradaId: i.entradaId,
+                                resultado: "confere",
+                              })
+                            }
+                          >
+                            {b.marcar}
+                          </Button>
+                          {b.naoConfere ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                // AD-039: recusar tira da fila de hoje, sem falta; sempre com motivo.
+                                const motivo = window.prompt("Por que os documentos não conferem?")?.trim();
+                                if (!motivo) return;
+                                void agir(`/v1/painel/sessoes/${sessaoId}/presenca`, {
+                                  entradaId: i.entradaId,
+                                  resultado: "nao_confere",
+                                  motivo,
+                                });
+                              }}
+                            >
+                              Não confere
+                            </Button>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}

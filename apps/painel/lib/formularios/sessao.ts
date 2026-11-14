@@ -40,3 +40,17 @@ export function intervaloDoDia(data: string, fuso: string): { de: string; ate: s
   const seguinte = new Date(Date.UTC(a, m - 1, d + 1)).toISOString().slice(0, 10);
   return { de: horarioParaEnvio(data, "00:00", fuso), ate: horarioParaEnvio(seguinte, "00:00", fuso) };
 }
+
+/** Vagas digitadas: vazio = sem limite; senão inteiro ≥ 1 (antes "1,5" ou "dez" viravam sem limite). */
+export function lerVagas(texto: string): { ok: true; vagas: number | null } | { ok: false; erro: string } {
+  const t = texto.trim();
+  if (!t) return { ok: true, vagas: null };
+  if (!/^\d+$/.test(t) || Number(t) < 1)
+    return { ok: false, erro: "Use um número inteiro (1 ou mais), ou deixe vazio." };
+  return { ok: true, vagas: Number(t) };
+}
+
+/** AAAA-MM-DD de verdade: o campo de data do navegador aceita anos com 5 ou 6 dígitos. */
+export function diaValido(dia: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dia) && !Number.isNaN(Date.parse(`${dia}T00:00:00Z`));
+}

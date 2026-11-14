@@ -6,8 +6,9 @@ import { Aviso, Campo, classeDoCampo } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { cronometro } from "@/lib/fila";
+import { cronometro, estacoesQueOpera } from "@/lib/fila";
 import { mensagemDoErro } from "@/lib/formularios/erros";
+import { useEu } from "@/lib/sessao";
 import { useUnidadeAtual } from "@/lib/unidade-atual";
 import { useConsulta } from "@/lib/use-consulta";
 
@@ -24,7 +25,8 @@ function lerEstacao(): string | null {
 /** Estação de chamada (T3.7): um paciente por vez; a tolerância só avisa (AD-006). */
 export default function Estacao() {
   const api = useApi();
-  const { unidades, atual, escolher } = useUnidadeAtual();
+  const { unidades, atual, escolher, erro: erroDasUnidades } = useUnidadeAtual(["operar_chamadas"]);
+  const eu = useEu();
   const hoje = useConsulta<HojeNaUnidade>(atual ? `/v1/painel/unidades/${atual}/hoje` : null, 60_000);
   const [estacaoId, setEstacaoId] = useState<string | null>(null);
   const op = useConsulta<OperacaoEstacao>(estacaoId ? `/v1/painel/estacoes/${estacaoId}/operacao` : null, 3_000);
@@ -32,12 +34,16 @@ export default function Estacao() {
   const [enviando, setEnviando] = useState(false);
   const [agora, setAgora] = useState(() => Date.now());
 
-  const estacoes = hoje.dado?.estacoes ?? [];
+  // PD-46: só as estações que o perfil opera nesta unidade.
+  const perfis = eu.estado === "autenticado" ? eu.eu.perfis : [];
+  const estacoes = atual ? estacoesQueOpera(hoje.dado?.estacoes ?? [], perfis, atual) : [];
   useEffect(() => {
-    if (estacoes.length === 0 || estacoes.some((e) => e.id === estacaoId)) return;
+    if (!hoje.dado) return;
+    if (estacoes.some((e) => e.id === estacaoId)) return;
+    // Outra unidade (ou estação removida): nunca continuar chamando na estação anterior.
     const guardada = lerEstacao();
     setEstacaoId(estacoes.find((e) => e.id === guardada)?.id ?? estacoes[0]?.id ?? null);
-  }, [estacoes, estacaoId]);
+  }, [hoje.dado, estacoes, estacaoId]);
 
   useEffect(() => {
     const id = setInterval(() => setAgora(Date.now()), 1000);
@@ -67,12 +73,17 @@ export default function Estacao() {
   }
 
   const d = op.dado;
+  // Diferença entre o relógio do servidor e o deste computador, medida na última resposta.
+  const [desvio, setDesvio] = useState(0);
+  useEffect(() => {
+    if (d?.agora) setDesvio(Date.parse(d.agora) - Date.now());
+  }, [d?.agora]);
   const chamado = d?.chamado ?? null;
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Estação</h1>
       <div className="flex flex-wrap items-end gap-4">
-        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} />
+        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         {estacoes.length > 0 ? (
           <Campo rotulo="Estação">
             <select className={classeDoCampo} value={estacaoId ?? ""} onChange={(e) => escolherEstacao(e.target.value)}>
@@ -86,6 +97,9 @@ export default function Estacao() {
         ) : null}
       </div>
       <Aviso texto={aviso ?? op.erro ?? hoje.erro} />
+      {hoje.dado && estacoes.length === 0 ? (
+        <p className="text-gray-600">Nenhuma estação que você opere nesta unidade.</p>
+      ) : null}
       {d ? (
         d.sessao === null ? (
           <p className="text-gray-600">Nenhuma sessão aberta nesta estação agora.</p>
@@ -100,7 +114,7 @@ export default function Estacao() {
                 <span className="font-mono text-6xl font-bold text-primary">{chamado.senha}</span>
                 <span className="text-xl text-gray-900">{chamado.nome}</span>
                 <span className={chamado.toleranciaEsgotada ? "text-red-700" : "text-gray-600"}>
-                  {cronometro(chamado.chamadoEm, agora)} desde a chamada
+                  {cronometro(chamado.chamadoEm, agora + desvio)} desde a chamada
                   {chamado.toleranciaEsgotada ? ` · passou a tolerância de ${d.toleranciaMin} min` : ""}
                   {chamado.pulos > 0 ? ` · ${chamado.pulos} pulo(s)` : ""}
                 </span>

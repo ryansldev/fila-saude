@@ -5,11 +5,12 @@ import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
 import { urlDaApi } from "@/lib/tenant";
-import { ANUNCIOS_VAZIOS, type Anuncios, avancarAnuncios, receberChamadas } from "@/lib/tv";
+import { ANUNCIOS_VAZIOS, type Anuncios, avancarAnuncios, receberChamadas, ultimasAnunciadas } from "@/lib/tv";
 
 const CHAVE = "fila-saude:tv";
 const CONSULTA_MS = 2_000; // PD-48
-const OFFLINE_APOS = 3; // leituras seguidas sem resposta
+const OFFLINE_APOS = 3; // leituras seguidas sem resposta: aviso discreto
+const OFFLINE_LONGO = 30; // ~1 min sem resposta: tela de "reconectando"
 
 const lerToken = () => {
   try {
@@ -80,48 +81,53 @@ export default function Tv() {
       gravarToken(dados.token);
       return dados.token;
     };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Uma consulta por vez: a próxima só sai depois da resposta (senão duas leituras sem token
+    // registravam duas TVs e o código piscava).
     const buscar = async () => {
       try {
         const token = lerToken() ?? (await registrar());
         const r = await fetch(`${base()}/v1/tv/tela`, { headers: { authorization: `Bearer ${token}` } });
-        // RN-TV-01: revogada (ou desconhecida) volta ao pareamento com um código novo.
-        if (r.status === 401) {
-          gravarToken(null);
-          return;
+        // RN-TV-01: revogada, desconhecida ou código vencido (o servidor decide): volta ao pareamento.
+        if (r.status === 401) gravarToken(null);
+        else {
+          if (!r.ok) throw new Error(String(r.status));
+          const dados = (await r.json()) as TvEstado;
+          if (!ativo) return;
+          setEstado(dados);
+          setFalhas(0);
+          if (dados.estado === "pareada") {
+            const maxAtraso = dados.destaqueSegundos * 2000;
+            setAnuncios((a) => receberChamadas(a, dados.chamadas, Date.now(), maxAtraso));
+          }
         }
-        if (!r.ok) throw new Error(String(r.status));
-        const dados = (await r.json()) as TvEstado;
-        if (!ativo) return;
-        // Código vencido: registra de novo para mostrar um válido.
-        if (dados.estado === "aguardando" && Date.parse(dados.expiraEm) < Date.now()) gravarToken(null);
-        setEstado(dados);
-        setFalhas(0);
-        if (dados.estado === "pareada") setAnuncios((a) => receberChamadas(a, dados.chamadas));
       } catch {
         if (ativo) setFalhas((f) => f + 1);
       }
+      if (ativo) timer = setTimeout(buscar, CONSULTA_MS);
     };
     void buscar();
-    const id = setInterval(buscar, CONSULTA_MS);
     return () => {
       ativo = false;
-      clearInterval(id);
+      if (timer) clearTimeout(timer);
     };
   }, [base]);
 
   const destaqueMs = (pareada?.destaqueSegundos ?? 10) * 1000;
   useEffect(() => {
-    const id = setInterval(() => {
-      setAnuncios((a) => {
-        const r = avancarAnuncios(a, Date.now(), destaqueMs);
-        if (r.tocar) tocarAviso(audio.current);
-        return r.estado;
-      });
-    }, 250);
+    const id = setInterval(() => setAnuncios((a) => avancarAnuncios(a, Date.now(), destaqueMs).estado), 250);
     return () => clearInterval(id);
   }, [destaqueMs]);
 
-  const offline = falhas >= OFFLINE_APOS;
+  // RN-TV-04: o som toca uma vez por anúncio, fora do atualizador de estado (que o React pode repetir).
+  const anunciando = anuncios.atual?.chamada.id ?? null;
+  useEffect(() => {
+    if (anunciando) tocarAviso(audio.current);
+  }, [anunciando]);
+
+  // RN-TV-06: queda curta mantém a última tela com um aviso; só uma queda longa troca a tela.
+  const semConexao = falhas >= OFFLINE_APOS;
+  const offline = falhas >= OFFLINE_LONGO || (semConexao && estado?.estado !== "pareada");
 
   return (
     <main className="flex min-h-screen flex-col bg-primary-900 font-[family-name:var(--font-nunito)] text-white">
@@ -159,7 +165,19 @@ export default function Tv() {
           <p className="text-xl opacity-70">toque uma vez para ligar o som das chamadas.</p>
         </Centro>
       ) : (
-        <Painel estado={estado} atual={anuncios.atual?.chamada ?? null} svg={svg} />
+        <>
+          <Painel
+            estado={estado}
+            atual={anuncios.atual?.chamada ?? null}
+            ultimas={ultimasAnunciadas(anuncios, estado.chamadas).slice(0, 4)}
+            svg={semConexao ? null : svg}
+          />
+          {semConexao ? (
+            <p className="fixed right-6 bottom-4 rounded-full bg-white/20 px-4 py-2 text-xl">
+              sem conexão · reconectando…
+            </p>
+          ) : null}
+        </>
       )}
     </main>
   );
@@ -172,13 +190,14 @@ function Centro({ children }: { children: React.ReactNode }) {
 function Painel({
   estado,
   atual,
+  ultimas,
   svg,
 }: {
   estado: Extract<TvEstado, { estado: "pareada" }>;
   atual: { id: string; senha: string; destino: string } | null;
+  ultimas: { id: string; senha: string; destino: string }[];
   svg: string | null;
 }) {
-  const ultimas = estado.chamadas.filter((c) => c.id !== atual?.id).slice(0, 4);
   return (
     <div className="grid flex-1 grid-cols-[2fr_1fr] grid-rows-[3fr_2fr] gap-6 p-8">
       <section

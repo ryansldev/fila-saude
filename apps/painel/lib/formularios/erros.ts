@@ -24,6 +24,13 @@ const MENSAGENS: Record<string, string | ((e: ErroDaApi) => string)> = {
   unidade_com_entradas: (e) =>
     `A unidade tem ${String(e.dados?.entradasAtivas ?? "")} pacientes na lista de espera. Não dá para remover agora.`,
   remover_a_si_mesmo: "Você não pode remover você mesmo da equipe.",
+  estacao_com_chamado: "Há paciente chamado em uma estação. Finalize ou marque 'não compareceu' antes de encerrar.",
+  motivo_obrigatorio: "Escreva o motivo.",
+  estacao_em_uso: "A estação está em uma sessão planejada ou aberta. Tire-a dessas sessões antes de remover.",
+  sessao_fechada: "Nenhuma sessão aberta para isso agora.",
+  nenhum_elegivel: "Ninguém aguardando na unidade.",
+  codigo_invalido: "Código não encontrado ou vencido. Confira o código que aparece na TV.",
+  duplicada: "Já existe um registro igual. Recarregue a página.",
 };
 
 /** Texto para a pessoa a partir de qualquer erro da chamada. */
@@ -39,11 +46,28 @@ export function mensagemDoErro(e: unknown): string {
 
 export type ErrosDoEnvio = { geral: string | null; campos: Record<string, string> };
 
-/** 400 com campos vira erro por campo; o resto, mensagem geral. */
+/**
+ * 400 com campos vira erro por campo; o resto, mensagem geral. Cada chave vale também para as
+ * chaves "de cima" (`horario.1.0.abre` aparece em `horario.1.0`), para chegar a algum campo da tela;
+ * erro na raiz (`_`) vira a mensagem geral.
+ */
 export function errosDoEnvio(e: unknown): ErrosDoEnvio {
   if (e instanceof ErroDaApi && e.status === 400 && e.campos) {
-    const campos = Object.fromEntries(Object.entries(e.campos).map(([k, v]) => [k, v[0] ?? "inválido"]));
-    return { geral: null, campos };
+    const campos: Record<string, string> = {};
+    let geral: string | null = null;
+    for (const [k, v] of Object.entries(e.campos)) {
+      const msg = v[0] ?? "inválido";
+      if (k === "_") {
+        geral = msg;
+        continue;
+      }
+      const partes = k.split(".");
+      for (let n = partes.length; n >= 1; n--) {
+        const chave = partes.slice(0, n).join(".");
+        if (!(chave in campos)) campos[chave] = msg;
+      }
+    }
+    return { geral, campos };
   }
   return { geral: mensagemDoErro(e), campos: {} };
 }

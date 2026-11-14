@@ -106,3 +106,16 @@ describe("criarApi", () => {
     expect(erro).toMatchObject({ status: 0, erro: "sem_conexao" });
   });
 });
+
+describe("sessão expirada (revisão 2026-11-13)", () => {
+  it("401 em qualquer chamada avisa para voltar ao login", async () => {
+    let expirou = 0;
+    const fetcher = (async () =>
+      new Response(JSON.stringify({ erro: "nao_autenticado" }), { status: 401 })) as unknown as typeof fetch;
+    const api = criarApi("", fetcher, () => {
+      expirou++;
+    });
+    await expect(api.get("/v1/painel/eu")).rejects.toMatchObject({ status: 401 });
+    expect(expirou).toBe(1);
+  });
+});

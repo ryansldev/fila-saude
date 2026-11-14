@@ -76,6 +76,7 @@ async function montar(
     remotos: dia ? dia.itens.filter((i) => i.estado === "remoto" && i.etapa === e.etapa).length : 0,
     toleranciaMin: dia?.config.toleranciaMin ?? 0,
     aviso,
+    agora: new Date(agora).toISOString(),
   };
 }
 

@@ -5,9 +5,11 @@ import { servicosParaEtapa } from "@/lib/formularios/estacao";
 import { mostraTempoTriagem, servicoParaEnvio } from "@/lib/formularios/servico";
 import {
   ajustarVisibilidade,
+  diaValido,
   estacoesDoServico,
   horarioParaEnvio,
   horarioParaTela,
+  lerVagas,
   visibilidadesPermitidas,
 } from "@/lib/formularios/sessao";
 import { campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
@@ -17,7 +19,7 @@ import { menuDoPainel } from "@/lib/navegacao";
 describe("erros da API nos formulários", () => {
   it("erro 400 da API aparece no campo certo", () => {
     const e = new ErroDaApi(400, "entrada_invalida", undefined, { nome: ["obrigatório"], "config.janelaK": ["K ≥ 1"] });
-    expect(errosDoEnvio(e)).toEqual({ geral: null, campos: { nome: "obrigatório", "config.janelaK": "K ≥ 1" } });
+    expect(errosDoEnvio(e)).toMatchObject({ geral: null, campos: { nome: "obrigatório", "config.janelaK": "K ≥ 1" } });
   });
   it("409 ultimo_gestor e login_em_uso mostram a mensagem", () => {
     expect(mensagemDoErro(new ErroDaApi(409, "ultimo_gestor"))).toMatch(/último gestor/i);
@@ -158,5 +160,40 @@ describe("menu", () => {
       "Fila do dia",
       "QR de entrada",
     ]);
+  });
+});
+
+describe("erros que sumiam (revisão 2026-11-13)", () => {
+  it("chave mais funda chega ao campo que a tela mostra; erro na raiz vira mensagem geral", () => {
+    const e = new ErroDaApi(400, "entrada_invalida", undefined, {
+      "horario.1.0.abre": ["hora inválida"],
+      _: ["intervalos sobrepostos"],
+    });
+    const r = errosDoEnvio(e);
+    expect(r.campos["horario.1.0"]).toBe("hora inválida");
+    expect(r.geral).toBe("intervalos sobrepostos");
+  });
+
+  it("códigos de conflito com mensagem própria", () => {
+    expect(mensagemDoErro(new ErroDaApi(409, "estacao_com_chamado"))).toMatch(/paciente chamado/);
+    expect(mensagemDoErro(new ErroDaApi(400, "motivo_obrigatorio"))).toMatch(/motivo/);
+    expect(mensagemDoErro(new ErroDaApi(409, "estacao_em_uso"))).toMatch(/sessão/);
+    expect(mensagemDoErro(new ErroDaApi(409, "sessao_fechada"))).toMatch(/sessão/);
+  });
+});
+
+describe("sessões: vagas e dia (revisão 2026-11-13)", () => {
+  it("vagas: vazio = sem limite; número inteiro ≥ 1; qualquer outra coisa é erro (antes virava 'sem limite')", () => {
+    expect(lerVagas("")).toEqual({ ok: true, vagas: null });
+    expect(lerVagas(" 12 ")).toEqual({ ok: true, vagas: 12 });
+    expect(lerVagas("1,5").ok).toBe(false);
+    expect(lerVagas("dez").ok).toBe(false);
+    expect(lerVagas("0").ok).toBe(false);
+  });
+
+  it("dia com ano de 5 dígitos não derruba a página", () => {
+    expect(diaValido("2026-11-13")).toBe(true);
+    expect(diaValido("20261-11-13")).toBe(false);
+    expect(diaValido("")).toBe(false);
   });
 });

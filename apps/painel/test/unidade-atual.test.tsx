@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Api } from "@/lib/api";
 import { ApiProvider } from "@/lib/api-context";
-import { unidadesDoUsuario, useUnidadeAtual } from "@/lib/unidade-atual";
+import { unidadesDoUsuario, unidadesParaAcao, useUnidadeAtual } from "@/lib/unidade-atual";
 
 afterEach(() => {
   cleanup();
@@ -95,5 +95,23 @@ describe("unidade atual", () => {
     expect(await screen.findByText("total:2")).toBeDefined();
     fireEvent.click(screen.getByText("escolher"));
     expect(await screen.findByText(`atual:${U2.id}`)).toBeDefined();
+  });
+});
+
+describe("unidades para a ação da página (revisão 2026-11-13)", () => {
+  it("gerente em U1 e recepção em U2: na tela de sessões só U1; na fila, as duas", () => {
+    const perfis = [
+      { perfil: "gerente_ubs" as const, unidadeId: U1.id },
+      { perfil: "recepcao" as const, unidadeId: U2.id },
+    ];
+    expect(unidadesParaAcao([U1, U2], perfis, ["configurar_servicos_sessoes_estacoes_tv"]).map((u) => u.id)).toEqual([
+      U1.id,
+    ]);
+    expect(
+      unidadesParaAcao([U1, U2], perfis, ["conferir_e_marcar_presenca", "abrir_cancelar_encerrar_sessao"]),
+    ).toHaveLength(2);
+    expect(
+      unidadesParaAcao([U1, U2], [{ perfil: "gestao_sms", unidadeId: null }], ["criar_unidades_e_regras"]),
+    ).toHaveLength(2);
   });
 });

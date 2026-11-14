@@ -13,10 +13,18 @@ import { useConsulta } from "@/lib/use-consulta";
  * O código muda a cada 30 s; a tela busca de novo a cada 5 s para nunca mostrar um vencido.
  */
 export default function QrDeEntrada() {
-  const { unidades, atual, escolher, unidade } = useUnidadeAtual();
+  const {
+    unidades,
+    atual,
+    escolher,
+    unidade,
+    erro: erroDasUnidades,
+  } = useUnidadeAtual(["conferir_e_marcar_presenca", "abrir_cancelar_encerrar_sessao"]);
   const qr = useConsulta<QrDaUnidade>(atual ? `/v1/painel/unidades/${atual}/qr` : null, 5_000);
   const [svg, setSvg] = useState<string | null>(null);
-  const conteudo = qr.dado?.conteudo ?? null;
+  // Sem conexão ou vencido: some da tela (um QR velho não deixa ninguém entrar e confunde).
+  const expira = qr.dado?.expiraEm ? Date.parse(qr.dado.expiraEm) : 0;
+  const conteudo = !qr.erro && expira > Date.now() ? (qr.dado?.conteudo ?? null) : null;
 
   useEffect(() => {
     if (!conteudo) {
@@ -33,7 +41,7 @@ export default function QrDeEntrada() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">QR de entrada</h1>
-      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} />
+      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={qr.erro} />
       {qr.dado && !conteudo ? (
         <p className="text-gray-600">Nenhuma sessão aberta agora. O QR aparece quando uma sessão abrir.</p>

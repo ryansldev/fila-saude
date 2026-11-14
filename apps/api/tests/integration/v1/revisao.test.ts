@@ -149,6 +149,12 @@ describe("presença e TV", () => {
     expect(r).toMatchObject({ status: 400, corpo: { erro: "motivo_obrigatorio" } });
   });
 
+  it("RN-PRES-03: a recepção vê o que conferir no documento (nascimento e CPF mascarado)", async () => {
+    const fila = await c.pedir("GET", `/v1/painel/sessoes/${c.sessaoId}/fila`, recepcao);
+    const item = fila.corpo.itens.find((i: { nome: string }) => i.nome === "Sem Documento");
+    expect(item.documento).toEqual({ nascimento: "1990-05-05", cpf: expect.stringMatching(/^•••\.\d{3}\.\d{3}-••$/) });
+  });
+
   it("código da TV vencido: o servidor decide (o relógio da TV não importa) e só uma TV é pareada", async () => {
     const reg = async () => {
       const r = await fetch(`${orchestrator.origemDoTenant(c.slug)}/v1/tv`, { method: "POST" });

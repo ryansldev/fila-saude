@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
@@ -8,11 +8,13 @@ import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
 import {
   ajustarVisibilidade,
+  diaValido,
   estacoesDoServico,
   hojeNoFuso,
   horarioParaEnvio,
   horarioParaTela,
   intervaloDoDia,
+  lerVagas,
   type Visibilidade,
   visibilidadesPermitidas,
 } from "@/lib/formularios/sessao";
@@ -40,9 +42,20 @@ const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 
 export default function Sessoes() {
   const api = useApi();
-  const { unidades, atual, escolher, unidade } = useUnidadeAtual();
+  const {
+    unidades,
+    atual,
+    escolher,
+    unidade,
+    erro: erroDasUnidades,
+  } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const fuso = unidade?.fuso ?? "America/Sao_Paulo";
   const [dia, setDia] = useState(() => hojeNoFuso("America/Sao_Paulo"));
+  // O dia padrão segue o fuso da unidade (Acre e Amazonas viram o dia antes de Brasília).
+  const fusoDoDia = unidade?.fuso;
+  useEffect(() => {
+    if (fusoDoDia) setDia(hojeNoFuso(fusoDoDia));
+  }, [fusoDoDia]);
   const intervalo = intervaloDoDia(dia, fuso);
   const sessoes = useLista<Sessao>(
     atual
@@ -64,6 +77,13 @@ export default function Sessoes() {
   });
   const [erros, setErros] = useState(SEM_ERROS);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Trocou de unidade: serviço e estações escolhidos eram da anterior.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só ao trocar de unidade.
+  useEffect(() => {
+    setV((x) => ({ ...x, servicoId: "", estacoes: [] }));
+    setErros(SEM_ERROS);
+    setAviso(null);
+  }, [atual]);
 
   const servico = servicos.find((s) => s.id === v.servicoId);
   const permitidas = visibilidadesPermitidas(servico?.modo ?? "livre");
@@ -71,12 +91,14 @@ export default function Sessoes() {
 
   async function criar(e: FormEvent) {
     e.preventDefault();
+    const vagas = lerVagas(v.vagas);
+    if (!vagas.ok) return setErros({ geral: null, campos: { vagas: vagas.erro } });
     try {
       await api.post(`/v1/painel/unidades/${atual}/sessoes`, {
         servicoId: v.servicoId,
         inicio: horarioParaEnvio(dia, v.inicio, fuso),
         fim: horarioParaEnvio(dia, v.fim, fuso),
-        vagas: v.vagas.trim() ? Number(v.vagas) : null,
+        vagas: vagas.vagas,
         visibilidade: v.visibilidade,
         dispensaPreCadastro: v.visibilidade === "publica" && v.dispensaPreCadastro,
         profissional: v.profissional.trim() || null,
@@ -112,8 +134,10 @@ export default function Sessoes() {
   async function mudarVagas(s: Sessao) {
     const texto = window.prompt("Vagas (vazio = sem limite)", s.vagas === null ? "" : String(s.vagas));
     if (texto === null) return;
+    const vagas = lerVagas(texto);
+    if (!vagas.ok) return setAviso(vagas.erro);
     try {
-      await api.patch(`/v1/painel/sessoes/${s.id}`, { vagas: texto.trim() ? Number(texto) : null, versao: s.versao });
+      await api.patch(`/v1/painel/sessoes/${s.id}`, { vagas: vagas.vagas, versao: s.versao });
       setAviso(null);
       sessoes.recarregar();
     } catch (err) {
@@ -125,13 +149,13 @@ export default function Sessoes() {
     <div className="flex max-w-5xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Sessões</h1>
       <div className="flex flex-wrap items-end gap-4">
-        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} />
+        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         <Campo rotulo="Dia">
           <input
             type="date"
             className={classeDoCampo}
             value={dia}
-            onChange={(e) => e.target.value && setDia(e.target.value)}
+            onChange={(e) => diaValido(e.target.value) && setDia(e.target.value)}
           />
         </Campo>
       </div>
@@ -155,18 +179,25 @@ export default function Sessoes() {
                 <td className="py-2 pr-4">{s.profissional ?? "—"}</td>
                 <td className="py-2 pr-4">{s.estado}</td>
                 <td className="flex gap-1 py-2">
+                  {s.estado === "planejada" || s.estado === "aberta" ? (
+                    <Button variant="ghost" size="sm" onClick={() => mudarVagas(s)}>
+                      Vagas
+                    </Button>
+                  ) : null}
+                  {/* Serviço regulado só tem sessão privada: "tornar pública" seria sempre recusado. */}
+                  {(s.estado === "planejada" || s.estado === "aberta") &&
+                  (s.visibilidade === "publica" ||
+                    visibilidadesPermitidas(servicos.find((x) => x.id === s.servicoId)?.modo ?? "livre").includes(
+                      "publica",
+                    )) ? (
+                    <Button variant="ghost" size="sm" onClick={() => agir(s, "visibilidade")}>
+                      {s.visibilidade === "publica" ? "Tornar privada" : "Tornar pública"}
+                    </Button>
+                  ) : null}
                   {s.estado === "planejada" ? (
-                    <>
-                      <Button variant="ghost" size="sm" onClick={() => mudarVagas(s)}>
-                        Vagas
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => agir(s, "visibilidade")}>
-                        {s.visibilidade === "publica" ? "Tornar privada" : "Tornar pública"}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => agir(s, "cancelar")}>
-                        Cancelar
-                      </Button>
-                    </>
+                    <Button variant="ghost" size="sm" onClick={() => agir(s, "cancelar")}>
+                      Cancelar
+                    </Button>
                   ) : null}
                 </td>
               </tr>

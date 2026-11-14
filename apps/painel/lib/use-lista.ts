@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useApi } from "@/lib/api-context";
 import { mensagemDoErro } from "@/lib/formularios/erros";
 
@@ -10,13 +10,17 @@ export function useLista<T>(caminho: string | null) {
   const [itens, setItens] = useState<T[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [versao, setVersao] = useState(0);
+  const ultimo = useRef<string | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `versao` é o gatilho da recarga.
   useEffect(() => {
-    if (!caminho) {
+    // Outro caminho (outra unidade): nada da lista anterior fica na tela; recarga mantém.
+    if (ultimo.current !== caminho) {
+      ultimo.current = caminho;
       setItens([]);
-      return;
+      setErro(null);
     }
+    if (!caminho) return;
     let ativo = true;
     api
       .get<T[]>(caminho)

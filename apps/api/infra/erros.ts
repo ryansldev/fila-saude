@@ -1,5 +1,9 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { ZodType } from "zod";
+import { z } from "zod";
+
+// Mensagens de validação em português para quem lê o erro no painel e no app.
+z.config(z.locales.pt());
 
 // PD-22: erro de negócio com status HTTP e código `snake_case`; `tratarErro` o converte em
 // `{ erro: codigo, mensagem?, campos? }`. `mensagem` é texto para a pessoa (ex.: RN-ID-02).

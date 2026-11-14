@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { acoesDaFila, cronometro, ordenarFila, rotuloDoEstado, textoDasPendencias } from "@/lib/fila";
+import {
+  acoesDaFila,
+  botoesDePresenca,
+  cronometro,
+  estacoesQueOpera,
+  ordenarFila,
+  rotuloDoEstado,
+  textoDasPendencias,
+  textoDoDocumento,
+} from "@/lib/fila";
 
 const item = (senha: string, estado: string) => ({ senha, estado });
 
@@ -40,5 +49,44 @@ describe("fila do dia no painel (T3.4, T3.7)", () => {
       "Passe na recepção: conferir a pessoa atendida, a prioridade",
     );
     expect(textoDasPendencias([])).toBeNull();
+  });
+});
+
+describe("presença pela recepção (RN-PRES-03, RN-FILA-05), revisão 2026-11-13", () => {
+  it("qualquer remoto pode ter a presença marcada; com pendência, conferindo os documentos; 'não confere' sempre com motivo", () => {
+    expect(botoesDePresenca({ estado: "remoto", pendencias: [] }, true)).toEqual({
+      marcar: "Marcar presença",
+      naoConfere: false,
+    });
+    expect(botoesDePresenca({ estado: "remoto", pendencias: ["conta"] }, true)).toEqual({
+      marcar: "Conferir documentos e marcar presença",
+      naoConfere: true,
+    });
+    expect(botoesDePresenca({ estado: "presente", pendencias: [] }, true)).toBeNull();
+    expect(botoesDePresenca({ estado: "remoto", pendencias: [] }, false)).toBeNull();
+  });
+
+  it("CPF mascarado e nascimento em dd/mm/aaaa para comparar com o documento", () => {
+    expect(textoDoDocumento({ nascimento: "1990-05-05", cpf: "•••.982.247-••" })).toBe(
+      "nasc. 05/05/1990 · CPF •••.982.247-••",
+    );
+    expect(textoDoDocumento({ nascimento: "1990-05-05", cpf: null })).toBe("nasc. 05/05/1990 · sem CPF");
+  });
+});
+
+describe("estação: só as que o perfil opera (PD-46), revisão 2026-11-13", () => {
+  const ests = [
+    { id: "t1", nome: "Triagem", etapa: "triagem" as const },
+    { id: "a1", nome: "Sala 1", etapa: "atendimento" as const },
+  ];
+  it("técnico só triagem; enfermeiro as duas; perfil de outra unidade, nenhuma", () => {
+    expect(estacoesQueOpera(ests, [{ perfil: "tecnico_enfermagem", unidadeId: "u1" }], "u1").map((e) => e.id)).toEqual([
+      "t1",
+    ]);
+    expect(estacoesQueOpera(ests, [{ perfil: "enfermeiro", unidadeId: "u1" }], "u1").map((e) => e.id)).toEqual([
+      "t1",
+      "a1",
+    ]);
+    expect(estacoesQueOpera(ests, [{ perfil: "enfermeiro", unidadeId: "u2" }], "u1")).toEqual([]);
   });
 });

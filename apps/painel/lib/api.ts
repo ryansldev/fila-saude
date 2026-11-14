@@ -48,7 +48,7 @@ async function lerJson(resposta: Response): Promise<unknown> {
 }
 
 /** Cliente da API do painel: cookie da sessão sempre (`credentials: "include"`), JSON na ida e na volta. */
-export function criarApi(base: string, fetcher: typeof fetch = fetch): Api {
+export function criarApi(base: string, fetcher: typeof fetch = fetch, aoExpirar?: () => void): Api {
   async function pedir<T>(metodo: Metodo, caminho: string, corpo?: unknown): Promise<T> {
     const init: RequestInit = { method: metodo, credentials: "include", headers: { accept: "application/json" } };
     if (corpo !== undefined) {
@@ -67,6 +67,8 @@ export function criarApi(base: string, fetcher: typeof fetch = fetch): Api {
     if (resposta.ok && dados === NAO_JSON) throw new ErroDaApi(resposta.status, "resposta_invalida");
     if (!resposta.ok) {
       const corpo = erroSchema.safeParse(dados);
+      // Sessão vencida: avisa uma vez para o painel voltar ao login (senão as consultas repetem 401).
+      if (resposta.status === 401) aoExpirar?.();
       if (corpo.success) {
         const { erro, mensagem, campos, dados: extra } = corpo.data;
         throw new ErroDaApi(resposta.status, erro, mensagem, campos, extra);

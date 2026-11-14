@@ -1,7 +1,7 @@
 "use client";
 
 import type { TvDaUnidade } from "@fila-saude/schemas/tv";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,18 @@ const quando = (iso: string | null) =>
 /** RN-TV-01 / RN-TV-06: parear pelo código que a TV mostra em `/tv`, ver se está online e revogar. */
 export default function Tvs() {
   const api = useApi();
-  const { unidades, atual, escolher, unidade } = useUnidadeAtual();
+  const {
+    unidades,
+    atual,
+    escolher,
+    unidade,
+    erro: erroDasUnidades,
+  } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const tvs = useConsulta<TvDaUnidade[]>(atual ? `/v1/painel/unidades/${atual}/tvs` : null, 15_000);
   const [codigo, setCodigo] = useState("");
   const [aviso, setAviso] = useState<{ texto: string; tipo: "erro" | "ok" } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: limpa o aviso só ao trocar de unidade.
+  useEffect(() => setAviso(null), [atual]);
 
   async function parear(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +55,7 @@ export default function Tvs() {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">TVs da sala de espera</h1>
-      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} />
+      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Cartao titulo="Parear uma TV">
         <p className="text-sm text-gray-600">
           Na TV, abra <strong>/tv</strong> neste mesmo endereço do painel. Ela mostra um código de 6 dígitos: digite
