@@ -1,6 +1,8 @@
 import { type Acao, type Perfil, pode } from "@fila-saude/domain";
 
-export type ItemDeMenu = { rotulo: string; href: string };
+/** Seções da barra lateral: o dia a dia na unidade e a configuração. */
+export type GrupoDoMenu = "atendimento" | "configuracao";
+export type ItemDeMenu = { rotulo: string; href: string; grupo: GrupoDoMenu };
 export type PerfilDoUsuario = { perfil: Perfil; unidadeId: string | null };
 
 /** Item aparece para quem pode alguma das ações. */
@@ -14,18 +16,18 @@ const PRESENCA: Acao = "conferir_e_marcar_presenca";
 const OPERAR: Acao = "operar_chamadas";
 
 export const ITENS_DO_MENU: Candidato[] = [
-  { rotulo: "Unidades", href: "/unidades", acoes: [UNIDADES] },
-  { rotulo: "Equipe", href: "/equipe", acoes: [EQUIPE] },
-  { rotulo: "Serviços", href: "/servicos", acoes: [CONFIGURAR] },
-  { rotulo: "Estações", href: "/estacoes", acoes: [CONFIGURAR] },
-  { rotulo: "Sessões", href: "/sessoes", acoes: [CONFIGURAR] },
-  { rotulo: "TVs", href: "/tvs", acoes: [CONFIGURAR] },
-  { rotulo: "Fila do dia", href: "/fila", acoes: [SESSAO, PRESENCA, OPERAR] },
-  { rotulo: "QR de entrada", href: "/qr", acoes: [PRESENCA, SESSAO] },
-  { rotulo: "Estação", href: "/estacao", acoes: [OPERAR] },
+  { rotulo: "Unidades", href: "/unidades", grupo: "configuracao", acoes: [UNIDADES] },
+  { rotulo: "Equipe", href: "/equipe", grupo: "configuracao", acoes: [EQUIPE] },
+  { rotulo: "Serviços", href: "/servicos", grupo: "configuracao", acoes: [CONFIGURAR] },
+  { rotulo: "Estações", href: "/estacoes", grupo: "configuracao", acoes: [CONFIGURAR] },
+  { rotulo: "Sessões", href: "/sessoes", grupo: "configuracao", acoes: [CONFIGURAR] },
+  { rotulo: "TVs", href: "/tvs", grupo: "configuracao", acoes: [CONFIGURAR] },
+  { rotulo: "Fila do dia", href: "/fila", grupo: "atendimento", acoes: [SESSAO, PRESENCA, OPERAR] },
+  { rotulo: "QR de entrada", href: "/qr", grupo: "atendimento", acoes: [PRESENCA, SESSAO] },
+  { rotulo: "Estação", href: "/estacao", grupo: "atendimento", acoes: [OPERAR] },
 ];
 
-const EM_BREVE: ItemDeMenu = { rotulo: "Em breve", href: "/em-breve" };
+const EM_BREVE: ItemDeMenu = { rotulo: "Em breve", href: "/em-breve", grupo: "atendimento" };
 
 /**
  * Menu do painel (PD-09, `specs/permissoes`): cada item só aparece se `pode` permitir a ação dele.
@@ -34,7 +36,7 @@ const EM_BREVE: ItemDeMenu = { rotulo: "Em breve", href: "/em-breve" };
 export function menuDoPainel(perfis: PerfilDoUsuario[]): ItemDeMenu[] {
   const lista = perfis.map((p) => p.perfil);
   const menu: ItemDeMenu[] = ITENS_DO_MENU.filter((c) => c.acoes.some((a) => pode(lista, a))).map(
-    ({ rotulo, href }) => ({ rotulo, href }),
+    ({ rotulo, href, grupo }) => ({ rotulo, href, grupo }),
   );
   if (menu.length === 0 && lista.some((p) => p !== "paciente")) menu.push(EM_BREVE);
   return menu;

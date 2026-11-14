@@ -5,6 +5,7 @@ import { PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
+import { CabecalhoDaPagina } from "@/components/pagina";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -263,18 +264,21 @@ export default function Equipe() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Equipe</h1>
-        <Button
-          onClick={() => {
-            setErros(SEM_ERROS);
-            setCriando(true);
-          }}
-        >
-          <PlusIcon data-icon="inline-start" strokeWidth={2.75} />
-          Adicionar usuário
-        </Button>
-      </div>
+      <CabecalhoDaPagina
+        titulo="Equipe"
+        descricao="Quem entra no painel e o que cada pessoa faz em cada unidade."
+        acoes={
+          <Button
+            onClick={() => {
+              setErros(SEM_ERROS);
+              setCriando(true);
+            }}
+          >
+            <PlusIcon data-icon="inline-start" strokeWidth={2.75} />
+            Adicionar usuário
+          </Button>
+        }
+      />
       <Aviso texto={usuarios.erro ?? aviso} />
       <Aviso texto={ok} tipo="ok" />
       <Tabela cabecalho={["Nome", "Login", "Ocupações e funções", ""]}>

@@ -4,6 +4,7 @@ import { type FilaDaSessao, type HojeNaUnidade, presencaEntradaSchema } from "@f
 import { useEffect, useState } from "react";
 import { useConfirmar, usePerguntar } from "@/components/dialogos";
 import { Aviso, Campo, Selecao, Tabela } from "@/components/formulario";
+import { CabecalhoDaPagina, EstadoDaSessao } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -82,11 +83,14 @@ export default function FilaDoDia() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Fila do dia</h1>
+      <CabecalhoDaPagina
+        titulo="Fila do dia"
+        descricao="Quem está na fila hoje, em casa ou na unidade. Abra e encerre as sessões e confirme quem chegou."
+      />
       <div className="flex flex-wrap items-end gap-4">
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         {sessoes.length > 0 ? (
-          <Campo rotulo="Sessão">
+          <Campo rotulo="Sessão" className="w-full sm:w-96">
             <Selecao
               className="w-full min-w-72"
               valor={sessaoId ?? ""}
@@ -108,12 +112,14 @@ export default function FilaDoDia() {
       ) : null}
       {fila.dado ? (
         <>
-          <div className="flex flex-wrap items-center gap-4">
-            <p className="text-gray-700">
-              {ESTADO_DA_SESSAO[estado] ?? estado} · {fila.dado.sessao.ocupadas}
-              {fila.dado.sessao.vagas === null ? "" : ` de ${fila.dado.sessao.vagas}`} vagas ocupadas
+          <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-4">
+            <EstadoDaSessao estado={estado} />
+            <p className="text-slate-700">
+              <span className="font-bold text-slate-900">{fila.dado.sessao.ocupadas}</span>
+              {fila.dado.sessao.vagas === null ? " inscritos" : ` de ${fila.dado.sessao.vagas} vagas ocupadas`}
               {fila.dado.reserva > 0 ? ` · ${fila.dado.reserva} na reserva` : ""}
             </p>
+            <div className="flex-1" />
             {pode.abrir ? (
               <Button
                 onClick={() =>

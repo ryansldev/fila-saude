@@ -4,6 +4,7 @@ import { pareamentoEntradaSchema, type TvDaUnidade } from "@fila-saude/schemas/t
 import { useEffect, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Cartao, Tabela, Texto } from "@/components/formulario";
+import { CabecalhoDaPagina } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -67,7 +68,10 @@ export default function Tvs() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">TVs da sala de espera</h1>
+      <CabecalhoDaPagina
+        titulo="TVs da sala de espera"
+        descricao="As TVs mostram as senhas chamadas e o QR de entrada. Pareie pelo código que aparece na tela."
+      />
       <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Cartao titulo="Parear uma TV">
         <p className="text-sm text-gray-600">

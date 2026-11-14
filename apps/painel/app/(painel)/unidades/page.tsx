@@ -7,6 +7,7 @@ import { type ComponentProps, type FormEvent, useEffect, useMemo, useState } fro
 import { useConfirmar } from "@/components/dialogos";
 import { EditorDeHorario } from "@/components/editor-de-horario";
 import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
+import { CabecalhoDaPagina } from "@/components/pagina";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -294,13 +295,16 @@ export default function Unidades() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
-        <Button onClick={() => setCriando(true)}>
-          <PlusIcon data-icon="inline-start" strokeWidth={2.75} />
-          Adicionar unidade
-        </Button>
-      </div>
+      <CabecalhoDaPagina
+        titulo="Unidades"
+        descricao="As unidades de saúde do município, com endereço, horário e regras da fila."
+        acoes={
+          <Button onClick={() => setCriando(true)}>
+            <PlusIcon data-icon="inline-start" strokeWidth={2.75} />
+            Adicionar unidade
+          </Button>
+        }
+      />
       <Aviso texto={erro ?? aviso} />
       <Aviso texto={ok} tipo="ok" />
       <Tabela cabecalho={["Nome", "Tipo", "CNES", "Endereço", "Horário", ""]}>

@@ -4,6 +4,7 @@ import type { QrDaUnidade } from "@fila-saude/schemas/fila";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { Aviso } from "@/components/formulario";
+import { CabecalhoDaPagina } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { useUnidadeAtual } from "@/lib/unidade-atual";
 import { useConsulta } from "@/lib/use-consulta";
@@ -40,7 +41,10 @@ export default function QrDeEntrada() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">QR de entrada</h1>
+      <CabecalhoDaPagina
+        titulo="QR de entrada"
+        descricao="Deixe aberto no monitor da recepção: quem chega aponta a câmera e entra na fila da unidade."
+      />
       <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={qr.erro} />
       {qr.dado && !conteudo ? (

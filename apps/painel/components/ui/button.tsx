@@ -12,7 +12,7 @@ const elevatedPress = cn(
 );
 
 const buttonVariants = cva(
-  "uppercase group/button box-border inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent [--elev-depth:4px] text-sm font-medium whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:border-gray-200 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button box-border inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent [--elev-depth:4px] text-sm font-medium whitespace-nowrap outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:translate-y-0 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none disabled:border-gray-200 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -44,7 +44,7 @@ const buttonVariants = cva(
       },
       size: {
         default:
-          "h-11 min-w-28 gap-2 font-bold text-base tracking-[0.2px] py-3 px-8 leading-4 has-data-[icon=inline-end]:pr-6 has-data-[icon=inline-start]:pl-6",
+          "h-11 min-w-28 gap-2 font-bold text-base py-3 px-6 leading-4 has-data-[icon=inline-end]:pr-6 has-data-[icon=inline-start]:pl-6",
         xs: "[--elev-depth:2px] h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "[--elev-depth:3px] h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "[--elev-depth:3px] h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",

@@ -4,6 +4,7 @@ import { servicoEdicaoSchema, servicoEntradaSchema } from "@fila-saude/schemas/s
 import { type FormEvent, useState } from "react";
 import type { ZodType } from "zod";
 import { Aviso, Caixa, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
+import { CabecalhoDaPagina } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -151,7 +152,10 @@ export default function Servicos() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Serviços</h1>
+      <CabecalhoDaPagina
+        titulo="Serviços"
+        descricao="O que cada unidade atende, com o prefixo da senha e o tempo médio de atendimento."
+      />
       <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={erro} />
       {atual ? (

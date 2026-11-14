@@ -4,6 +4,7 @@ import type { ComandoEstacao, HojeNaUnidade, OperacaoEstacao } from "@fila-saude
 import { useEffect, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Selecao } from "@/components/formulario";
+import { CabecalhoDaPagina } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -87,11 +88,11 @@ export default function Estacao() {
   const chamado = d?.chamado ?? null;
   return (
     <div className="flex w-full flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Estação</h1>
+      <CabecalhoDaPagina titulo="Estação" descricao="Chame o próximo paciente e acompanhe quem está na sua sala." />
       <div className="flex flex-wrap items-end gap-4">
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         {estacoes.length > 0 ? (
-          <Campo rotulo="Estação">
+          <Campo rotulo="Estação" className="w-full sm:w-72">
             <Selecao
               className="w-full min-w-56"
               valor={estacaoId ?? ""}

@@ -6,6 +6,7 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 // Kit de formulário do painel sobre o shadcn (base-nova). As telas usam só estes componentes:
 // nada de <input>/<select> nativos. `Campo` liga o rótulo ao controle e marca o erro.
@@ -16,17 +17,20 @@ export function Campo({
   rotulo,
   erro,
   dica,
+  className,
   children,
 }: {
   rotulo: string;
   erro?: string | undefined;
   dica?: string | undefined;
+  /** Largura em filtros de linha (ex.: "sm:w-72"); sem isso ocupa a linha toda. */
+  className?: string;
   children: ReactNode;
 }) {
   const id = useId();
   return (
     <CampoAtual.Provider value={{ id, invalido: Boolean(erro) }}>
-      <Field data-invalid={erro ? true : undefined} className="gap-1.5">
+      <Field data-invalid={erro ? true : undefined} className={cn("gap-1.5", className)}>
         <FieldLabel htmlFor={id}>{rotulo}</FieldLabel>
         {children}
         {dica ? <FieldDescription>{dica}</FieldDescription> : null}
@@ -140,8 +144,8 @@ export function Aviso({ texto, tipo = "erro" }: { texto: string | null; tipo?: "
 
 export function Cartao({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-4 rounded-xl border border-gray-200 p-5">
-      <h2 className="text-lg font-semibold text-gray-900">{titulo}</h2>
+    <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6">
+      <h2 className="text-lg font-bold text-slate-900">{titulo}</h2>
       {children}
     </section>
   );
@@ -150,17 +154,23 @@ export function Cartao({ titulo, children }: { titulo: string; children: ReactNo
 /** Tabela do shadcn; as linhas usam `TableRow`/`TableCell` (ou <tr>/<td> com as mesmas classes). */
 export function Tabela({ cabecalho, children }: { cabecalho: string[]; children: ReactNode }) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          {cabecalho.map((c, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: cabeçalhos podem ser vazios e repetidos.
-            <TableHead key={i}>{c}</TableHead>
-          ))}
-        </TableRow>
-      </TableHeader>
-      <TableBody>{children}</TableBody>
-    </Table>
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <Table>
+        <TableHeader className="bg-slate-50">
+          <TableRow className="hover:bg-transparent">
+            {cabecalho.map((c, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: cabeçalhos podem ser vazios e repetidos.
+              <TableHead key={i} className="h-11 px-4 font-bold text-slate-500 first:pl-6 last:pr-6">
+                {c}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody className="[&_td]:px-4 [&_td]:py-3.5 [&_td:first-child]:pl-6 [&_td:last-child]:pr-6">
+          {children}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

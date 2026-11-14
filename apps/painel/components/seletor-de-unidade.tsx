@@ -17,7 +17,7 @@ export function SeletorDeUnidade({
   if (erro) return <p className="text-sm text-red-700">{erro}</p>;
   if (unidades.length === 0) return <p className="text-gray-600">Nenhuma unidade disponível.</p>;
   return (
-    <div className="w-full max-w-sm">
+    <div className="w-full sm:w-72">
       <Campo rotulo="Unidade">
         <Selecao
           valor={atual ?? ""}

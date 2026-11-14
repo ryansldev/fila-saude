@@ -4,6 +4,7 @@ import { estacaoEntradaSchema } from "@fila-saude/schemas/estacao";
 import { type FormEvent, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Caixa, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
+import { CabecalhoDaPagina } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -67,7 +68,10 @@ export default function Estacoes() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Estações</h1>
+      <CabecalhoDaPagina
+        titulo="Estações"
+        descricao="Salas e consultórios que chamam pacientes, e os serviços que cada uma atende."
+      />
       <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={estacoes.erro ?? aviso} />
       {atual ? (

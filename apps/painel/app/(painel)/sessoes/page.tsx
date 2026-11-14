@@ -4,6 +4,7 @@ import { sessaoEdicaoSchema, sessaoEntradaSchema, visibilidadeEntradaSchema } fr
 import { type FormEvent, useEffect, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Caixa, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
+import { CabecalhoDaPagina, EstadoDaSessao } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -175,10 +176,13 @@ export default function Sessoes() {
 
   return (
     <div className="flex w-full flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Sessões</h1>
+      <CabecalhoDaPagina
+        titulo="Sessões"
+        descricao="Os horários de atendimento de cada dia, com vagas e se aparecem na agenda do app."
+      />
       <div className="flex flex-wrap items-end gap-4">
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
-        <Campo rotulo="Dia">
+        <Campo rotulo="Dia" className="w-full sm:w-52">
           <Texto type="date" valor={dia} aoMudar={(novo) => diaValido(novo) && setDia(novo)} />
         </Campo>
       </div>
@@ -222,7 +226,9 @@ export default function Sessoes() {
                   {s.dispensaPreCadastro ? " · sem pré-cadastro" : ""}
                 </td>
                 <td className="py-2 pr-4">{s.profissional ?? "—"}</td>
-                <td className="py-2 pr-4">{s.estado}</td>
+                <td className="py-2 pr-4">
+                  <EstadoDaSessao estado={s.estado} />
+                </td>
                 <td className="flex gap-1 py-2">
                   {s.estado === "planejada" || s.estado === "aberta" ? (
                     <Button
