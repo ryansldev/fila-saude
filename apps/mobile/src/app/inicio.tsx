@@ -1,7 +1,7 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Text, View } from "react-native";
+import { Alert, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Abas,
@@ -54,7 +54,17 @@ function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: string; fe
   );
 }
 
-function Bloco({ en, sit, dono }: { en: MinhaEntrada; sit: Situacao; dono: string | undefined }) {
+function Bloco({
+  en,
+  sit,
+  dono,
+  vouSair,
+}: {
+  en: MinhaEntrada;
+  sit: Situacao;
+  dono: string | undefined;
+  vouSair: () => void;
+}) {
   const ctx = contexto(en, dono);
   const naUnidade = <Botao texto="estou na unidade" onPress={() => router.push("/check-in")} />;
   switch (sit.tipo) {
@@ -94,6 +104,8 @@ function Bloco({ en, sit, dono }: { en: MinhaEntrada; sit: Situacao; dono: strin
         <View style={{ gap: 16 }}>
           <Faixa tipo="ok" titulo="você está na unidade" texto="fique de olho na TV e no celular." />
           <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={`cerca de ${sit.minutos} min para a sua vez`} />
+          <LinkBotao texto="vou sair um pouco" onPress={vouSair} />
+          <Pequeno>você continua na fila, no mesmo lugar. ao voltar, leia o QR de novo.</Pequeno>
         </View>
       ) : (
         <View style={{ gap: 16 }}>
@@ -247,7 +259,18 @@ export default function MinhaFila() {
             texto={`vá para ${sit.estacao.toLowerCase()} com a senha ${sit.senha}`}
           />
         ) : (
-          <Bloco key={en.entradaId} en={en} sit={sit} dono={s.conta?.nome} />
+          <Bloco
+            key={en.entradaId}
+            en={en}
+            sit={sit}
+            dono={s.conta?.nome}
+            vouSair={() =>
+              // RN-PRES-02: volta a remoto mantendo a posição; a consulta seguinte já mostra.
+              s.api
+                .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
+                .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
+            }
+          />
         ),
       )}
       <Espaco />

@@ -1,4 +1,4 @@
-import { estimar } from "@fila-saude/domain";
+import { estimar, vouSair } from "@fila-saude/domain";
 import type { InscricaoEntrada, MinhaEntrada, SessaoDaAgenda } from "@fila-saude/schemas/fila";
 import { and, asc, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
 import type { PacienteAutenticado } from "infra/auth/sessao-paciente";
@@ -13,7 +13,7 @@ import { sessao } from "infra/database/municipal/schema/sessao";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import type { DbDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
-import { lerDia } from "./dia";
+import { lerDia, naSessao } from "./dia";
 import { inscrever } from "./inscricao";
 
 const FINAIS = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"] as const;
@@ -140,4 +140,20 @@ export async function minhas(db: DbDoTenant, pacienteId: string, agora: number):
     });
   }
   return saida;
+}
+
+// RN-PRES-02: "Vou sair" da conta responsável; presente volta a remoto com o mesmo número.
+export async function vouSairDoPaciente(db: DbDoTenant, pacienteId: string, entradaId: string, agora: number) {
+  const [e] = await db
+    .select({ sessaoId: entrada.sessaoId })
+    .from(entrada)
+    .where(and(eq(entrada.id, entradaId), eq(entrada.responsavelPacienteId, pacienteId)));
+  if (!e?.sessaoId) throw new ErroApi(404, "nao_encontrado");
+  return naSessao(db, e.sessaoId, async (c) => {
+    const item = c.dia?.itens.find((i) => i.entradaId === entradaId);
+    if (!c.dia || !item) throw new ErroApi(409, "transicao_proibida");
+    const r = vouSair(c.dia, { itemId: item.id }, agora);
+    if (!r.ok) throw new ErroApi(409, r.erro);
+    return { dia: r.estado, eventos: r.eventos, resultado: { senha: item.senha, itemEstado: "remoto" as const } };
+  });
 }

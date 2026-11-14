@@ -111,3 +111,22 @@ describe("QR de entrada (RN-PRES-01, RN-FILA-05)", () => {
     expect(conta?.verificadoMetodo).toBe("recepcao");
   });
 });
+
+describe('"Vou sair" (RN-PRES-02)', () => {
+  const vouSair = (cookie: string, entradaId: string) => app("POST", `${m()}/entradas/${entradaId}/vou-sair`, cookie);
+  const doBruno = async () =>
+    (await app("GET", `${m()}/minhas`, bruno.cookie)).corpo.find((e: { pessoa: string }) => e.pessoa === "Bruno Reis");
+
+  it("só a conta responsável; presente volta a remoto mantendo a senha; de novo → transicao_proibida", async () => {
+    const antes = await doBruno();
+    expect(antes).toMatchObject({ itemEstado: "presente" });
+    expect((await vouSair(ana.cookie, antes.entradaId)).status).toBe(404);
+    const r = await vouSair(bruno.cookie, antes.entradaId);
+    expect(r.status).toBe(200);
+    expect(await doBruno()).toMatchObject({ itemEstado: "remoto", senha: antes.senha });
+    expect(await vouSair(bruno.cookie, antes.entradaId)).toMatchObject({
+      status: 409,
+      corpo: { erro: "transicao_proibida" },
+    });
+  });
+});

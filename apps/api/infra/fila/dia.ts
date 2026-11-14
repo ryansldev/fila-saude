@@ -5,6 +5,7 @@ import {
   configEfetiva,
   type DiaSessao,
   type Entrada,
+  type Evento,
   type Servico,
   type SessaoVagas,
 } from "@fila-saude/domain";
@@ -116,7 +117,14 @@ export type ContextoDaSessao = {
   entradas: Entrada[];
 };
 
-export type Mudancas<T> = { dia?: DiaSessao | null; sessao?: SessaoVagas; entradas?: Entrada[]; resultado: T };
+export type Mudancas<T> = {
+  dia?: DiaSessao | null;
+  sessao?: SessaoVagas;
+  entradas?: Entrada[];
+  /** Eventos do domínio desta mudança; os que viram aviso ao paciente vão para a outbox (PD-49). */
+  eventos?: Evento[];
+  resultado: T;
+};
 
 // PD-43 / INV-04: trava a sessão, roda `fn` e grava dia, entradas mudadas e vagas na mesma transação.
 export async function naSessao<T>(
