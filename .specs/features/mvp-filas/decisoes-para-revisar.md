@@ -143,3 +143,19 @@ Execução rápida, como a fatia 0. Q3 e Q5 aprovadas em 2026-11-12 (AD-055; RN-
 | F8 | Idade no questionário do app | Calculada no fuso de Brasília para decidir emergência/apoio na hora; o nível que vale é o da API | Fuso da unidade | Um dia de diferença na virada, só no aviso local |
 | F9 | Seed da fatia 1 | Serviço "Curativos" (sem triagem) e sessão pública "de agora" (hora cheia, 4 h) com Ana e Bruno inscritos pelo caminho do app | Sessão de hoje no Clínico (com triagem, fatia 3) | Baixo: só dados de exemplo |
 | F10 | Encerrar sessão | Sem o aviso de sinal perdido (`semSinalSemContingencia` sempre falso) | Calcular pelo `ultimo_sinal_em` das estações | O aviso RN-SES-04 não aparece |
+
+## Fatia 2 da v0.1 (2026-11-13)
+
+Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](plano-fatia-2-na-unidade.md) (PD-47 a PD-50). **G6 precisa de você** (conta na Expo).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| G1 | Como a TV ganha o código | A TV se registra sozinha ao abrir `/tv` (código de 6 dígitos válido por 15 min, token guardado no navegador); revogada ou com o navegador limpo, mostra um código novo | O admin gera o código no painel e digita na TV | Baixo; limpar os dados do navegador da TV pede parear de novo |
+| G2 | Rechamar na TV (RN-CHAM-02) | A chamada no domínio ganhou `rechamadas` (horários); a TV anuncia cada uma como chamada nova. O horário da chamada e a tolerância não mudam | Uma lista de anúncios à parte, só na API | Baixo |
+| G3 | Quando sai o "venha agora" | Pela regra do domínio: remoto sem ninguém na frente na etapa. A tabela de notificações diz "venha agora (urgente confirmado)"; o domínio não exige urgência | Só para urgente confirmado (fatia 3, triagem) | Mais avisos "venha agora" do que a spec prevê |
+| G4 | "Saia de casa" e "venha agora" juntos | Quem já é o próximo recebe só o "venha agora"; o "saia de casa" fica marcado como dado | Mandar os dois | Nenhum conhecido |
+| G5 | Quais eventos viram push agora | Sua vez, pulado, saia de casa, venha agora. Rechamar não manda push (a TV e a tela já mostram). Sessão aberta, cancelada, remanejada e os da lista de espera ficam para as fatias que os criam | Push em toda mudança | O paciente não recebe "sua vez não chegou hoje" por push ainda |
+| G6 | **Push no celular de verdade** | O app pede a permissão e registra o token da Expo, mas o token exige o `projectId` de um projeto EAS (`EXPO_PUBLIC_EAS_PROJECT_ID`), e o Expo Go no Android não recebe push remoto (desde o SDK 53): precisa de um build de desenvolvimento (`eas build --profile development`). Sem projeto, o app segue só com a consulta da tela | Notificação local disparada pela consulta (só com o app aberto) | **Precisa de você:** criar a conta/projeto na Expo (da empresa, junto com o D10) |
+| G7 | Varredura e envio (T2.4 enxuta) | Dentro do processo da API, a cada 60 s; trava consultiva na geração; envio com `SKIP LOCKED`; 5 tentativas com espera 2, 4, 8, 16 min; token recusado pela Expo (`DeviceNotRegistered`) é apagado. Sem teste de duas instâncias ao mesmo tempo | Processo próprio do worker (T2.4 completa) | Médio em produção: vira processo próprio antes do piloto |
+| G8 | Onde fica o token de push | Central (`dispositivo_push`), entrou na lista de colunas permitidas do INV-11 (não é dado clínico nem da fila); o mesmo aparelho logado em outra conta passa a avisar só a conta nova | No município | Baixo |
+| G9 | Destaque da TV | Lido da config da unidade (`destaqueTvSegundos`, padrão 10 s); a TV consulta a cada 2 s, então o anúncio pode atrasar até 2 s | SSE (D1/D3) | Baixo |

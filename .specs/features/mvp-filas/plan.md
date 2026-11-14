@@ -54,6 +54,10 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | PD-44 | **Sessão sem `dia_sessao` está planejada; o dia nasce na abertura** ([fatia 1](plano-fatia-1-publica.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 | PD-45 | **Rotas do app: agenda, inscrições e "minhas" no caminho do município** ([fatia 1](plano-fatia-1-publica.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 | PD-46 | **Estação escolhida na tela; ressalvas de `operar_chamadas` pela etapa da estação** ([fatia 1](plano-fatia-1-publica.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-47 | **TV como dispositivo pareado por código, com token do navegador** ([fatia 2](plano-fatia-2-na-unidade.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-48 | **TV atualiza por consulta a cada 2 s** ([fatia 2](plano-fatia-2-na-unidade.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-49 | **Outbox `aviso` no município com chave única; tokens de push na central** ([fatia 2](plano-fatia-2-na-unidade.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
+| PD-50 | **Varredura dos avisos dentro do processo da API na v0.1** ([fatia 2](plano-fatia-2-na-unidade.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 
 ## 2. Visão geral
 
