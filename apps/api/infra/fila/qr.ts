@@ -105,6 +105,8 @@ export async function checkInDoPaciente(
         const base = { entradaId: pessoa.id, pessoa: pessoa.nome, senha: item.senha };
         if (item.estado !== "remoto") {
           if (item.estado === "presente") saida.push({ ...base, resultado: "ja_na_unidade", pendencias: [] });
+          // Já chamado: a pessoa precisa ir para a sala, não ouvir "você não tem senha".
+          if (item.estado === "chamado") saida.push({ ...base, resultado: "chamado", pendencias: [] });
           continue;
         }
         const dono = pessoa.pacienteId === p.pacienteId;

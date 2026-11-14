@@ -149,3 +149,12 @@ describe('"Não vou poder ir" (RN-CANC-01..03)', () => {
     expect(await app("POST", `${m()}/entradas/${id}/cancelar`, carla.cookie)).toMatchObject({ status: 409 });
   });
 });
+
+describe("QR de novo depois de chamado", () => {
+  it("quem já foi chamado lê o QR e ouve 'você já foi chamado', não 'sem senha'", async () => {
+    // Aqui só a Ana está na unidade (Bruno saiu, Carla cancelou).
+    await c.pedir("POST", `/v1/painel/estacoes/${c.e1}/chamar`, c.enfermeiro, {});
+    const r = await checkIn(ana.cookie, tokensDe((await qr()).corpo.conteudo));
+    expect(r.corpo).toEqual([expect.objectContaining({ pessoa: "Ana Lima", resultado: "chamado" })]);
+  });
+});

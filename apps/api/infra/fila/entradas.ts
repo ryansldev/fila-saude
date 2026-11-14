@@ -41,6 +41,9 @@ export async function pessoaPorCpf(db: BancoDoTenant, p: PessoaInformada) {
   if (!p.cpf) return null;
   const [existente] = await db.select().from(pessoaLocal).where(eq(pessoaLocal.cpf, p.cpf));
   if (!existente) return null;
+  // O dono do CPF criando a conta assume o cadastro feito por terceiros ("outra pessoa"), com os dados
+  // da conta: dados errados digitados por outra pessoa não o trancam fora.
+  if (p.pacienteId && !existente.pacienteId) return existente;
   const outraConta = p.pacienteId && existente.pacienteId && existente.pacienteId !== p.pacienteId;
   const nomeDiverge = !p.pacienteId && primeiroNome(existente.nome) !== primeiroNome(p.nome);
   if (outraConta || existente.nascimento !== p.nascimento || nomeDiverge) {
@@ -59,7 +62,10 @@ export async function pessoaAtendida(db: BancoDoTenant, p: PessoaInformada): Pro
   const existente = await pessoaPorCpf(db, p);
   if (existente) {
     if (p.pacienteId && !existente.pacienteId) {
-      await db.update(pessoaLocal).set({ pacienteId: p.pacienteId }).where(eq(pessoaLocal.id, existente.id));
+      await db
+        .update(pessoaLocal)
+        .set({ pacienteId: p.pacienteId, nome: p.nome, nascimento: p.nascimento })
+        .where(eq(pessoaLocal.id, existente.id));
     }
     return { id: existente.id };
   }

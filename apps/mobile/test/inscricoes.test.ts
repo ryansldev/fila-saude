@@ -28,6 +28,8 @@ const base: MinhaEntrada = {
   saiaDeCasa: false,
   servicoId: CURATIVOS,
   paraMim: true,
+  nascimento: "1990-05-05",
+  podeCancelar: true,
 };
 
 describe("uma inscrição ativa por pessoa e serviço (AD-032), decidido antes de enviar", () => {

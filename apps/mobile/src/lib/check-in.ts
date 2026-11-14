@@ -28,7 +28,7 @@ export function deParametros(p: {
   return { municipio: p.m, unidadeId: p.u, tokens };
 }
 
-type Resultado = { pessoa: string; senha: string; resultado: "presente" | "pendencia" | "ja_na_unidade" };
+type Resultado = { pessoa: string; senha: string; resultado: "presente" | "pendencia" | "ja_na_unidade" | "chamado" };
 
 const RECEPCAO = "passe na recepção para confirmar seus documentos. você ainda não entrou na fila da unidade.";
 
@@ -42,6 +42,7 @@ export function textoDoCheckIn(lista: Resultado[]): {
     const quem = `${r.pessoa} (${r.senha})`;
     if (r.resultado === "pendencia") return `${quem}: ${RECEPCAO}`;
     if (r.resultado === "ja_na_unidade") return `${quem}: você já está na fila da unidade.`;
+    if (r.resultado === "chamado") return `${quem}: você já foi chamado. vá para a sala indicada na TV.`;
     return `${quem}: você está na unidade. fique de olho na TV e no celular.`;
   });
   return { tipo: lista.some((r) => r.resultado === "pendencia") ? "recepcao" : "presente", linhas };

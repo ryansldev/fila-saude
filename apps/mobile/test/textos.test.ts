@@ -20,6 +20,8 @@ const base: MinhaEntrada = {
   saiaDeCasa: false,
   servicoId: "00000000-0000-4000-8000-0000000000aa",
   paraMim: true,
+  nascimento: "1990-05-05",
+  podeCancelar: true,
 };
 
 describe("minha fila: estado de cada entrada, como no design do app", () => {

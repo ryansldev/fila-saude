@@ -62,7 +62,8 @@ describe("identidade (CPF e nascimento)", () => {
       paraQuem: { tipo: "outra", nome: "Qualquer Um", nascimento: "2000-01-01", cpf: vitima.dados.cpf },
       respostas: ROTINA,
     });
-    expect(r).toMatchObject({ status: 409, corpo: { erro: "pessoa_divergente" } });
+    // A vítima tem conta: a recusa vem antes, sem conferir dados (2026-11-14).
+    expect(r).toMatchObject({ status: 409, corpo: { erro: "pessoa_tem_conta" } });
     expect(JSON.stringify(r.corpo)).not.toMatch(/Vera/);
   });
 

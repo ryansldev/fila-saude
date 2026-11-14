@@ -33,3 +33,12 @@ describe("check-in pelo QR no app (RN-PRES-01)", () => {
     });
   });
 });
+
+describe("QR lido depois de chamado (revisão 2026-11-14)", () => {
+  it("diz que já foi chamado e para ir à sala, sem mandar para a recepção", () => {
+    expect(textoDoCheckIn([{ pessoa: "Ana", senha: "V-001", resultado: "chamado" }])).toEqual({
+      tipo: "presente",
+      linhas: ["Ana (V-001): você já foi chamado. vá para a sala indicada na TV."],
+    });
+  });
+});

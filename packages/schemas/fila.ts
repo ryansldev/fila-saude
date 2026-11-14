@@ -155,6 +155,10 @@ export const minhaEntradaSchema = z.object({
   servicoId: z.uuid(),
   /** A pessoa atendida é o dono da conta (e não alguém que ele inscreveu). */
   paraMim: z.boolean(),
+  /** Nascimento da pessoa atendida: "mesma pessoa" é CPF ou nome + nascimento (RN-LE-02). */
+  nascimento: z.string(),
+  /** RN-CANC-01: o "não vou poder ir" vale aqui (remanejada usa "desistir", ainda sem tela). */
+  podeCancelar: z.boolean(),
 });
 export type MinhaEntrada = z.infer<typeof minhaEntradaSchema>;
 
@@ -201,7 +205,7 @@ export const checkInSchema = z.array(
     entradaId: z.uuid(),
     pessoa: z.string(),
     senha: z.string(),
-    resultado: z.enum(["presente", "pendencia", "ja_na_unidade"]),
+    resultado: z.enum(["presente", "pendencia", "ja_na_unidade", "chamado"]),
     pendencias: z.array(pendenciaSchema),
   }),
 );

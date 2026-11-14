@@ -20,6 +20,8 @@ import { inscrever } from "./inscricao";
 
 const FINAIS = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"] as const;
 const DIAS_DA_AGENDA = 14;
+// Estados em que o paciente ainda pode desistir (cancelarEntrada no domínio).
+const CANCELAVEIS = ["aguardando", "aguardando_encaminhamento", "alocada", "confirmada", "na_reserva", "na_fila"];
 const MAX_POR_CONTA = 5;
 
 export async function municipiosAtivos() {
@@ -58,6 +60,38 @@ export async function agenda(db: DbDoTenant, agora: number): Promise<SessaoDaAge
     vagasRestantes: s.vagas === null ? null : Math.max(0, s.vagas - s.ocupadas),
     estado: s.estado as "planejada" | "aberta",
   }));
+}
+
+/** Lançada para desfazer a verificação (nada é gravado). */
+class SoVerificar extends Error {}
+
+/**
+ * Verifica a inscrição sem gravar, na escolha de "para quem" (antes do questionário): sessão,
+ * limite da conta, CPF e duplicada respondem já, com o mesmo código da inscrição de verdade.
+ */
+export async function verificarInscricao(
+  db: DbDoTenant,
+  p: PacienteAutenticado,
+  sessaoId: string,
+  paraQuem: InscricaoEntrada["paraQuem"],
+  agora: number,
+) {
+  const neutras: InscricaoEntrada["respostas"] = {
+    alarmes: [],
+    motivo: "acompanhamento",
+    gravidade: null,
+    condicoes: [],
+    grupos: [],
+  };
+  try {
+    await db.transaction(async (tx) => {
+      await inscreverPaciente(tx as unknown as DbDoTenant, p, sessaoId, { paraQuem, respostas: neutras }, agora);
+      throw new SoVerificar();
+    });
+  } catch (err) {
+    if (!(err instanceof SoVerificar)) throw err;
+  }
+  return { ok: true as const };
 }
 
 // T3.3 / AD-018: "para mim" usa os dados da conta; "outra pessoa" fica com a conta como responsável.
@@ -99,7 +133,22 @@ export async function inscreverPaciente(
     pessoa = { ...conta, pacienteId: p.pacienteId };
   } else {
     const { nome, nascimento, cpf } = dados.paraQuem;
-    pessoa = { nome, nascimento, cpf: cpf ? cpf.replace(/\D/g, "") : null, pacienteId: null };
+    const digitos = cpf ? cpf.replace(/\D/g, "") : null;
+    if (digitos) {
+      // O CPF de quem tem conta no app não entra como "outra pessoa": a própria conta usa "para mim"
+      // e quem tem conta se inscreve por ela (vê, cancela e recebe os avisos).
+      const [dono] = await database.select({ id: paciente.id }).from(paciente).where(eq(paciente.cpf, digitos));
+      if (dono?.id === p.pacienteId)
+        throw new ErroApi(409, "cpf_da_conta", undefined, 'Esse é o seu CPF. Para se inscrever, escolha "para mim".');
+      if (dono)
+        throw new ErroApi(
+          409,
+          "pessoa_tem_conta",
+          undefined,
+          "Essa pessoa já tem conta no Fila Saúde. Ela se inscreve pela própria conta.",
+        );
+    }
+    pessoa = { nome, nascimento, cpf: digitos, pacienteId: null };
   }
   const e = await inscrever(db, sessaoId, {
     pessoa,
@@ -160,6 +209,8 @@ export async function minhas(db: DbDoTenant, pacienteId: string, agora: number):
       pendencias: item?.estado === "remoto" ? item.pendencias : [],
       servicoId: srv.id,
       paraMim: p.pacienteId === pacienteId,
+      nascimento: p.nascimento,
+      podeCancelar: e.remanejada === null && CANCELAVEIS.includes(e.estado) && item?.estado !== "chamado",
       saiaDeCasa:
         item?.estado === "remoto" &&
         Boolean(dia?.avisosSaiaDeCasa.some((a) => a.itemId === item.id && a.etapa === item.etapa)),
