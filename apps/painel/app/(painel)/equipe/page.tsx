@@ -4,7 +4,16 @@ import { atribuicoesSchema, usuarioPainelEntradaSchema } from "@fila-saude/schem
 import { PlusIcon, XIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
-import { Aviso, Campo, PainelLateral, Secao, Selecao, Tabela, Texto } from "@/components/formulario";
+import {
+  Aviso,
+  BotaoAdicionarLinha,
+  Campo,
+  PainelLateral,
+  Secao,
+  Selecao,
+  Tabela,
+  Texto,
+} from "@/components/formulario";
 import { AcoesDaLinha, CabecalhoDaPagina } from "@/components/pagina";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -121,19 +130,13 @@ function EditorDeAtribuicoes({
             />
           </div>
         ))}
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="self-start"
+        <BotaoAdicionarLinha
+          rotulo={valor.vinculos.length === 0 ? "Adicionar ocupação" : "Adicionar outra ocupação"}
           disabled={permitidas.length === 0}
-          onClick={() =>
+          aoClicar={() =>
             mudar({ ...valor, vinculos: [...valor.vinculos, { unidadeId: primeira, ocupacao: "recepcao" }] })
           }
-        >
-          <PlusIcon data-icon="inline-start" />
-          Adicionar ocupação
-        </Button>
+        />
       </Grupo>
 
       {funcoes.length > 0 ? (
@@ -180,20 +183,14 @@ function EditorDeAtribuicoes({
               />
             </div>
           ))}
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="self-start"
-            onClick={() => {
+          <BotaoAdicionarLinha
+            rotulo={valor.funcoes.length === 0 ? "Adicionar função" : "Adicionar outra função"}
+            aoClicar={() => {
               const funcao = funcoes.includes("agendar") ? "agendar" : (funcoes[0] as Funcao);
               const unidadeId = FUNCOES[funcao].escopo === "municipio" ? null : primeira || null;
               mudar({ ...valor, funcoes: [...valor.funcoes, { funcao, unidadeId }] });
             }}
-          >
-            <PlusIcon data-icon="inline-start" />
-            Adicionar função
-          </Button>
+          />
         </Grupo>
       ) : null}
       {erros._ ? <span className="text-sm text-destructive">{erros._}</span> : null}

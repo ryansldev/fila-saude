@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusIcon } from "lucide-react";
 import { createContext, type ReactNode, useContext, useId } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -420,5 +421,36 @@ export function PainelLateral({
         </form>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/**
+ * Acrescentar uma linha a uma lista do formulário (ocupação, função, intervalo): bloco tracejado de
+ * largura total, no lugar onde a nova linha vai aparecer.
+ */
+export function BotaoAdicionarLinha({
+  rotulo,
+  aoClicar,
+  disabled,
+}: {
+  rotulo: string;
+  aoClicar: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={aoClicar}
+      disabled={disabled}
+      className={cn(
+        "flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 text-sm font-semibold text-slate-600 transition-colors",
+        "hover:border-primary/60 hover:bg-primary-50/50 hover:text-primary-600",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:bg-transparent disabled:hover:text-slate-600",
+      )}
+    >
+      <PlusIcon className="size-4" strokeWidth={2.5} />
+      {rotulo}
+    </button>
   );
 }
