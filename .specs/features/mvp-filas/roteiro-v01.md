@@ -75,3 +75,13 @@ Para o push chegar no celular é preciso um projeto EAS e um build de desenvolvi
 | 7 | Paciente | App → Minha fila | Presente, tocar "meus sintomas pioraram" | Faixa vermelha: avisar a recepção ou a enfermagem, e o botão "ligar 192" |
 
 **Ainda não executado** no navegador nem no celular. Conferido por teste de integração (`tests/integration/v1/painel/estacoes/triagem.test.ts`: passos 3–6 pelas mesmas rotas) e pelos testes do painel e do app.
+
+## Tela da fila no app (2026-11-14)
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Paciente | App → Hoje ou Atendimentos | Tocar no cartão de "Curativos" (Bruno) | Tela da fila: senha bem grande, "1º na fila" e o tempo, o próximo passo e "seu caminho hoje" (inscrição → em casa → na unidade → atendimento), com a etapa de agora em destaque |
+| 2 | Paciente | Tela da fila, num serviço com triagem | Antes e depois da triagem | A triagem aparece na linha do tempo; depois dela, "atendimento · agora" |
+| 3 | Enfermeira | Painel → Estação | Chamar o Bruno | Com a tela da fila aberta, ela vira a tela verde "é a sua vez!" com a sala |
+
+**Conferido** pela prévia web (Chrome headless, com CORS desligado só para o teste): passo 1 e o toque no cartão de "hoje" levando à tela. Falta no celular.

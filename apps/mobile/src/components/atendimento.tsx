@@ -1,8 +1,8 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect } from "expo-router";
-import { Hourglass } from "lucide-react-native";
+import { ChevronRight, Hourglass } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
-import { Alert, Text, View } from "react-native";
+import { Alert, Pressable, Text, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Avatar,
@@ -197,27 +197,30 @@ export function CartaoDoAtendimento({
   sit,
   vouSair,
   aoCancelar,
+  aoAbrir,
   variante = "destaque",
 }: {
   en: MinhaEntrada;
   sit: Situacao;
   vouSair: (() => void) | null;
   aoCancelar: (() => void) | null;
+  /** Abre a tela da fila deste atendimento (senha grande e progresso). */
+  aoAbrir?: () => void;
   /** "destaque": o de hoje, como o acompanhamento de um pedido; "lista": compacto, com o dia à esquerda. */
   variante?: "destaque" | "lista";
 }) {
   const agora = Date.now();
   const r = resumoDaEntrada(en, sit, agora);
   const [piorou, setPiorou] = useState(false);
-  if (variante === "lista") return <CartaoNaLista en={en} sit={sit} aoCancelar={aoCancelar} />;
+  if (variante === "lista") return <CartaoNaLista en={en} sit={sit} aoCancelar={aoCancelar} aoAbrir={aoAbrir} />;
   const podeCheckIn = ["posicao", "venha", "sem_previsao"].includes(sit.tipo) && en.itemEstado === "remoto";
   const presente = (sit.tipo === "posicao" || sit.tipo === "sem_previsao") && sit.presente;
   const mostraTrilha = r.etapa !== null && r.etapa < 4;
   return (
     <Cartao style={{ gap: 0, padding: 0 }}>
-      <View style={{ padding: 14 }}>
-        <CabecaDoAtendimento en={en} sit={sit} />
-      </View>
+      <Tocavel aoAbrir={aoAbrir} en={en} style={{ padding: 14 }}>
+        <CabecaDoAtendimento en={en} sit={sit} aoAbrir={aoAbrir} />
+      </Tocavel>
       <View style={{ gap: 16, padding: 16, borderTopWidth: 2, borderTopColor: COR.surfaceMuted }}>
         <Text style={{ fontFamily: FONTE.extra, fontSize: 19, lineHeight: 26, color: COR.ink }}>
           {proximoPasso(en, sit, agora)}
@@ -251,7 +254,40 @@ export function CartaoDoAtendimento({
 }
 
 /** A linha de cima de todo cartão de atendimento: o dia num bloco à esquerda, o que é, a hora, onde e a situação. */
-function CabecaDoAtendimento({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
+/** Área que abre a tela da fila; sem `aoAbrir`, é só uma caixa. */
+function Tocavel({
+  aoAbrir,
+  en,
+  style,
+  children,
+}: {
+  aoAbrir: (() => void) | undefined;
+  en: MinhaEntrada;
+  style?: ViewStyle;
+  children: React.ReactNode;
+}) {
+  if (!aoAbrir) return <View style={style}>{children}</View>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`ver a fila de ${en.servico.toLowerCase()}`}
+      onPress={aoAbrir}
+      style={({ pressed }) => [style, pressed && { opacity: 0.6 }]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
+function CabecaDoAtendimento({
+  en,
+  sit,
+  aoAbrir,
+}: {
+  en: MinhaEntrada;
+  sit: Situacao;
+  aoAbrir?: (() => void) | undefined;
+}) {
   const agora = Date.now();
   const r = resumoDaEntrada(en, sit, agora);
   const encerrado = r.grupo === "encerrados";
@@ -275,22 +311,35 @@ function CabecaDoAtendimento({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
         </Pequeno>
         <Selo texto={r.selo} tom={r.tom} />
       </View>
+      {aoAbrir ? <ChevronRight size={26} color={COR.inkMuted} strokeWidth={2.5} /> : null}
     </View>
   );
 }
 
 /** Versão compacta, para a lista de atendimentos: só a linha de cima, o próximo passo e o cancelar. */
-function CartaoNaLista({ en, sit, aoCancelar }: { en: MinhaEntrada; sit: Situacao; aoCancelar: (() => void) | null }) {
+function CartaoNaLista({
+  en,
+  sit,
+  aoCancelar,
+  aoAbrir,
+}: {
+  en: MinhaEntrada;
+  sit: Situacao;
+  aoCancelar: (() => void) | null;
+  aoAbrir?: (() => void) | undefined;
+}) {
   const agora = Date.now();
   const encerrado = resumoDaEntrada(en, sit, agora).grupo === "encerrados";
   return (
     <Cartao style={{ gap: 12, padding: 14 }}>
-      <CabecaDoAtendimento en={en} sit={sit} />
-      {encerrado ? null : (
-        <Text style={{ fontFamily: FONTE.semi, fontSize: 16, lineHeight: 22, color: COR.ink }}>
-          {proximoPasso(en, sit, agora)}
-        </Text>
-      )}
+      <Tocavel aoAbrir={aoAbrir} en={en} style={{ gap: 12 }}>
+        <CabecaDoAtendimento en={en} sit={sit} aoAbrir={aoAbrir} />
+        {encerrado ? null : (
+          <Text style={{ fontFamily: FONTE.semi, fontSize: 16, lineHeight: 22, color: COR.ink }}>
+            {proximoPasso(en, sit, agora)}
+          </Text>
+        )}
+      </Tocavel>
       {aoCancelar ? (
         <View style={{ borderTopWidth: 2, borderTopColor: COR.surfaceMuted, marginTop: -2 }}>
           <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} />
@@ -362,6 +411,34 @@ export function useMinhaFila() {
       x.sit.tipo === "vez" && !vistas.includes(`${x.en.entradaId}:${x.en.chamada?.em}`),
   );
 
+  /** "não vou poder ir" e "vou sair" de uma entrada, iguais no cartão e na tela da fila. */
+  const acoesDe = (en: MinhaEntrada, sit: Situacao) => ({
+    // RN-CANC-01: a API diz quando o "não vou poder ir" vale.
+    aoCancelar: en.podeCancelar
+      ? () => {
+          setCancelada(null);
+          setCancelar({ en, sit, ctx: contexto(en) });
+        }
+      : null,
+    vouSair:
+      saindo === en.entradaId
+        ? null
+        : () => {
+            // RN-PRES-02: volta a remoto mantendo a posição; um toque por vez.
+            setSaindo(en.entradaId);
+            s.api
+              .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
+              .then(() => {
+                setEntradas((l) =>
+                  (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
+                );
+                void buscarAgora.current?.();
+              })
+              .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
+              .finally(() => setSaindo(null));
+          },
+  });
+
   return {
     entradas,
     lista,
@@ -370,6 +447,7 @@ export function useMinhaFila() {
     cancelada,
     vez: vez
       ? {
+          entradaId: vez.en.entradaId,
           senha: vez.sit.senha,
           estacao: vez.sit.estacao,
           dispensar: () => {
@@ -384,7 +462,8 @@ export function useMinhaFila() {
       await buscarAgora.current?.();
       setTentando(false);
     },
-    /** Os cartões de uma lista, com as ações certas de cada um. */
+    acoesDe,
+    /** Os cartões de uma lista, com as ações certas de cada um; tocar abre a tela da fila. */
     cartoes: (itens: typeof lista, variante: "destaque" | "lista" = "destaque") =>
       itens.map(({ en, sit }) => (
         <CartaoDoAtendimento
@@ -392,33 +471,8 @@ export function useMinhaFila() {
           en={en}
           sit={sit}
           variante={variante}
-          aoCancelar={
-            // RN-CANC-01: a API diz quando o "não vou poder ir" vale.
-            en.podeCancelar
-              ? () => {
-                  setCancelada(null);
-                  setCancelar({ en, sit, ctx: contexto(en) });
-                }
-              : null
-          }
-          vouSair={
-            saindo === en.entradaId
-              ? null
-              : () => {
-                  // RN-PRES-02: volta a remoto mantendo a posição; um toque por vez.
-                  setSaindo(en.entradaId);
-                  s.api
-                    .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
-                    .then(() => {
-                      setEntradas((l) =>
-                        (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
-                      );
-                      void buscarAgora.current?.();
-                    })
-                    .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
-                    .finally(() => setSaindo(null));
-                }
-          }
+          {...acoesDe(en, sit)}
+          aoAbrir={() => router.push({ pathname: "/fila/[entradaId]", params: { entradaId: en.entradaId } })}
         />
       )),
     /** A gaveta do "não vou poder ir"; vai uma vez na tela. */
