@@ -2,7 +2,7 @@
 
 Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). Regras: [specs/](specs/). Decisões: [decisions.md](decisions.md). Checagem: `npm run specs:check`.
 
-## Onde estamos (2026-11-13)
+## Onde estamos (2026-11-14)
 
 - **Branch:** `feat/v0.1` (tudo até aqui: 1A, 1B Tasks 1–10, fase 2 Tasks 1–8), sem PR.
 - **Specs reorganizadas** (AD-051): a antiga `features/mvp-filas/source.md` virou as specs por capacidade em `specs/`, as ADs saíram deste arquivo para `decisions.md` (AD-001..AD-051; PD-01..PD-31 no plan), e `scripts/specs-check.mjs` confere IDs, decisões substituídas e cobertura.
@@ -24,8 +24,10 @@ Só o handoff entre sessões. Princípios: [constitution.md](constitution.md). R
 - **Fatia 2 concluída (2026-11-13):** [plano](features/mvp-filas/plano-fatia-2-na-unidade.md), modo rápido; provisórios G1–G9 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md#fatia-2-da-v01-2026-11-13). TV pareada por código (`/tv` e "TVs" no painel) com chamadas, rechamadas, contadores, QR, som e fila de anúncios; "Vou sair" no app; outbox `aviso` com "sua vez", "pulado", "saia de casa" e "venha agora", varredura a cada minuto dentro da API e envio pela Expo; app registra o token de push. API 206 testes, painel 78, domínio 331, schemas 61, mobile 15. [Roteiro](features/mvp-filas/roteiro-v01.md#fatia-2--na-unidade) executado por HTTP.
 - **Revisão de todas as fatias (2026-11-13, seu pedido):** ~90 achados de quatro revisores; os confirmados corrigidos com teste (CPF e nascimento validados, estados do app honestos, sessões sempre encerráveis, uso indevido de CPF fechado, painel e TV estáveis). API 221, painel 92, domínio 336, schemas 63, mobile 25. Ver [revisão](features/mvp-filas/decisoes-para-revisar.md#revisão-de-todas-as-fatias-2026-11-13): RV1–RV6 provisórios, **RV7–RV11 pedem sua decisão**.
 - **Depois da revisão (2026-11-13):** suas respostas viraram AD-056 (fila nova depois da triagem, só o enfermeiro confirma risco, "venha agora" para todo remoto). Máscaras de CPF, data, celular e CEP no app e no painel, "mostrar senha" no app. Painel todo no kit do shadcn (`components/formulario.tsx`, `components/dialogos.tsx`), sem campo nativo nem `window.confirm`, validando cada formulário com o mesmo schema da API antes de enviar. Aberta: **RV7** (80+ e os outros grupos legais).
+- **AD-057 terminado (2026-11-14):** o commit `e285362` (prazo de chegada depois do "venha agora") tinha deixado o domínio com 17 testes falhando. Agora o domínio registra a hora do "venha agora" (`avisosVenhaAgora`), a varredura grava no dia, quem estoura o prazo não trava a fila parada, e RN-ETA-06 e AD-057 estão nas specs.
+- **Fatia 3 concluída (2026-11-14):** [plano](features/mvp-filas/plano-fatia-3-triagem.md), modo rápido; provisórios H1–H8 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md#fatia-3-da-v01-2026-11-14). Estação de triagem com a ficha (sugerido, regra, prioridade, alerta de autolesão) e as quatro cores do ACCR, obrigatórias para fechar o chamado; vermelho encaminha à emergência; a cor vai para `entrada.risco_confirmado`; app mostra "primeiro, a triagem", "triagem feita" e "meus sintomas pioraram"; seed com Clínico geral de agora com triagem. Triagem com vários serviços (RN-TRI-02) adiada (H4). API 239 testes, painel 100, domínio 344, schemas 67, mobile 84. **H1 e H2 pedem sua confirmação** (decisões clínicas).
 - **Precisa de você:** G6, push no celular de verdade pede um projeto EAS (conta da empresa na Expo) e um build de desenvolvimento.
-- **Próximo passo:** clicar o roteiro no navegador (TV com som) e no celular; depois o plano da fatia 3 (triagem). CARRY da fatia 0: RN-PIORA-01.
+- **Próximo passo:** clicar o roteiro (fatias 1–3) no navegador e no celular; depois o plano da fatia 4 (privada: agendador e alocação).
 
 ## Pendências fora do código
 

@@ -11,7 +11,7 @@ npm run dev           # API em :3333, painel em http://exemplo.localhost:3000
 EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:3333 npm run dev:mobile   # app no celular (Expo Go)
 ```
 
-Senha de todos: `exemplo123`. O seed cria a sessão pública **Curativos** começando na hora cheia de agora (4 h), na "Sala de procedimentos", com Ana e Bruno já inscritos.
+Senha de todos: `exemplo123`. O seed cria a sessão pública **Curativos** começando na hora cheia de agora (4 h), na "Sala de procedimentos", com Ana e Bruno já inscritos, e a **Clínico geral (com triagem)** no mesmo horário, na "Triagem 1" e no "Consultório 1", com Ana (rotina), Bruno (urgente) e Carla (atenção) inscritos.
 
 ## Fatia 1 — Pública básica
 
@@ -60,3 +60,17 @@ Para o push chegar no celular é preciso um projeto EAS e um build de desenvolvi
 | 6 | Paciente | App → Entrar e Criar conta (iPhone) | Tocar no último campo | O teclado não cobre o campo nem o botão |
 
 **Ainda não executado.** Conferido por código: `tsc`, lint, testes do app e da API (rota de cancelar), `expo export` para Android e iOS e `expo-doctor`. Falta rodar no celular.
+
+## Fatia 3 — Triagem
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Gerente | Painel → Fila do dia | Abrir a sessão "Clínico geral" | Senhas C-001.. remotas |
+| 2 | Recepção | Painel → Fila do dia | Conferir e marcar presença de Ana, Bruno e Carla | "Na unidade"; no app, "primeiro, a triagem" |
+| 3 | Enfermeira | Painel → Estação | Escolher "Triagem 1 · Triagem", "Chamar próximo" | Bruno (urgente sugerido) vem primeiro; abaixo, "Sugerido pelo app: Amarelo · Problema novo forte", a prioridade declarada e as quatro cores; "Finalizar" e "Chamar próximo" ficam bloqueados até escolher |
+| 4 | Enfermeira | Estação de triagem | Tocar "Verde" e "Chamar próximo" | Bruno vai para a fila do atendimento com a mesma senha; no app dele, "triagem feita. agora, o atendimento" |
+| 5 | Enfermeira | Estação de triagem | Com Carla chamada, tocar "Vermelho" e "Finalizar" | Pede confirmação ("Encaminhar à emergência?"); Carla sai da fila; no app, selo "emergência" e "a enfermagem encaminhou você para a emergência" |
+| 6 | Médica | Painel → Estação | Entrar como `medica` (ou a enfermeira), "Consultório 1 · Atendimento", "Chamar próximo" | Só quem já passou pela triagem é chamado; sem cores nesta tela |
+| 7 | Paciente | App → Minha fila | Presente, tocar "meus sintomas pioraram" | Faixa vermelha: avisar a recepção ou a enfermagem, e o botão "ligar 192" |
+
+**Ainda não executado** no navegador nem no celular. Conferido por teste de integração (`tests/integration/v1/painel/estacoes/triagem.test.ts`: passos 3–6 pelas mesmas rotas) e pelos testes do painel e do app.

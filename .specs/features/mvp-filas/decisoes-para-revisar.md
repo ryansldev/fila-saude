@@ -190,3 +190,20 @@ Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, p
 | RV11 | "Venha agora" só para urgente confirmado (tabela de notificações) ou para todo remoto sem ninguém na frente (domínio, G3)? | Todo remoto |
 
 **Ficou para depois (anotado, sem correção agora):** triagem confirmar risco pela estação e chave de ordem gravada na chamada (fatia 3); relançar remanejado de serviço regulado e reconciliação da contingência (domínio, fases 5/8); juntar filas de serviços diferentes na mesma estação (RN-EST-03); bloqueio após tentativas de login, captcha e limite de requisições (1B Tasks 13); abrir e encerrar sessão sozinho no horário (worker); fechar/abrir estação no meio do dia; tela de explicação antes de pedir a permissão de notificação; corrida rara entre cancelar sessão e inscrição na reserva, e entre dois gestores se removendo; botões "Alterar/Remover" da equipe para quem o gerente não pode mexer.
+
+## Fatia 3 da v0.1 (2026-11-14)
+
+Execução rápida, como as fatias anteriores. Plano: [plano-fatia-3-triagem](plano-fatia-3-triagem.md). Antes da triagem, terminei o **AD-057** (prazo de chegada depois do "venha agora"), que o commit `e285362` deixou pela metade: o domínio estava com 17 testes falhando e sem `avisosVenhaAgora`.
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| H1 | Cores da triagem (AD-056) | ACCR do Ministério: vermelho = emergência, amarelo = urgente, verde = atenção, azul = rotina | Manchester (5 cores, com laranja) | Baixo: só rótulo e cor; se a unidade usar Manchester, falta um nível |
+| H2 | Vermelho na triagem | A triagem fecha como atendida, a pessoa não vai para o atendimento desta unidade e a entrada fica concluída, com `risco_confirmado = emergencia` e o evento `encaminhado_emergencia`. O painel pede confirmação; o app diz "a enfermagem encaminhou você para a emergência" | Chamar já no consultório da unidade (urgência máxima) | Médio: se a UBS atende a emergência ali mesmo, falta o "chamar já" |
+| H3 | Classificar é obrigatório? | Sim: com alguém chamado na triagem, "Finalizar" e "Chamar próximo" pedem a cor (`422 classifique_o_risco`); "Não compareceu" e "Rechamar" não | Manter o sugerido quando o enfermeiro não escolhe | Baixo; um toque a mais por paciente |
+| H4 | **Triagem com vários serviços (RN-TRI-02): adiada** | A estação de triagem atende uma sessão aberta por vez (a mais recente), como antes. Juntar filas de sessões diferentes numa chamada fica para depois da v0.1 (já anotado como RN-EST-03) | Comparar o 1º elegível de cada sessão (urgência, risco, prioridade; empate por quem chegou antes) | Médio: com dois serviços com triagem abertos ao mesmo tempo na mesma sala, só um é chamado |
+| H5 | O que o paciente vê da triagem | "triagem feita. agora, o atendimento" e a posição; a cor não aparece no app | Mostrar a cor | Baixo |
+| H6 | RN-PIORA-01 | Só a orientação: quem está na unidade vê "meus sintomas pioraram", que manda avisar a recepção ou a enfermagem e tem o botão do 192. Reclassificar no balcão fica para a recepção (fase 7) | Reaplicar o questionário pelo app | Baixo |
+| H7 | AD-057 em modo manual | Sem "venha agora" não há prazo, então remoto não perde a vez por atraso; só os pulos decidem | Usar a hora de abertura da sessão como início do prazo | Baixo: modo manual é exceção |
+| H8 | Chave do push "venha agora" | Passou a incluir a hora (`venha_agora:item:etapa:em`), porque "Vou sair" recomeça e pode haver um segundo "venha agora" na mesma etapa | Manter uma por etapa | Nenhum conhecido |
+
+**Precisa de você:** confirmar H1 (ACCR de 4 cores) e H2 (vermelho tira da fila), que são decisões clínicas. RV7 continua aberta.
