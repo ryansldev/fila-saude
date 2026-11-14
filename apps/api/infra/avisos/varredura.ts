@@ -1,4 +1,4 @@
-import { avisosSaiaDeCasa, type Evento, estimar } from "@fila-saude/domain";
+import { avisosSaiaDeCasa, avisosVenhaAgora } from "@fila-saude/domain";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import database from "infra/database";
 import { dispositivoPush } from "infra/database/central/schema/push";
@@ -15,8 +15,8 @@ export type Enviador = (lista: Envio[]) => Promise<ResultadoDoEnvio[]>;
 const MAX_TENTATIVAS = 5;
 const LOTE = 100;
 
-// RN-ETA-03 / RN-ORD-02: avisos que dependem do tempo; o domínio marca o "saia de casa" no dia
-// e a chave da outbox impede o "venha agora" repetido. Uma varredura por município de cada vez.
+// RN-ETA-03 / RN-ETA-06: avisos que dependem do tempo; o domínio marca no dia o "saia de casa" e
+// o "venha agora" (com a hora, AD-057), e a chave da outbox impede o envio repetido. Uma varredura por município de cada vez.
 async function gerarAvisosDoTempo(db: DbDoTenant, agora: number): Promise<void> {
   const abertas = await db.select({ id: sessao.id }).from(sessao).where(eq(sessao.estado, "aberta"));
   // Uma transação por sessão: uma sessão com problema não derruba os avisos das outras nem
@@ -30,21 +30,14 @@ async function gerarAvisosDoTempo(db: DbDoTenant, agora: number): Promise<void> 
         if (!trava.rows[0]?.ok) return;
         await naSessao(tx, id, async (c) => {
           if (!c.dia || c.dia.estado !== "aberta") return { resultado: null };
-          const dia = c.dia;
-          const venha: Evento[] = dia.itens
-            .filter(
-              (i) => i.estado === "remoto" && estimar(dia, i.id, agora, { modoManual: false }).tipo === "venha_agora",
-            )
-            .map((i) => ({
-              tipo: "venha_agora",
-              itemId: i.id,
-              entradaId: i.entradaId,
-              sessaoId: dia.sessaoId,
-              dados: { etapa: i.etapa, em: agora },
-            }));
-          const saia = avisosSaiaDeCasa(dia, agora, { modoManual: false });
+          // AD-057: o "venha agora" fica registrado no dia com a hora; o prazo de chegada conta dela.
+          const venha = avisosVenhaAgora(c.dia, agora, { modoManual: false });
+          const saia = avisosSaiaDeCasa(venha.dia, agora, { modoManual: false });
           // Quem já é o próximo recebe só o "venha agora".
-          const eventos = [...venha, ...saia.eventos.filter((e) => !venha.some((v) => v.itemId === e.itemId))];
+          const eventos = [
+            ...venha.eventos,
+            ...saia.eventos.filter((e) => !venha.eventos.some((v) => v.itemId === e.itemId)),
+          ];
           if (eventos.length === 0) return { resultado: null };
           return { dia: saia.dia, eventos, resultado: null };
         });

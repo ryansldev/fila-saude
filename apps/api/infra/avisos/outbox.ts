@@ -48,7 +48,7 @@ export function textoDoAviso(ev: Evento, ctx: Contexto): Texto | null {
     case "venha_agora":
       return {
         tipo: "venha_agora",
-        chave: `venha_agora:${item}:${d.etapa}`,
+        chave: `venha_agora:${item}:${d.etapa}:${d.em}`, // "Vou sair" recomeça (AD-057)
         titulo: "venha agora",
         corpo: `você é o próximo na ${ctx.unidade}. ao chegar, leia o QR da TV.`,
       };

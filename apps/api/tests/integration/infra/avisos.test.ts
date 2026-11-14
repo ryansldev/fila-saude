@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { type Envio, varrerMunicipio } from "infra/avisos/varredura";
 import { aviso } from "infra/database/municipal/schema/aviso";
+import { lerDia } from "infra/fila/dia";
 import webserver from "infra/webserver";
 import { cenarioDaFila, ROTINA } from "tests/fila";
 import orchestrator from "tests/orchestrator";
@@ -97,6 +98,12 @@ describe("avisos por push (T3.8, T2.4)", () => {
     await varrerMunicipio(db(), Date.now(), outra.enviar);
     expect(outra.enviados).toEqual([]);
     expect((await avisos()).length).toBe(4);
+  });
+
+  it("AD-057: a varredura grava a hora do 'venha agora' no dia; o prazo de chegada conta dela", async () => {
+    const dia = await lerDia(db(), c.sessaoId);
+    const carla = dia?.itens.find((i) => i.entradaId === entradas.Carla);
+    expect(dia?.venhaAgora).toEqual([{ itemId: carla?.id, etapa: "atendimento", em: expect.any(Number) }]);
   });
 
   it("'você foi pulado' com nova tentativa quando o envio falha", async () => {
