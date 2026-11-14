@@ -12,6 +12,7 @@ describe("menuDoPainel", () => {
       "Serviços",
       "Estações",
       "Sessões",
+      "TVs",
       "Fila do dia",
       "QR de entrada",
     ]);
@@ -31,6 +32,7 @@ describe("menuDoPainel", () => {
       "Serviços",
       "Estações",
       "Sessões",
+      "TVs",
       "Fila do dia",
       "QR de entrada",
       "Estação",

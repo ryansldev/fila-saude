@@ -142,13 +142,21 @@ describe("sessão", () => {
 });
 
 describe("menu", () => {
-  it("menu sem Regras do município e TVs", () => {
+  it("menu sem Regras do município; TVs entram na fatia 2", () => {
     const rotulos = menuDoPainel([
       { perfil: "gestao_sms", unidadeId: null },
       { perfil: "gerente_ubs", unidadeId: "u1" },
     ]).map((i) => i.rotulo);
     expect(rotulos).not.toContain("Regras do município");
-    expect(rotulos).not.toContain("TVs");
-    expect(rotulos).toEqual(["Unidades", "Equipe", "Serviços", "Estações", "Sessões", "Fila do dia", "QR de entrada"]);
+    expect(rotulos).toEqual([
+      "Unidades",
+      "Equipe",
+      "Serviços",
+      "Estações",
+      "Sessões",
+      "TVs",
+      "Fila do dia",
+      "QR de entrada",
+    ]);
   });
 });
