@@ -1,7 +1,7 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { describe, expect, it } from "vitest";
 import { ErroDaApi } from "@/lib/api";
-import { mensagemDoErro, situacaoDaEntrada } from "@/lib/textos";
+import { avisoDoErro, mensagemDoErro, situacaoDaEntrada } from "@/lib/textos";
 
 const base: MinhaEntrada = {
   entradaId: "00000000-0000-4000-8000-000000000001",
@@ -62,5 +62,18 @@ describe("minha fila: estado de cada entrada, como no design do app", () => {
     expect(mensagemDoErro(new ErroDaApi(409, "duplicada"))).toBe("essa pessoa já está inscrita neste atendimento.");
     expect(mensagemDoErro(new ErroDaApi(0, "sem_conexao"))).toMatch(/^sem internet/);
     expect(mensagemDoErro(new Error("x"))).toBe("não deu certo. tente de novo.");
+  });
+});
+
+describe("aviso de erro na minha fila", () => {
+  it("'sem internet' só quando a rede falha; outro erro diz o que houve", () => {
+    expect(avisoDoErro(new ErroDaApi(0, "sem_conexao"))).toEqual({
+      titulo: "sem internet",
+      texto: "a sua posição volta a aparecer quando a conexão voltar.",
+    });
+    expect(avisoDoErro(new ErroDaApi(401, "nao_autenticado"))).toEqual({
+      titulo: "não deu para atualizar",
+      texto: "sua sessão expirou. entre de novo.",
+    });
   });
 });

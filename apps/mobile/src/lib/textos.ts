@@ -56,3 +56,10 @@ export function mensagemDoErro(e: unknown): string {
   if (e instanceof ErroDaApi) return e.mensagem ?? MENSAGENS[e.erro] ?? "não deu certo. tente de novo.";
   return "não deu certo. tente de novo.";
 }
+
+/** Faixa da minha fila: "sem internet" só quando a rede falhou; o resto diz o motivo. */
+export function avisoDoErro(e: unknown): { titulo: string; texto: string } {
+  if (e instanceof ErroDaApi && e.erro === "sem_conexao")
+    return { titulo: "sem internet", texto: "a sua posição volta a aparecer quando a conexão voltar." };
+  return { titulo: "não deu para atualizar", texto: mensagemDoErro(e) };
+}

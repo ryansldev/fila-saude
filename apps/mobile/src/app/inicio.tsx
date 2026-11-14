@@ -24,7 +24,7 @@ import {
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
 import { diaCurto, hora } from "@/lib/datas";
 import { useSessao } from "@/lib/sessao";
-import { mensagemDoErro, type Situacao, situacaoDaEntrada } from "@/lib/textos";
+import { avisoDoErro, mensagemDoErro, type Situacao, situacaoDaEntrada } from "@/lib/textos";
 
 const contexto = (en: MinhaEntrada, dono: string | undefined) =>
   `${en.unidade} · ${en.servico.toLowerCase()}${en.sessao ? " · hoje" : ""}${dono && en.pessoa !== dono ? ` · para ${en.pessoa}` : ""}`;
@@ -198,7 +198,7 @@ function Bloco({
 export default function MinhaFila() {
   const s = useSessao();
   const [entradas, setEntradas] = useState<MinhaEntrada[] | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
   const [vistas, setVistas] = useState<string[]>([]);
 
   useFocusEffect(
@@ -213,7 +213,7 @@ export default function MinhaFila() {
             setEntradas(l);
             setErro(null);
           })
-          .catch((err) => ativo && setErro(mensagemDoErro(err)));
+          .catch((err) => ativo && setErro(avisoDoErro(err)));
       void buscar();
       const id = setInterval(buscar, INTERVALO_DA_CONSULTA_MS);
       return () => {
@@ -240,9 +240,7 @@ export default function MinhaFila() {
   return (
     <Tela voltar={false} rodape={<Abas atual="fila" />}>
       <Titulo>minha fila</Titulo>
-      {erro ? (
-        <Faixa tipo="perigo" titulo="sem internet" texto="a sua posição volta a aparecer quando a conexão voltar." />
-      ) : null}
+      {erro ? <Faixa tipo="perigo" titulo={erro.titulo} texto={erro.texto} /> : null}
       {entradas?.length === 0 ? (
         <>
           <Texto>você não tem atendimento marcado.</Texto>
