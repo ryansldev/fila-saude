@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Text } from "react-native";
-import { Carregando, CartaoTocavel, COR, Faixa, FONTE, Tela, Titulo } from "@/components/ui";
+import { Carregando, CartaoTocavel, COR, Faixa, FONTE, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { avisoDoErro } from "@/lib/textos";
 
@@ -13,6 +13,8 @@ export default function EscolherMunicipio() {
   const [lista, setLista] = useState<Municipio[] | null>(null);
   const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
   const [tentando, setTentando] = useState(false);
+  // Um toque só: dois toques seguidos não trocam de município duas vezes.
+  const [escolhendo, setEscolhendo] = useState<string | null>(null);
 
   const buscar = useCallback(
     () =>
@@ -32,6 +34,7 @@ export default function EscolherMunicipio() {
   return (
     <Tela voltar={Boolean(s.municipio)}>
       <Titulo>qual é o seu município?</Titulo>
+      <TextoSuave>você vê as unidades e os atendimentos de onde mora.</TextoSuave>
       {erro ? (
         <Faixa
           tipo="perigo"
@@ -49,13 +52,27 @@ export default function EscolherMunicipio() {
         />
       ) : null}
       {lista === null && !erro ? <Carregando texto="buscando os municípios…" /> : null}
+      {lista?.length === 0 ? (
+        <TextoSuave style={{ textAlign: "center", paddingVertical: 24 }}>
+          nenhum município usa o fila saúde ainda. na dúvida, pergunte na sua unidade de saúde.
+        </TextoSuave>
+      ) : null}
+      {escolhendo ? <Carregando texto="abrindo o seu município…" /> : null}
       {lista?.map((m) => (
         <CartaoTocavel
           key={m.slug}
           acao="escolher"
           onPress={async () => {
-            await s.escolherMunicipio(m.slug);
-            router.replace("/inicio");
+            if (escolhendo) return;
+            setEscolhendo(m.slug);
+            try {
+              await s.escolherMunicipio(m.slug);
+              router.replace("/inicio");
+            } catch (err) {
+              setErro(avisoDoErro(err, "confira a conexão e tente de novo."));
+            } finally {
+              setEscolhendo(null);
+            }
           }}
         >
           <Text style={{ fontFamily: FONTE.bold, fontSize: 22, lineHeight: 28, color: COR.ink }}>

@@ -1,29 +1,31 @@
 import { alternarOpcao } from "@fila-saude/domain";
-import type { InscricaoEntrada } from "@fila-saude/schemas/fila";
+import type { InscricaoEntrada, MinhaEntrada, SessaoDaAgenda } from "@fila-saude/schemas/fila";
 import { mascararCpf, mascararData } from "@fila-saude/schemas/mascaras";
 import { router, useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import {
   Botao,
   BotaoLigar,
   Campo,
+  Carregando,
   Cartao,
   COR,
-  Espaco,
   Faixa,
   FONTE,
   LinkBotao,
   Mascote,
   Opcao,
   Pequeno,
-  Progresso,
+  Selo,
   Tela,
   Texto,
   TextoSuave,
   Titulo,
 } from "@/components/ui";
+import { ErroDaApi } from "@/lib/api";
 import { diaCurto } from "@/lib/datas";
+import { outraPessoaJaInscrita, paraMimNoServico } from "@/lib/inscricoes";
 import {
   completas,
   desfechoDoQuestionario,
@@ -34,7 +36,7 @@ import {
   telasDo,
 } from "@/lib/questionario";
 import { useSessao } from "@/lib/sessao";
-import { mensagemDoErro } from "@/lib/textos";
+import { avisoDoErro, mensagemDoErro } from "@/lib/textos";
 import { dataIso, erroDaOutraPessoa } from "@/lib/validacao";
 
 type Passo =
@@ -45,10 +47,15 @@ type Passo =
   | { tipo: "inscrito" }
   | { tipo: "reserva" };
 
+type DadosDaSessao = { servicoId?: string; servico?: string; unidade?: string; inicio?: string; aberta?: boolean };
+
+const irParaMinhaFila = () => router.dismissTo("/inicio");
+
 /** T3.3: "para quem é?" (AD-018), questionário v1 e a inscrição, como no design do app. */
 export default function Inscricao() {
   const p = useLocalSearchParams<{
     sessaoId: string;
+    servicoId?: string;
     servico?: string;
     unidade?: string;
     inicio?: string;
@@ -56,32 +63,76 @@ export default function Inscricao() {
   }>();
   const s = useSessao();
   const [passo, setPasso] = useState<Passo>({ tipo: "quem" });
-  const [quem, setQuem] = useState<"eu" | "outra">("eu");
+  const [quem, setQuem] = useState<"eu" | "outra" | null>("eu");
   const [outra, setOutra] = useState({ nome: "", nascimento: "", cpf: "" });
   const [r, setR] = useState<RespostasDoApp>(RESPOSTAS_VAZIAS);
   const [nenhum, setNenhum] = useState<Partial<Record<TelaDoQuestionario, boolean>>>({});
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<{ texto: string; duplicada: boolean } | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [tentouQuem, setTentouQuem] = useState(false);
   // Dois toques no mesmo instante não mandam duas inscrições.
   const enviandoRef = useRef(false);
+
+  // Pelo link (deep link) a tela chega só com o id da sessão: o resto vem da agenda.
+  const temTudo = Boolean(p.servicoId && p.servico && p.unidade && p.inicio);
+  const [daAgenda, setDaAgenda] = useState<SessaoDaAgenda | null | "fora">(null);
+  // AD-032: as inscrições da conta, para não oferecer de novo o que a pessoa já tem.
+  const [minhas, setMinhas] = useState<MinhaEntrada[] | null>(null);
+  const [erroAoCarregar, setErroAoCarregar] = useState<{ titulo: string; texto: string } | null>(null);
+  const [tentando, setTentando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    try {
+      const [m, agenda] = await Promise.all([
+        s.api.get<MinhaEntrada[]>(`/v1/municipios/${s.municipio}/minhas`),
+        temTudo ? Promise.resolve(null) : s.api.get<SessaoDaAgenda[]>(`/v1/municipios/${s.municipio}/agenda`),
+      ]);
+      setMinhas(m);
+      if (agenda) setDaAgenda(agenda.find((x) => x.id === p.sessaoId) ?? "fora");
+      setErroAoCarregar(null);
+    } catch (err) {
+      setErroAoCarregar(avisoDoErro(err, "confira a conexão e tente de novo."));
+    }
+  }, [s.api, s.municipio, p.sessaoId, temTudo]);
+  useEffect(() => {
+    if (s.municipio) void carregar();
+  }, [carregar, s.municipio]);
+
+  const sessao: DadosDaSessao =
+    daAgenda && daAgenda !== "fora"
+      ? {
+          servicoId: daAgenda.servico.id,
+          servico: daAgenda.servico.nome,
+          unidade: daAgenda.unidade.nome,
+          inicio: daAgenda.inicio,
+          aberta: daAgenda.estado === "aberta",
+        }
+      : {
+          ...(p.servicoId ? { servicoId: p.servicoId } : {}),
+          ...(p.servico ? { servico: p.servico } : {}),
+          ...(p.unidade ? { unidade: p.unidade } : {}),
+          ...(p.inicio ? { inicio: p.inicio } : {}),
+          aberta: p.aberta === "1",
+        };
+  const donoInscrito = paraMimNoServico(minhas, sessao.servicoId);
+  const carregado = minhas !== null && (temTudo || daAgenda !== null);
 
   const telas = telasDo(r);
   // Sem a data da conta carregada, não dá para decidir emergência/apoio pela idade: espera.
   const nascimento = quem === "eu" ? (s.conta?.nascimento ?? "") : dataIso(outra.nascimento);
   const resumo = (
     <Cartao>
-      {p.inicio ? (
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 20, color: COR.ink }}>{diaCurto(p.inicio)}</Text>
+      {sessao.inicio ? (
+        <Text style={{ fontFamily: FONTE.extra, fontSize: 20, color: COR.ink }}>{diaCurto(sessao.inicio)}</Text>
       ) : null}
-      <Texto>
-        {p.unidade} · {p.servico?.toLowerCase()}
-      </Texto>
+      {sessao.unidade || sessao.servico ? (
+        <Texto>{[sessao.unidade, sessao.servico?.toLowerCase()].filter(Boolean).join(" · ")}</Texto>
+      ) : null}
     </Cartao>
   );
 
   async function enviar() {
-    if (!completas(r) || enviandoRef.current) return;
+    if (!completas(r) || enviandoRef.current || !quem) return;
     enviandoRef.current = true;
     setEnviando(true);
     setErro(null);
@@ -104,7 +155,7 @@ export default function Inscricao() {
       );
       setPasso({ tipo: res.estado === "na_reserva" ? "reserva" : "inscrito" });
     } catch (err) {
-      setErro(mensagemDoErro(err));
+      setErro({ texto: mensagemDoErro(err), duplicada: err instanceof ErroDaApi && err.erro === "duplicada" });
     } finally {
       enviandoRef.current = false;
       setEnviando(false);
@@ -123,90 +174,194 @@ export default function Inscricao() {
     void enviar();
   }
 
+  // "para quem é" + uma pergunta por tela; o resultado enche a barra.
+  const total = 1 + telas.length;
+
   if (passo.tipo === "inscrito")
     return (
-      <Tela voltar={false}>
+      <Tela
+        progresso={{ atual: total, total }}
+        aoVoltar={irParaMinhaFila}
+        acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
+      >
         <Mascote tamanho={140} />
         <Faixa tipo="ok" titulo="você está inscrito!" texto="a vaga é sua. não precisa confirmar." />
         {resumo}
         <TextoSuave>
-          {p.aberta === "1"
+          {sessao.aberta
             ? "a fila de hoje já começou: sua senha e a posição já estão em minha fila."
             : "no dia, avisamos quando a fila começar e a hora de sair de casa."}
         </TextoSuave>
-        <Espaco />
-        <Botao texto="ver minha fila" onPress={() => router.dismissTo("/inicio")} />
       </Tela>
     );
 
   if (passo.tipo === "reserva")
     return (
-      <Tela voltar={false}>
+      <Tela
+        progresso={{ atual: total, total }}
+        aoVoltar={irParaMinhaFila}
+        acoes={<Botao texto="ok, entendi" onPress={irParaMinhaFila} />}
+      >
         <Faixa
           tipo="aviso"
           titulo="as vagas acabaram"
           texto="você está na lista de reserva desta data."
-          style={{ marginTop: 24 }}
+          style={{ marginTop: 8 }}
         />
         {resumo}
         <TextoSuave>se alguém desistir, a vaga é sua e avisamos na hora.</TextoSuave>
-        <Espaco />
-        <Botao texto="ok" onPress={() => router.dismissTo("/inicio")} />
       </Tela>
     );
 
   if (passo.tipo === "emergencia")
     return (
-      <Tela voltar={false} fundo={COR.dangerBg}>
+      <Tela
+        voltar={false}
+        fundo={COR.dangerBg}
+        acoes={
+          <>
+            <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="perigoCheio" />
+            <Botao
+              texto="voltar às perguntas"
+              tipo="secundario"
+              onPress={() => setPasso({ tipo: "pergunta", indice: 0 })}
+            />
+          </>
+        }
+      >
         <Faixa
           tipo="perigo"
           titulo="isso pode ser uma emergência"
           texto="não espere na fila."
-          style={{ backgroundColor: "#ffffff", marginTop: 24 }}
+          style={{ backgroundColor: "#ffffff", marginTop: 8 }}
         />
         <Titulo style={{ color: COR.dangerInk }}>procure atendimento agora</Titulo>
         <Texto>ligue para o SAMU ou vá ao pronto-socorro mais perto.</Texto>
-        <Espaco />
-        <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="perigoCheio" />
-        <Botao
-          texto="voltar às perguntas"
-          tipo="secundario"
-          onPress={() => setPasso({ tipo: "pergunta", indice: 0 })}
-        />
       </Tela>
     );
 
   if (passo.tipo === "apoio")
     return (
-      <Tela voltar={false}>
-        <Titulo style={{ marginTop: 24 }}>você não está sozinho</Titulo>
+      <Tela
+        voltar={false}
+        acoes={
+          <>
+            <BotaoLigar texto="ligar 188 · CVV" numero="188" />
+            <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="secundario" />
+            <LinkBotao texto="continuar a inscrição" onPress={() => setPasso({ tipo: "pergunta", indice: 1 })} />
+          </>
+        }
+      >
+        <Titulo style={{ marginTop: 8 }}>você não está sozinho</Titulo>
         <Texto>conversar ajuda. o CVV atende 24 horas, de graça e em sigilo.</Texto>
-        <BotaoLigar texto="ligar 188 · CVV" numero="188" />
-        <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="secundario" />
-        <Espaco />
         <Pequeno>
           você também pode continuar a inscrição. a equipe da unidade vai saber que você precisa de atenção.
         </Pequeno>
-        <LinkBotao texto="continuar a inscrição" onPress={() => setPasso({ tipo: "pergunta", indice: 1 })} />
       </Tela>
     );
 
   if (passo.tipo === "quem") {
-    const errosOutra = quem === "outra" ? erroDaOutraPessoa(outra) : {};
+    // Pelo link, a sessão pode já ter fechado ou não ser aberta ao público.
+    if (daAgenda === "fora")
+      return (
+        <Tela acoes={<Botao texto="ver os atendimentos" onPress={() => router.replace("/agenda")} />}>
+          <Faixa
+            tipo="aviso"
+            titulo="este atendimento não está aberto"
+            texto="as inscrições acabaram ou ele é só por agendamento da unidade."
+            style={{ marginTop: 8 }}
+          />
+          <TextoSuave>veja os próximos atendimentos do seu município.</TextoSuave>
+        </Tela>
+      );
+
+    const escolhido = quem === "eu" && donoInscrito ? null : quem;
+    const errosOutra = escolhido === "outra" ? erroDaOutraPessoa(outra) : {};
+    const outraRepetida = escolhido === "outra" && outraPessoaJaInscrita(minhas, sessao.servicoId, outra.nome);
     const mostrar = (k: keyof typeof errosOutra) => (tentouQuem ? errosOutra[k] : undefined);
-    const contaPronta = quem === "outra" || Boolean(s.conta?.nascimento);
+    const contaPronta = escolhido === "outra" || (escolhido === "eu" && Boolean(s.conta?.nascimento));
+    // Sem as inscrições da conta, só deixa seguir se a busca falhou (a API ainda recusa a duplicada).
+    const pode = contaPronta && (carregado || erroAoCarregar !== null) && !outraRepetida;
     return (
-      <Tela>
+      <Tela
+        progresso={{ atual: 1, total }}
+        // Aberta pelo link, não há tela anterior: o X leva aos atendimentos.
+        aoVoltar={() => (router.canGoBack() ? router.back() : router.replace("/agenda"))}
+        acoes={
+          <Botao
+            texto="continuar"
+            desativado={!pode}
+            onPress={() => {
+              setTentouQuem(true);
+              if (Object.keys(errosOutra).length === 0 && !outraRepetida) {
+                setQuem(escolhido);
+                avancar();
+              }
+            }}
+          />
+        }
+      >
         <Titulo>para quem é o atendimento?</Titulo>
-        <Opcao texto="para mim" unica marcada={quem === "eu"} onPress={() => setQuem("eu")} />
-        <Opcao texto="para outra pessoa" unica marcada={quem === "outra"} onPress={() => setQuem("outra")} />
-        {quem === "outra" ? (
+        {sessao.inicio || sessao.servico ? resumo : null}
+        {erroAoCarregar ? (
+          <Faixa
+            tipo="perigo"
+            titulo={erroAoCarregar.titulo}
+            texto={erroAoCarregar.texto}
+            acao={{
+              texto: "tentar de novo",
+              carregando: tentando,
+              onPress: async () => {
+                setTentando(true);
+                await carregar();
+                setTentando(false);
+              },
+            }}
+          />
+        ) : null}
+        {!carregado && !erroAoCarregar ? (
+          <Carregando texto="conferindo suas inscrições…" />
+        ) : (
+          <>
+            {donoInscrito ? (
+              <View
+                accessible
+                accessibilityRole="radio"
+                accessibilityState={{ disabled: true, checked: false }}
+                accessibilityLabel="para mim. indisponível: você já está inscrito neste serviço."
+                style={{
+                  gap: 8,
+                  padding: 16,
+                  borderRadius: 16,
+                  borderWidth: 2,
+                  borderColor: COR.linha,
+                  backgroundColor: COR.surfaceMuted,
+                }}
+              >
+                <Text style={{ fontFamily: FONTE.bold, fontSize: 18, lineHeight: 24, color: COR.inkMuted }}>
+                  para mim
+                </Text>
+                <Selo texto="você já está inscrito" tom="verde" />
+                <Pequeno>cada pessoa entra uma vez em cada serviço. sua inscrição está em minha fila.</Pequeno>
+              </View>
+            ) : (
+              <Opcao texto="para mim" unica marcada={escolhido === "eu"} onPress={() => setQuem("eu")} />
+            )}
+            <Opcao texto="para outra pessoa" unica marcada={escolhido === "outra"} onPress={() => setQuem("outra")} />
+          </>
+        )}
+        {escolhido === "outra" ? (
           <View style={{ gap: 12 }}>
             <Campo
               rotulo="nome de quem será atendido"
               value={outra.nome}
               onChangeText={(t) => setOutra({ ...outra, nome: t })}
-              erro={mostrar("nome")}
+              autoCapitalize="words"
+              erro={
+                outraRepetida
+                  ? "esta pessoa já está inscrita neste serviço pela sua conta. veja em minha fila."
+                  : mostrar("nome")
+              }
             />
             <Campo
               rotulo="data de nascimento"
@@ -229,15 +384,6 @@ export default function Inscricao() {
             <Pequeno>você recebe os avisos e leva a pessoa no dia.</Pequeno>
           </View>
         ) : null}
-        <Espaco />
-        <Botao
-          texto="continuar"
-          desativado={!contaPronta}
-          onPress={() => {
-            setTentouQuem(true);
-            if (Object.keys(errosOutra).length === 0) avancar();
-          }}
-        />
       </Tela>
     );
   }
@@ -252,6 +398,7 @@ export default function Inscricao() {
     tela === "grupos" && quem === "outra" ? "alguma destas se aplica a quem vai ser atendido?" : pergunta.pergunta;
 
   function marcar(op: string) {
+    setErro(null);
     if (!pergunta.multipla)
       return setR({ ...r, [tela]: op, ...(tela === "motivo" && op !== "novo" ? { gravidade: null } : {}) });
     const nova = alternarOpcao(nenhum[tela] ? ["nenhum"] : lista, op, "nenhum");
@@ -262,10 +409,25 @@ export default function Inscricao() {
   // Voltar vai à pergunta anterior (ou a "para quem é"), sem perder as respostas.
   const indice = passo.indice;
   return (
-    <Tela aoVoltar={() => setPasso(indice > 0 ? { tipo: "pergunta", indice: indice - 1 } : { tipo: "quem" })}>
-      <Progresso>
-        pergunta {passo.indice + 1} de {telas.length}
-      </Progresso>
+    <Tela
+      progresso={{ atual: indice + 2, total }}
+      aoVoltar={() => {
+        setErro(null);
+        setPasso(indice > 0 ? { tipo: "pergunta", indice: indice - 1 } : { tipo: "quem" });
+      }}
+      acoes={
+        erro?.duplicada ? (
+          <Botao texto="ver minha fila" onPress={irParaMinhaFila} />
+        ) : (
+          <Botao
+            texto={ultima ? "concluir inscrição" : "continuar"}
+            onPress={avancar}
+            desativado={!respondida}
+            carregando={enviando}
+          />
+        )
+      }
+    >
       <Titulo>{titulo}</Titulo>
       {pergunta.multipla ? <Pequeno>marque todos que tiver.</Pequeno> : null}
       {pergunta.opcoes.map(([id, texto]) => (
@@ -287,13 +449,13 @@ export default function Inscricao() {
           texto="leve um documento que comprove. declarar o que não é verdade pode ser crime."
         />
       ) : null}
-      {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
-      <Botao
-        texto={ultima ? "concluir inscrição" : "continuar"}
-        onPress={avancar}
-        desativado={!respondida}
-        carregando={enviando}
-      />
+      {erro ? (
+        <Faixa
+          tipo="perigo"
+          titulo={erro.duplicada ? "já inscrito neste serviço" : "não deu para concluir"}
+          texto={erro.texto}
+        />
+      ) : null}
     </Tela>
   );
 }

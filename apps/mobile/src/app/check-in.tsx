@@ -2,8 +2,8 @@ import type { CheckIn } from "@fila-saude/schemas/fila";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Text, View } from "react-native";
-import { Botao, COR, Espaco, Faixa, FONTE, LinkBotao, Tela, TextoSuave } from "@/components/ui";
+import { ActivityIndicator, Linking, Text, View } from "react-native";
+import { Botao, COR, Faixa, FONTE, LinkBotao, Tela, TextoSuave } from "@/components/ui";
 import { deParametros, lerQr, type QrLido, textoDoCheckIn } from "@/lib/check-in";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
@@ -65,34 +65,37 @@ export default function CheckInPeloQr() {
 
   if (s.pronto && !s.token)
     return (
-      <Tela voltar={false}>
+      <Tela
+        voltar={false}
+        acoes={
+          <>
+            <Botao texto="entrar" onPress={() => router.replace("/entrar")} />
+            <LinkBotao texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
+          </>
+        }
+      >
         <Faixa
           tipo="aviso"
           titulo="entre na sua conta"
           texto="para confirmar a chegada, entre no app e leia o QR da TV de novo."
           style={{ marginTop: 8 }}
         />
-        <Espaco />
-        <Botao texto="entrar" onPress={() => router.replace("/entrar")} />
-        <LinkBotao texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
       </Tela>
     );
 
   if (estado.tipo === "fim" && estado.resultado === "sem_senha")
     return (
-      <Tela voltar={false}>
+      <Tela voltar={false} acoes={<Botao texto="ver minha fila" onPress={verFila} />}>
         <Faixa tipo="info" titulo="nenhuma senha aqui agora" texto={estado.linhas.join(" ")} style={{ marginTop: 8 }} />
         <TextoSuave>
           confira se é a unidade certa e se o seu atendimento é hoje. na dúvida, fale com a recepção.
         </TextoSuave>
-        <Espaco />
-        <Botao texto="ver minha fila" onPress={verFila} />
       </Tela>
     );
 
   if (estado.tipo === "fim" && estado.resultado === "presente")
     return (
-      <Tela voltar={false}>
+      <Tela voltar={false} acoes={<Botao texto="ver minha fila" onPress={verFila} />}>
         <Faixa
           tipo="ok"
           titulo="você está na unidade"
@@ -102,14 +105,12 @@ export default function CheckInPeloQr() {
         {estado.linhas.map((l) => (
           <TextoSuave key={l}>{l}</TextoSuave>
         ))}
-        <Espaco />
-        <Botao texto="ver minha fila" onPress={verFila} />
       </Tela>
     );
 
   if (estado.tipo === "fim")
     return (
-      <Tela voltar={false}>
+      <Tela voltar={false} acoes={<Botao texto="ver minha fila" onPress={verFila} />}>
         <Faixa
           tipo="aviso"
           grande
@@ -121,24 +122,45 @@ export default function CheckInPeloQr() {
           <TextoSuave key={l}>{l}</TextoSuave>
         ))}
         <TextoSuave>só na primeira vez. depois disso, é só ler o QR.</TextoSuave>
-        <Espaco />
-        <Botao texto="ver minha fila" onPress={verFila} />
       </Tela>
     );
 
   if (estado.tipo === "erro")
     return (
-      <Tela voltar={false}>
+      <Tela
+        voltar={false}
+        acoes={
+          <>
+            <Botao texto="ler de novo" onPress={deNovo} />
+            <Botao texto="ver minha fila" tipo="secundario" onPress={verFila} />
+          </>
+        }
+      >
         <Faixa tipo="perigo" titulo="não deu certo" texto={estado.texto} style={{ marginTop: 8 }} />
-        <Espaco />
-        <Botao texto="ler de novo" onPress={deNovo} />
-        <Botao texto="ver minha fila" tipo="secundario" onPress={verFila} />
+        <TextoSuave>se continuar dando errado, peça ajuda na recepção: eles marcam a sua presença.</TextoSuave>
       </Tela>
     );
 
   const enviando = estado.tipo === "enviando" || (!linkUsado.current && Boolean(deParametros(params)));
   return (
-    <Tela fundo={COR.primary900} topo={false}>
+    <Tela
+      fundo={COR.primary900}
+      topo={false}
+      acoes={
+        <>
+          {!permissao?.granted ? (
+            // Negou de vez: o pedido não aparece mais; só os ajustes do celular liberam a câmera.
+            permissao && !permissao.canAskAgain ? (
+              <Botao texto="liberar a câmera nos ajustes" onPress={() => void Linking.openSettings()} />
+            ) : (
+              <Botao texto="permitir a câmera" onPress={() => void pedirPermissao()} />
+            )
+          ) : null}
+          <LinkBotao texto={naoLe ? "esconder ajuda" : "não consigo ler"} onPress={() => setNaoLe(!naoLe)} />
+          <LinkBotao texto="voltar" onPress={() => (router.canGoBack() ? router.back() : verFila())} />
+        </>
+      }
+    >
       <Text style={{ fontFamily: FONTE.extra, fontSize: 28, lineHeight: 34, marginTop: 8, ...branco }}>
         {enviando ? "confirmando sua chegada…" : "aponte para o QR da TV"}
       </Text>
@@ -168,19 +190,15 @@ export default function CheckInPeloQr() {
               if (qr) void enviar(qr);
             }}
           />
+        ) : enviando ? (
+          <ActivityIndicator size="large" color="#ffffff" />
         ) : null}
       </View>
-      <Espaco />
-      {!permissao?.granted ? (
-        <Botao texto="permitir a câmera" tipo="branco" onPress={() => void pedirPermissao()} />
-      ) : null}
-      <LinkBotao texto="não consigo ler" cor="#ffffff" onPress={() => setNaoLe(!naoLe)} />
       {naoLe ? (
         <Text style={{ fontFamily: FONTE.regular, fontSize: 18, lineHeight: 28, textAlign: "center", ...branco }}>
           peça ajuda na recepção. eles marcam a sua presença.
         </Text>
       ) : null}
-      <LinkBotao texto="voltar" cor="#ffffff" onPress={() => (router.canGoBack() ? router.back() : verFila())} />
     </Tela>
   );
 }
