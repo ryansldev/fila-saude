@@ -83,6 +83,13 @@ describe("tela da TV (RN-TV-03, RN-TV-05, RN-TV-07)", () => {
     expect(JSON.stringify(r)).not.toMatch(/Ana|Bruno|Carla/);
   });
 
+  it("RN-CHAM-02: rechamar repete o anúncio na TV", async () => {
+    await c.pedir("POST", `/v1/painel/estacoes/${c.e1}/rechamar`, c.enfermeiro, {});
+    const r = (await tela()).corpo;
+    expect(r.chamadas[0]).toMatchObject({ senha: "C-001", destino: "Sala 1" });
+    expect(new Set(r.chamadas.map((x: { id: string }) => x.id)).size).toBe(r.chamadas.length);
+  });
+
   it("revogada: a TV perde o acesso e volta a se registrar", async () => {
     expect((await c.pedir("DELETE", `/v1/painel/tvs/${tvId}`, recepcao)).status).toBe(403);
     expect((await c.pedir("DELETE", `/v1/painel/tvs/${tvId}`, c.admin)).status).toBe(200);

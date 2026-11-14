@@ -125,7 +125,11 @@ describe("RN-CHAM-01/02: chamar, encerrar a chamada anterior", () => {
     const r = rechamar(d, { estacaoId: "e1" }, T + 3 * MIN);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.estado).toEqual(d);
+    // A chamada guarda o horário da rechamada para a TV anunciar de novo; o horário da chamada não muda.
+    expect(r.estado).toEqual({
+      ...d,
+      chamadas: d.chamadas.map((c) => (c.itemId === "ana" ? { ...c, rechamadas: [T + 3 * MIN] } : c)),
+    });
     expect(r.eventos).toEqual([
       {
         tipo: "rechamado",

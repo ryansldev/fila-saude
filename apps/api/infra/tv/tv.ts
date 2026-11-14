@@ -119,12 +119,15 @@ export async function telaDaTv(db: DbDoTenant, slug: string, token: string | nul
 
   const chamadas = abertas
     .flatMap(({ dia }) =>
-      dia.chamadas.map((c) => ({
-        id: `${c.itemId}:${c.em}`,
-        senha: dia.itens.find((i) => i.id === c.itemId)?.senha ?? "",
-        destino: nomes.get(c.estacaoId) ?? "",
-        em: c.em,
-      })),
+      // RN-CHAM-02: cada rechamada é um anúncio novo.
+      dia.chamadas.flatMap((c) =>
+        [c.em, ...(c.rechamadas ?? [])].map((em) => ({
+          id: `${c.itemId}:${em}`,
+          senha: dia.itens.find((i) => i.id === c.itemId)?.senha ?? "",
+          destino: nomes.get(c.estacaoId) ?? "",
+          em,
+        })),
+      ),
     )
     .sort((a, b) => b.em - a.em)
     .slice(0, ULTIMAS)

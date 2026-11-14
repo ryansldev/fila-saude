@@ -155,7 +155,11 @@ export function rechamar(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<Dia
   const achado = chamadoNaEstacao(dia, cmd.estacaoId);
   if (!achado.ok) return falha(achado.erro);
   if (transicionar(TRANSICOES_ITEM, achado.item.estado, "Rechamar") !== "(mesmo)") return falha("transicao_proibida");
-  return ok(dia, [
+  const ultima = dia.chamadas.findLastIndex((c) => c.itemId === achado.item.id);
+  const chamadas = dia.chamadas.map((c, i) =>
+    i === ultima ? { ...c, rechamadas: [...(c.rechamadas ?? []), agora] } : c,
+  );
+  return ok({ ...dia, chamadas }, [
     { tipo: "rechamado", ...base(dia, achado.item, cmd.estacaoId), dados: { senha: achado.item.senha, em: agora } },
   ]);
 }

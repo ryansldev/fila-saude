@@ -49,7 +49,8 @@ export type ItemFila = {
 
 export type Estacao = { id: string; etapa: Etapa; servicos: string[]; aberta: boolean; chamadoItemId: string | null };
 
-export type Chamada = { itemId: string; etapa: Etapa; estacaoId: string; em: number };
+/** `rechamadas`: horários de "Rechamar" (RN-CHAM-02), para a TV repetir o anúncio; `em` não muda. */
+export type Chamada = { itemId: string; etapa: Etapa; estacaoId: string; em: number; rechamadas?: number[] };
 
 export type DiaSessao = {
   sessaoId: string;
