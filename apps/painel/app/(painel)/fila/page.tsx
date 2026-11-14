@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
 import {
   acoesDaFila,
-  botoesDePresenca,
-  ordenarFila,
+  agruparFila,
+  contadoresDaFila,
   rotuloDoEstado,
   textoDasPendencias,
   textoDoDocumento,
@@ -150,70 +150,220 @@ export default function FilaDoDia() {
             ) : null}
           </div>
           {estado === "planejada" ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               As senhas saem quando a sessão abrir. Inscritos até agora: {fila.dado.sessao.ocupadas}.
             </p>
           ) : (
-            <Tabela cabecalho={["Senha", "Nome", "Etapa", "Situação", ""]}>
-              {ordenarFila(fila.dado.itens).map((i) => (
-                <tr key={i.id}>
-                  <td className="py-2 pr-4 font-mono font-semibold">{i.senha}</td>
-                  <td className="py-2 pr-4">
-                    {i.nome}
-                    {i.prioridade ? <span className="ml-2 text-xs text-primary">prioridade</span> : null}
-                    {i.estado === "remoto" && pode.presenca ? (
-                      <span className="block text-xs text-gray-500">{textoDoDocumento(i.documento)}</span>
-                    ) : null}
-                  </td>
-                  <td className="py-2 pr-4">{i.etapa === "triagem" ? "Triagem" : "Atendimento"}</td>
-                  <td className="py-2 pr-4">
-                    {rotuloDoEstado(i.estado)}
-                    {i.pulos > 0 ? ` · ${i.pulos} pulo(s)` : ""}
-                    {i.estado === "remoto" && textoDasPendencias(i.pendencias) ? (
-                      <span className="block text-xs text-orange-700">{textoDasPendencias(i.pendencias)}</span>
-                    ) : null}
-                  </td>
-                  <td className="py-2">
-                    {(() => {
-                      const b = botoesDePresenca(i, pode.presenca);
-                      if (!b) return null;
-                      return (
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => presenca({ entradaId: i.entradaId, resultado: "confere" })}
-                          >
-                            {b.marcar}
-                          </Button>
-                          {b.naoConfere ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={async () => {
-                                // AD-039: recusar tira da fila de hoje, sem falta; sempre com motivo.
-                                const motivo = await perguntar({
-                                  titulo: "Documentos não conferem",
-                                  descricao: "O paciente sai da fila de hoje, sem falta.",
-                                  rotulo: "Motivo",
-                                  acao: "Não confere",
-                                });
-                                if (!motivo) return;
-                                await presenca({ entradaId: i.entradaId, resultado: "nao_confere", motivo });
-                              }}
-                            >
-                              Não confere
-                            </Button>
-                          ) : null}
-                        </div>
-                      );
-                    })()}
-                  </td>
-                </tr>
-              ))}
-            </Tabela>
+            <FilaPorSituacao
+              itens={fila.dado.itens}
+              estacoes={hoje.dado?.estacoes ?? []}
+              podePresenca={pode.presenca}
+              aoMarcar={(entradaId) => presenca({ entradaId, resultado: "confere" })}
+              aoRecusar={async (entradaId) => {
+                // AD-039: recusar tira da fila de hoje, sem falta; sempre com motivo.
+                const motivo = await perguntar({
+                  titulo: "Documentos não conferem",
+                  descricao: "O paciente sai da fila de hoje, sem falta.",
+                  rotulo: "Motivo",
+                  acao: "Não confere",
+                });
+                if (motivo) await presenca({ entradaId, resultado: "nao_confere", motivo });
+              }}
+            />
           )}
         </>
+      ) : null}
+    </div>
+  );
+}
+
+type Item = FilaDaSessao["itens"][number];
+
+/** Números do topo: o que a equipe olha primeiro. */
+function Contadores({ itens }: { itens: Item[] }) {
+  const c = contadoresDaFila(itens);
+  const blocos = [
+    { rotulo: "Na unidade", valor: c.naUnidade, destaque: true },
+    { rotulo: "A caminho", valor: c.aCaminho },
+    { rotulo: "Chamados agora", valor: c.chamados },
+    { rotulo: "Atendidos", valor: c.atendidos },
+  ];
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {blocos.map((b) => (
+        <div
+          key={b.rotulo}
+          className={
+            b.destaque
+              ? "rounded-2xl bg-primary px-5 py-4 text-white shadow-[0_3px_0_0_var(--color-primary-700)]"
+              : "rounded-2xl border border-slate-200 bg-white px-5 py-4"
+          }
+        >
+          <p className={b.destaque ? "text-sm font-semibold text-white/80" : "text-sm font-semibold text-slate-500"}>
+            {b.rotulo}
+          </p>
+          <p className={b.destaque ? "text-4xl font-extrabold" : "text-4xl font-extrabold text-slate-900"}>{b.valor}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Grupo({
+  titulo,
+  descricao,
+  itens,
+  tom = "neutro",
+  children,
+}: {
+  titulo: string;
+  descricao: string;
+  itens: Item[];
+  tom?: "alerta" | "chamado" | "neutro";
+  children: (i: Item) => React.ReactNode;
+}) {
+  if (itens.length === 0) return null;
+  const borda = tom === "alerta" ? "border-amber-300" : tom === "chamado" ? "border-emerald-300" : "border-slate-200";
+  return (
+    <section className={`overflow-hidden rounded-2xl border bg-white ${borda}`}>
+      <header className="flex items-baseline justify-between gap-4 border-b border-slate-100 px-6 py-3.5">
+        <div>
+          <h2 className="font-bold text-slate-900">
+            {titulo} <span className="ml-1 font-semibold text-slate-400">{itens.length}</span>
+          </h2>
+          <p className="text-sm text-slate-500">{descricao}</p>
+        </div>
+      </header>
+      <ul className="divide-y divide-slate-100">
+        {itens.map((i) => (
+          <li key={i.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-6 py-3">
+            {children(i)}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Senha grande, nome e o que importa da pessoa naquele grupo. */
+function Pessoa({ i, extra }: { i: Item; extra?: React.ReactNode }) {
+  return (
+    <>
+      <span className="w-20 shrink-0 rounded-lg bg-slate-100 py-1 text-center font-mono text-lg font-extrabold text-slate-800">
+        {i.senha}
+      </span>
+      <div className="flex min-w-48 flex-1 flex-col">
+        <span className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
+          {i.nome}
+          {i.prioridade ? (
+            <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-bold text-primary-600">
+              prioridade
+            </span>
+          ) : null}
+          {i.pulos > 0 ? (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">
+              {i.pulos === 1 ? "1 pulo" : `${i.pulos} pulos`}
+            </span>
+          ) : null}
+        </span>
+        <span className="text-sm text-slate-500">
+          {i.etapa === "triagem" ? "Triagem" : "Atendimento"}
+          {extra ? <> · {extra}</> : null}
+        </span>
+      </div>
+    </>
+  );
+}
+
+function FilaPorSituacao({
+  itens,
+  estacoes,
+  podePresenca,
+  aoMarcar,
+  aoRecusar,
+}: {
+  itens: Item[];
+  estacoes: { id: string; nome: string }[];
+  podePresenca: boolean;
+  aoMarcar: (entradaId: string) => void;
+  aoRecusar: (entradaId: string) => void;
+}) {
+  const g = agruparFila(itens);
+  const nomeDaEstacao = (id: string | null) => estacoes.find((e) => e.id === id)?.nome ?? "estação";
+  if (itens.length === 0)
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500">
+        Ninguém na fila desta sessão ainda. Quem se inscrever pelo app aparece aqui.
+      </div>
+    );
+  return (
+    <div className="flex flex-col gap-5">
+      <Contadores itens={itens} />
+      <Grupo
+        titulo="Esperando a recepção"
+        descricao="Leram o QR e precisam conferir os documentos. Só entram na fila da unidade depois disso."
+        itens={g.recepcao}
+        tom="alerta"
+      >
+        {(i) => (
+          <>
+            <Pessoa
+              i={i}
+              extra={(textoDasPendencias(i.pendencias) ?? "conferir os documentos").replace(/^Passe na recepção: /, "")}
+            />
+            {podePresenca ? (
+              <>
+                <span className="text-sm text-slate-600">{textoDoDocumento(i.documento)}</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => aoRecusar(i.entradaId)}>
+                    Não confere
+                  </Button>
+                  <Button size="sm" onClick={() => aoMarcar(i.entradaId)}>
+                    Confere, marcar presença
+                  </Button>
+                </div>
+              </>
+            ) : null}
+          </>
+        )}
+      </Grupo>
+      <Grupo titulo="Chamados agora" descricao="Indo para a sala." itens={g.chamados} tom="chamado">
+        {(i) => (
+          <Pessoa i={i} extra={<span className="font-semibold text-emerald-700">{nomeDaEstacao(i.estacaoId)}</span>} />
+        )}
+      </Grupo>
+      <Grupo titulo="Na unidade" descricao="Esperando na sala de espera, pela ordem da fila." itens={g.naUnidade}>
+        {(i) => <Pessoa i={i} />}
+      </Grupo>
+      <Grupo
+        titulo="A caminho"
+        descricao="Esperando em casa. Quem chegar sem o app ou sem conseguir ler o QR, a recepção marca aqui."
+        itens={g.aCaminho}
+      >
+        {(i) => (
+          <>
+            <Pessoa i={i} extra={podePresenca ? textoDoDocumento(i.documento) : undefined} />
+            {podePresenca ? (
+              <Button size="sm" variant="secondary" onClick={() => aoMarcar(i.entradaId)}>
+                Marcar presença
+              </Button>
+            ) : null}
+          </>
+        )}
+      </Grupo>
+      {g.encerrados.length > 0 ? (
+        <details className="group rounded-2xl border border-slate-200 bg-white">
+          <summary className="cursor-pointer list-none px-6 py-3.5 font-bold text-slate-700">
+            Já saíram da fila <span className="ml-1 font-semibold text-slate-400">{g.encerrados.length}</span>
+          </summary>
+          <ul className="divide-y divide-slate-100 border-t border-slate-100">
+            {g.encerrados.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center gap-4 px-6 py-3 text-slate-500">
+                <Pessoa i={i} extra={rotuloDoEstado(i.estado)} />
+              </li>
+            ))}
+          </ul>
+        </details>
       ) : null}
     </div>
   );

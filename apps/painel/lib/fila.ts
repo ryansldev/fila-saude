@@ -89,3 +89,30 @@ export function estacoesQueOpera<E extends { etapa: "triagem" | "atendimento" }>
   const etapas = new Set(c.map((r) => ETAPA_DA_RESSALVA[r]));
   return estacoes.filter((e) => etapas.has(e.etapa));
 }
+
+type ItemComEstado = { senha: string; estado: string; pendencias: string[] };
+
+/**
+ * Fila do dia por situação, na ordem em que a equipe age: quem precisa da recepção, quem foi chamado,
+ * quem está na unidade, quem está a caminho e, por último, quem já saiu. Dentro de cada grupo, pela senha.
+ */
+export function agruparFila<T extends ItemComEstado>(itens: T[]) {
+  const porSenha = (l: T[]) => [...l].sort((a, b) => a.senha.localeCompare(b.senha));
+  return {
+    recepcao: porSenha(itens.filter((i) => i.estado === "remoto" && i.pendencias.length > 0)),
+    chamados: porSenha(itens.filter((i) => i.estado === "chamado")),
+    naUnidade: porSenha(itens.filter((i) => i.estado === "presente")),
+    aCaminho: porSenha(itens.filter((i) => i.estado === "remoto" && i.pendencias.length === 0)),
+    encerrados: porSenha(itens.filter((i) => !["remoto", "presente", "chamado"].includes(i.estado))),
+  };
+}
+
+/** Números do topo da fila do dia. */
+export function contadoresDaFila(itens: ItemComEstado[]) {
+  return {
+    naUnidade: itens.filter((i) => i.estado === "presente").length,
+    aCaminho: itens.filter((i) => i.estado === "remoto").length,
+    chamados: itens.filter((i) => i.estado === "chamado").length,
+    atendidos: itens.filter((i) => i.estado === "atendido_na_etapa").length,
+  };
+}

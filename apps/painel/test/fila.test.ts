@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   acoesDaFila,
+  agruparFila,
   botoesDePresenca,
+  contadoresDaFila,
   cronometro,
   estacoesQueOpera,
   ordenarFila,
@@ -88,5 +90,31 @@ describe("estação: só as que o perfil opera (PD-46), revisão 2026-11-13", ()
       "a1",
     ]);
     expect(estacoesQueOpera(ests, [{ perfil: "enfermeiro", unidadeId: "u2" }], "u1")).toEqual([]);
+  });
+});
+
+describe("fila do dia por situação (redesenho 2026-11-13)", () => {
+  const it_ = (senha: string, estado: string, pendencias: string[] = []) => ({ senha, estado, pendencias });
+  const itens = [
+    it_("C-005", "remoto"),
+    it_("C-002", "presente"),
+    it_("C-004", "remoto", ["conta"]),
+    it_("C-001", "chamado"),
+    it_("C-003", "atendido_na_etapa"),
+    it_("C-006", "saiu_da_fila"),
+    it_("C-007", "presente"),
+  ];
+
+  it("separa quem precisa da recepção, os chamados, quem está na unidade, a caminho e quem já saiu", () => {
+    const g = agruparFila(itens);
+    expect(g.recepcao.map((i) => i.senha)).toEqual(["C-004"]);
+    expect(g.chamados.map((i) => i.senha)).toEqual(["C-001"]);
+    expect(g.naUnidade.map((i) => i.senha)).toEqual(["C-002", "C-007"]);
+    expect(g.aCaminho.map((i) => i.senha)).toEqual(["C-005"]);
+    expect(g.encerrados.map((i) => i.senha)).toEqual(["C-003", "C-006"]);
+  });
+
+  it("contadores do topo: na unidade, a caminho (inclui quem espera a recepção), chamados e atendidos", () => {
+    expect(contadoresDaFila(itens)).toEqual({ naUnidade: 2, aCaminho: 2, chamados: 1, atendidos: 1 });
   });
 });
