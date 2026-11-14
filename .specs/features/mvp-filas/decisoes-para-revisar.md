@@ -159,3 +159,32 @@ Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](plan
 | G7 | Varredura e envio (T2.4 enxuta) | Dentro do processo da API, a cada 60 s; trava consultiva na geração; envio com `SKIP LOCKED`; 5 tentativas com espera 2, 4, 8, 16 min; token recusado pela Expo (`DeviceNotRegistered`) é apagado. Sem teste de duas instâncias ao mesmo tempo | Processo próprio do worker (T2.4 completa) | Médio em produção: vira processo próprio antes do piloto |
 | G8 | Onde fica o token de push | Central (`dispositivo_push`), entrou na lista de colunas permitidas do INV-11 (não é dado clínico nem da fila); o mesmo aparelho logado em outra conta passa a avisar só a conta nova | No município | Baixo |
 | G9 | Destaque da TV | Lido da config da unidade (`destaqueTvSegundos`, padrão 10 s); a TV consulta a cada 2 s, então o anúncio pode atrasar até 2 s | SSE (D1/D3) | Baixo |
+
+## Revisão de todas as fatias (2026-11-13)
+
+Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, painel, app) acharam cerca de 90 problemas; os confirmados foram corrigidos com teste antes (API 221, painel 92, domínio 336, schemas 63, app 25). Commits `7e9c454`..`dc44b77`.
+
+**Corrigido (principais):** CPF validado (dígitos) no cadastro e na "outra pessoa", no app e na API; nascimento real, não futuro, até 130 anos; app não diz mais "a fila começa às 7h" depois das 7h nem "aguardando início" com a fila andando, só diz "hoje" quando é hoje, não mostra cancelada como "não compareceu" e mostra "hora de sair de casa" quando o push saiu; CPF de outra pessoa não revela nome nem ocupa a vaga dela; sessão sempre encerrável (estação em uso não sai); sessão exige estação que chame; inscrição depois do fim recusada; mais vagas promovem a reserva; "venha agora" não vai para quem já perdeu a vez; "não compareceu" fora do tempo médio; painel sem piscar nem trocar a sessão escolhida; recepção marca presença de qualquer remoto e vê nascimento e CPF mascarado; TV sem depender do relógio dela; 401 volta ao login; sair do app desliga o push do aparelho.
+
+**Provisórios desta revisão:**
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| RV1 | CPF já cadastrado informado de novo | "Outra pessoa": mesma data de nascimento e mesmo primeiro nome (sem acento); "para mim": mesma data. Senão `409 pessoa_divergente`, sem dizer o que diverge | Só a data; ou exigir a recepção | Quem digitou o nome de outro jeito (apelido) precisa corrigir |
+| RV2 | Limite por conta | Até 5 inscrições ativas por conta em cada sessão (`limite_por_conta`) | Captcha (RN-ID-07 completo) | Família grande precisa da recepção |
+| RV3 | Remover estação | Recusado se estiver em sessão planejada ou aberta (`estacao_em_uso`) | Tirar das planejadas automaticamente | Precisa editar as sessões futuras antes |
+| RV4 | Conferência de documento | Painel mostra nascimento e CPF `•••.982.247-••`; "não confere" pede o motivo | CPF inteiro | Baixo |
+| RV5 | Nascimento depois da verificação | A conta verificada não muda a data pelo app (`nascimento_verificado`); só a recepção | Desfazer a verificação | Correção de data pede ida à recepção |
+| RV6 | Sessão aberta esquecida de outro dia | Continua na lista da fila do dia até alguém encerrar; a estação opera a sessão aberta mais recente | Encerrar sozinha (worker) | Precisa encerrar à mão |
+
+**Precisa de você (regra da spec ambígua; o código segue como estava):**
+
+| # | Pergunta | Hoje |
+| --- | --- | --- |
+| RV7 | 80+ vem antes de todos os grupos de prioridade legal, ou só antes dos idosos 60–79? | Antes de todos |
+| RV8 | Quem passa da triagem ao atendimento entra com a janela protegida (fica atrás dos K presentes)? RN-TRI-04 diz que vale a posição original | Entra com a janela |
+| RV9 | Alocar paciente confirma o risco sugerido (vira urgência confirmada)? E1 diz que só o enfermeiro confirma | Confirma |
+| RV10 | Quem perde a vez vai para o fim de todos os presentes, ou só do seu nível de risco/prioridade? | Fim do seu nível |
+| RV11 | "Venha agora" só para urgente confirmado (tabela de notificações) ou para todo remoto sem ninguém na frente (domínio, G3)? | Todo remoto |
+
+**Ficou para depois (anotado, sem correção agora):** triagem confirmar risco pela estação e chave de ordem gravada na chamada (fatia 3); relançar remanejado de serviço regulado e reconciliação da contingência (domínio, fases 5/8); juntar filas de serviços diferentes na mesma estação (RN-EST-03); bloqueio após tentativas de login, captcha e limite de requisições (1B Tasks 13); abrir e encerrar sessão sozinho no horário (worker); fechar/abrir estação no meio do dia; tela de explicação antes de pedir a permissão de notificação; corrida rara entre cancelar sessão e inscrição na reserva, e entre dois gestores se removendo; botões "Alterar/Remover" da equipe para quem o gerente não pode mexer.
