@@ -2,11 +2,14 @@
 
 import { mascararCep, soDigitos } from "@fila-saude/schemas/mascaras";
 import { unidadeEdicaoSchema, unidadeEntradaSchema } from "@fila-saude/schemas/unidade";
+import { PlusIcon } from "lucide-react";
 import { type ComponentProps, type FormEvent, useEffect, useMemo, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { EditorDeHorario } from "@/components/editor-de-horario";
 import { Aviso, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import { opcoesDeFuso } from "@/lib/formularios/fusos";
@@ -51,17 +54,14 @@ const TIPOS = [
   { valor: "upa", rotulo: "UPA" },
 ];
 
-function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
+function NovaUnidade({ aoCriar }: { aoCriar: (nome: string) => void }) {
   const api = useApi();
   const [v, setV] = useState(VAZIA);
   const [horario, setHorario] = useState<Horario>(HORARIO_PADRAO);
   const fusos = useMemo(() => opcoesDeFuso(), []);
   const [erros, setErros] = useState(SEM_ERROS);
-  const [ok, setOk] = useState<string | null>(null);
-
   async function enviar(e: FormEvent) {
     e.preventDefault();
-    setOk(null);
     const problemas = problemasDoHorario(horario);
     if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
     const corpo = {
@@ -83,10 +83,9 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
     try {
       await api.post("/v1/painel/unidades", corpo);
       setErros(SEM_ERROS);
-      setOk(`Unidade ${v.nome} criada.`);
       setV({ ...VAZIA, tipo: v.tipo, fuso: v.fuso });
       setHorario(HORARIO_PADRAO);
-      aoCriar();
+      aoCriar(v.nome);
     } catch (err) {
       setErros(errosDoEnvio(err));
     }
@@ -109,40 +108,37 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
   );
 
   return (
-    <Cartao titulo="Nova unidade">
-      <form onSubmit={enviar} className="grid gap-3 sm:grid-cols-2">
-        {campo("nome", "Nome", { required: true })}
-        <Campo rotulo="Tipo" erro={erros.campos.tipo}>
-          <Selecao valor={v.tipo} opcoes={TIPOS} aoMudar={(tipo) => setV({ ...v, tipo })} />
-        </Campo>
-        {campo("cnes", "Código CNES (opcional)", { inputMode: "numeric", maxLength: 7 })}
-        {campo(
-          "cep",
-          "CEP",
-          { inputMode: "numeric", required: true, maxLength: 9, placeholder: "00000-000" },
-          "endereco.cep",
-        )}
-        {campo("logradouro", "Logradouro", { required: true, placeholder: "Rua, avenida…" }, "endereco.logradouro")}
-        {campo("numero", "Número", { required: true, placeholder: "ou s/n" }, "endereco.numero")}
-        {campo("complemento", "Complemento", {}, "endereco.complemento")}
-        {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
-        <Campo rotulo="Fuso horário" erro={erros.campos.fuso}>
-          <Selecao
-            valor={v.fuso}
-            opcoes={fusos.map((f) => ({ valor: f.fuso, rotulo: f.rotulo }))}
-            aoMudar={(fuso) => setV({ ...v, fuso })}
-          />
-        </Campo>
-        <div className="flex flex-col gap-2 sm:col-span-2">
-          <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
-          <Aviso texto={erros.geral} />
-          <Aviso texto={ok} tipo="ok" />
-          <Button type="submit" className="self-start">
-            Criar unidade
-          </Button>
-        </div>
-      </form>
-    </Cartao>
+    <form onSubmit={enviar} className="grid gap-3 sm:grid-cols-2">
+      {campo("nome", "Nome", { required: true })}
+      <Campo rotulo="Tipo" erro={erros.campos.tipo}>
+        <Selecao valor={v.tipo} opcoes={TIPOS} aoMudar={(tipo) => setV({ ...v, tipo })} />
+      </Campo>
+      {campo("cnes", "Código CNES (opcional)", { inputMode: "numeric", maxLength: 7 })}
+      {campo(
+        "cep",
+        "CEP",
+        { inputMode: "numeric", required: true, maxLength: 9, placeholder: "00000-000" },
+        "endereco.cep",
+      )}
+      {campo("logradouro", "Logradouro", { required: true, placeholder: "Rua, avenida…" }, "endereco.logradouro")}
+      {campo("numero", "Número", { required: true, placeholder: "ou s/n" }, "endereco.numero")}
+      {campo("complemento", "Complemento", {}, "endereco.complemento")}
+      {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
+      <Campo rotulo="Fuso horário" erro={erros.campos.fuso}>
+        <Selecao
+          valor={v.fuso}
+          opcoes={fusos.map((f) => ({ valor: f.fuso, rotulo: f.rotulo }))}
+          aoMudar={(fuso) => setV({ ...v, fuso })}
+        />
+      </Campo>
+      <div className="flex flex-col gap-2 sm:col-span-2">
+        <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
+        <Aviso texto={erros.geral} />
+        <Button type="submit" className="self-start">
+          Criar unidade
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -272,6 +268,9 @@ export default function Unidades() {
   const api = useApi();
   const { itens, erro, recarregar } = useLista<Unidade>("/v1/painel/unidades");
   const [aberta, setAberta] = useState<string | null>(null);
+  const selecionada = itens.find((u) => u.id === aberta) ?? null;
+  const [criando, setCriando] = useState(false);
+  const [ok, setOk] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const confirmar = useConfirmar();
 
@@ -295,36 +294,83 @@ export default function Unidades() {
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
+        <Button onClick={() => setCriando(true)}>
+          <PlusIcon />
+          Adicionar unidade
+        </Button>
+      </div>
       <Aviso texto={erro ?? aviso} />
+      <Aviso texto={ok} tipo="ok" />
       <Tabela cabecalho={["Nome", "Tipo", "CNES", "Endereço", "Horário", ""]}>
         {itens.map((u) => (
-          <tr key={u.id}>
-            <td className="py-2 pr-4 font-medium">{u.nome}</td>
-            <td className="py-2 pr-4 uppercase">{u.tipo}</td>
-            <td className="py-2 pr-4">{u.cnes ?? "—"}</td>
-            <td className="py-2 pr-4">{enderecoEmTexto(u.endereco)}</td>
-            <td className="py-2 pr-4">{resumoDoHorario(u.horario)}</td>
-            <td className="py-2">
-              <Button variant="ghost" size="sm" onClick={() => setAberta(aberta === u.id ? null : u.id)}>
-                {aberta === u.id ? "Fechar" : "Configurar"}
+          <TableRow key={u.id}>
+            <TableCell className="font-medium">{u.nome}</TableCell>
+            <TableCell className="uppercase">{u.tipo}</TableCell>
+            <TableCell>{u.cnes ?? "—"}</TableCell>
+            <TableCell className="whitespace-normal">{enderecoEmTexto(u.endereco)}</TableCell>
+            <TableCell className="whitespace-normal">{resumoDoHorario(u.horario)}</TableCell>
+            <TableCell className="text-right">
+              <Button variant="ghost" size="sm" onClick={() => setAberta(u.id)}>
+                Configurar
               </Button>
               <Button variant="ghost" size="sm" onClick={() => remover(u)}>
                 Remover
               </Button>
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
+        {itens.length === 0 && !erro ? (
+          <TableRow>
+            <TableCell colSpan={6} className="py-8 text-center text-gray-500">
+              Nenhuma unidade ainda. Use "Adicionar unidade".
+            </TableCell>
+          </TableRow>
+        ) : null}
       </Tabela>
-      {itens
-        .filter((u) => u.id === aberta)
-        .map((u) => (
-          <Cartao key={u.id} titulo={`Configuração · ${u.nome}`}>
-            <HorarioDaUnidade unidade={u} aoSalvar={recarregar} />
-            <ConfigDaUnidade unidade={u} aoSalvar={recarregar} />
-          </Cartao>
-        ))}
-      <NovaUnidade aoCriar={recarregar} />
+      {/* Configuração ao lado, sem perder a lista de vista. */}
+      <Sheet open={selecionada !== null} onOpenChange={(abrir) => !abrir && setAberta(null)}>
+        <SheetContent side="right" className="w-full gap-0 sm:max-w-xl">
+          {selecionada ? (
+            <>
+              <SheetHeader className="border-b">
+                <SheetTitle>Configurar · {selecionada.nome}</SheetTitle>
+                <SheetDescription>{enderecoEmTexto(selecionada.endereco)}</SheetDescription>
+              </SheetHeader>
+              <div className="flex flex-col gap-8 overflow-y-auto p-4">
+                <section className="flex flex-col gap-3">
+                  <h3 className="font-semibold text-gray-900">Horário de funcionamento</h3>
+                  <HorarioDaUnidade key={`h-${selecionada.id}`} unidade={selecionada} aoSalvar={recarregar} />
+                </section>
+                <section className="flex flex-col gap-3">
+                  <h3 className="font-semibold text-gray-900">Regras da fila</h3>
+                  <ConfigDaUnidade key={`c-${selecionada.id}`} unidade={selecionada} aoSalvar={recarregar} />
+                </section>
+              </div>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+      <Sheet open={criando} onOpenChange={setCriando}>
+        <SheetContent side="right" className="w-full gap-0 sm:max-w-xl">
+          <SheetHeader className="border-b">
+            <SheetTitle>Nova unidade</SheetTitle>
+            <SheetDescription>
+              Endereço, fuso e horário de funcionamento. As regras da fila vêm do município.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="overflow-y-auto p-4">
+            <NovaUnidade
+              aoCriar={(nome) => {
+                setCriando(false);
+                setOk(`Unidade ${nome} criada.`);
+                recarregar();
+              }}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
