@@ -5,6 +5,7 @@ import {
   avisoDoCancelamento,
   avisoDoErro,
   mensagemDoErro,
+  ORIENTACAO_PIOROU,
   proximoPasso,
   resumoDaEntrada,
   situacaoDaEntrada,
@@ -29,6 +30,9 @@ const base: MinhaEntrada = {
   paraMim: true,
   nascimento: "1990-05-05",
   podeCancelar: true,
+  etapa: "atendimento",
+  triado: false,
+  encaminhado: false,
 };
 
 describe("minha fila: estado de cada entrada, como no design do app", () => {
@@ -251,5 +255,46 @@ describe("próximo passo, em uma frase (cartão, revisão 2026-11-14)", () => {
     expect(proximoPasso(emCasa, situacaoDaEntrada(emCasa, AGORA), AGORA)).toBe(
       "pode esperar em casa. avisamos a hora de sair.",
     );
+  });
+});
+
+describe("triagem no app (fatia 3)", () => {
+  const presente = {
+    ...base,
+    itemEstado: "presente" as const,
+    estimativa: { tipo: "posicao" as const, posicao: 2, minutos: 5 },
+  };
+
+  it("RN-TRI-01/04: antes da triagem, 'primeiro a triagem'; depois, 'triagem feita'", () => {
+    const antes = { ...presente, etapa: "triagem" as const };
+    expect(proximoPasso(antes, sit(antes), 0)).toBe("você está na unidade. primeiro, a triagem: fique de olho na TV.");
+    const depois = { ...presente, triado: true };
+    expect(proximoPasso(depois, sit(depois), 0)).toBe("triagem feita. agora, o atendimento: fique de olho na TV.");
+    const emCasa = {
+      ...base,
+      etapa: "triagem" as const,
+      estimativa: { tipo: "posicao" as const, posicao: 3, minutos: 40 },
+    };
+    expect(proximoPasso(emCasa, sit(emCasa), 0)).toBe("pode esperar em casa. avisamos a hora de sair.");
+  });
+
+  it("H2: encaminhado à emergência não é 'atendimento concluído'", () => {
+    const enc = {
+      ...base,
+      estado: "concluida",
+      itemEstado: "atendido_na_etapa" as const,
+      etapa: "triagem" as const,
+      encaminhado: true,
+    };
+    expect(sit(enc)).toEqual({ tipo: "encaminhado" });
+    expect(proximoPasso(enc, sit(enc), 0)).toBe(
+      "a enfermagem encaminhou você para a emergência. siga a orientação da equipe.",
+    );
+    expect(resumoDaEntrada(enc, sit(enc), 0)).toMatchObject({ selo: "emergência", tom: "vermelho", naFila: false });
+  });
+
+  it("RN-PIORA-01 (H6): presente não refaz o questionário; a orientação é avisar no local e o 192", () => {
+    expect(ORIENTACAO_PIOROU).toMatch(/recepção ou a enfermagem/);
+    expect(ORIENTACAO_PIOROU).toMatch(/192/);
   });
 });

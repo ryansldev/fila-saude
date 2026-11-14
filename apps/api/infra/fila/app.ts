@@ -227,6 +227,9 @@ export async function minhas(db: DbDoTenant, pacienteId: string, agora: number):
       paraMim: p.pacienteId === pacienteId,
       nascimento: p.nascimento,
       podeCancelar: e.remanejada === null && CANCELAVEIS.includes(e.estado) && item?.estado !== "chamado",
+      etapa: item?.etapa ?? null,
+      triado: Boolean(item?.atendidoEmEtapas.includes("triagem")),
+      encaminhado: e.riscoConfirmado === "emergencia" && e.estado === "concluida",
       saiaDeCasa:
         item?.estado === "remoto" &&
         Boolean(dia?.avisosSaiaDeCasa.some((a) => a.itemId === item.id && a.etapa === item.etapa)),

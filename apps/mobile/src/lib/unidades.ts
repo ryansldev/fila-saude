@@ -67,8 +67,7 @@ const TIPOS: Record<string, string> = {
 
 export const nomeDoTipo = (tipo: string) => TIPOS[tipo] ?? "unidade de saúde";
 
-export const textoAtendimentos = (n: number) =>
-  n === 0 ? "sem vaga agora" : n === 1 ? "1 aberto" : `${n} abertos`;
+export const textoAtendimentos = (n: number) => (n === 0 ? "sem vaga agora" : n === 1 ? "1 aberto" : `${n} abertos`);
 
 const cep = (c: string) => {
   const d = c.replace(/\D/g, "");

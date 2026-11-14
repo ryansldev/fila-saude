@@ -8,6 +8,7 @@ import {
   Avatar,
   BlocoData,
   Botao,
+  BotaoLigar,
   Carregando,
   Cartao,
   COR,
@@ -29,6 +30,7 @@ import {
   avisoDoCancelamento,
   avisoDoErro,
   mensagemDoErro,
+  ORIENTACAO_PIOROU,
   proximoPasso,
   resumoDaEntrada,
   type Situacao,
@@ -206,6 +208,7 @@ export function CartaoDoAtendimento({
 }) {
   const agora = Date.now();
   const r = resumoDaEntrada(en, sit, agora);
+  const [piorou, setPiorou] = useState(false);
   if (variante === "lista") return <CartaoNaLista en={en} sit={sit} aoCancelar={aoCancelar} />;
   const podeCheckIn = ["posicao", "venha", "sem_previsao"].includes(sit.tipo) && en.itemEstado === "remoto";
   const presente = (sit.tipo === "posicao" || sit.tipo === "sem_previsao") && sit.presente;
@@ -231,6 +234,15 @@ export function CartaoDoAtendimento({
           ) : (
             <Carregando />
           )
+        ) : null}
+        {presente && !piorou ? (
+          <LinkBotao texto="meus sintomas pioraram" cor={COR.dangerInk} onPress={() => setPiorou(true)} />
+        ) : null}
+        {presente && piorou ? (
+          <View style={{ gap: 10 }}>
+            <Faixa tipo="perigo" titulo="seus sintomas pioraram?" texto={ORIENTACAO_PIOROU} />
+            <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="secundario" />
+          </View>
         ) : null}
         {aoCancelar ? <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} /> : null}
       </View>

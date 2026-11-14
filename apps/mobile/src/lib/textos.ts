@@ -19,6 +19,8 @@ export type Situacao =
   | { tipo: "reserva" }
   | { tipo: "lista" }
   | { tipo: "concluida" }
+  /** A triagem encaminhou à emergência (H2): não é atendimento concluído. */
+  | { tipo: "encaminhado" }
   | { tipo: "remanejada" }
   | { tipo: "saiu" }
   | { tipo: "cancelada" };
@@ -30,6 +32,7 @@ export function situacaoDaEntrada(e: MinhaEntrada, agora: number): Situacao {
   if (e.itemEstado === "chamado" && e.senha) {
     return { tipo: "vez", senha: e.senha, estacao: e.chamada?.estacao ?? null };
   }
+  if (e.encaminhado) return { tipo: "encaminhado" };
   if (e.estado === "concluida" || e.itemEstado === "atendido_na_etapa") return { tipo: "concluida" };
   if (e.estado === "remanejada") return { tipo: "remanejada" };
   if (e.estado === "encerrada_sem_atendimento" || e.itemEstado === "saiu_da_fila") return { tipo: "saiu" };
@@ -133,6 +136,8 @@ export function resumoDaEntrada(
         return { selo: "sua vez", tom: "verde" as Tom, naFila: true, etapa: 3 };
       case "concluida":
         return { selo: "atendido", tom: "verde" as Tom, naFila: false, etapa: 4 };
+      case "encaminhado":
+        return { selo: "emergência", tom: "vermelho" as Tom, naFila: false, etapa: null };
       case "remanejada":
         // Continua no serviço: a unidade marca outra data (não é encerrada).
         return { selo: "nova data", tom: "cinza" as Tom, naFila: false, etapa: 0 };
@@ -142,7 +147,7 @@ export function resumoDaEntrada(
         return { selo: "cancelado", tom: "cinza" as Tom, naFila: false, etapa: null };
     }
   })();
-  const terminou = ["concluida", "saiu", "cancelada"].includes(sit.tipo);
+  const terminou = ["concluida", "encaminhado", "saiu", "cancelada"].includes(sit.tipo);
   const grupo = terminou
     ? "encerrados"
     : !en.sessao || sit.tipo === "remanejada"
@@ -159,6 +164,19 @@ export function avisoDoCancelamento(sit: Pick<Situacao, "tipo">): string {
   if (sit.tipo === "lista") return "você saiu da lista de espera.";
   return "a vaga fica para outra pessoa.";
 }
+
+// RN-TRI-01/04: na unidade, o app diz em que etapa a pessoa está (a cor da triagem não aparece, H5).
+function naUnidade(e: MinhaEntrada): string {
+  if (e.triado) return "triagem feita. agora, o atendimento: fique de olho na TV.";
+  if (e.etapa === "triagem") return "você está na unidade. primeiro, a triagem: fique de olho na TV.";
+  return "você está na unidade. fique de olho na TV.";
+}
+
+/**
+ * RN-PIORA-01 (H6): quem já está na unidade não muda o risco pelo app; avisa no local ou liga 192.
+ */
+export const ORIENTACAO_PIOROU =
+  "avise agora a recepção ou a enfermagem: eles reavaliam você na hora. se for uma emergência, ligue 192.";
 
 /** O que fazer agora, numa frase curta (cartão do atendimento). O "quando" e o "onde" ficam no cartão. */
 export function proximoPasso(e: MinhaEntrada, sit: Situacao, agora: number): string {
@@ -182,18 +200,18 @@ export function proximoPasso(e: MinhaEntrada, sit: Situacao, agora: number): str
     case "atrasada":
       return "a unidade ainda não abriu a fila. avisamos quando abrir.";
     case "posicao":
-      if (sit.presente) return "você está na unidade. fique de olho na TV.";
+      if (sit.presente) return naUnidade(e);
       return sit.sair ? "saia agora para chegar a tempo." : "pode esperar em casa. avisamos a hora de sair.";
     case "sem_previsao":
-      return sit.presente
-        ? "você está na unidade. fique de olho na TV."
-        : "a fila já começou. avisamos quando estiver perto.";
+      return sit.presente ? naUnidade(e) : "a fila já começou. avisamos quando estiver perto.";
     case "venha":
       return "venha agora. ao chegar, leia o QR da TV.";
     case "recepcao":
       return "passe na recepção com um documento com foto. só na primeira vez.";
     case "concluida":
       return "atendimento concluído. cuide-se!";
+    case "encaminhado":
+      return "a enfermagem encaminhou você para a emergência. siga a orientação da equipe.";
     case "remanejada":
       return "a sua vez não chegou. a unidade vai marcar outra data.";
     case "saiu":

@@ -33,6 +33,9 @@ const base: MinhaEntrada = {
   paraMim: true,
   nascimento: "1990-05-05",
   podeCancelar: true,
+  etapa: null,
+  triado: false,
+  encaminhado: false,
 };
 
 describe("uma inscrição ativa por pessoa e serviço (AD-032), decidido antes de enviar", () => {

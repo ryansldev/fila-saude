@@ -190,6 +190,12 @@ export const minhaEntradaSchema = z.object({
   nascimento: z.string(),
   /** RN-CANC-01: o "não vou poder ir" vale aqui (remanejada usa "desistir", ainda sem tela). */
   podeCancelar: z.boolean(),
+  /** Etapa em que está na fila do dia (triagem ou atendimento); `null` fora da fila. */
+  etapa: etapaSchema.nullable(),
+  /** Já passou pela triagem hoje (RN-TRI-04). A cor não vai para o app (H5). */
+  triado: z.boolean(),
+  /** A triagem encaminhou à emergência (H2). */
+  encaminhado: z.boolean(),
 });
 export type MinhaEntrada = z.infer<typeof minhaEntradaSchema>;
 

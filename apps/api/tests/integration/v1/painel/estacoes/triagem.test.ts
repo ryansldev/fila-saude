@@ -1,5 +1,7 @@
+import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { eq } from "drizzle-orm";
 import { entrada } from "infra/database/municipal/schema/entrada";
+import webserver from "infra/webserver";
 import { cenarioDaFila, inscreverPessoa, ROTINA } from "tests/fila";
 import orchestrator from "tests/orchestrator";
 import { ocupacao, usuarioLogado } from "tests/painel";
@@ -7,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let c: Awaited<ReturnType<typeof cenarioDaFila>>;
 let t1: string;
+let davi: Awaited<ReturnType<typeof orchestrator.loginPaciente>>;
 const entradas: Record<string, string> = {};
 
 beforeAll(async () => {
@@ -21,8 +24,15 @@ beforeAll(async () => {
   };
   for (const [nome, r] of Object.entries(respostas))
     entradas[nome] = (await inscreverPessoa(c.slug, c.sessaoId, nome, r)).id;
+  // Davi tem conta: o app dele mostra a etapa.
+  davi = await orchestrator.loginPaciente(orchestrator.dadosDeCadastro({ nome: "Davi" }));
+  const insc = await doApp("POST", `/v1/municipios/${c.slug}/sessoes/${c.sessaoId}/inscricoes`, davi.cookie, {
+    paraQuem: { tipo: "eu" },
+    respostas: ROTINA,
+  });
+  entradas.Davi = (insc as { entradaId: string }).entradaId;
   await c.pedir("POST", `/v1/painel/sessoes/${c.sessaoId}/abrir`, c.admin);
-  for (const n of Object.keys(respostas)) {
+  for (const n of [...Object.keys(respostas), "Davi"]) {
     await c.pedir("POST", `/v1/painel/sessoes/${c.sessaoId}/presenca`, recepcao, {
       entradaId: entradas[n],
       resultado: "confere",
@@ -30,6 +40,15 @@ beforeAll(async () => {
   }
 });
 afterAll(() => orchestrator.derrubarMunicipios());
+
+async function doApp(metodo: string, caminho: string, cookie: string, corpo?: unknown): Promise<unknown> {
+  const r = await fetch(`${webserver.origin}${caminho}`, {
+    method: metodo,
+    headers: { cookie, ...(corpo !== undefined ? { "content-type": "application/json" } : {}) },
+    ...(corpo !== undefined ? { body: JSON.stringify(corpo) } : {}),
+  });
+  return r.json();
+}
 
 const cmd = (estacaoId: string, comando: string, corpo: unknown = {}) =>
   c.pedir("POST", `/v1/painel/estacoes/${estacaoId}/${comando}`, c.enfermeiro, corpo);
@@ -83,5 +102,15 @@ describe("triagem (T6.1, fatia 3)", () => {
     expect(r.corpo.chamado).toMatchObject({ nome: "Ana", etapa: "atendimento" });
     expect(r.corpo.chamado.triagem).toBeUndefined();
     expect((await cmd(c.e1, "finalizar", { riscoConfirmado: "rotina" })).status).toBe(409);
+  });
+
+  it("app: a etapa de quem espera, 'triado' depois da triagem e 'encaminhado' no vermelho", async () => {
+    const minha = async () =>
+      ((await doApp("GET", `/v1/municipios/${c.slug}/minhas`, davi.cookie)) as MinhaEntrada[])[0];
+    expect(await minha()).toMatchObject({ etapa: "triagem", triado: false, encaminhado: false });
+    await cmd(t1, "chamar", { riscoConfirmado: "rotina" }); // ninguém chamado: a cor é ignorada; chama Carla
+    await cmd(t1, "chamar", { riscoConfirmado: "rotina" }); // Carla sai da triagem; Davi é chamado
+    await cmd(t1, "finalizar", { riscoConfirmado: "rotina" });
+    expect(await minha()).toMatchObject({ etapa: "atendimento", triado: true, itemEstado: "presente" });
   });
 });

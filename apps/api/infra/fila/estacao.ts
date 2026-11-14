@@ -162,7 +162,7 @@ export async function comandoNaEstacao(
         }
         const r = COMANDOS[comando](
           c.dia,
-          { estacaoId, ...(fecha && riscoConfirmado ? { riscoConfirmado } : {}) },
+          { estacaoId, ...(fecha && chamado && riscoConfirmado ? { riscoConfirmado } : {}) },
           ctx.agora,
         );
         if (!r.ok) {
