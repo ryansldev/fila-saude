@@ -58,13 +58,12 @@ function chamadoNaEstacao(dia: DiaSessao, estacaoId: string): ChamadoNaEstacao {
 }
 
 /**
- * Risco confirmado na saída da triagem (RN-TRI-03): só na etapa de triagem; emergência não fica
- * na fila (vai à emergência, como no questionário e na regulação, RN-LE-01).
+ * Risco confirmado na saída da triagem (RN-TRI-03): só na etapa de triagem. Emergência (vermelho)
+ * não volta à fila: é encaminhada à emergência (H2).
  */
 function riscoInvalido(item: ItemFila | undefined, risco: NivelRisco | undefined): CodigoErro | null {
   if (risco === undefined) return null;
-  if (item?.estado !== "chamado" || item.etapa !== "triagem") return "transicao_proibida";
-  return risco === "emergencia" ? "emergencia" : null;
+  return item?.estado !== "chamado" || item.etapa !== "triagem" ? "transicao_proibida" : null;
 }
 
 /**
@@ -83,10 +82,15 @@ function encerrarChamado(
     throw new Error(`contrato: ${item.estado} não encerra`);
   }
   const atendidoEmEtapas = [...item.atendidoEmEtapas, item.etapa];
-  const proximaEtapa = item.etapa === "triagem" ? ("atendimento" as const) : null;
+  // H2: vermelho na triagem encaminha à emergência; a triagem fecha e não há atendimento aqui.
+  const emergencia = riscoConfirmado === "emergencia";
+  const proximaEtapa = item.etapa === "triagem" && !emergencia ? ("atendimento" as const) : null;
   const eventos: Evento[] = [
     { tipo: "atendido", ...base(dia, item, estacao.id), dados: { etapa: item.etapa, proximaEtapa, em: agora } },
   ];
+  if (emergencia) {
+    eventos.push({ tipo: "encaminhado_emergencia", ...base(dia, item, estacao.id), dados: { etapa: item.etapa } });
+  }
   const livre = comEstacao(dia, estacao.id, { chamadoItemId: null });
   if (proximaEtapa === null) {
     return { dia: comItem(livre, { ...item, estado: "atendido_na_etapa", atendidoEmEtapas }), eventos };

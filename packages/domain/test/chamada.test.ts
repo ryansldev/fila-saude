@@ -470,12 +470,18 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     expect(ordem(d)).toEqual(["ana", "joao", "caio"]);
   });
 
-  it("RN-TRI-03: emergência recusada; só a triagem confirma; sem confirmação, nada muda", () => {
+  it("H2: vermelho na triagem encaminha à emergência: atendido na triagem, não vai ao atendimento", () => {
+    const r = finalizar(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN);
+    const d = aplicar(r);
+    expect(item(d, "caio")).toMatchObject({ etapa: "triagem", estado: "atendido_na_etapa" });
+    expect(ordem(d)).toEqual(["ana", "joao"]);
+    expect(r.ok && r.eventos.map((e) => e.tipo)).toEqual(["atendido", "encaminhado_emergencia"]);
+    const viaChamar = aplicar(chamarProximo(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN));
+    expect(item(viaChamar, "caio").estado).toBe("atendido_na_etapa");
+  });
+
+  it("RN-TRI-03: só a triagem confirma; sem confirmação, nada muda", () => {
     const d = caioNaTriagem();
-    expect(finalizar(d, { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN)).toEqual({
-      ok: false,
-      erro: "emergencia",
-    });
     const noConsultorio = chamar(aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN)), "e1", T + 6 * MIN);
     expect(finalizar(noConsultorio, { estacaoId: "e1", riscoConfirmado: "urgente" }, T + 7 * MIN)).toEqual({
       ok: false,

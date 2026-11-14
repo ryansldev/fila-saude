@@ -33,6 +33,7 @@ export type TipoEvento =
   | "prioridade_retirada"
   | "prioridade_dada"
   | "risco_confirmado"
+  | "encaminhado_emergencia"
   | "risco_sugerido"
   | "saiu"
   | "chamado"
