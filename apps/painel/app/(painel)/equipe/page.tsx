@@ -285,18 +285,6 @@ export default function Equipe() {
             <TableCell className="whitespace-normal">{resumoDasAtribuicoes(u, nomeDaUnidade)}</TableCell>
             <TableCell className="text-right">
               <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-gray-500 hover:text-gray-900"
-                  aria-label={`Editar ${u.nome}`}
-                  title="Editar"
-                  onClick={() =>
-                    setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
-                  }
-                >
-                  <SettingsIcon />
-                </Button>
                 {u.id !== eu.eu.id ? (
                   <Button
                     variant="ghost"
@@ -309,6 +297,18 @@ export default function Equipe() {
                     <Trash2Icon />
                   </Button>
                 ) : null}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-gray-500 hover:text-gray-900"
+                  aria-label={`Editar ${u.nome}`}
+                  title="Editar"
+                  onClick={() =>
+                    setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
+                  }
+                >
+                  <SettingsIcon />
+                </Button>
               </div>
             </TableCell>
           </TableRow>
