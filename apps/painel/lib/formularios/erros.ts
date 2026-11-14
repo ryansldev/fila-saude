@@ -1,4 +1,8 @@
+import { type ZodType, z } from "zod";
 import { ErroDaApi } from "@/lib/api";
+
+// Mensagens dos schemas em português, as mesmas da API.
+z.config(z.locales.pt());
 
 const MENSAGENS: Record<string, string | ((e: ErroDaApi) => string)> = {
   sem_conexao: "Sem conexão com o servidor. Tente de novo.",
@@ -70,4 +74,19 @@ export function errosDoEnvio(e: unknown): ErrosDoEnvio {
     return { geral, campos };
   }
   return { geral: mensagemDoErro(e), campos: {} };
+}
+
+/**
+ * Valida no navegador com o mesmo schema da API, antes de enviar: o erro aparece no campo na hora,
+ * sem ida ao servidor. `null` = pode enviar.
+ */
+export function validarNoCliente(schema: ZodType, dados: unknown): ErrosDoEnvio | null {
+  const r = schema.safeParse(dados);
+  if (r.success) return null;
+  const campos: Record<string, string[]> = {};
+  for (const p of r.error.issues) {
+    const chave = p.path.length > 0 ? p.path.join(".") : "_";
+    campos[chave] = [...(campos[chave] ?? []), p.message];
+  }
+  return errosDoEnvio(new ErroDaApi(400, "entrada_invalida", undefined, campos));
 }

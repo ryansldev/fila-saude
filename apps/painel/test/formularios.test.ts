@@ -1,6 +1,7 @@
+import { usuarioPainelEntradaSchema } from "@fila-saude/schemas/usuario";
 import { describe, expect, it } from "vitest";
 import { ErroDaApi } from "@/lib/api";
-import { errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
+import { errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import { servicosParaEtapa } from "@/lib/formularios/estacao";
 import { mostraTempoTriagem, servicoParaEnvio } from "@/lib/formularios/servico";
 import {
@@ -195,5 +196,29 @@ describe("sessões: vagas e dia (revisão 2026-11-13)", () => {
     expect(diaValido("2026-11-13")).toBe(true);
     expect(diaValido("20261-11-13")).toBe(false);
     expect(diaValido("")).toBe(false);
+  });
+});
+
+describe("validação no painel antes de enviar (revisão 2026-11-13)", () => {
+  it("usa o mesmo schema da API e devolve o erro por campo, em português", () => {
+    const r = validarNoCliente(usuarioPainelEntradaSchema, {
+      login: "maria silva",
+      nome: "",
+      senha: "curta",
+      vinculos: [],
+      funcoes: [],
+    });
+    expect(r?.campos.login).toMatch(/letras sem acento/);
+    expect(r?.campos.senha).toBeDefined();
+    expect(r?.campos.nome).toBeDefined();
+    expect(
+      validarNoCliente(usuarioPainelEntradaSchema, {
+        login: "maria",
+        nome: "Maria",
+        senha: "segredo12",
+        vinculos: [],
+        funcoes: [],
+      }),
+    ).toBeNull();
   });
 });

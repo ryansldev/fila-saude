@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
 import { ConteudoProtegido } from "@/components/conteudo-protegido";
+import { ProvedorDeDialogos } from "@/components/dialogos";
 import { Logo } from "@/components/logo";
+import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
 import { menuDoPainel } from "@/lib/navegacao";
 import { sair, useEu } from "@/lib/sessao";
@@ -33,18 +35,20 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
             {item.rotulo}
           </Link>
         ))}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => void sair(api, (href) => router.replace(href))}
-          className="mt-auto rounded-lg px-3 py-2 text-left text-gray-600 hover:bg-gray-100"
+          className="mt-auto justify-start text-gray-600"
         >
           Sair
-        </button>
+        </Button>
       </nav>
       <main className="flex-1 p-8">
-        <ConteudoProtegido caminho={caminho} perfis={eu.eu.perfis}>
-          {children}
-        </ConteudoProtegido>
+        <ProvedorDeDialogos>
+          <ConteudoProtegido caminho={caminho} perfis={eu.eu.perfis}>
+            {children}
+          </ConteudoProtegido>
+        </ProvedorDeDialogos>
       </main>
     </div>
   );
