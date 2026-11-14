@@ -288,7 +288,18 @@ describe("tvEstadoSchema", () => {
   const exp = "2026-03-02T08:10:00.000Z";
   it("aguardando", () =>
     expect(ok(tvEstadoSchema, { estado: "aguardando", codigo: "123456", expiraEm: exp })).toBe(true));
-  it("pareada", () => expect(ok(tvEstadoSchema, { estado: "pareada", unidade: { id, nome: "UBS" } })).toBe(true));
+  it("pareada", () =>
+    expect(
+      ok(tvEstadoSchema, {
+        estado: "pareada",
+        unidade: { id, nome: "UBS" },
+        destaqueSegundos: 10,
+        chamadas: [{ id: "x", senha: "C-001", destino: "Sala 1", em: exp }],
+        servicos: [{ nome: "Clínico", aguardando: 2, aCaminho: 1 }],
+        qr: null,
+        atendimentoIniciado: true,
+      }),
+    ).toBe(true));
   it("pareada sem unidade e estado desconhecido recusados", () => {
     expect(ok(tvEstadoSchema, { estado: "pareada" })).toBe(false);
     expect(ok(tvEstadoSchema, { estado: "x" })).toBe(false);

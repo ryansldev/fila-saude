@@ -30,15 +30,12 @@ const intervaloDe = (abertas: Awaited<ReturnType<typeof abertasDaUnidade>>) =>
   (abertas[0]?.dia.config.qrSegundos ?? 30) * 1000;
 
 // RN-PRES-01: um link com o token de cada sessão aberta; o app abre direto pela câmera do celular.
-export async function qrDaUnidade(ctx: ContextoDaAcao, slug: string, unidadeId: string): Promise<QrDaUnidade> {
-  await exigirUnidade(ctx.db, unidadeId);
-  if (!ACOES_DO_QR.some((a) => condicoesNaUnidade(ctx.ator.perfis, a, unidadeId) !== null)) {
-    throw new ErroApi(403, "sem_permissao");
-  }
-  const abertas = (await abertasDaUnidade(ctx.db, unidadeId)).filter((s) => s.segredo !== null);
+// Sem checar quem pede: a tela do QR no painel e a TV pareada (RN-TV-02) checam antes.
+export async function conteudoDoQr(db: BancoDoTenant, slug: string, unidadeId: string, agora: number): Promise<QrDaUnidade> {
+  const abertas = (await abertasDaUnidade(db, unidadeId)).filter((s) => s.segredo !== null);
   const intervalo = intervaloDe(abertas);
   if (abertas.length === 0) return { conteudo: null, intervaloSegundos: intervalo / 1000, expiraEm: null, sessoes: [] };
-  const tokens = await Promise.all(abertas.map((s) => tokenQr(s.segredo as string, ctx.agora, intervalo)));
+  const tokens = await Promise.all(abertas.map((s) => tokenQr(s.segredo as string, agora, intervalo)));
   const url = new URL("filasaude://check-in");
   url.searchParams.set("m", slug);
   url.searchParams.set("u", unidadeId);
@@ -46,9 +43,17 @@ export async function qrDaUnidade(ctx: ContextoDaAcao, slug: string, unidadeId: 
   return {
     conteudo: url.toString(),
     intervaloSegundos: intervalo / 1000,
-    expiraEm: new Date((Math.floor(ctx.agora / intervalo) + 1) * intervalo).toISOString(),
+    expiraEm: new Date((Math.floor(agora / intervalo) + 1) * intervalo).toISOString(),
     sessoes: abertas.map((s) => ({ id: s.id, servico: s.servico })),
   };
+}
+
+export async function qrDaUnidade(ctx: ContextoDaAcao, slug: string, unidadeId: string): Promise<QrDaUnidade> {
+  await exigirUnidade(ctx.db, unidadeId);
+  if (!ACOES_DO_QR.some((a) => condicoesNaUnidade(ctx.ator.perfis, a, unidadeId) !== null)) {
+    throw new ErroApi(403, "sem_permissao");
+  }
+  return conteudoDoQr(ctx.db, slug, unidadeId, ctx.agora);
 }
 
 // RN-PRES-01 + RN-FILA-05: o paciente leu o QR; cada pessoa da conta nas sessões do QR entra presente,
