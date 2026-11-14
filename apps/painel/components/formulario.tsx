@@ -34,8 +34,10 @@ export function Campo({
   const id = useId();
   return (
     <CampoAtual.Provider value={{ id, invalido: Boolean(erro) }}>
-      <Field data-invalid={erro ? true : undefined} className={cn("gap-1.5", className)}>
-        <FieldLabel htmlFor={id}>{rotulo}</FieldLabel>
+      <Field data-invalid={erro ? true : undefined} className={cn("gap-2", className)}>
+        <FieldLabel htmlFor={id} className="font-semibold text-slate-700">
+          {rotulo}
+        </FieldLabel>
         {children}
         {dica ? <FieldDescription>{dica}</FieldDescription> : null}
         {erro ? <FieldError>{erro}</FieldError> : null}
@@ -195,7 +197,7 @@ export const LARGURA_DO_PAINEL_LATERAL =
 /** Bloco do formulário: título curto, uma linha de explicação e os campos. */
 export function Secao({ titulo, descricao, children }: { titulo: string; descricao?: string; children: ReactNode }) {
   return (
-    <fieldset className="flex flex-col gap-4 border-b border-slate-100 pb-6 last:border-b-0 last:pb-0">
+    <fieldset className="flex flex-col gap-5 border-b border-slate-100 pb-8 last:border-b-0 last:pb-0">
       <div className="flex flex-col gap-0.5">
         <legend className="text-base font-bold text-slate-900">{titulo}</legend>
         {descricao ? <p className="text-sm text-slate-500">{descricao}</p> : null}
@@ -396,7 +398,7 @@ export function PainelLateral({
             aoEnviar?.();
           }}
         >
-          <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-6">{children}</div>
+          <div className="flex flex-1 flex-col gap-8 overflow-y-auto px-6 py-7">{children}</div>
           {aoEnviar || perigo ? (
             <SheetFooter className="flex-row items-center border-t border-slate-100 px-6 py-4">
               {perigo ? (

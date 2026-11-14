@@ -231,7 +231,7 @@ function PainelNovaSessao({
             }}
           />
         </Campo>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
           <Campo rotulo="Início" erro={erros.campos.inicio}>
             <Texto type="time" required valor={v.inicio} aoMudar={(inicio) => setV({ ...v, inicio })} />
           </Campo>

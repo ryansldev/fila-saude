@@ -154,7 +154,7 @@ function NovaUnidade({
         </Campo>
       </Secao>
       <Secao titulo="Endereço" descricao="Cidade e estado vêm do município.">
-        <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
+        <div className="grid gap-x-5 gap-y-5 sm:grid-cols-[10rem_1fr]">
           <Campo rotulo="CEP" erro={erros.campos["endereco.cep"]}>
             {texto("cep", { inputMode: "numeric", required: true, maxLength: 9, placeholder: "00000-000" })}
           </Campo>
@@ -272,7 +272,7 @@ function ConfigurarUnidade({
       <Secao titulo="Regras da fila" descricao="Deixe vazio para seguir o valor do município ou do padrão.">
         {erroAoLer ? <Aviso texto={erroAoLer} /> : null}
         {efetiva ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
             {CAMPOS_CONFIG.map(({ campo }) => {
               const h = campoHerdado(efetiva, campo);
               const regra = REGRAS[campo];

@@ -83,7 +83,7 @@ function EditorDeAtribuicoes({
   const primeira = permitidas.length === 1 ? (permitidas[0]?.id ?? "") : "";
   const opcoesDeUnidade = permitidas.map((u) => ({ valor: u.id, rotulo: u.nome }));
   const opcoesDeFuncao = funcoes.map((fn) => ({ valor: fn, rotulo: FUNCOES[fn].rotulo }));
-  const linha = "grid items-end gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[1fr_1fr_auto]";
+  const linha = "grid items-end gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-[1fr_1fr_auto]";
 
   const seletorDeUnidade = (atual: string | null, aoMudar: (id: string) => void, erro?: string) => (
     <Campo rotulo="Unidade" erro={erro}>
@@ -375,7 +375,7 @@ export default function Equipe() {
           <Campo rotulo="Nome" erro={erros.campos.nome}>
             <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
           </Campo>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
             <Campo rotulo="Login" erro={erros.campos.login} dica="Letras, números, ponto ou _.">
               <Texto
                 required
