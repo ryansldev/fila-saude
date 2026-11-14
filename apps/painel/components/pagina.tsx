@@ -1,4 +1,6 @@
+import { SettingsIcon, Trash2Icon } from "lucide-react";
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 /**
  * Topo de cada tela do painel: o nome da tela, uma linha dizendo para que ela serve e, à direita,
@@ -39,5 +41,47 @@ export function EstadoDaSessao({ estado }: { estado: string }) {
       {estado === "aberta" ? <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" /> : null}
       {e.rotulo}
     </span>
+  );
+}
+
+/**
+ * Ações de cada linha de tabela: ícones neutros, lixeira à esquerda e engrenagem na ponta direita.
+ * `rotulo` vira o nome acessível ("Editar UBS Centro") e a dica ao passar o mouse.
+ */
+export function AcoesDaLinha({
+  editar,
+  excluir,
+}: {
+  editar?: { rotulo: string; aoClicar: () => void };
+  excluir?: { rotulo: string; aoClicar: () => void };
+}) {
+  const classe = "text-slate-400 hover:bg-slate-100 hover:text-slate-900";
+  return (
+    <div className="flex justify-end gap-1">
+      {excluir ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className={classe}
+          aria-label={excluir.rotulo}
+          title={excluir.rotulo}
+          onClick={excluir.aoClicar}
+        >
+          <Trash2Icon />
+        </Button>
+      ) : null}
+      {editar ? (
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className={classe}
+          aria-label={editar.rotulo}
+          title={editar.rotulo}
+          onClick={editar.aoClicar}
+        >
+          <SettingsIcon />
+        </Button>
+      ) : null}
+    </div>
   );
 }

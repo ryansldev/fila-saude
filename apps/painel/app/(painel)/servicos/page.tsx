@@ -1,21 +1,27 @@
 "use client";
 
 import { servicoEdicaoSchema, servicoEntradaSchema } from "@fila-saude/schemas/servico";
-import { type FormEvent, useState } from "react";
+import { PlusIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ZodType } from "zod";
-import { Aviso, Caixa, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
-import { CabecalhoDaPagina } from "@/components/pagina";
+import {
+  Aviso,
+  Campo,
+  Escolha,
+  Interruptor,
+  Numero,
+  PainelLateral,
+  Secao,
+  Tabela,
+  Texto,
+} from "@/components/formulario";
+import { AcoesDaLinha, CabecalhoDaPagina } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio, validarNoCliente } from "@/lib/formularios/erros";
-import {
-  type Modo,
-  mostraTempoTriagem,
-  ROTULOS_MODO,
-  servicoParaEnvio,
-  type ValoresServico,
-} from "@/lib/formularios/servico";
+import { type Modo, mostraTempoTriagem, servicoParaEnvio, type ValoresServico } from "@/lib/formularios/servico";
 import { useUnidadeAtual } from "@/lib/unidade-atual";
 import { useLista } from "@/lib/use-lista";
 
@@ -37,7 +43,6 @@ const VAZIO: ValoresServico = {
   atendimento: "15",
 };
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
-const OPCOES_MODO = (Object.keys(ROTULOS_MODO) as Modo[]).map((m) => ({ valor: m, rotulo: ROTULOS_MODO[m] }));
 const ERRO_MINUTOS = "Use um número inteiro de minutos.";
 
 /** Minutos digitados: vazio vale (não vai), senão só dígitos; assim nunca vai NaN para a API. */
@@ -60,82 +65,130 @@ function deServico(s: Servico): ValoresServico {
   };
 }
 
-function FormularioDeServico({
+const DESCRICAO_DO_MODO: Record<Modo, { rotulo: string; descricao: string }> = {
+  livre: { rotulo: "Livre", descricao: "O paciente entra na lista de espera pelo app ou pela recepção." },
+  requisicao: { rotulo: "Com requisição", descricao: "Precisa de pedido médico, conferido pela unidade." },
+  regulado: { rotulo: "Regulado", descricao: "A vaga vem da central de regulação; não aparece na agenda do app." },
+};
+
+/** Cadastro ou edição de um serviço, num painel lateral em três seções. */
+function PainelDoServico({
+  aberto,
+  aoFechar,
+  titulo,
+  acao,
   inicial,
-  enviar,
-  rotulo,
   schema,
-  aoCancelar,
+  enviar,
 }: {
+  aberto: boolean;
+  aoFechar: () => void;
+  titulo: string;
+  acao: string;
   inicial: ValoresServico;
-  enviar: (v: ValoresServico) => Promise<void>;
-  rotulo: string;
   /** O mesmo schema da rota da API que recebe o envio. */
   schema: ZodType;
-  aoCancelar?: () => void;
+  enviar: (v: ValoresServico) => Promise<void>;
 }) {
   const [v, setV] = useState(inicial);
   const [erros, setErros] = useState(SEM_ERROS);
+  const [enviando, setEnviando] = useState(false);
+  // Reabriu (outro serviço ou novo cadastro): começa do valor inicial, sem erros antigos.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: só ao abrir.
+  useEffect(() => {
+    if (aberto) {
+      setV(inicial);
+      setErros(SEM_ERROS);
+    }
+  }, [aberto]);
 
-  async function aoEnviar(e: FormEvent) {
-    e.preventDefault();
+  async function aoEnviar() {
     const minutos = problemasDosMinutos(v);
     if (Object.keys(minutos).length > 0) return setErros({ geral: null, campos: minutos });
     const invalidos = validarNoCliente(schema, servicoParaEnvio(v));
     if (invalidos) return setErros(invalidos);
+    setEnviando(true);
     try {
       await enviar(v);
-      setErros(SEM_ERROS);
-      if (!aoCancelar) setV(VAZIO);
+      aoFechar();
     } catch (err) {
       setErros(errosDoEnvio(err));
+    } finally {
+      setEnviando(false);
     }
   }
 
   return (
-    <form onSubmit={aoEnviar} className="grid gap-3 sm:grid-cols-2">
-      <Campo rotulo="Nome" erro={erros.campos.nome}>
-        <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
-      </Campo>
-      <Campo rotulo="Prefixo da senha" erro={erros.campos.prefixo} dica="1 a 3 letras (ex.: C → C001)">
-        <Texto
-          required
-          maxLength={3}
-          valor={v.prefixo}
-          mascara={(t) => t.toUpperCase()}
-          aoMudar={(prefixo) => setV({ ...v, prefixo })}
+    <PainelLateral
+      aberto={aberto}
+      aoFechar={aoFechar}
+      titulo={titulo}
+      descricao="O que a unidade atende e como a fila desse serviço funciona."
+      aoEnviar={aoEnviar}
+      acao={acao}
+      enviando={enviando}
+    >
+      <Secao titulo="Identificação" descricao="Como o serviço aparece no app, no painel e na senha da TV.">
+        <Campo rotulo="Nome" erro={erros.campos.nome}>
+          <Texto required placeholder="Ex.: Clínico geral" valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
+        </Campo>
+        <Campo
+          rotulo="Prefixo da senha"
+          erro={erros.campos.prefixo}
+          dica={`1 a 3 letras. A senha fica ${v.prefixo || "C"}-001.`}
+          className="sm:w-80"
+        >
+          <Texto
+            required
+            maxLength={3}
+            placeholder="C"
+            valor={v.prefixo}
+            mascara={(t) => t.toUpperCase().replace(/[^A-Z]/g, "")}
+            aoMudar={(prefixo) => setV({ ...v, prefixo })}
+          />
+        </Campo>
+      </Secao>
+      <Secao titulo="Como o paciente consegue a vaga">
+        <Escolha
+          colunas={1}
+          valor={v.modo}
+          aoMudar={(modo) => setV({ ...v, modo: modo as Modo })}
+          opcoes={(Object.keys(DESCRICAO_DO_MODO) as Modo[]).map((m) => ({ valor: m, ...DESCRICAO_DO_MODO[m] }))}
         />
-      </Campo>
-      <Campo rotulo="Como é marcado" erro={erros.campos.modo}>
-        <Selecao valor={v.modo} opcoes={OPCOES_MODO} aoMudar={(modo) => setV({ ...v, modo: modo as Modo })} />
-      </Campo>
-      <div className="self-end pb-2">
-        <Caixa
-          rotulo="Exige triagem"
-          marcada={v.exigeTriagem}
+        {erros.campos.modo ? <p className="text-sm text-destructive">{erros.campos.modo}</p> : null}
+      </Secao>
+      <Secao
+        titulo="Atendimento"
+        descricao="O tempo médio é o ponto de partida da previsão no app; depois o sistema aprende com o dia."
+      >
+        <Interruptor
+          rotulo="Passa pela triagem"
+          descricao="O enfermeiro chama primeiro e classifica o risco; depois o paciente vai para o atendimento."
+          marcado={v.exigeTriagem}
           aoMudar={(exigeTriagem) => setV({ ...v, exigeTriagem })}
         />
-      </div>
-      {mostraTempoTriagem(v.exigeTriagem) ? (
-        <Campo rotulo="Tempo médio da triagem (min)" erro={erros.campos["tempoMedioMin.triagem"]}>
-          <Texto inputMode="numeric" valor={v.triagem} aoMudar={(triagem) => setV({ ...v, triagem })} />
-        </Campo>
-      ) : null}
-      <Campo rotulo="Tempo médio do atendimento (min)" erro={erros.campos["tempoMedioMin.atendimento"]}>
-        <Texto inputMode="numeric" valor={v.atendimento} aoMudar={(atendimento) => setV({ ...v, atendimento })} />
-      </Campo>
-      <div className="flex flex-col gap-2 sm:col-span-2">
-        <Aviso texto={erros.geral} />
-        <div className="flex gap-2">
-          <Button type="submit">{rotulo}</Button>
-          {aoCancelar ? (
-            <Button type="button" variant="ghost" onClick={aoCancelar}>
-              Cancelar
-            </Button>
+        <div className="flex flex-wrap gap-4">
+          {mostraTempoTriagem(v.exigeTriagem) ? (
+            <Campo rotulo="Tempo médio da triagem" erro={erros.campos["tempoMedioMin.triagem"]} className="w-auto">
+              <Numero sufixo="min" valor={v.triagem} aoMudar={(triagem) => setV({ ...v, triagem })} maxDigitos={3} />
+            </Campo>
           ) : null}
+          <Campo
+            rotulo="Tempo médio do atendimento"
+            erro={erros.campos["tempoMedioMin.atendimento"]}
+            className="w-auto"
+          >
+            <Numero
+              sufixo="min"
+              valor={v.atendimento}
+              aoMudar={(atendimento) => setV({ ...v, atendimento })}
+              maxDigitos={3}
+            />
+          </Campo>
         </div>
-      </div>
-    </form>
+      </Secao>
+      <Aviso texto={erros.geral} />
+    </PainelLateral>
   );
 }
 
@@ -149,65 +202,83 @@ export default function Servicos() {
   } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const { itens, erro, recarregar } = useLista<Servico>(atual ? `/v1/painel/unidades/${atual}/servicos` : null);
   const [editando, setEditando] = useState<Servico | null>(null);
+  const [criando, setCriando] = useState(false);
+  const [ok, setOk] = useState<string | null>(null);
 
   return (
     <div className="flex w-full flex-col gap-6">
       <CabecalhoDaPagina
         titulo="Serviços"
         descricao="O que cada unidade atende, com o prefixo da senha e o tempo médio de atendimento."
+        acoes={
+          atual ? (
+            <Button onClick={() => setCriando(true)}>
+              <PlusIcon data-icon="inline-start" strokeWidth={2.75} />
+              Adicionar serviço
+            </Button>
+          ) : null
+        }
       />
       <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={erro} />
+      <Aviso texto={ok} tipo="ok" />
       {atual ? (
-        <>
-          <Tabela cabecalho={["Prefixo", "Nome", "Triagem", "Marcação", "Tempo médio", ""]}>
-            {itens.map((s) => (
-              <tr key={s.id}>
-                <td className="py-2 pr-4 font-mono font-semibold">{s.prefixo}</td>
-                <td className="py-2 pr-4 font-medium">{s.nome}</td>
-                <td className="py-2 pr-4">{s.exigeTriagem ? "Sim" : "Não"}</td>
-                <td className="py-2 pr-4">{s.modo}</td>
-                <td className="py-2 pr-4">
-                  {s.tempoMedioMin.triagem ? `${s.tempoMedioMin.triagem} + ` : ""}
-                  {s.tempoMedioMin.atendimento} min
-                </td>
-                <td className="py-2">
-                  <Button variant="ghost" size="sm" onClick={() => setEditando(s)}>
-                    Editar
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </Tabela>
-          {editando ? (
-            <Cartao titulo={`Editar ${editando.nome}`}>
-              <FormularioDeServico
-                key={editando.id}
-                inicial={deServico(editando)}
-                rotulo="Salvar"
-                schema={servicoEdicaoSchema}
-                aoCancelar={() => setEditando(null)}
-                enviar={async (v) => {
-                  await api.patch(`/v1/painel/servicos/${editando.id}`, servicoParaEnvio(v));
-                  setEditando(null);
-                  recarregar();
-                }}
-              />
-            </Cartao>
+        <Tabela cabecalho={["Senha", "Nome", "Marcação", "Triagem", "Tempo médio", ""]}>
+          {itens.map((s) => (
+            <TableRow key={s.id}>
+              <TableCell>
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono font-bold text-slate-700">
+                  {s.prefixo}
+                </span>
+              </TableCell>
+              <TableCell className="font-semibold text-slate-900">{s.nome}</TableCell>
+              <TableCell>{DESCRICAO_DO_MODO[s.modo].rotulo}</TableCell>
+              <TableCell>{s.exigeTriagem ? "Sim" : "Não"}</TableCell>
+              <TableCell>
+                {s.tempoMedioMin.triagem ? `${s.tempoMedioMin.triagem} min + ` : ""}
+                {s.tempoMedioMin.atendimento} min
+              </TableCell>
+              <TableCell>
+                <AcoesDaLinha editar={{ rotulo: `Editar ${s.nome}`, aoClicar: () => setEditando(s) }} />
+              </TableCell>
+            </TableRow>
+          ))}
+          {itens.length === 0 && !erro ? (
+            <TableRow>
+              <TableCell colSpan={6} className="py-8 text-center text-slate-500">
+                Nenhum serviço nesta unidade. Use "Adicionar serviço".
+              </TableCell>
+            </TableRow>
           ) : null}
-          <Cartao titulo="Novo serviço">
-            <FormularioDeServico
-              inicial={VAZIO}
-              rotulo="Criar serviço"
-              schema={servicoEntradaSchema}
-              enviar={async (v) => {
-                await api.post(`/v1/painel/unidades/${atual}/servicos`, servicoParaEnvio(v));
-                recarregar();
-              }}
-            />
-          </Cartao>
-        </>
+        </Tabela>
       ) : null}
+      <PainelDoServico
+        aberto={criando}
+        aoFechar={() => setCriando(false)}
+        titulo="Adicionar serviço"
+        acao="Criar serviço"
+        inicial={VAZIO}
+        schema={servicoEntradaSchema}
+        enviar={async (v) => {
+          await api.post(`/v1/painel/unidades/${atual}/servicos`, servicoParaEnvio(v));
+          setOk(`Serviço ${v.nome.trim()} criado.`);
+          recarregar();
+        }}
+      />
+      <PainelDoServico
+        aberto={editando !== null}
+        aoFechar={() => setEditando(null)}
+        titulo={`Editar ${editando?.nome ?? "serviço"}`}
+        acao="Salvar"
+        inicial={editando ? deServico(editando) : VAZIO}
+        schema={servicoEdicaoSchema}
+        enviar={async (v) => {
+          if (!editando) return;
+          await api.patch(`/v1/painel/servicos/${editando.id}`, servicoParaEnvio(v));
+          setOk(`Serviço ${v.nome.trim()} salvo.`);
+          recarregar();
+        }}
+      />
     </div>
   );
 }
