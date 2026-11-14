@@ -1,7 +1,14 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { describe, expect, it } from "vitest";
 import { ErroDaApi } from "@/lib/api";
-import { avisoDoCancelamento, avisoDoErro, mensagemDoErro, resumoDaEntrada, situacaoDaEntrada } from "@/lib/textos";
+import {
+  avisoDoCancelamento,
+  avisoDoErro,
+  mensagemDoErro,
+  proximoPasso,
+  resumoDaEntrada,
+  situacaoDaEntrada,
+} from "@/lib/textos";
 
 const sit = (e: MinhaEntrada) => situacaoDaEntrada(e, 0);
 
@@ -216,5 +223,33 @@ describe("faixa depois do 'não vou poder ir', pelo tipo da inscrição", () => 
     expect(avisoDoCancelamento({ tipo: "reserva" })).toBe("você saiu da reserva.");
     expect(avisoDoCancelamento({ tipo: "lista" })).toBe("você saiu da lista de espera.");
     expect(avisoDoCancelamento({ tipo: "confirmada" })).toBe("a vaga fica para outra pessoa.");
+  });
+});
+
+describe("próximo passo, em uma frase (cartão, revisão 2026-11-14)", () => {
+  const AGORA = Date.parse("2026-11-14T12:00:00.000Z");
+  const sessao = {
+    id: base.entradaId,
+    inicio: "2026-11-14T17:00:00.000Z",
+    fim: "2026-11-14T21:00:00.000Z",
+    estado: "planejada",
+  };
+  it("diz o que fazer agora, com o horário quando importa", () => {
+    const inscrito = { ...base, estado: "confirmada", senha: null, itemEstado: null, sessao };
+    expect(proximoPasso(inscrito, situacaoDaEntrada(inscrito, AGORA), AGORA)).toBe(
+      "a fila abre às 14h. até lá, pode esperar em casa.",
+    );
+    const lista = { ...base, estado: "aguardando", senha: null, itemEstado: null };
+    expect(proximoPasso(lista, situacaoDaEntrada(lista, AGORA), AGORA)).toBe(
+      "a unidade vai marcar a data e te avisar.",
+    );
+    const emCasa = {
+      ...base,
+      sessao: { ...sessao, estado: "aberta" },
+      estimativa: { tipo: "posicao" as const, posicao: 3, minutos: 25 },
+    };
+    expect(proximoPasso(emCasa, situacaoDaEntrada(emCasa, AGORA), AGORA)).toBe(
+      "pode esperar em casa. avisamos a hora de sair.",
+    );
   });
 });

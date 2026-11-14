@@ -23,3 +23,15 @@ const diaNoFuso = (ms: number, fuso: string) =>
 export function ehHoje(iso: string, agora: number, fuso = FUSO): boolean {
   return diaNoFuso(Date.parse(iso), fuso) === diaNoFuso(agora, fuso);
 }
+
+const UM_DIA = 24 * 60 * 60 * 1000;
+
+/** "hoje, das 14h às 18h", "amanhã, das 8h às 12h30" ou "quarta, 18/11, das 8h às 12h". */
+export function janelaDoAtendimento(inicio: string, fim: string, agora: number, fuso = FUSO): string {
+  const dia = ehHoje(inicio, agora, fuso)
+    ? "hoje"
+    : ehHoje(inicio, agora + UM_DIA, fuso)
+      ? "amanhã"
+      : diaCurto(inicio, fuso);
+  return `${dia}, das ${hora(inicio, fuso)} às ${hora(fim, fuso)}`;
+}

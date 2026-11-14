@@ -1,6 +1,6 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { ErroDaApi } from "./api";
-import { ehHoje } from "./datas";
+import { ehHoje, hora } from "./datas";
 
 /** Estado de uma entrada na tela "minha fila", na mesma divisão das telas do design do app. */
 export type Situacao =
@@ -158,4 +158,47 @@ export function avisoDoCancelamento(sit: Pick<Situacao, "tipo">): string {
   if (sit.tipo === "reserva") return "você saiu da reserva.";
   if (sit.tipo === "lista") return "você saiu da lista de espera.";
   return "a vaga fica para outra pessoa.";
+}
+
+/** O que fazer agora, numa frase curta (cartão do atendimento). O "quando" e o "onde" ficam no cartão. */
+export function proximoPasso(e: MinhaEntrada, sit: Situacao, agora: number): string {
+  switch (sit.tipo) {
+    case "vez":
+      return "é a sua vez! vá para a sala.";
+    case "lista":
+      return "a unidade vai marcar a data e te avisar.";
+    case "reserva":
+      return "se alguém desistir, a vaga é sua. avisamos aqui.";
+    case "alocada":
+      return "a unidade marcou este horário para você.";
+    case "confirmada":
+    case "aguardando": {
+      if (!e.sessao) return "avisamos quando a fila abrir.";
+      const abre = hora(e.sessao.inicio);
+      return ehHoje(e.sessao.inicio, agora)
+        ? `a fila abre às ${abre}. até lá, pode esperar em casa.`
+        : `no dia, a fila abre às ${abre}. avisamos quando abrir.`;
+    }
+    case "atrasada":
+      return "a unidade ainda não abriu a fila. avisamos quando abrir.";
+    case "posicao":
+      if (sit.presente) return "você está na unidade. fique de olho na TV.";
+      return sit.sair ? "saia agora para chegar a tempo." : "pode esperar em casa. avisamos a hora de sair.";
+    case "sem_previsao":
+      return sit.presente
+        ? "você está na unidade. fique de olho na TV."
+        : "a fila já começou. avisamos quando estiver perto.";
+    case "venha":
+      return "venha agora. ao chegar, leia o QR da TV.";
+    case "recepcao":
+      return "passe na recepção com um documento com foto. só na primeira vez.";
+    case "concluida":
+      return "atendimento concluído. cuide-se!";
+    case "remanejada":
+      return "a sua vez não chegou. a unidade vai marcar outra data.";
+    case "saiu":
+      return "você foi chamado e não apareceu. fale com a recepção.";
+    case "cancelada":
+      return "inscrição cancelada.";
+  }
 }

@@ -1,5 +1,6 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect } from "expo-router";
+import { Clock, type LucideIcon, MapPin, UserRound } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
 import { Alert, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,15 +18,15 @@ import {
   Selo,
   TextoSuave,
   Titulo,
-  Trilha,
 } from "@/components/ui";
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
-import { diaCurto, ehHoje, hora } from "@/lib/datas";
+import { diaCurto, ehHoje, janelaDoAtendimento } from "@/lib/datas";
 import { useSessao } from "@/lib/sessao";
 import {
   avisoDoCancelamento,
   avisoDoErro,
   mensagemDoErro,
+  proximoPasso,
   resumoDaEntrada,
   type Situacao,
   situacaoDaEntrada,
@@ -129,90 +130,39 @@ export function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: str
 
 export const primeiroNome = (nome: string | undefined) => (nome ? nome.split(/\s+/)[0]?.toLowerCase() : undefined);
 
-/** A frase que responde "já estou na fila?" e o que vem depois, para cada situação. */
-export function Explicacao({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
-  const inicio = en.sessao ? `${diaCurto(en.sessao.inicio)}, às ${hora(en.sessao.inicio)}` : "";
+/** Senha e posição, quando a pessoa já está na fila: o maior texto do cartão. */
+function NaFila({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
   switch (sit.tipo) {
-    case "lista":
-      return <TextoSuave>você ainda não está em nenhuma fila. a unidade marca a data e te avisa aqui.</TextoSuave>;
-    case "reserva":
-      return <TextoSuave>você ainda não tem vaga. se alguém desistir, a vaga é sua e a gente te avisa.</TextoSuave>;
-    case "alocada":
-      return (
-        <>
-          <Destaque>{inicio}</Destaque>
-          <TextoSuave>a unidade marcou esta data para você.</TextoSuave>
-        </>
-      );
-    case "confirmada":
-    case "aguardando":
-      return (
-        <>
-          <Destaque>{inicio}</Destaque>
-          <TextoSuave>
-            você tem vaga, mas ainda não está na fila: a senha e a sua posição aparecem aqui quando a fila abrir.
-          </TextoSuave>
-        </>
-      );
-    case "atrasada":
-      return (
-        <TextoSuave>
-          já passou do horário, mas a unidade ainda não abriu a fila. quando abrir, a sua senha aparece aqui.
-        </TextoSuave>
-      );
     case "posicao":
-      return (
-        <>
-          <Posicao senha={en.senha} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />
-          <TextoSuave>
-            {sit.presente
-              ? "você está na unidade. fique de olho na TV e no celular."
-              : sit.sair
-                ? "saia agora para chegar a tempo. ao chegar, leia o QR da TV."
-                : "pode esperar em casa. a gente avisa a hora de sair."}
-          </TextoSuave>
-        </>
-      );
+      return <Posicao senha={en.senha} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />;
     case "sem_previsao":
-      return (
-        <>
-          <Posicao senha={en.senha} detalhe="a fila já começou. sem previsão de tempo agora." />
-          <TextoSuave>
-            {sit.presente ? "você está na unidade. fique de olho na TV." : "a gente avisa quando estiver perto."}
-          </TextoSuave>
-        </>
-      );
+      return <Posicao senha={en.senha} detalhe="sem previsão de tempo agora" />;
     case "venha":
-      return (
-        <>
-          <Posicao senha={en.senha} detalhe="você é o próximo" />
-          <TextoSuave>venha agora. ao chegar, leia o QR da TV para ser chamado.</TextoSuave>
-        </>
-      );
+      return <Posicao senha={en.senha} detalhe="você é o próximo" />;
     case "recepcao":
-      return (
-        <>
-          <Posicao senha={en.senha} detalhe="mostre esta senha e um documento com foto" />
-          <TextoSuave>
-            passe na recepção para conferir seus documentos. só na primeira vez; depois, é só ler o QR.
-          </TextoSuave>
-        </>
-      );
-    case "concluida":
-      return <TextoSuave>atendimento concluído. obrigado por esperar em casa, cuide-se!</TextoSuave>;
-    case "remanejada":
-      return (
-        <TextoSuave>a sua vez não chegou hoje. você continua neste serviço e a unidade marca outra data.</TextoSuave>
-      );
-    case "saiu":
-      return (
-        <TextoSuave>você foi chamado e não apareceu. estava na unidade e não ouviu? fale com a recepção.</TextoSuave>
-      );
-    case "cancelada":
-      return <TextoSuave>esta inscrição foi cancelada. para ir outro dia, faça uma nova inscrição.</TextoSuave>;
+      return <Posicao senha={en.senha} detalhe="mostre esta senha na recepção" />;
     default:
       return null;
   }
+}
+
+function Linha({ icone: Icone, children, forte }: { icone: LucideIcon; children: React.ReactNode; forte?: boolean }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <Icone size={20} color={forte ? COR.action : COR.inkMuted} strokeWidth={2.4} />
+      <Text
+        style={{
+          flex: 1,
+          fontFamily: forte ? FONTE.extra : FONTE.semi,
+          fontSize: forte ? 18 : 16,
+          lineHeight: forte ? 24 : 22,
+          color: forte ? COR.ink : COR.inkMuted,
+        }}
+      >
+        {children}
+      </Text>
+    </View>
+  );
 }
 
 export const Destaque = ({ children }: { children: React.ReactNode }) => (
@@ -252,7 +202,10 @@ export function Posicao({ senha, posicao, detalhe }: { senha: string | null; pos
   );
 }
 
-/** Um atendimento: selo, para quem e onde, a trilha, a explicação e as ações, tudo no mesmo cartão. */
+/**
+ * Um atendimento (revisão de 2026-11-14): o que é, quando (dia e faixa de horário), onde, para quem,
+ * a senha quando já está na fila, uma frase com o próximo passo e uma ação principal.
+ */
 export function CartaoDoAtendimento({
   en,
   sit,
@@ -264,34 +217,38 @@ export function CartaoDoAtendimento({
   vouSair: (() => void) | null;
   aoCancelar: (() => void) | null;
 }) {
-  const r = resumoDaEntrada(en, sit, Date.now());
-  const paraOutra = en.paraMim ? null : en.pessoa.split(/\s+/)[0];
+  const agora = Date.now();
+  const r = resumoDaEntrada(en, sit, agora);
   const podeCheckIn = ["posicao", "venha", "sem_previsao"].includes(sit.tipo) && en.itemEstado === "remoto";
+  const presente = (sit.tipo === "posicao" || sit.tipo === "sem_previsao") && sit.presente;
   return (
     <Cartao style={{ gap: 14 }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+      <View style={{ gap: 8, alignItems: "flex-start" }}>
         <Selo texto={r.selo} tom={r.tom} />
-        {paraOutra ? <Pequeno>para {paraOutra}</Pequeno> : null}
-      </View>
-      <View style={{ gap: 2 }}>
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink }}>
+        <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
           {en.servico.toLowerCase()}
         </Text>
-        <Pequeno>
-          {en.unidade}
-          {quando(en)}
-        </Pequeno>
       </View>
-      {/* Lista de espera e reserva ainda não têm data: sem trilha, só o selo e a frase. */}
-      {r.etapa !== null && r.etapa >= 1 && r.etapa < 4 ? (
-        <Trilha etapa={r.etapa} pendente={!r.naFila && r.etapa > 0} />
-      ) : null}
-      <Explicacao en={en} sit={sit} />
+      <View style={{ gap: 8 }}>
+        {en.sessao ? (
+          <Linha icone={Clock} forte={r.grupo !== "encerrados"}>
+            {janelaDoAtendimento(en.sessao.inicio, en.sessao.fim, agora)}
+          </Linha>
+        ) : (
+          <Linha icone={Clock}>data ainda não marcada</Linha>
+        )}
+        <Linha icone={MapPin}>{en.unidade}</Linha>
+        {en.paraMim ? null : <Linha icone={UserRound}>para {en.pessoa}</Linha>}
+      </View>
+      <NaFila en={en} sit={sit} />
+      <Text style={{ fontFamily: FONTE.bold, fontSize: 17, lineHeight: 24, color: COR.ink }}>
+        {proximoPasso(en, sit, agora)}
+      </Text>
       {sit.tipo === "recepcao" ? (
         <Botao texto="ler o QR de novo" tipo="secundario" onPress={() => router.push("/check-in")} />
       ) : null}
       {podeCheckIn ? <Botao texto="cheguei na unidade" onPress={() => router.push("/check-in")} /> : null}
-      {(sit.tipo === "posicao" || sit.tipo === "sem_previsao") && sit.presente ? (
+      {presente ? (
         vouSair ? (
           <Botao texto="vou sair um pouco" tipo="secundario" onPress={vouSair} />
         ) : (
