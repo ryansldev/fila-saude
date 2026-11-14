@@ -271,7 +271,7 @@ export default function Equipe() {
             setCriando(true);
           }}
         >
-          <PlusIcon />
+          <PlusIcon data-icon="inline-start" strokeWidth={2.75} />
           Adicionar usuário
         </Button>
       </div>
@@ -341,11 +341,11 @@ export default function Equipe() {
                 />
                 <Aviso texto={editando.erros.geral} />
               </div>
-              <SheetFooter className="border-t sm:flex-row sm:justify-start">
-                <Button onClick={salvar}>Salvar</Button>
+              <SheetFooter className="border-t sm:flex-row sm:justify-end">
                 <Button variant="ghost" onClick={() => setEditando(null)}>
                   Cancelar
                 </Button>
+                <Button onClick={salvar}>Salvar</Button>
               </SheetFooter>
             </>
           ) : null}
@@ -394,11 +394,11 @@ export default function Equipe() {
               />
               <Aviso texto={erros.geral} />
             </div>
-            <SheetFooter className="border-t sm:flex-row sm:justify-start">
-              <Button type="submit">Cadastrar</Button>
+            <SheetFooter className="border-t sm:flex-row sm:justify-end">
               <Button type="button" variant="ghost" onClick={() => setCriando(false)}>
                 Cancelar
               </Button>
+              <Button type="submit">Cadastrar</Button>
             </SheetFooter>
           </form>
         </SheetContent>

@@ -2,7 +2,7 @@
 
 import { mascararCep, soDigitos } from "@fila-saude/schemas/mascaras";
 import { unidadeEdicaoSchema, unidadeEntradaSchema } from "@fila-saude/schemas/unidade";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import { type ComponentProps, type FormEvent, useEffect, useMemo, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { EditorDeHorario } from "@/components/editor-de-horario";
@@ -134,7 +134,7 @@ function NovaUnidade({ aoCriar }: { aoCriar: (nome: string) => void }) {
       <div className="flex flex-col gap-2 sm:col-span-2">
         <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
         <Aviso texto={erros.geral} />
-        <Button type="submit" className="self-start">
+        <Button type="submit" className="self-end">
           Criar unidade
         </Button>
       </div>
@@ -170,7 +170,7 @@ function HorarioDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: (
       <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
       <Aviso texto={erros.geral} />
       <Aviso texto={ok} tipo="ok" />
-      <Button type="submit" variant="outline" className="self-start">
+      <Button type="submit" className="self-end">
         Salvar horário
       </Button>
     </form>
@@ -256,7 +256,7 @@ function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: ()
       <div className="flex flex-col gap-2 sm:col-span-2">
         <Aviso texto={erros.geral} />
         <Aviso texto={ok} tipo="ok" />
-        <Button type="submit" variant="outline" className="self-start">
+        <Button type="submit" className="self-end">
           Salvar configuração
         </Button>
       </div>
@@ -297,7 +297,7 @@ export default function Unidades() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
         <Button onClick={() => setCriando(true)}>
-          <PlusIcon />
+          <PlusIcon data-icon="inline-start" strokeWidth={2.75} />
           Adicionar unidade
         </Button>
       </div>
@@ -312,12 +312,28 @@ export default function Unidades() {
             <TableCell className="whitespace-normal">{enderecoEmTexto(u.endereco)}</TableCell>
             <TableCell className="whitespace-normal">{resumoDoHorario(u.horario)}</TableCell>
             <TableCell className="text-right">
-              <Button variant="ghost" size="sm" onClick={() => setAberta(u.id)}>
-                Configurar
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => remover(u)}>
-                Remover
-              </Button>
+              <div className="flex justify-end gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-gray-500 hover:text-gray-900"
+                  aria-label={`Remover ${u.nome}`}
+                  title="Remover"
+                  onClick={() => remover(u)}
+                >
+                  <Trash2Icon />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-gray-500 hover:text-gray-900"
+                  aria-label={`Configurar ${u.nome}`}
+                  title="Configurar"
+                  onClick={() => setAberta(u.id)}
+                >
+                  <SettingsIcon />
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
         ))}
@@ -340,7 +356,6 @@ export default function Unidades() {
               </SheetHeader>
               <div className="flex flex-col gap-8 overflow-y-auto p-4">
                 <section className="flex flex-col gap-3">
-                  <h3 className="font-semibold text-gray-900">Horário de funcionamento</h3>
                   <HorarioDaUnidade key={`h-${selecionada.id}`} unidade={selecionada} aoSalvar={recarregar} />
                 </section>
                 <section className="flex flex-col gap-3">

@@ -165,6 +165,8 @@ export function Tabela({ cabecalho, children }: { cabecalho: string[]; children:
 }
 
 /**
+ * Padrão dos painéis laterais (Sheet) de cadastro e edição: botões de ação alinhados à direita,
+ * o principal (primary) na ponta e "Cancelar" (ghost) antes dele.
  * Largura dos painéis laterais (Sheet) de cadastro e edição. Precisa do mesmo prefixo
  * `data-[side=right]` da classe padrão do shadcn para vencer o `sm:max-w-sm`.
  */
