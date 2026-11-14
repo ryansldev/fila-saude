@@ -1,5 +1,6 @@
 import { alternarOpcao } from "@fila-saude/domain";
 import type { InscricaoEntrada } from "@fila-saude/schemas/fila";
+import { mascararCpf, mascararData } from "@fila-saude/schemas/mascaras";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { Text, View } from "react-native";
@@ -212,14 +213,17 @@ export default function Inscricao() {
               placeholder="dd/mm/aaaa"
               keyboardType="number-pad"
               value={outra.nascimento}
-              onChangeText={(t) => setOutra({ ...outra, nascimento: t })}
+              onChangeText={(t) => setOutra({ ...outra, nascimento: mascararData(t) })}
+              maxLength={10}
               erro={mostrar("nascimento")}
             />
             <Campo
               rotulo="CPF (se tiver)"
               keyboardType="number-pad"
               value={outra.cpf}
-              onChangeText={(t) => setOutra({ ...outra, cpf: t })}
+              onChangeText={(t) => setOutra({ ...outra, cpf: mascararCpf(t) })}
+              maxLength={14}
+              placeholder="000.000.000-00"
               erro={mostrar("cpf")}
             />
             <Pequeno>você recebe os avisos e leva a pessoa no dia.</Pequeno>

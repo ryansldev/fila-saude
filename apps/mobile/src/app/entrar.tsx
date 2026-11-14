@@ -1,6 +1,7 @@
+import { mascararCpf } from "@fila-saude/schemas/mascaras";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Botao, Campo, Espaco, Faixa, Tela, Titulo } from "@/components/ui";
+import { Botao, Campo, CampoSenha, Espaco, Faixa, Tela, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
 
@@ -26,8 +27,17 @@ export default function Entrar() {
   return (
     <Tela>
       <Titulo>entrar</Titulo>
-      <Campo rotulo="CPF" value={cpf} onChangeText={setCpf} keyboardType="number-pad" placeholder="000.000.000-00" />
-      <Campo rotulo="senha" value={senha} onChangeText={setSenha} secureTextEntry />
+      <Campo
+        rotulo="CPF"
+        value={cpf}
+        onChangeText={(t) => setCpf(mascararCpf(t))}
+        keyboardType="number-pad"
+        placeholder="000.000.000-00"
+        maxLength={14}
+        autoComplete="username"
+        textContentType="username"
+      />
+      <CampoSenha rotulo="senha" value={senha} onChangeText={setSenha} autoComplete="current-password" />
       {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
       <Espaco />
       <Botao texto="entrar" onPress={enviar} carregando={enviando} desativado={!cpf || !senha} />

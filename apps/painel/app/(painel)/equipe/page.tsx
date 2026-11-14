@@ -318,7 +318,9 @@ export default function Equipe() {
                 required
                 autoCapitalize="none"
                 value={v.login}
-                onChange={(e) => setV({ ...v, login: e.target.value })}
+                maxLength={30}
+                // Só o que o login aceita (sem acento, espaço ou hífen): a pessoa vê na hora.
+                onChange={(e) => setV({ ...v, login: e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, "") })}
               />
             </Campo>
             <Campo rotulo="Senha inicial" erro={erros.campos.senha} dica="mínimo 8 caracteres">

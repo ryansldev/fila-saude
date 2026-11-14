@@ -1,6 +1,7 @@
+import { mascararCpf, mascararData, mascararTelefone } from "@fila-saude/schemas/mascaras";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Botao, Campo, Espaco, Faixa, Pequeno, Progresso, Tela, Titulo } from "@/components/ui";
+import { Botao, Campo, CampoSenha, Espaco, Faixa, Pequeno, Progresso, Tela, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
 import { dataIso, erroDoCadastro } from "@/lib/validacao";
@@ -55,8 +56,9 @@ export default function Cadastro() {
           rotulo="CPF"
           erro={doPasso(1)("cpf")}
           value={v.cpf}
-          onChangeText={mudar("cpf")}
+          onChangeText={(t) => mudar("cpf")(mascararCpf(t))}
           keyboardType="number-pad"
+          maxLength={14}
           placeholder="000.000.000-00"
         />
         <Pequeno>usamos o CPF para te identificar na unidade. só números.</Pequeno>
@@ -65,15 +67,20 @@ export default function Cadastro() {
           erro={doPasso(1)("nascimento")}
           placeholder="dd/mm/aaaa"
           value={v.nascimento}
-          onChangeText={mudar("nascimento")}
+          onChangeText={(t) => mudar("nascimento")(mascararData(t))}
           keyboardType="number-pad"
+          maxLength={10}
+          autoComplete="birthdate-full"
         />
         <Campo
           rotulo="celular"
           erro={doPasso(1)("telefone")}
           value={v.telefone}
-          onChangeText={mudar("telefone")}
+          onChangeText={(t) => mudar("telefone")(mascararTelefone(t))}
           keyboardType="phone-pad"
+          maxLength={15}
+          autoComplete="tel"
+          textContentType="telephoneNumber"
           placeholder="(00) 00000-0000"
         />
         {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
@@ -94,13 +101,13 @@ export default function Cadastro() {
     <Tela aoVoltar={() => setPasso(1)}>
       <Progresso>criar conta · 2 de 2</Progresso>
       <Titulo>crie sua senha</Titulo>
-      <Campo
+      <CampoSenha
         rotulo="senha"
         erro={doPasso(2)("senha")}
         value={v.senha}
         onChangeText={mudar("senha")}
-        secureTextEntry
         placeholder="pelo menos 8 caracteres"
+        autoComplete="new-password"
       />
       <Campo
         rotulo="e-mail"
@@ -108,6 +115,9 @@ export default function Cadastro() {
         value={v.email}
         onChangeText={mudar("email")}
         keyboardType="email-address"
+        autoComplete="email"
+        textContentType="emailAddress"
+        autoCorrect={false}
         autoCapitalize="none"
         placeholder="seu@email.com"
       />

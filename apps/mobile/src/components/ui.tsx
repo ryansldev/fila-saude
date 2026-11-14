@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import {
   Linking,
   Pressable,
@@ -228,6 +228,17 @@ export function Campo({ rotulo, erro, ...props }: { rotulo: string; erro?: strin
         {...props}
       />
       {erro ? <Text style={{ fontFamily: FONTE.regular, fontSize: 16, color: COR.dangerInk }}>{erro}</Text> : null}
+    </View>
+  );
+}
+
+/** Senha com "mostrar": digitar no celular sem ver o que digitou trava muita gente. */
+export function CampoSenha({ rotulo, erro, ...props }: { rotulo: string; erro?: string | undefined } & TextInputProps) {
+  const [ver, setVer] = useState(false);
+  return (
+    <View style={{ gap: 6 }}>
+      <Campo rotulo={rotulo} erro={erro} secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false} {...props} />
+      <LinkBotao texto={ver ? "esconder senha" : "mostrar senha"} onPress={() => setVer(!ver)} />
     </View>
   );
 }

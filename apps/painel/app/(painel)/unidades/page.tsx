@@ -1,5 +1,6 @@
 "use client";
 
+import { mascararCep, soDigitos } from "@fila-saude/schemas/mascaras";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { EditorDeHorario } from "@/components/editor-de-horario";
 import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
@@ -81,9 +82,19 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
     }
   }
 
+  // Máscara por campo: CEP com traço e CNES só com dígitos, enquanto digita.
+  const MASCARA: Partial<Record<keyof typeof VAZIA, (t: string) => string>> = {
+    cep: mascararCep,
+    cnes: (t) => soDigitos(t).slice(0, 7),
+  };
   const campo = (k: keyof typeof VAZIA, rotulo: string, extra: object = {}, chaveDoErro: string = k) => (
     <Campo rotulo={rotulo} erro={erros.campos[chaveDoErro]}>
-      <input className={classeDoCampo} value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} {...extra} />
+      <input
+        className={classeDoCampo}
+        value={v[k]}
+        onChange={(e) => setV({ ...v, [k]: (MASCARA[k] ?? ((t: string) => t))(e.target.value) })}
+        {...extra}
+      />
     </Campo>
   );
 
@@ -99,7 +110,12 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
           </select>
         </Campo>
         {campo("cnes", "Código CNES (opcional)", { inputMode: "numeric", maxLength: 7 })}
-        {campo("cep", "CEP", { inputMode: "numeric", required: true }, "endereco.cep")}
+        {campo(
+          "cep",
+          "CEP",
+          { inputMode: "numeric", required: true, maxLength: 9, placeholder: "00000-000" },
+          "endereco.cep",
+        )}
         {campo("logradouro", "Logradouro", { required: true, placeholder: "Rua, avenida…" }, "endereco.logradouro")}
         {campo("numero", "Número", { required: true, placeholder: "ou s/n" }, "endereco.numero")}
         {campo("complemento", "Complemento", {}, "endereco.complemento")}
