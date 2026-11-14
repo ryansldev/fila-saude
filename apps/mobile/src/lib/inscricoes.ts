@@ -24,11 +24,11 @@ export type InscricaoNaAgenda = { tipo: "livre" } | { tipo: "inscrito"; selo: st
 
 /** O selo da agenda diz como o dono está no serviço (nesta data, na lista, na reserva...). */
 function seloDoDono(e: MinhaEntrada, sessaoId: string): string {
-  if (e.estado === "remanejada") return "aguardando nova data";
-  if (e.estado === "na_reserva") return "você está na reserva";
-  if (e.estado === "aguardando" || !e.sessao) return "você está na lista de espera deste serviço";
-  if (e.sessao.id === sessaoId) return "você já está inscrito";
-  return "você já tem data neste serviço";
+  if (e.estado === "remanejada") return "nova data";
+  if (e.estado === "na_reserva") return "na reserva";
+  if (e.estado === "aguardando" || !e.sessao) return "lista de espera";
+  if (e.sessao.id === sessaoId) return "inscrito";
+  return "já tem data";
 }
 
 /**

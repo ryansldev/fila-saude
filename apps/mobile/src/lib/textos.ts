@@ -108,7 +108,7 @@ export function resumoDaEntrada(
   const base = (() => {
     switch (sit.tipo) {
       case "lista":
-        return { selo: "na lista de espera", tom: "cinza" as Tom, naFila: false, etapa: 0 };
+        return { selo: "lista de espera", tom: "cinza" as Tom, naFila: false, etapa: 0 };
       case "reserva":
         return { selo: "na reserva", tom: "amarelo" as Tom, naFila: false, etapa: 0 };
       case "alocada":
@@ -116,28 +116,28 @@ export function resumoDaEntrada(
       case "confirmada":
       case "aguardando":
       case "atrasada":
-        return { selo: "inscrito · fila ainda não abriu", tom: "azul" as Tom, naFila: false, etapa: 1 };
+        return { selo: "inscrito", tom: "azul" as Tom, naFila: false, etapa: 1 };
       case "recepcao":
-        return { selo: "passe na recepção", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
+        return { selo: "recepção", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
       case "venha":
         return { selo: "venha agora", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
       case "posicao":
-        if (sit.presente) return { selo: "na fila · na unidade", tom: "verde" as Tom, naFila: true, etapa: 2 };
-        if (sit.sair) return { selo: "hora de sair de casa", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
-        return { selo: "na fila · em casa", tom: "azul" as Tom, naFila: true, etapa: 1 };
+        if (sit.presente) return { selo: "na unidade", tom: "verde" as Tom, naFila: true, etapa: 2 };
+        if (sit.sair) return { selo: "saia de casa", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
+        return { selo: "na fila", tom: "azul" as Tom, naFila: true, etapa: 1 };
       case "sem_previsao":
         return sit.presente
-          ? { selo: "na fila · na unidade", tom: "verde" as Tom, naFila: true, etapa: 2 }
-          : { selo: "na fila · em casa", tom: "azul" as Tom, naFila: true, etapa: 1 };
+          ? { selo: "na unidade", tom: "verde" as Tom, naFila: true, etapa: 2 }
+          : { selo: "na fila", tom: "azul" as Tom, naFila: true, etapa: 1 };
       case "vez":
-        return { selo: "é a sua vez", tom: "verde" as Tom, naFila: true, etapa: 3 };
+        return { selo: "sua vez", tom: "verde" as Tom, naFila: true, etapa: 3 };
       case "concluida":
         return { selo: "atendido", tom: "verde" as Tom, naFila: false, etapa: 4 };
       case "remanejada":
         // Continua no serviço: a unidade marca outra data (não é encerrada).
-        return { selo: "aguardando nova data", tom: "cinza" as Tom, naFila: false, etapa: 0 };
+        return { selo: "nova data", tom: "cinza" as Tom, naFila: false, etapa: 0 };
       case "saiu":
-        return { selo: "saiu da fila", tom: "vermelho" as Tom, naFila: false, etapa: null };
+        return { selo: "saiu", tom: "vermelho" as Tom, naFila: false, etapa: null };
       case "cancelada":
         return { selo: "cancelado", tom: "cinza" as Tom, naFila: false, etapa: null };
     }

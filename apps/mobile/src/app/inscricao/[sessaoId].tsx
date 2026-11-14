@@ -445,7 +445,7 @@ export default function Inscricao() {
                 <Text style={{ fontFamily: FONTE.bold, fontSize: 18, lineHeight: 24, color: COR.inkMuted }}>
                   para mim
                 </Text>
-                <Selo texto="você já está inscrito" tom="verde" />
+                <Selo texto="inscrito" tom="verde" />
                 <Pequeno>cada pessoa entra uma vez em cada serviço. sua inscrição está em minha fila.</Pequeno>
               </View>
             ) : (

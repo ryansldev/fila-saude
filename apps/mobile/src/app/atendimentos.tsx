@@ -106,7 +106,7 @@ export default function Atendimentos() {
           ) : null}
         </Cartao>
       ) : null}
-      {f.cartoes(itens)}
+      {f.cartoes(itens, "lista")}
       {f.gaveta}
     </Tela>
   );

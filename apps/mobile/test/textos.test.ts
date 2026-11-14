@@ -176,7 +176,7 @@ describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 202
 
   it("lista de espera e reserva: ainda NÃO está em fila nenhuma, grupo sem data", () => {
     const lista = r({ ...base, estado: "aguardando", senha: null, itemEstado: null });
-    expect(lista).toMatchObject({ naFila: false, etapa: 0, grupo: "sem_data", selo: "na lista de espera" });
+    expect(lista).toMatchObject({ naFila: false, etapa: 0, grupo: "sem_data", selo: "lista de espera" });
     const reserva = r({ ...base, estado: "na_reserva", senha: null, itemEstado: null, sessao: amanha });
     expect(reserva).toMatchObject({ naFila: false, etapa: 0, grupo: "proximos", selo: "na reserva" });
   });
@@ -186,22 +186,22 @@ describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 202
       naFila: false,
       etapa: 1,
       grupo: "proximos",
-      selo: "inscrito · fila ainda não abriu",
+      selo: "inscrito",
     });
   });
 
   it("na fila em casa, na unidade e chamado: etapas 1, 2 e 3, grupo hoje", () => {
     const emCasa = r({ ...base, sessao: hoje, estimativa: { tipo: "posicao", posicao: 3, minutos: 20 } });
-    expect(emCasa).toMatchObject({ naFila: true, etapa: 1, grupo: "hoje", selo: "na fila · em casa" });
+    expect(emCasa).toMatchObject({ naFila: true, etapa: 1, grupo: "hoje", selo: "na fila" });
     const naUnidade = r({
       ...base,
       sessao: hoje,
       itemEstado: "presente",
       estimativa: { tipo: "posicao", posicao: 1, minutos: 0 },
     });
-    expect(naUnidade).toMatchObject({ naFila: true, etapa: 2, selo: "na fila · na unidade" });
+    expect(naUnidade).toMatchObject({ naFila: true, etapa: 2, selo: "na unidade" });
     const vez = r({ ...base, sessao: hoje, itemEstado: "chamado", chamada: { estacao: "Sala 1", em: hoje.inicio } });
-    expect(vez).toMatchObject({ naFila: true, etapa: 3, selo: "é a sua vez" });
+    expect(vez).toMatchObject({ naFila: true, etapa: 3, selo: "sua vez" });
   });
 
   it("encerrados: atendido completa a trilha; cancelado e saiu não têm trilha", () => {
@@ -214,7 +214,7 @@ describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 202
 
   it("remanejada: continua no serviço esperando nova data (não é encerrada)", () => {
     const rem = r({ ...base, sessao: hoje, estado: "remanejada", itemEstado: "remanejado", senha: null });
-    expect(rem).toMatchObject({ naFila: false, etapa: 0, grupo: "sem_data", selo: "aguardando nova data" });
+    expect(rem).toMatchObject({ naFila: false, etapa: 0, grupo: "sem_data", selo: "nova data" });
   });
 });
 

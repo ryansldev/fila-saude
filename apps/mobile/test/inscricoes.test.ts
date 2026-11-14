@@ -49,18 +49,18 @@ describe("uma inscrição ativa por pessoa e serviço (AD-032), decidido antes d
     const s2 = { id: SESSAO_2, servico: { id: CURATIVOS } };
     expect(inscricaoNaAgenda(s1, [base])).toEqual({
       tipo: "inscrito",
-      selo: "você já está inscrito",
+      selo: "inscrito",
       podeOutra: true,
     });
-    expect(inscricaoNaAgenda(s2, [base])).toMatchObject({ selo: "você já tem data neste serviço" });
+    expect(inscricaoNaAgenda(s2, [base])).toMatchObject({ selo: "já tem data" });
     expect(inscricaoNaAgenda(s2, [{ ...base, estado: "aguardando", sessao: null }])).toMatchObject({
-      selo: "você está na lista de espera deste serviço",
+      selo: "lista de espera",
     });
     expect(inscricaoNaAgenda(s1, [{ ...base, estado: "na_reserva" }])).toMatchObject({
-      selo: "você está na reserva",
+      selo: "na reserva",
     });
     expect(inscricaoNaAgenda(s2, [{ ...base, estado: "remanejada" }])).toMatchObject({
-      selo: "aguardando nova data",
+      selo: "nova data",
     });
   });
 

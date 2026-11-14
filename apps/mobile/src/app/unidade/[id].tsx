@@ -1,36 +1,38 @@
 import type { MinhaEntrada, SessaoDaAgenda, UnidadePublica } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { MapPin } from "lucide-react-native";
+import { Building2, MapPin } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
 import {
+  Avatar,
+  BlocoData,
   Botao,
   Carregando,
-  CartaoTocavel,
+  Chips,
   COR,
   Faixa,
   FONTE,
+  LinhaTocavel,
   Pequeno,
   Selo,
   Tela,
   Texto,
   TextoSuave,
   Titulo,
+  type Tom,
 } from "@/components/ui";
-import { diaCurto, hora } from "@/lib/datas";
+import { hora, partesDoDia } from "@/lib/datas";
 import { inscricaoNaAgenda } from "@/lib/inscricoes";
 import { useSessao } from "@/lib/sessao";
 import { avisoDoErro } from "@/lib/textos";
 import { enderecoEmLinha, linkComoChegar, nomeDoTipo } from "@/lib/unidades";
 
-const vagas = (x: SessaoDaAgenda) =>
+const vagas = (x: SessaoDaAgenda): { texto: string; tom: Tom } =>
   x.vagasRestantes === null
-    ? "vagas livres"
+    ? { texto: "vagas livres", tom: "verde" }
     : x.vagasRestantes === 0
-      ? "as vagas acabaram · você entra na reserva"
-      : x.vagasRestantes === 1
-        ? "1 vaga"
-        : `${x.vagasRestantes} vagas`;
+      ? { texto: "sem vagas · entra na reserva", tom: "amarelo" }
+      : { texto: x.vagasRestantes === 1 ? "1 vaga" : `${x.vagasRestantes} vagas`, tom: "verde" };
 
 async function abrirComoChegar(u: UnidadePublica) {
   const link = linkComoChegar(u, Platform.OS);
@@ -49,9 +51,11 @@ function CartaoDaSessao({ x, unidade, minhas }: { x: SessaoDaAgenda; unidade: st
   // Dono já no serviço: ainda dá para inscrever outra pessoa (o "para mim" fica desligado
   // na próxima tela). Só sem nada a fazer o cartão leva à minha fila.
   const soVer = inscrito && !situacao.podeOutra;
+  const v = vagas(x);
   return (
-    <CartaoTocavel
+    <LinhaTocavel
       acao={soVer ? "ver minha fila" : inscrito ? "inscrever outra pessoa" : "quero ir"}
+      esquerda={<BlocoData {...partesDoDia(x.inicio, Date.now())} tom={inscrito ? "verde" : "azul"} />}
       onPress={() =>
         soVer
           ? router.replace("/inicio")
@@ -68,19 +72,21 @@ function CartaoDaSessao({ x, unidade, minhas }: { x: SessaoDaAgenda; unidade: st
             })
       }
     >
-      {inscrito ? <Selo texto={situacao.selo} tom="verde" /> : null}
       <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
-        {diaCurto(x.inicio)} · {hora(x.inicio)} às {hora(x.fim)}
+        {x.servico.nome.toLowerCase()}
       </Text>
-      <Texto>{x.servico.nome.toLowerCase()}</Texto>
       <Pequeno>
-        {inscrito
-          ? soVer
-            ? "sua conta já inscreveu o máximo de pessoas nesta data."
-            : "cada pessoa entra uma vez por serviço. sua inscrição está em minha fila."
-          : `${x.estado === "aberta" ? "fila andando · " : ""}${vagas(x)}${x.profissional ? ` · ${x.profissional}` : ""}`}
+        {hora(x.inicio)} às {hora(x.fim)}
+        {x.profissional ? ` · ${x.profissional}` : ""}
+        {x.estado === "aberta" ? " · fila andando" : ""}
       </Pequeno>
-    </CartaoTocavel>
+      {inscrito ? <Selo texto={situacao.selo} tom="verde" /> : <Selo texto={v.texto} tom={v.tom} />}
+      {inscrito ? (
+        <Pequeno>
+          {soVer ? "sua conta já inscreveu o máximo de pessoas nesta data." : "toque para inscrever outra pessoa."}
+        </Pequeno>
+      ) : null}
+    </LinhaTocavel>
   );
 }
 
@@ -119,6 +125,10 @@ export default function Unidade() {
   );
 
   const voltar = () => (router.canGoBack() ? router.back() : router.replace("/unidades"));
+  const [filtro, setFiltro] = useState<string>("todos");
+  const servicos = [...new Map((sessoes ?? []).map((x) => [x.servico.id, x.servico.nome.toLowerCase()]))].map(
+    ([id, rotulo]) => ({ id, rotulo }),
+  );
 
   if (unidade === "nao_achou")
     return (
@@ -152,18 +162,26 @@ export default function Unidade() {
       {unidade === null && !erro ? <Carregando texto="buscando a unidade…" /> : null}
       {unidade ? (
         <>
-          <View style={{ gap: 6 }}>
-            <Pequeno>{nomeDoTipo(unidade.tipo)}</Pequeno>
-            <Titulo>{unidade.nome}</Titulo>
-            <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
-              <MapPin size={22} color={COR.inkMuted} strokeWidth={2.25} style={{ marginTop: 3 }} />
-              <TextoSuave style={{ flex: 1 }}>{enderecoEmLinha(unidade.endereco)}</TextoSuave>
+          <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+            <Avatar Icone={Building2} tom={(sessoes?.length ?? 0) > 0 ? "verde" : "cinza"} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Titulo>{unidade.nome}</Titulo>
+              <Pequeno>
+                {nomeDoTipo(unidade.tipo)} · {unidade.endereco.bairro}
+              </Pequeno>
             </View>
+          </View>
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+            <MapPin size={22} color={COR.inkMuted} strokeWidth={2.25} style={{ marginTop: 3 }} />
+            <TextoSuave style={{ flex: 1 }}>{enderecoEmLinha(unidade.endereco)}</TextoSuave>
           </View>
           <Botao texto="como chegar" tipo="secundario" onPress={() => void abrirComoChegar(unidade)} />
           <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink, marginTop: 8 }}>
             próximos atendimentos
           </Text>
+          {servicos.length > 1 ? (
+            <Chips opcoes={[{ id: "todos", rotulo: "todos" }, ...servicos]} atual={filtro} mudar={setFiltro} />
+          ) : null}
           {sessoes?.length === 0 ? (
             <View style={{ gap: 4, paddingVertical: 16 }}>
               <Texto style={{ fontFamily: FONTE.bold, textAlign: "center" }}>
@@ -174,9 +192,11 @@ export default function Unidade() {
               </TextoSuave>
             </View>
           ) : null}
-          {(sessoes ?? []).map((x) => (
-            <CartaoDaSessao key={x.id} x={x} unidade={unidade.nome} minhas={minhas} />
-          ))}
+          {(sessoes ?? [])
+            .filter((x) => filtro === "todos" || x.servico.id === filtro)
+            .map((x) => (
+              <CartaoDaSessao key={x.id} x={x} unidade={unidade.nome} minhas={minhas} />
+            ))}
         </>
       ) : null}
     </Tela>

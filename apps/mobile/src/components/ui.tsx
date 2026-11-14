@@ -1,16 +1,15 @@
 import { BottomSheet, BottomSheetView } from "@expo/ui/community/bottom-sheet";
 import { router } from "expo-router";
 import {
-  Building2,
   CalendarDays,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleAlert,
   CircleCheck,
   CircleUserRound,
   House,
   Info,
-  ListOrdered,
   type LucideIcon,
   MapPin,
   TriangleAlert,
@@ -98,27 +97,99 @@ export function Logo({
   );
 }
 
-/** O mascote só aparece sobre branco (o jaleco é transparente). */
-export function Mascote({ tamanho = 200 }: { tamanho?: number }) {
+/**
+ * O mascote só aparece sobre branco (o jaleco é transparente).
+ * `moldura`: o cantinho branco ao redor; desliga quando o fundo da tela já é branco (fala do Dr.).
+ */
+export function Mascote({ tamanho = 200, moldura = true }: { tamanho?: number; moldura?: boolean }) {
+  const desenho = (
+    <SvgXml xml={MASCOTE_SVG} width={tamanho} height={tamanho} accessibilityLabel="mascote do fila saúde" />
+  );
+  if (!moldura) return desenho;
   return (
-    <View style={{ alignSelf: "center", backgroundColor: COR.surface, padding: 8, borderRadius: 16 }}>
-      <SvgXml xml={MASCOTE_SVG} width={tamanho} height={tamanho} accessibilityLabel="mascote do fila saúde" />
+    <View style={{ alignSelf: "center", backgroundColor: COR.surface, padding: 8, borderRadius: 16 }}>{desenho}</View>
+  );
+}
+
+/** Topo das telas: seta à esquerda quando dá para voltar; depois o logo e "fila saúde". */
+export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?: (() => void) | undefined }) {
+  const aoPressionar = aoVoltar ?? (voltar && router.canGoBack() ? () => router.back() : undefined);
+  return (
+    <View style={e.topo}>
+      {aoPressionar ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="voltar"
+          onPress={aoPressionar}
+          hitSlop={12}
+          style={({ pressed }) => [{ padding: 4, marginLeft: -4, borderRadius: 999 }, pressed && { opacity: 0.5 }]}
+        >
+          <ChevronLeft size={32} color={COR.ink} strokeWidth={2.5} />
+        </Pressable>
+      ) : null}
+      <Logo />
+      <Text style={e.marca}>fila saúde</Text>
+      <View style={{ flex: 1 }} />
     </View>
   );
 }
 
-/** Topo das telas: logo, "fila saúde" e, quando há para onde voltar, "voltar". */
-export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?: (() => void) | undefined }) {
+/**
+ * Mensagem do Dr., como no protótipo (lesson-say): personagem à esquerda, balão na altura do peito,
+ * pontinha apontando para ele. Tudo sobre branco por causa do jaleco.
+ */
+export function FalaDoDr({
+  cumprimento,
+  nome,
+  texto,
+}: {
+  cumprimento: string;
+  nome?: string | undefined;
+  texto: string;
+}) {
+  const titulo = nome ? `${cumprimento}, ${nome}!` : `${cumprimento}!`;
   return (
-    <View style={e.topo}>
-      <Logo />
-      <Text style={e.marca}>fila saúde</Text>
-      <View style={{ flex: 1 }} />
-      {aoVoltar ? (
-        <LinkBotao texto="voltar" onPress={aoVoltar} />
-      ) : voltar && router.canGoBack() ? (
-        <LinkBotao texto="voltar" onPress={() => router.back()} />
-      ) : null}
+    <View
+      accessibilityRole="summary"
+      accessibilityLabel={`dr.: ${titulo} ${texto}`}
+      style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 }}
+    >
+      <View style={{ width: 96, alignItems: "center" }}>
+        <Mascote tamanho={92} moldura={false} />
+      </View>
+      <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
+        <View
+          pointerEvents="none"
+          style={{
+            width: 14,
+            height: 14,
+            marginRight: -8,
+            backgroundColor: COR.surface,
+            borderLeftWidth: 2,
+            borderBottomWidth: 2,
+            borderColor: COR.linha,
+            transform: [{ rotate: "45deg" }],
+            zIndex: 1,
+          }}
+        />
+        <View
+          style={{
+            flex: 1,
+            gap: 6,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            borderRadius: 20,
+            borderTopLeftRadius: 6,
+            borderWidth: 2,
+            borderBottomWidth: 4,
+            borderColor: COR.linha,
+            backgroundColor: COR.surface,
+          }}
+        >
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>{titulo}</Text>
+          <Text style={{ fontFamily: FONTE.semi, fontSize: 16, lineHeight: 24, color: COR.inkMuted }}>{texto}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -573,25 +644,151 @@ const TOM: Record<
   vermelho: { fundo: COR.dangerBg, texto: COR.dangerInk, ponto: COR.dangerInk },
 };
 
-/** Selo da situação, com ponto colorido: a cor nunca é o único sinal (o texto diz). */
+/** Selo da situação: só o texto, na cor do tom (a cor nunca é o único sinal). */
 export function Selo({ texto, tom }: { texto: string; tom: keyof typeof TOM }) {
   const t = TOM[tom];
   return (
     <View
       style={{
-        flexDirection: "row",
-        alignItems: "center",
         alignSelf: "flex-start",
-        gap: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 3,
         borderRadius: 999,
         backgroundColor: t.fundo,
       }}
     >
-      <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: t.ponto }} />
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 16, color: t.texto }}>{texto}</Text>
+      <Text style={{ fontFamily: FONTE.bold, fontSize: 14, lineHeight: 18, color: t.texto }}>{texto}</Text>
     </View>
+  );
+}
+
+export type Tom = keyof typeof TOM;
+export const corDoTom = (tom: Tom) => TOM[tom];
+
+/** Bloco de data à esquerda dos cartões de lista (como o pedido no iFood): bate o olho e vê o dia. */
+export function BlocoData({ topo, dia, mes, tom = "azul" }: { topo: string; dia: string; mes: string; tom?: Tom }) {
+  const t = TOM[tom];
+  const hoje = topo === "hoje";
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        width: 68,
+        paddingVertical: 8,
+        borderRadius: 16,
+        alignItems: "center",
+        backgroundColor: hoje ? t.ponto : t.fundo,
+      }}
+    >
+      <Text style={{ fontFamily: FONTE.extra, fontSize: 14, lineHeight: 18, color: hoje ? "#ffffff" : t.texto }}>
+        {topo}
+      </Text>
+      <Text style={{ fontFamily: FONTE.extra, fontSize: 30, lineHeight: 34, color: hoje ? "#ffffff" : COR.ink }}>
+        {dia}
+      </Text>
+      <Text style={{ fontFamily: FONTE.bold, fontSize: 14, lineHeight: 18, color: hoje ? "#ffffff" : t.texto }}>
+        {mes}
+      </Text>
+    </View>
+  );
+}
+
+/** Ícone num quadrado colorido, à esquerda das linhas de lista (unidade, serviço). */
+export function Avatar({ Icone, tom = "azul" }: { Icone: LucideIcon; tom?: Tom }) {
+  const t = TOM[tom];
+  return (
+    <View
+      style={{
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: t.fundo,
+      }}
+    >
+      <Icone size={28} color={t.ponto} strokeWidth={2.4} />
+    </View>
+  );
+}
+
+/**
+ * Linha de lista tocável (como uma loja no iFood): algo à esquerda, o conteúdo e a seta. O que acontece
+ * ao tocar vai para o leitor de tela; na tela, a seta basta.
+ */
+export function LinhaTocavel({
+  esquerda,
+  children,
+  acao,
+  onPress,
+}: {
+  esquerda: ReactNode;
+  children: ReactNode;
+  acao: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint={acao}
+      onPress={onPress}
+      style={({ pressed }) => [
+        e.card,
+        { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 14 },
+        pressed && { backgroundColor: COR.primary50, borderColor: COR.action },
+      ]}
+    >
+      {esquerda}
+      <View style={{ flex: 1, gap: 4 }}>{children}</View>
+      <ChevronRight size={26} color={COR.inkMuted} strokeWidth={2.5} />
+    </Pressable>
+  );
+}
+
+/** Filtro em pílulas que rolam para o lado (as categorias do iFood). Uma escolhida por vez. */
+export function Chips<T extends string>({
+  opcoes,
+  atual,
+  mudar,
+}: {
+  opcoes: { id: T; rotulo: string }[];
+  atual: T;
+  mudar: (id: T) => void;
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ marginHorizontal: -16, flexGrow: 0 }}
+      contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
+    >
+      {opcoes.map((o) => {
+        const ativa = o.id === atual;
+        return (
+          <Pressable
+            key={o.id}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: ativa }}
+            onPress={() => mudar(o.id)}
+            style={{
+              minHeight: 44,
+              paddingHorizontal: 18,
+              justifyContent: "center",
+              borderRadius: 999,
+              borderWidth: 2,
+              borderBottomWidth: ativa ? 2 : 4,
+              borderColor: ativa ? COR.action : COR.linha,
+              backgroundColor: ativa ? COR.action : COR.surface,
+            }}
+          >
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 16, color: ativa ? "#ffffff" : COR.ink }}>
+              {o.rotulo}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
   );
 }
 

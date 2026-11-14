@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { diaCurto, ehHoje, hora, janelaDoAtendimento } from "@/lib/datas";
+import { cumprimentoDoDia, diaCurto, ehHoje, hora, janelaDoAtendimento, partesDoDia } from "@/lib/datas";
+
+describe("cumprimento do Dr. pelo horário", () => {
+  it("bom dia de manhã, boa tarde à tarde, boa noite à noite e de madrugada", () => {
+    // 9h, 15h e 21h em Brasília (UTC−3).
+    expect(cumprimentoDoDia(Date.parse("2026-11-13T12:00:00.000Z"))).toBe("bom dia");
+    expect(cumprimentoDoDia(Date.parse("2026-11-13T18:00:00.000Z"))).toBe("boa tarde");
+    expect(cumprimentoDoDia(Date.parse("2026-11-14T00:00:00.000Z"))).toBe("boa noite");
+    expect(cumprimentoDoDia(Date.parse("2026-11-13T06:00:00.000Z"))).toBe("boa noite"); // 3h
+  });
+});
+
+describe("bloco de data dos cartões", () => {
+  const agora = Date.parse("2026-11-13T12:00:00.000Z"); // sexta, 13/11, 9h em Brasília
+  it("dia do mês grande, mês curto; em cima, hoje, amanhã ou o dia da semana", () => {
+    expect(partesDoDia("2026-11-13T17:00:00.000Z", agora)).toEqual({ topo: "hoje", dia: "13", mes: "nov" });
+    expect(partesDoDia("2026-11-14T11:00:00.000Z", agora)).toEqual({ topo: "amanhã", dia: "14", mes: "nov" });
+    expect(partesDoDia("2026-11-18T11:00:00.000Z", agora)).toEqual({ topo: "qua", dia: "18", mes: "nov" });
+    // 23h30 de 30/11 em Brasília ainda é novembro.
+    expect(partesDoDia("2026-12-01T02:30:00.000Z", agora)).toEqual({ topo: "seg", dia: "30", mes: "nov" });
+  });
+});
 
 describe("datas como no design do app", () => {
   it("dia da semana e data curta, em minúsculas, no fuso da unidade", () => {

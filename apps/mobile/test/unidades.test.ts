@@ -122,9 +122,9 @@ describe("textos da unidade", () => {
   });
 
   it("quantos atendimentos abertos", () => {
-    expect(textoAtendimentos(0)).toBe("sem atendimento aberto agora");
-    expect(textoAtendimentos(1)).toBe("1 atendimento aberto");
-    expect(textoAtendimentos(3)).toBe("3 atendimentos abertos");
+    expect(textoAtendimentos(0)).toBe("sem vaga agora");
+    expect(textoAtendimentos(1)).toBe("1 aberto");
+    expect(textoAtendimentos(3)).toBe("3 abertos");
   });
 
   it("endereço numa linha, com o CEP formatado", () => {

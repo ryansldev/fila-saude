@@ -1,10 +1,12 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect } from "expo-router";
-import { Clock, type LucideIcon, MapPin, UserRound } from "lucide-react-native";
+import { Hourglass } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
 import { Alert, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  Avatar,
+  BlocoData,
   Botao,
   Carregando,
   Cartao,
@@ -18,9 +20,10 @@ import {
   Selo,
   TextoSuave,
   Titulo,
+  Trilha,
 } from "@/components/ui";
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
-import { diaCurto, ehHoje, janelaDoAtendimento } from "@/lib/datas";
+import { diaCurto, ehHoje, hora, partesDoDia } from "@/lib/datas";
 import { useSessao } from "@/lib/sessao";
 import {
   avisoDoCancelamento,
@@ -146,25 +149,6 @@ function NaFila({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
   }
 }
 
-function Linha({ icone: Icone, children, forte }: { icone: LucideIcon; children: React.ReactNode; forte?: boolean }) {
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-      <Icone size={20} color={forte ? COR.action : COR.inkMuted} strokeWidth={2.4} />
-      <Text
-        style={{
-          flex: 1,
-          fontFamily: forte ? FONTE.extra : FONTE.semi,
-          fontSize: forte ? 18 : 16,
-          lineHeight: forte ? 24 : 22,
-          color: forte ? COR.ink : COR.inkMuted,
-        }}
-      >
-        {children}
-      </Text>
-    </View>
-  );
-}
-
 export const Destaque = ({ children }: { children: React.ReactNode }) => (
   <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>{children}</Text>
 );
@@ -211,51 +195,95 @@ export function CartaoDoAtendimento({
   sit,
   vouSair,
   aoCancelar,
+  variante = "destaque",
 }: {
   en: MinhaEntrada;
   sit: Situacao;
   vouSair: (() => void) | null;
   aoCancelar: (() => void) | null;
+  /** "destaque": o de hoje, como o acompanhamento de um pedido; "lista": compacto, com o dia à esquerda. */
+  variante?: "destaque" | "lista";
 }) {
   const agora = Date.now();
   const r = resumoDaEntrada(en, sit, agora);
+  if (variante === "lista") return <CartaoNaLista en={en} sit={sit} aoCancelar={aoCancelar} />;
   const podeCheckIn = ["posicao", "venha", "sem_previsao"].includes(sit.tipo) && en.itemEstado === "remoto";
   const presente = (sit.tipo === "posicao" || sit.tipo === "sem_previsao") && sit.presente;
+  const mostraTrilha = r.etapa !== null && r.etapa < 4;
   return (
-    <Cartao style={{ gap: 14 }}>
-      <View style={{ gap: 8, alignItems: "flex-start" }}>
-        <Selo texto={r.selo} tom={r.tom} />
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
+    <Cartao style={{ gap: 0, padding: 0 }}>
+      <View style={{ padding: 14 }}>
+        <CabecaDoAtendimento en={en} sit={sit} />
+      </View>
+      <View style={{ gap: 16, padding: 16, borderTopWidth: 2, borderTopColor: COR.surfaceMuted }}>
+        <Text style={{ fontFamily: FONTE.extra, fontSize: 19, lineHeight: 26, color: COR.ink }}>
+          {proximoPasso(en, sit, agora)}
+        </Text>
+        {mostraTrilha ? <Trilha etapa={r.etapa ?? 0} pendente={!r.naFila} /> : null}
+        <NaFila en={en} sit={sit} />
+        {sit.tipo === "recepcao" ? (
+          <Botao texto="ler o QR de novo" tipo="secundario" onPress={() => router.push("/check-in")} />
+        ) : null}
+        {podeCheckIn ? <Botao texto="cheguei na unidade" onPress={() => router.push("/check-in")} /> : null}
+        {presente ? (
+          vouSair ? (
+            <Botao texto="vou sair um pouco" tipo="secundario" onPress={vouSair} />
+          ) : (
+            <Carregando />
+          )
+        ) : null}
+        {aoCancelar ? <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} /> : null}
+      </View>
+    </Cartao>
+  );
+}
+
+/** A linha de cima de todo cartão de atendimento: o dia num bloco à esquerda, o que é, a hora, onde e a situação. */
+function CabecaDoAtendimento({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
+  const agora = Date.now();
+  const r = resumoDaEntrada(en, sit, agora);
+  const encerrado = r.grupo === "encerrados";
+  return (
+    <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+      {en.sessao ? (
+        <BlocoData {...partesDoDia(en.sessao.inicio, agora)} tom={encerrado ? "cinza" : r.tom} />
+      ) : (
+        <Avatar Icone={Hourglass} tom={r.tom} />
+      )}
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text
+          style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: encerrado ? COR.inkMuted : COR.ink }}
+        >
           {en.servico.toLowerCase()}
         </Text>
+        <Pequeno>
+          {en.sessao ? `${hora(en.sessao.inicio)} às ${hora(en.sessao.fim)} · ` : ""}
+          {en.unidade}
+          {en.paraMim ? "" : ` · para ${en.pessoa}`}
+        </Pequeno>
+        <Selo texto={r.selo} tom={r.tom} />
       </View>
-      <View style={{ gap: 8 }}>
-        {en.sessao ? (
-          <Linha icone={Clock} forte={r.grupo !== "encerrados"}>
-            {janelaDoAtendimento(en.sessao.inicio, en.sessao.fim, agora)}
-          </Linha>
-        ) : (
-          <Linha icone={Clock}>data ainda não marcada</Linha>
-        )}
-        <Linha icone={MapPin}>{en.unidade}</Linha>
-        {en.paraMim ? null : <Linha icone={UserRound}>para {en.pessoa}</Linha>}
-      </View>
-      <NaFila en={en} sit={sit} />
-      <Text style={{ fontFamily: FONTE.bold, fontSize: 17, lineHeight: 24, color: COR.ink }}>
-        {proximoPasso(en, sit, agora)}
-      </Text>
-      {sit.tipo === "recepcao" ? (
-        <Botao texto="ler o QR de novo" tipo="secundario" onPress={() => router.push("/check-in")} />
+    </View>
+  );
+}
+
+/** Versão compacta, para a lista de atendimentos: só a linha de cima, o próximo passo e o cancelar. */
+function CartaoNaLista({ en, sit, aoCancelar }: { en: MinhaEntrada; sit: Situacao; aoCancelar: (() => void) | null }) {
+  const agora = Date.now();
+  const encerrado = resumoDaEntrada(en, sit, agora).grupo === "encerrados";
+  return (
+    <Cartao style={{ gap: 12, padding: 14 }}>
+      <CabecaDoAtendimento en={en} sit={sit} />
+      {encerrado ? null : (
+        <Text style={{ fontFamily: FONTE.semi, fontSize: 16, lineHeight: 22, color: COR.ink }}>
+          {proximoPasso(en, sit, agora)}
+        </Text>
+      )}
+      {aoCancelar ? (
+        <View style={{ borderTopWidth: 2, borderTopColor: COR.surfaceMuted, marginTop: -2 }}>
+          <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} />
+        </View>
       ) : null}
-      {podeCheckIn ? <Botao texto="cheguei na unidade" onPress={() => router.push("/check-in")} /> : null}
-      {presente ? (
-        vouSair ? (
-          <Botao texto="vou sair um pouco" tipo="secundario" onPress={vouSair} />
-        ) : (
-          <Carregando />
-        )
-      ) : null}
-      {aoCancelar ? <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} /> : null}
     </Cartao>
   );
 }
@@ -345,12 +373,13 @@ export function useMinhaFila() {
       setTentando(false);
     },
     /** Os cartões de uma lista, com as ações certas de cada um. */
-    cartoes: (itens: typeof lista) =>
+    cartoes: (itens: typeof lista, variante: "destaque" | "lista" = "destaque") =>
       itens.map(({ en, sit }) => (
         <CartaoDoAtendimento
           key={en.entradaId}
           en={en}
           sit={sit}
+          variante={variante}
           aoCancelar={
             // RN-CANC-01: a API diz quando o "não vou poder ir" vale.
             en.podeCancelar

@@ -1,20 +1,21 @@
 import type { UnidadePublica } from "@fila-saude/schemas/fila";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
-import { Footprints, LocateFixed } from "lucide-react-native";
+import { Building2, Footprints, LocateFixed } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
 import Mapa, { corDoPino } from "@/components/mapa";
 import type { PinoDoMapa } from "@/components/mapa.tipos";
 import {
   Abas,
+  Avatar,
   Botao,
   Carregando,
   Cartao,
-  CartaoTocavel,
   COR,
   Faixa,
   FONTE,
+  LinhaTocavel,
   LinkBotao,
   Pequeno,
   Selo,
@@ -131,26 +132,28 @@ function PedidoDeLocalizacao({ loc, pedir }: { loc: Localizacao; pedir: () => vo
 
 function LinhaDaUnidade({ item, destaque = false }: { item: UnidadeNaLista; destaque?: boolean }) {
   const { unidade: u, km } = item;
+  const aberta = u.atendimentos > 0;
   return (
-    <CartaoTocavel
-      acao={u.atendimentos > 0 ? "ver os atendimentos" : "ver a unidade"}
+    <LinhaTocavel
+      acao={aberta ? "ver os atendimentos" : "ver a unidade"}
       onPress={() => router.push({ pathname: "/unidade/[id]", params: { id: u.id } })}
+      esquerda={<Avatar Icone={Building2} tom={aberta ? "verde" : "cinza"} />}
     >
-      {destaque ? <Selo texto="escolhida no mapa" tom="amarelo" /> : null}
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 21, lineHeight: 27, color: COR.ink }}>{u.nome}</Text>
+      {destaque ? <Selo texto="no mapa" tom="amarelo" /> : null}
+      <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>{u.nome}</Text>
       <Pequeno>
         {nomeDoTipo(u.tipo)} · {u.endereco.bairro}
       </Pequeno>
       {km !== null ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Footprints size={20} color={COR.ink} strokeWidth={2.25} />
-          <Texto style={{ fontFamily: FONTE.bold }}>{textoDistancia(km)}</Texto>
+          <Footprints size={18} color={COR.ink} strokeWidth={2.25} />
+          <Text style={{ fontFamily: FONTE.bold, fontSize: 16, lineHeight: 22, color: COR.ink }}>
+            {textoDistancia(km)}
+          </Text>
         </View>
       ) : null}
-      <View style={{ marginTop: 4 }}>
-        <Selo texto={textoAtendimentos(u.atendimentos)} tom={u.atendimentos > 0 ? "verde" : "cinza"} />
-      </View>
-    </CartaoTocavel>
+      <Selo texto={textoAtendimentos(u.atendimentos)} tom={aberta ? "verde" : "cinza"} />
+    </LinhaTocavel>
   );
 }
 
