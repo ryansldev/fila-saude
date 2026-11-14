@@ -111,7 +111,11 @@ export function estimar(dia: DiaSessao, itemId: string, agora: number, opcoes: O
   // RN-ETA-01c/AD-009: na triagem, a previsão da consulta vai à parte (inclusive com "venha agora").
   const nA = abertas(dia, "atendimento").length;
   if (nA === 0) return principal;
-  const antesNaConsulta = dia.itens.filter((i) => naFila(i) && ordem(dia, i, item) < 0).length;
+  // Quem já está na fila do atendimento é atendido antes de X chegar lá (RN-TRI-04: fila nova);
+  // da triagem, contam os que vêm antes de X.
+  const antesNaConsulta = dia.itens.filter(
+    (i) => i.id !== item.id && naFila(i) && (i.etapa === "atendimento" || ordem(dia, i, item) < 0),
+  ).length;
   const pesoTriagem = (aFrente * tempoMedio(dia, "triagem", dia.servicoId, agora)) / n;
   const consulta = Math.ceil(
     pesoTriagem + (antesNaConsulta * tempoMedio(dia, "atendimento", dia.servicoId, agora)) / nA,

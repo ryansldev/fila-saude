@@ -270,14 +270,14 @@ export function prazoConfirmacao(entrada: Entrada, sessao: SessaoVagas, config: 
 export function alocar(
   entrada: Entrada,
   sessao: SessaoVagas,
-  cmd: { riscoConfirmado?: NivelRisco },
+  // RN-RISCO-01 (2026-11-13): o agendador não confirma risco; só o enfermeiro (triagem).
+  _cmd: Record<string, never>,
   agora: number,
   config: ConfigUnidade = CONFIG_PADRAO,
 ): Resultado<{ entrada: Entrada; sessao: SessaoVagas }> {
   if (entrada.servicoId !== sessao.servicoId || sessao.visibilidade !== "privada") return falha("transicao_proibida");
   if (transicionar(TRANSICOES_ENTRADA, entrada.estado, EVENTO_ALOCA) !== "alocada") return falha("transicao_proibida");
   // Emergência não entra em lista nem fila (RN-LE-01), como em `lancarRegulado`.
-  if (cmd.riscoConfirmado === "emergencia") return falha("emergencia");
   if (agora >= sessao.inicio || mesmoDia(agora, sessao.inicio, config.fuso)) return falha("fora_do_prazo");
   if (sessao.vagas !== null && sessao.ocupadas >= sessao.vagas) return falha("sem_vaga");
 
@@ -286,7 +286,7 @@ export function alocar(
     estado: "alocada",
     sessaoId: sessao.id,
     alocadaEm: agora,
-    riscoConfirmado: cmd.riscoConfirmado ?? entrada.riscoConfirmado ?? entrada.classificacao.nivel,
+    riscoConfirmado: entrada.riscoConfirmado,
   };
   const prazo = prazoConfirmacao(nova, sessao, config);
   return ok({ entrada: nova, sessao: { ...sessao, ocupadas: sessao.ocupadas + 1 } }, [

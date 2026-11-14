@@ -222,16 +222,14 @@ describe("alocação", () => {
     expect(alocar(entrada("a"), sessaoVagas({ vagas: null, ocupadas: 500 }), {}, T).ok).toBe(true);
   });
 
-  it("RN-RISCO-01: alocar grava o nível como confirmado, e o agendador pode alterá-lo", () => {
+  it("RN-RISCO-01 (2026-11-13): alocar não confirma o risco; só o enfermeiro confirma (o questionário é pré-triagem)", () => {
     const s = sessaoVagas();
     const r = alocar(entrada("a"), s, {}, T);
     const { entrada: e, sessao } = aplicar(r);
-    expect(e).toMatchObject({ estado: "alocada", sessaoId: "s1", alocadaEm: T, riscoConfirmado: "rotina" });
+    expect(e).toMatchObject({ estado: "alocada", sessaoId: "s1", alocadaEm: T, riscoConfirmado: null });
     expect(sessao.ocupadas).toBe(1);
     expect(eventos(r)).toEqual([{ tipo: "alocada", entradaId: "a", sessaoId: "s1", dados: { prazo: T + 24 * H } }]);
-
-    expect(aplicar(alocar(entrada("b"), s, { riscoConfirmado: "atencao" }, T)).entrada.riscoConfirmado).toBe("atencao");
-    // Confirmado antes (ex.: triagem) é mantido se o agendador não altera.
+    // Confirmado antes por enfermeiro (triagem) é mantido.
     expect(aplicar(alocar(entrada("c", { riscoConfirmado: "urgente" }), s, {}, T)).entrada.riscoConfirmado).toBe(
       "urgente",
     );
@@ -467,12 +465,5 @@ describe("I1: idade na lista de espera (AD-027)", () => {
     const sugestao = sugerir(congelar([outra, criada]), sessaoVagas({ vagas: 5 }), CONFIG_PADRAO, depois);
     expect(sugestao.map((s) => s.entradaId)).toEqual(["ze", "ana"]);
     expect(sugestao[0]?.motivos).toContain("pessoa idosa, 60 anos");
-  });
-});
-
-describe("m4: alocar com emergência", () => {
-  it("RN-LE-01: o agendador não confirma emergência na alocação (vai ao SAMU, não à fila)", () => {
-    const r = alocar(entrada("ana"), sessaoVagas(), { riscoConfirmado: "emergencia" }, T);
-    expect(r).toEqual({ ok: false, erro: "emergencia" });
   });
 });

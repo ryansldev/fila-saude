@@ -350,7 +350,7 @@ describe("RN-TRI: triagem", () => {
       etapa: "atendimento",
       estado: "presente",
       senha: "C001",
-      numero: 1,
+      numero: 3, // RN-TRI-04 (2026-11-13): número novo na fila do atendimento
       atendidoEmEtapas: ["triagem"],
     });
     expect(r.eventos[0]).toMatchObject({ tipo: "atendido", dados: { etapa: "triagem", proximaEtapa: "atendimento" } });
@@ -360,7 +360,7 @@ describe("RN-TRI: triagem", () => {
     expect(ordem(d)).toEqual(["ana", "joao"]);
     d = chamar(d, "e1", T + 10 * MIN);
     expect(chamadoEm(d)).toBe("ana");
-    expect(item(d, "joao").numero).toBe(2); // terminar a triagem não renumera
+    expect(item(d, "joao")).toMatchObject({ numero: 4, senha: "C002" }); // RN-TRI-04 (2026-11-13): número novo, mesma senha
 
     // Janela protegida dentro da triagem.
     let w = diaComTriagem(["ana", "joao"]);
@@ -377,19 +377,22 @@ describe("RN-TRI: triagem", () => {
     x = aplicar(vouSair(x, { itemId: "ana" }, T + 3 * MIN)); // Ana em casa, já no consultório
     x = chamar(x, "t1", T + 4 * MIN); // João chamado na triagem
     x = entrar(x, "ana", T + 5 * MIN);
-    expect(item(x, "ana").numero).toBe(1);
+    expect(item(x, "ana").numero).toBe(3); // o número que ganhou ao sair da triagem; não perdeu a vez
   });
 
-  it("RN-TRI-04: passar da triagem ao atendimento não aplica atraso (posição original)", () => {
-    let d = diaComTriagem(["ana", "joao"]);
+  it("RN-TRI-04 (2026-11-13): o atendimento é uma fila nova; quem sai da triagem entra atrás de quem já estava, no seu nível de risco", () => {
+    let d = diaComTriagem(["ana", "joao", "bia"]);
     d = entrar(d, "joao");
     d = entrar(d, "ana"); // Ana atrás de João na triagem (janela)
     d = chamar(d, "t1", T + MIN); // João
-    d = chamar(d, "t1", T + 2 * MIN); // João triado; Ana chamada na triagem
-    d = chamar(d, "e1", T + 3 * MIN); // João (depois de Ana em ordem) chamado no consultório
+    d = chamar(d, "t1", T + 2 * MIN); // João triado (entra no atendimento); Ana chamada na triagem
     d = aplicar(finalizar(d, { estacaoId: "t1" }, T + 4 * MIN)); // Ana triada
-    expect(item(d, "ana")).toMatchObject({ etapa: "atendimento", estado: "presente", numero: 1 });
-    expect(d.proximoNumero).toBe(3);
+    // Ana tinha o número 1, mas no atendimento chegou depois de João: número novo, sem travas.
+    expect(item(d, "ana")).toMatchObject({ etapa: "atendimento", estado: "presente", numero: 5, travadoAtras: [] });
+    expect(item(d, "joao").numero).toBe(4);
+    expect(d.proximoNumero).toBe(6);
+    d = chamar(d, "e1", T + 5 * MIN);
+    expect(chamadoEm(d, "e1")).toBe("joao");
   });
 });
 
