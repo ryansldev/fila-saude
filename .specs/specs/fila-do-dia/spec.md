@@ -97,12 +97,14 @@ atraso (pela ordem real, nunca pelo numero):
   X recebe o proximo numero livre (vai para o fim).
   chamadas feitas num periodo de contingencia registrado
   nao contam para quem estava remoto (RN-CONT-03).
+  remoto so perde a vez por chamadas feitas depois do fim do
+  prazo de chegada do "venha agora" (RN-ETA-06).
   excecao: X tem urgencia confirmada.
 
 "a vez passou" (falta e remanejamento) =
   ja foi chamado, na etapa atual de X, alguem que vem depois de X em ordem
 ```
-*Decisões: AD-004, AD-010, AD-033, AD-041.*
+*Decisões: AD-004, AD-010, AD-033, AD-041, AD-057.*
 
 **RN-ORD-01 · Exemplo: janela protegida**
 João está presente e é o próximo. Ana, que estava remota com posição igual ou melhor, faz check-in agora. João é chamado primeiro; Ana vem logo depois.
@@ -149,6 +151,13 @@ O paciente vê só a própria posição (RN-ETA-01 ou 01b) e o tempo estimado ("
 3. Descartam-se os fora da curva: abaixo de 1/3 ou acima de 3 vezes a mediana desses 10.
 4. A média dos que sobraram é o tempo médio.
 5. Com menos de 3 atendimentos válidos no dia, usa-se o tempo médio inicial do serviço.
+
+**RN-ETA-06 · Prazo de chegada**
+QUANDO um remoto passar a ser o próximo (sem ninguém à frente), O SISTEMA DEVE enviar o "venha agora" uma vez e guardar a hora. A partir dela, a unidade dá um prazo de chegada (padrão 15 min). Antes do "venha agora", ninguém perde a vez porque a fila andou; dentro do prazo, chamar quem vem depois não tira a vez de quem está a caminho; depois do prazo, vale a regra de atraso. Quem não chega no prazo deixa de contar à frente dos outros, para a fila parada não travar o "venha agora" do seguinte. "Vou sair" ou o 2º pulo recomeçam: o próximo "venha agora" abre outro prazo. Suspenso em modo manual (RN-SES-05).
+*Decisões: AD-057.*
+- *Dado* Ana remota é a próxima e recebe "venha agora" às 9:00 (prazo 15 min), *quando* Pedro, presente e depois dela, é chamado às 9:10 e Ana chega às 9:20, *então* Ana não perdeu a vez.
+- *Dado* o mesmo, *quando* Pedro é chamado às 9:15, *então* Ana perdeu a vez e vai para o fim ao chegar.
+- *Dado* Ana e Bia remotas e Pedro chamado pelo balcão antes de qualquer "venha agora", *quando* Bia chega, *então* Bia não perdeu a vez.
 
 ## Transições
 

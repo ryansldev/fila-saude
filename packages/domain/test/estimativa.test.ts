@@ -3,7 +3,7 @@ import { chamarProximo, finalizar, naoCompareceu } from "../src/chamada.ts";
 import { avisosSaiaDeCasa, avisosVenhaAgora, estimar, tempoMedio } from "../src/estimativa.ts";
 import { CONFIG_PADRAO, checkIn, type DiaSessao, type Estacao, vouSair } from "../src/fila.ts";
 import type { Resultado } from "../src/resultado.ts";
-import { comItem, congelar, diaCom, itemFila } from "./fixtures.ts";
+import { comItem, congelar, diaCom, itemFila, jaAvisado } from "./fixtures.ts";
 
 const MIN = 60_000;
 const T = Date.UTC(2026, 10, 12, 10, 0);
@@ -370,7 +370,7 @@ describe("RN-ETA-06/AD-057: prazo de chegada depois do 'venha agora'", () => {
 describe("revisão 2026-11-13: estimativa honesta", () => {
   it("remoto cuja vez já passou não recebe 'venha agora' nem 'saia de casa' como se fosse o próximo", () => {
     // Ana #1 remota; Bruno #2 e Carla #3 presentes; Bruno é chamado: a vez de Ana passou (AD-010).
-    let d = diaCom(["ana", "bruno", "carla"]);
+    let d = jaAvisado(diaCom(["ana", "bruno", "carla"]), "ana");
     d = entrar(d, "bruno");
     d = entrar(d, "carla");
     d = chamar(d);

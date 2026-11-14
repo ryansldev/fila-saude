@@ -9,7 +9,7 @@ import {
 } from "../src/chamada.ts";
 import { CONFIG_PADRAO, checkIn, type DiaSessao, type Estacao, elegiveis, vouSair } from "../src/fila.ts";
 import type { Resultado } from "../src/resultado.ts";
-import { comItem, congelar, diaCom } from "./fixtures.ts";
+import { comItem, congelar, diaCom, jaAvisado } from "./fixtures.ts";
 
 const MIN = 60_000;
 const T = Date.UTC(2026, 10, 12, 10, 0);
@@ -239,7 +239,7 @@ describe("RN-CHAM-03 e AD-006: Não compareceu, tolerância", () => {
     // Volta sem que ninguém depois dela tenha sido chamado enquanto estava fora: mantém o número.
     expect(item(entrar(ate2Pulos(), "ana", T + 20 * MIN), "ana").numero).toBe(1);
     // Bruno (depois dela) chamado enquanto ela estava fora: a vez passou.
-    let d = ate2Pulos();
+    let d = jaAvisado(ate2Pulos(), "ana", T + 10 * MIN, 1); // "venha agora" logo depois do 2º pulo
     d = chamar(d, "e1", T + 12 * MIN); // Bruno
     d = entrar(d, "ana", T + 20 * MIN);
     expect(item(d, "ana").numero).toBe(4);

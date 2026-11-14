@@ -17,7 +17,7 @@ import { checkIn, conferirEMarcar, type DiaSessao, vouSair } from "../src/fila.t
 import { criarEntrada, type Entrada, recusar, type Servico } from "../src/lista.ts";
 import type { Resultado } from "../src/resultado.ts";
 import { preencherDaReserva, removerLancamento } from "../src/sessao.ts";
-import { chamar, comItem, congelar, diaCom, entrada, respostas, sessaoVagas } from "./fixtures.ts";
+import { chamar, comItem, congelar, diaCom, entrada, jaAvisado, respostas, sessaoVagas } from "./fixtures.ts";
 
 const MIN = 60_000;
 const H = 60 * MIN;
@@ -61,6 +61,7 @@ const SEM_AVISO = { semSinalSemContingencia: false, origem: PRIVADA };
 /** Bruno faz check-in e é atendido: a vez de Ana (nº 1, remota) passa; a de Caio (nº 3) não. */
 function brunoAtendido(ids = ["ana", "bruno", "caio"], em = T + 20 * MIN): DiaSessao {
   let d = diaCom(ids);
+  if (ids.includes("ana")) d = jaAvisado(d, "ana");
   d = passo(checkIn(d, { itemId: "bruno" }, em - 10 * MIN));
   d = passo(chamarProximo(d, E1, em));
   return passo(finalizar(d, E1, em + 10 * MIN));
@@ -129,7 +130,8 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     // "A vez passou" é alguém depois dela ser chamado (fila-do-dia): as chamadas dela não contam.
     const semNinguem = aplicar(encerrar(dia, naFila(["ana", "bruno"]), T + H, SEM_AVISO));
     expect(item(semNinguem.dia, "ana").estado).toBe("remanejado");
-    // Bruno (nº 2) é chamado com ela fora: a vez dela passou.
+    // Bruno (nº 2) é chamado com ela fora, depois do prazo do "venha agora": a vez dela passou.
+    dia = jaAvisado(dia, "ana", T + 12 * MIN, 1);
     dia = passo(checkIn(dia, { itemId: "bruno" }, T + 13 * MIN));
     dia = passo(chamarProximo(dia, E1, T + 14 * MIN));
     dia = passo(finalizar(dia, E1, T + 20 * MIN));

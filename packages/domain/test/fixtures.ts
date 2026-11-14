@@ -134,3 +134,17 @@ export function sessaoVagas(parcial: Partial<SessaoVagas> = {}): SessaoVagas {
     ...parcial,
   });
 }
+
+/**
+ * AD-057: o remoto só perde a vez por chamadas depois do prazo de chegada do "venha agora".
+ * Registra um "venha agora" em `em` (padrão: bem antes de tudo, com o prazo já vencido); com
+ * `prazoMin`, troca o prazo da unidade (para testar saídas no meio do dia).
+ */
+export function jaAvisado(dia: DiaSessao, itemId: string, em = 0, prazoMin?: number): DiaSessao {
+  const etapa = dia.itens.find((i) => i.id === itemId)?.etapa ?? "atendimento";
+  return congelar({
+    ...dia,
+    config: prazoMin === undefined ? dia.config : { ...dia.config, prazoChegadaMin: prazoMin },
+    venhaAgora: [...(dia.venhaAgora ?? []).filter((a) => a.itemId !== itemId), { itemId, etapa, em }],
+  });
+}

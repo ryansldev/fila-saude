@@ -36,7 +36,7 @@ export {
 export type { Atribuicoes, Funcao, FuncaoComEscopo, Ocupacao, PapelComEscopo, Vinculo } from "./equipe.ts";
 export { FUNCOES, OCUPACOES, papeisDe, podeCadastrar, problemasDaEquipe } from "./equipe.ts";
 export type { Estimativa } from "./estimativa.ts";
-export { avisosSaiaDeCasa, estimar, tempoMedio } from "./estimativa.ts";
+export { avisosSaiaDeCasa, avisosVenhaAgora, estimar, tempoMedio } from "./estimativa.ts";
 export type { Chamada, DiaSessao, Estacao, Etapa, ItemFila, MotivoSaida, Pendencia } from "./fila.ts";
 export {
   CONFIG_PADRAO,

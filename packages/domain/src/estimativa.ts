@@ -1,4 +1,4 @@
-import { aVezPassou, type DiaSessao, type Etapa, elegiveis, type ItemFila } from "./fila.ts";
+import { aVezPassou, type DiaSessao, type Etapa, elegiveis, fimDoPrazoDeChegada, type ItemFila } from "./fila.ts";
 import { compararOrdem } from "./ordem.ts";
 import type { Evento } from "./resultado.ts";
 
@@ -96,12 +96,19 @@ export function estimar(dia: DiaSessao, itemId: string, agora: number, opcoes: O
   // AD-010: remoto cuja vez já passou vai para o fim ao chegar; não está "à frente" de ninguém e
   // não pode ouvir "venha agora" como se fosse o próximo.
   const passou = (i: ItemFila) => i.estado === "remoto" && !i.urgenciaConfirmada && aVezPassou(dia, i);
+  // RN-ETA-06/AD-057: remoto que recebeu "venha agora" e não chegou no prazo não trava a fila parada:
+  // deixa de contar à frente dos outros (o próprio lugar ele só perde pelas chamadas depois do prazo).
+  const atrasado = (i: ItemFila) => {
+    const fim = i.estado === "remoto" ? fimDoPrazoDeChegada(dia, i) : null;
+    return fim !== null && agora >= fim;
+  };
+  const conta = (i: ItemFila) => !passou(i) && !atrasado(i);
   const aFrente =
     item.estado === "presente"
       ? elegiveis(dia, primeira.id).findIndex((i) => i.id === item.id)
       : passou(item)
-        ? naEtapa.filter((i) => i.id !== item.id && !passou(i)).length
-        : naEtapa.filter((i) => ordem(dia, i, item) < 0 && !passou(i)).length;
+        ? naEtapa.filter((i) => i.id !== item.id && conta(i)).length
+        : naEtapa.filter((i) => ordem(dia, i, item) < 0 && conta(i)).length;
   if (aFrente < 0) return { tipo: "aguardando_inicio" };
   const comeNow = item.estado === "remoto" && aFrente === 0;
   const minutos = Math.ceil((aFrente * tempoMedio(dia, item.etapa, dia.servicoId, agora)) / n);
@@ -153,6 +160,36 @@ export function avisosSaiaDeCasa(dia: DiaSessao, agora: number, opcoes: Opcoes):
       ...dia,
       avisosSaiaDeCasa: [...dia.avisosSaiaDeCasa, ...novos.map((i) => ({ itemId: i.id, etapa: i.etapa }))],
     },
+    eventos,
+  };
+}
+
+/**
+ * RN-ETA-06 (AD-057): "venha agora" para o remoto sem ninguém à frente, uma vez por item e etapa
+ * enquanto ele não volta a remoto ("Vou sair" ou 2º pulo recomeçam). A hora fica em
+ * `dia.venhaAgora`: o prazo de chegada conta dela. Em modo manual nada é enviado nem registrado.
+ */
+export function avisosVenhaAgora(dia: DiaSessao, agora: number, opcoes: Opcoes): { dia: DiaSessao; eventos: Evento[] } {
+  if (opcoes.modoManual || dia.estado !== "aberta") return { dia, eventos: [] };
+  const novos: ItemFila[] = [];
+  const eventos: Evento[] = [];
+  for (const i of dia.itens) {
+    if (i.estado !== "remoto" || fimDoPrazoDeChegada(dia, i) !== null) continue;
+    if (estimar(dia, i.id, agora, opcoes).tipo !== "venha_agora") continue;
+    novos.push(i);
+    eventos.push({
+      tipo: "venha_agora",
+      itemId: i.id,
+      entradaId: i.entradaId,
+      sessaoId: dia.sessaoId,
+      dados: { etapa: i.etapa, em: agora },
+    });
+  }
+  if (novos.length === 0) return { dia, eventos };
+  const ids = new Set(novos.map((i) => i.id));
+  const mantidos = (dia.venhaAgora ?? []).filter((a) => !ids.has(a.itemId));
+  return {
+    dia: { ...dia, venhaAgora: [...mantidos, ...novos.map((i) => ({ itemId: i.id, etapa: i.etapa, em: agora }))] },
     eventos,
   };
 }

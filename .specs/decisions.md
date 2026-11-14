@@ -61,6 +61,8 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-053 | Pré-cadastro com foto ligado por padrão | ativa |
 | AD-054 | Conferência antes de entrar na fila presencial | ativa |
 | AD-055 | Uma leitura do QR vale para todas as pessoas da conta | ativa |
+| AD-056 | Decisões da revisão de 2026-11-13 | ativa |
+| AD-057 | Prazo de chegada depois do "venha agora" | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -286,6 +288,10 @@ Quem lê o QR marca a presença de todas as pessoas da conta com senha nas sess�
 ### AD-056 · Decisões da revisão de 2026-11-13
 2026-11-13 · ativa · Muda: RN-TRI-04, RN-RISCO-01, notificações (specs/tv-e-avisos)
 (1) **O atendimento é uma fila nova:** quem sai da triagem recebe o próximo número e entra atrás de quem já estava no atendimento, dentro do seu nível de risco e prioridade, com a mesma senha. (2) **Só o enfermeiro confirma risco:** o questionário do app é pré-triagem (sugerido); o agendador não confirma na alocação. Na triagem (fatia 3), o enfermeiro classifica pelas cores do Acolhimento com Classificação de Risco do Ministério da Saúde. (3) **Quem perde a vez** vai para o fim do seu nível de risco e prioridade. (4) **"Venha agora"** vale para todo remoto sem ninguém na frente, não só urgência confirmada. **Por quê:** decisões suas na revisão (RV8–RV11).
+
+### AD-057 · Prazo de chegada depois do "venha agora"
+2026-11-14 · ativa · Muda: AD-010, RN-ORD (atraso), RN-ETA-06
+O remoto só perde a vez por chamadas feitas depois do fim do prazo de chegada (padrão 15 min, config da unidade), contado da hora em que recebeu o "venha agora". Quem nunca recebeu "venha agora" não perde a vez porque a fila andou. Quem estoura o prazo deixa de contar à frente dos outros. **Por quê:** com a regra antiga, o 10º remoto podia perder a vez porque o balcão andou rápido, sem nunca ter sido avisado para vir. Custo: em modo manual não há "venha agora", então remoto não perde a vez por atraso; quem decide é o pulo.
 
 ## Arquitetura
 

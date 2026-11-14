@@ -162,7 +162,8 @@ export const emContingencia = (dia: DiaSessao, em: number): boolean =>
 export function fimDoPrazoDeChegada(dia: DiaSessao, x: ItemFila): number | null {
   const aviso = dia.venhaAgora?.find((a) => a.itemId === x.id && a.etapa === x.etapa);
   if (!aviso || (x.saiuEm !== null && aviso.em < x.saiuEm)) return null;
-  return aviso.em + dia.config.prazoChegadaMin * 60_000;
+  // Dias gravados antes da AD-057 não têm o prazo na config: vale o padrão.
+  return aviso.em + (dia.config.prazoChegadaMin ?? CONFIG_PADRAO.prazoChegadaMin) * 60_000;
 }
 
 /**

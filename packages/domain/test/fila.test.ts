@@ -12,7 +12,7 @@ import {
 } from "../src/fila.ts";
 import * as dominio from "../src/index.ts";
 import type { Resultado } from "../src/resultado.ts";
-import { chamar, comItem, congelar, diaCom } from "./fixtures.ts";
+import { chamar, comItem, congelar, diaCom, jaAvisado } from "./fixtures.ts";
 
 const MIN = 60_000;
 const T = Date.UTC(2026, 10, 12, 10, 0);
@@ -68,7 +68,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
   });
 
   it("order: RN-ORD-04 late arrival", () => {
-    let d = diaCom(["bruno", "ana", "joao"]);
+    let d = jaAvisado(diaCom(["bruno", "ana", "joao"]), "bruno");
     d = entrar(d, "ana");
     d = entrar(d, "joao");
     expect(ordem(d)[0]).toBe("ana");
@@ -117,7 +117,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     d = chamar(d, "bruno", T + 2 * MIN); // número maior, mas vinha antes por ser urgente
     d = entrar(d, "ana", T + 3 * MIN);
     expect(item(d, "ana").numero).toBe(1); // não perdeu a vez
-    d = sair(d, "ana", T + 4 * MIN);
+    d = jaAvisado(sair(d, "ana", T + 4 * MIN), "ana", T + 4 * MIN, 1);
     expect(ordem(d)[0]).toBe("joao");
     d = chamar(d, "joao", T + 5 * MIN); // vinha depois dela: agora a vez passou
     d = entrar(d, "ana", T + 6 * MIN);
@@ -139,7 +139,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
 
 describe("ficarElegivel: atraso opcional", () => {
   it("RN-CHAM-03/RN-TRI-04: sem aplicarAtraso, mantém o número mesmo com a vez passada", () => {
-    let d = diaCom(["ana", "joao"]);
+    let d = jaAvisado(diaCom(["ana", "joao"]), "ana");
     d = entrar(d, "joao");
     d = chamar(d, "joao", T + MIN); // João vem depois de Ana em ordem
     const sem = ficarElegivel(d, "ana", T + 2 * MIN, { aplicarAtraso: false });
@@ -226,7 +226,7 @@ describe("RN-FILA-05: conferência antes de entrar na fila presencial", () => {
     expect(ordem(a)).toEqual(["joao", "ana"]);
 
     // Pedro foi embora depois da recusa; voltou e já chamaram quem vinha depois dele.
-    let p = diaCom(["pedro", "ana", "joao"]);
+    let p = jaAvisado(diaCom(["pedro", "ana", "joao"]), "pedro");
     p = comItem(p, "pedro", { pendencias: ["pre_cadastro"] });
     p = entrar(p, "ana");
     p = entrar(p, "joao");
@@ -290,6 +290,7 @@ describe("RN-CONT-03: contingência", () => {
   it("RN-CONT-03: chamadas no período de contingência não contam para o atraso de quem estava remoto", () => {
     const cenario = (chamadaEm: number) => {
       let d = diaCom(["bruno", "ana", "joao"], { contingencias: [{ inicio: T + 60 * MIN, fim: T + 120 * MIN }] });
+      d = jaAvisado(d, "bruno");
       d = entrar(d, "ana");
       d = entrar(d, "joao");
       d = chamar(d, "ana", chamadaEm);
