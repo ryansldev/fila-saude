@@ -1,7 +1,7 @@
-import * as armazenamento from "./armazenamento";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AppState } from "react-native";
 import { type Api, cadastrar, criarApi, type DadosDoCadastro, entrar } from "./api";
+import * as armazenamento from "./armazenamento";
 import { API_URL } from "./config";
 import { type EstadoDosAvisos, estadoDosAvisos, ligarAvisos, registrarPush, sairDoPush } from "./push";
 

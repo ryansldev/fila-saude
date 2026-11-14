@@ -158,6 +158,8 @@ export async function minhas(db: DbDoTenant, pacienteId: string, agora: number):
           ? { estacao: nomesDeEstacao.get(ultima.estacaoId) ?? "", em: new Date(ultima.em).toISOString() }
           : null,
       pendencias: item?.estado === "remoto" ? item.pendencias : [],
+      servicoId: srv.id,
+      paraMim: p.pacienteId === pacienteId,
       saiaDeCasa:
         item?.estado === "remoto" &&
         Boolean(dia?.avisosSaiaDeCasa.some((a) => a.itemId === item.id && a.etapa === item.etapa)),

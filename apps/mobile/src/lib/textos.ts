@@ -1,5 +1,6 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { ErroDaApi } from "./api";
+import { ehHoje } from "./datas";
 
 /** Estado de uma entrada na tela "minha fila", na mesma divisão das telas do design do app. */
 export type Situacao =
@@ -81,4 +82,72 @@ export function avisoDoErro(
 ): { titulo: string; texto: string } {
   if (e instanceof ErroDaApi && e.erro === "sem_conexao") return { titulo: "sem internet", texto: semInternet };
   return { titulo: "não deu para atualizar", texto: mensagemDoErro(e) };
+}
+
+export type Tom = "azul" | "verde" | "amarelo" | "cinza" | "vermelho";
+
+/**
+ * O que a "minha fila" mostra no topo de cada atendimento, para não haver dúvida:
+ * - `naFila`: já tem senha na fila do dia (em casa ou na unidade). Lista de espera, reserva e
+ *   inscrição para outro dia ainda NÃO são fila.
+ * - `etapa`: posição na trilha inscrição (0) → fila (1) → unidade (2) → sala (3) → atendido (4);
+ *   `null` quando terminou sem atendimento (cancelado, saiu, remanejado).
+ * - `grupo`: seção da tela (hoje, próximos, sem data, encerrados).
+ */
+export function resumoDaEntrada(
+  en: MinhaEntrada,
+  sit: Situacao,
+  agora: number,
+): {
+  selo: string;
+  tom: Tom;
+  naFila: boolean;
+  etapa: number | null;
+  grupo: "hoje" | "proximos" | "sem_data" | "encerrados";
+} {
+  const base = (() => {
+    switch (sit.tipo) {
+      case "lista":
+        return { selo: "na lista de espera", tom: "cinza" as Tom, naFila: false, etapa: 0 };
+      case "reserva":
+        return { selo: "na reserva", tom: "amarelo" as Tom, naFila: false, etapa: 0 };
+      case "alocada":
+        return { selo: "data marcada", tom: "azul" as Tom, naFila: false, etapa: 0 };
+      case "confirmada":
+      case "aguardando":
+      case "atrasada":
+        return { selo: "inscrito", tom: "azul" as Tom, naFila: false, etapa: 1 };
+      case "recepcao":
+        return { selo: "passe na recepção", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
+      case "venha":
+        return { selo: "venha agora", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
+      case "posicao":
+        if (sit.presente) return { selo: "na fila · na unidade", tom: "verde" as Tom, naFila: true, etapa: 2 };
+        if (sit.sair) return { selo: "hora de sair de casa", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
+        return { selo: "na fila · em casa", tom: "azul" as Tom, naFila: true, etapa: 1 };
+      case "sem_previsao":
+        return sit.presente
+          ? { selo: "na fila · na unidade", tom: "verde" as Tom, naFila: true, etapa: 2 }
+          : { selo: "na fila · em casa", tom: "azul" as Tom, naFila: true, etapa: 1 };
+      case "vez":
+        return { selo: "é a sua vez", tom: "verde" as Tom, naFila: true, etapa: 3 };
+      case "concluida":
+        return { selo: "atendido", tom: "verde" as Tom, naFila: false, etapa: 4 };
+      case "remanejada":
+        return { selo: "não foi atendido hoje", tom: "cinza" as Tom, naFila: false, etapa: null };
+      case "saiu":
+        return { selo: "saiu da fila", tom: "vermelho" as Tom, naFila: false, etapa: null };
+      case "cancelada":
+        return { selo: "cancelado", tom: "cinza" as Tom, naFila: false, etapa: null };
+    }
+  })();
+  const terminou = ["concluida", "remanejada", "saiu", "cancelada"].includes(sit.tipo);
+  const grupo = terminou
+    ? "encerrados"
+    : !en.sessao
+      ? "sem_data"
+      : base.naFila || ehHoje(en.sessao.inicio, agora)
+        ? "hoje"
+        : "proximos";
+  return { ...base, grupo };
 }

@@ -1,7 +1,7 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { describe, expect, it } from "vitest";
 import { ErroDaApi } from "@/lib/api";
-import { avisoDoErro, mensagemDoErro, situacaoDaEntrada } from "@/lib/textos";
+import { avisoDoErro, mensagemDoErro, resumoDaEntrada, situacaoDaEntrada } from "@/lib/textos";
 
 const sit = (e: MinhaEntrada) => situacaoDaEntrada(e, 0);
 
@@ -18,6 +18,8 @@ const base: MinhaEntrada = {
   chamada: null,
   pendencias: [],
   saiaDeCasa: false,
+  servicoId: "00000000-0000-4000-8000-0000000000aa",
+  paraMim: true,
 };
 
 describe("minha fila: estado de cada entrada, como no design do app", () => {
@@ -149,5 +151,55 @@ describe("estados que não podem mentir para o paciente (revisão 2026-11-13)", 
       senha: "C-001",
       estacao: null,
     });
+  });
+});
+
+describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 2026-11-14)", () => {
+  const AGORA = Date.parse("2026-11-14T12:00:00.000Z");
+  const hoje = {
+    id: base.entradaId,
+    inicio: "2026-11-14T11:00:00.000Z",
+    fim: "2026-11-14T20:00:00.000Z",
+    estado: "aberta",
+  };
+  const amanha = { ...hoje, inicio: "2026-11-15T11:00:00.000Z", fim: "2026-11-15T15:00:00.000Z", estado: "planejada" };
+  const r = (en: MinhaEntrada) => resumoDaEntrada(en, situacaoDaEntrada(en, AGORA), AGORA);
+
+  it("lista de espera e reserva: ainda NÃO está em fila nenhuma, grupo sem data", () => {
+    const lista = r({ ...base, estado: "aguardando", senha: null, itemEstado: null });
+    expect(lista).toMatchObject({ naFila: false, etapa: 0, grupo: "sem_data", selo: "na lista de espera" });
+    const reserva = r({ ...base, estado: "na_reserva", senha: null, itemEstado: null, sessao: amanha });
+    expect(reserva).toMatchObject({ naFila: false, etapa: 0, grupo: "proximos", selo: "na reserva" });
+  });
+
+  it("inscrito para amanhã: tem vaga mas ainda não está na fila; a fila de hoje é 'hoje'", () => {
+    expect(r({ ...base, estado: "confirmada", senha: null, itemEstado: null, sessao: amanha })).toMatchObject({
+      naFila: false,
+      etapa: 1,
+      grupo: "proximos",
+      selo: "inscrito",
+    });
+  });
+
+  it("na fila em casa, na unidade e chamado: etapas 1, 2 e 3, grupo hoje", () => {
+    const emCasa = r({ ...base, sessao: hoje, estimativa: { tipo: "posicao", posicao: 3, minutos: 20 } });
+    expect(emCasa).toMatchObject({ naFila: true, etapa: 1, grupo: "hoje", selo: "na fila · em casa" });
+    const naUnidade = r({
+      ...base,
+      sessao: hoje,
+      itemEstado: "presente",
+      estimativa: { tipo: "posicao", posicao: 1, minutos: 0 },
+    });
+    expect(naUnidade).toMatchObject({ naFila: true, etapa: 2, selo: "na fila · na unidade" });
+    const vez = r({ ...base, sessao: hoje, itemEstado: "chamado", chamada: { estacao: "Sala 1", em: hoje.inicio } });
+    expect(vez).toMatchObject({ naFila: true, etapa: 3, selo: "é a sua vez" });
+  });
+
+  it("encerrados: atendido completa a trilha; cancelado e saiu não têm trilha", () => {
+    expect(r({ ...base, sessao: hoje, estado: "concluida", itemEstado: "atendido_na_etapa" })).toMatchObject({
+      etapa: 4,
+      grupo: "encerrados",
+    });
+    expect(r({ ...base, estado: "cancelada", itemEstado: null })).toMatchObject({ etapa: null, grupo: "encerrados" });
   });
 });

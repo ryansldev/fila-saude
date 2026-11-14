@@ -151,6 +151,10 @@ export const minhaEntradaSchema = z.object({
   pendencias: z.array(z.string()),
   /** RN-ETA-03: o "saia de casa" desta etapa já saiu; a tela diz o mesmo que o push. */
   saiaDeCasa: z.boolean(),
+  /** Serviço da inscrição: uma pessoa só tem uma inscrição ativa por serviço (AD-032). */
+  servicoId: z.uuid(),
+  /** A pessoa atendida é o dono da conta (e não alguém que ele inscreveu). */
+  paraMim: z.boolean(),
 });
 export type MinhaEntrada = z.infer<typeof minhaEntradaSchema>;
 

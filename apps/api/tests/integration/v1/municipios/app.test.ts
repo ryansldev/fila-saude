@@ -91,6 +91,11 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     let r = await app("GET", `${m()}/minhas`, ana.cookie);
     expect(r.corpo.map((e: { pessoa: string }) => e.pessoa).sort()).toEqual(["Ana Paciente", "Bia Paciente"]);
     expect(r.corpo[0]).toMatchObject({ senha: null, estimativa: { tipo: "aguardando_inicio" } });
+    // O app precisa saber o serviço e se a inscrição é da própria conta, para não oferecer de novo (AD-032).
+    const daAna = r.corpo.find((e: { pessoa: string }) => e.pessoa === "Ana Paciente");
+    const daBia = r.corpo.find((e: { pessoa: string }) => e.pessoa === "Bia Paciente");
+    expect(daAna).toMatchObject({ servicoId: c.servicoId, paraMim: true });
+    expect(daBia).toMatchObject({ servicoId: c.servicoId, paraMim: false });
 
     await c.pedir("POST", `/v1/painel/sessoes/${c.sessaoId}/abrir`, c.admin);
     r = await app("GET", `${m()}/minhas`, ana.cookie);

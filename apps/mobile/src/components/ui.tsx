@@ -10,6 +10,7 @@ import {
   ListOrdered,
   type LucideIcon,
   TriangleAlert,
+  X,
 } from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import {
@@ -49,6 +50,13 @@ export const COR = {
   dangerBg: "#fef2f1",
   dangerInk: "#993029",
   call: "#30833c",
+  // Estilo "chunky" (botões e cartões com relevo, borda grossa clara).
+  linha: "#e1e8ea",
+  campoFundo: "#f6f9fa",
+  acaoSombra: "#145a9b",
+  verde: "#2f9e44",
+  verdeSombra: "#237a34",
+  amarelo: "#f59f00",
 };
 
 export const FONTE = {
@@ -115,6 +123,8 @@ export function Tela({
   topo = true,
   voltar = true,
   rodape,
+  acoes,
+  progresso,
   fundo = COR.surface,
   aoVoltar,
 }: {
@@ -124,16 +134,29 @@ export function Tela({
   /** Fluxo de vários passos: "voltar" vai ao passo anterior em vez de sair (e perder o que foi digitado). */
   aoVoltar?: () => void;
   rodape?: ReactNode;
+  /** Botões da tela, sempre fixos embaixo e alinhados (principal em cima, secundário embaixo). */
+  acoes?: ReactNode;
+  /** Fluxos: barra de progresso no lugar do topo com a marca. */
+  progresso?: { atual: number; total: number };
   fundo?: string;
 }) {
   // Android edge-to-edge não redimensiona a janela com o teclado: sem o "padding" ele cobre o rodapé.
   return (
     <SafeAreaView style={[e.tela, { backgroundColor: fundo }]} edges={["top", "bottom"]}>
-      {topo ? <Topo voltar={voltar} aoVoltar={aoVoltar} /> : null}
+      {progresso ? (
+        <BarraDeProgresso
+          atual={progresso.atual}
+          total={progresso.total}
+          aoFechar={aoVoltar ?? (router.canGoBack() ? () => router.back() : undefined)}
+        />
+      ) : topo ? (
+        <Topo voltar={voltar} aoVoltar={aoVoltar} />
+      ) : null}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={e.scr} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
           {children}
         </ScrollView>
+        {acoes ? <View style={e.rodape}>{acoes}</View> : null}
         {rodape}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -191,12 +214,13 @@ export const Progresso = ({ children }: { children: ReactNode }) => <Text style=
 
 type TipoBotao = "primario" | "secundario" | "perigo" | "perigoCheio" | "branco";
 
-const ESTILO_BOTAO: Record<TipoBotao, { fundo: string; borda: string; texto: string }> = {
-  primario: { fundo: COR.action, borda: COR.action, texto: "#ffffff" },
-  secundario: { fundo: COR.surface, borda: COR.border, texto: COR.ink },
-  perigo: { fundo: COR.surface, borda: COR.border, texto: COR.dangerInk },
-  perigoCheio: { fundo: COR.dangerInk, borda: COR.dangerInk, texto: "#ffffff" },
-  branco: { fundo: "#ffffff", borda: "#ffffff", texto: COR.primary900 },
+// Botão com relevo: a borda de baixo, mais escura, "afunda" ao tocar (o gesto fica visível).
+const ESTILO_BOTAO: Record<TipoBotao, { fundo: string; borda: string; sombra: string; texto: string }> = {
+  primario: { fundo: COR.action, borda: COR.action, sombra: COR.acaoSombra, texto: "#ffffff" },
+  secundario: { fundo: COR.surface, borda: COR.linha, sombra: COR.linha, texto: COR.action },
+  perigo: { fundo: COR.surface, borda: COR.linha, sombra: COR.linha, texto: COR.dangerInk },
+  perigoCheio: { fundo: COR.dangerInk, borda: COR.dangerInk, sombra: "#6e1f1a", texto: "#ffffff" },
+  branco: { fundo: "#ffffff", borda: "#ffffff", sombra: "#d9e2e4", texto: COR.primary900 },
 };
 
 export function Botao({
@@ -224,9 +248,12 @@ export function Botao({
       style={({ pressed }) => [
         e.btn,
         {
-          backgroundColor: pressed && tipo === "primario" ? COR.actionPressed : c.fundo,
-          borderColor: pressed && tipo === "primario" ? COR.actionPressed : c.borda,
-          opacity: desativado ? 0.5 : 1,
+          backgroundColor: c.fundo,
+          borderColor: c.borda,
+          borderBottomColor: c.sombra,
+          borderBottomWidth: pressed ? 2 : 5,
+          marginTop: pressed ? 3 : 0,
+          opacity: desativado ? 0.45 : 1,
         },
       ]}
     >
@@ -266,15 +293,28 @@ export function LinkBotao({
 }
 
 export function Campo({ rotulo, erro, ...props }: { rotulo: string; erro?: string | undefined } & TextInputProps) {
+  const [foco, setFoco] = useState(false);
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: 8 }}>
       <Text style={e.rotulo}>{rotulo}</Text>
       <TextInput
         accessibilityLabel={rotulo}
         accessibilityHint={erro}
-        placeholderTextColor={COR.inkMuted}
-        style={[e.campo, erro ? { borderColor: COR.dangerInk } : null]}
+        placeholderTextColor="#9aa3a5"
+        style={[
+          e.campo,
+          foco && { borderColor: COR.action, backgroundColor: COR.surface },
+          erro ? { borderColor: COR.dangerInk, backgroundColor: COR.dangerBg } : null,
+        ]}
         {...props}
+        onFocus={(ev) => {
+          setFoco(true);
+          props.onFocus?.(ev);
+        }}
+        onBlur={(ev) => {
+          setFoco(false);
+          props.onBlur?.(ev);
+        }}
       />
       {erro ? <Text style={{ fontFamily: FONTE.regular, fontSize: 16, color: COR.dangerInk }}>{erro}</Text> : null}
     </View>
@@ -452,7 +492,142 @@ export function Abas({ atual }: { atual: "fila" | "unidades" }) {
   );
 }
 
+// --- Peças do redesenho de 2026-11-14 (inspiração: apps de hábito como o Duolingo) ---
+
+/** Barra de progresso grossa no topo dos fluxos (onboarding, cadastro, questionário). */
+export function BarraDeProgresso({ atual, total, aoFechar }: { atual: number; total: number; aoFechar?: () => void }) {
+  const fracao = Math.max(0, Math.min(1, atual / total));
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 8 }}>
+      {aoFechar ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="voltar" onPress={aoFechar} hitSlop={12}>
+          <X size={28} color={COR.inkMuted} strokeWidth={2.75} />
+        </Pressable>
+      ) : null}
+      <View
+        accessibilityRole="progressbar"
+        accessibilityValue={{ min: 0, max: total, now: atual }}
+        style={{ flex: 1, height: 16, borderRadius: 999, backgroundColor: COR.linha, overflow: "hidden" }}
+      >
+        <View style={{ width: `${fracao * 100}%`, height: "100%", borderRadius: 999, backgroundColor: COR.action }}>
+          <View
+            style={{ height: 5, marginHorizontal: 8, marginTop: 3, borderRadius: 999, backgroundColor: "#ffffff55" }}
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const TOM: Record<
+  "azul" | "verde" | "amarelo" | "cinza" | "vermelho",
+  { fundo: string; texto: string; ponto: string }
+> = {
+  azul: { fundo: COR.primary50, texto: COR.actionPressed, ponto: COR.action },
+  verde: { fundo: COR.successBg, texto: COR.successInk, ponto: COR.verde },
+  amarelo: { fundo: COR.warningBg, texto: COR.warningInk, ponto: COR.amarelo },
+  cinza: { fundo: COR.surfaceMuted, texto: COR.inkMuted, ponto: "#9aa3a5" },
+  vermelho: { fundo: COR.dangerBg, texto: COR.dangerInk, ponto: COR.dangerInk },
+};
+
+/** Selo da situação, com ponto colorido: a cor nunca é o único sinal (o texto diz). */
+export function Selo({ texto, tom }: { texto: string; tom: keyof typeof TOM }) {
+  const t = TOM[tom];
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        alignSelf: "flex-start",
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: t.fundo,
+      }}
+    >
+      <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: t.ponto }} />
+      <Text style={{ fontFamily: FONTE.extra, fontSize: 16, color: t.texto }}>{texto}</Text>
+    </View>
+  );
+}
+
+const ETAPAS = ["inscrição", "fila", "unidade", "sala"];
+
+/**
+ * A trilha do atendimento: inscrição → fila → unidade → sala. As feitas ganham ✓, a atual fica
+ * em destaque; assim a pessoa vê se já está na fila de verdade.
+ */
+export function Trilha({ etapa }: { etapa: number }) {
+  return (
+    <View
+      accessibilityLabel={`etapa ${Math.min(etapa + 1, ETAPAS.length)} de ${ETAPAS.length}: ${ETAPAS[Math.min(etapa, 3)]}`}
+      style={{ flexDirection: "row", alignItems: "flex-start" }}
+    >
+      {ETAPAS.map((nome, i) => {
+        const feita = i < etapa;
+        const atual = i === etapa;
+        return (
+          <View key={nome} style={{ flex: 1, alignItems: "center", gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", alignSelf: "stretch" }}>
+              <View
+                style={{
+                  flex: 1,
+                  height: 4,
+                  backgroundColor: i === 0 ? "transparent" : i <= etapa ? COR.action : COR.linha,
+                }}
+              />
+              <View
+                style={{
+                  width: atual ? 34 : 28,
+                  height: atual ? 34 : 28,
+                  borderRadius: 999,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: feita ? COR.action : atual ? COR.surface : COR.linha,
+                  borderWidth: atual ? 4 : 0,
+                  borderColor: COR.action,
+                }}
+              >
+                {feita ? <Check size={16} color="#ffffff" strokeWidth={3.5} /> : null}
+                {atual ? (
+                  <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: COR.action }} />
+                ) : null}
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  height: 4,
+                  backgroundColor: i === ETAPAS.length - 1 ? "transparent" : i < etapa ? COR.action : COR.linha,
+                }}
+              />
+            </View>
+            <Text
+              style={{
+                fontFamily: atual ? FONTE.extra : FONTE.semi,
+                fontSize: 14,
+                color: atual ? COR.action : feita ? COR.ink : COR.inkMuted,
+              }}
+            >
+              {nome}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 export const e = StyleSheet.create({
+  rodape: {
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderTopWidth: 2,
+    borderTopColor: COR.surfaceMuted,
+    backgroundColor: COR.surface,
+  },
   tela: { flex: 1 },
   topo: {
     flexDirection: "row",
@@ -473,21 +648,22 @@ export const e = StyleSheet.create({
   prog: { fontFamily: FONTE.bold, fontSize: 15, color: COR.inkMuted },
   btn: {
     minHeight: 56,
-    borderRadius: 10,
+    borderRadius: 16,
     borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 16,
   },
-  textoBtn: { fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24 },
+  textoBtn: { fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, letterSpacing: 0.2 },
   link: { minHeight: 44, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
   textoLink: { fontFamily: FONTE.bold, fontSize: 18, lineHeight: 24, textDecorationLine: "underline" },
   rotulo: { fontFamily: FONTE.bold, fontSize: 16, color: COR.ink },
   campo: {
-    minHeight: 56,
-    borderRadius: 10,
+    minHeight: 58,
+    borderRadius: 14,
     borderWidth: 2,
-    borderColor: COR.border,
+    borderColor: COR.linha,
+    backgroundColor: COR.campoFundo,
     paddingHorizontal: 16,
     fontFamily: FONTE.semi,
     fontSize: 20,
@@ -497,12 +673,13 @@ export const e = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    minHeight: 56,
+    minHeight: 60,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 10,
+    paddingVertical: 14,
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: COR.border,
+    borderBottomWidth: 4,
+    borderColor: COR.linha,
     backgroundColor: COR.surface,
   },
   box: {
@@ -532,20 +709,19 @@ export const e = StyleSheet.create({
   fs: { fontFamily: FONTE.semi, fontSize: 16, lineHeight: 24 },
   card: {
     gap: 4,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COR.border,
+    padding: 18,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderBottomWidth: 4,
+    borderColor: COR.linha,
     backgroundColor: COR.surface,
   },
   pos: {
     gap: 2,
     paddingHorizontal: 16,
     paddingVertical: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     backgroundColor: COR.primary50,
-    borderWidth: 1,
-    borderColor: COR.border,
   },
   num: { fontFamily: FONTE.extra, fontSize: 64, lineHeight: 68, color: COR.primary500 },
   chip: {
