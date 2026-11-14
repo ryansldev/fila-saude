@@ -54,8 +54,8 @@ O questionário é estruturado (sem texto livre) e identifica risco de cara: sin
 | Rotina | Sem sinais de risco (ex.: exame de rotina) | Ordem normal |
 
 **RN-RISCO-01 · Sugerido e confirmado**
-O nível calculado pelo app é sempre **sugerido**. QUANDO o agendador alocar a entrada (podendo alterar o nível) ou a triagem classificar, O SISTEMA DEVE gravar o nível como **confirmado**; a triagem tem a palavra final. Em serviço regulado, o agendador grava no lançamento a classificação vinda da regulação (RN-ENC-06).
-*Decisões: AD-036.*
+O nível calculado pelo app é sempre **sugerido** (pré-triagem). QUANDO o enfermeiro classificar (triagem), O SISTEMA DEVE gravar o nível como **confirmado**; o agendador não confirma risco na alocação. Em serviço regulado, o agendador grava no lançamento a classificação vinda da regulação (RN-ENC-06).
+*Decisões: AD-036, AD-056.*
 
 **RN-RISCO-02 · Sem agendador**
 Em sessão pública e no balcão não há agendador: o nível fica sugerido até a triagem confirmar, e em serviço sem triagem permanece sugerido. No balcão, a recepção aplica o mesmo questionário com o paciente; QUANDO o resultado for emergência, O SISTEMA DEVE orientar encaminhá-lo à emergência.

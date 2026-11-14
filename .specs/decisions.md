@@ -283,6 +283,10 @@ Com pendência, o check-in pelo QR é **recusado** ("passe na recepção"); a pe
 2026-11-12 · ativa · Muda: RN-PRES-01
 Quem lê o QR marca a presença de todas as pessoas da conta com senha nas sessões abertas da unidade; cada uma tem o próprio resultado (presente ou pendente). Confirmada com a v0.1 (Q3); a conferência na 1ª ida (Q5) já era RN-ID-05 e AD-054. **Por quê:** quem leva o filho lê um QR só. Custo: quem marcou para alguém que não veio junto marca a presença dela; se ninguém aparecer na chamada, os pulos resolvem.
 
+### AD-056 · Decisões da revisão de 2026-11-13
+2026-11-13 · ativa · Muda: RN-TRI-04, RN-RISCO-01, notificações (specs/tv-e-avisos)
+(1) **O atendimento é uma fila nova:** quem sai da triagem recebe o próximo número e entra atrás de quem já estava no atendimento, dentro do seu nível de risco e prioridade, com a mesma senha. (2) **Só o enfermeiro confirma risco:** o questionário do app é pré-triagem (sugerido); o agendador não confirma na alocação. Na triagem (fatia 3), o enfermeiro classifica pelas cores do Acolhimento com Classificação de Risco do Ministério da Saúde. (3) **Quem perde a vez** vai para o fim do seu nível de risco e prioridade. (4) **"Venha agora"** vale para todo remoto sem ninguém na frente, não só urgência confirmada. **Por quê:** decisões suas na revisão (RV8–RV11).
+
 ## Arquitetura
 
 As decisões PD-01..PD-13 estão na tabela de decisões do [plan](features/mvp-filas/plan.md#1-decisões-de-arquitetura), com o porquê de cada uma. Todas ativas.

@@ -55,7 +55,7 @@ QUANDO duas chamadas acontecerem ao mesmo tempo, O SISTEMA DEVE enfileirá-las; 
 | Alocação pendente de confirmação (destacada após 24 h) | Agendador | Lista de ligação no painel |
 | Sessão aberta: você está na fila remota | Paciente | Push |
 | Saia de casa (tempo estimado abaixo do limite) | Paciente | Push |
-| Venha agora (urgente confirmado) | Paciente | Push |
+| Venha agora (remoto sem ninguém na frente, AD-056) | Paciente | Push |
 | Sua vez: senha, serviço e sala | Paciente | Push + TV |
 | Você foi pulado / perdeu a vez | Paciente | Push |
 | Sessão cancelada, remarcada, aguardando nova data ou "escolha outra data" | Paciente | Push |

@@ -51,7 +51,8 @@ Uma estação de triagem pode atender vários serviços; junta os pacientes dele
 Na triagem o profissional confirma ou reclassifica o risco; essa passa a ser a classificação confirmada.
 
 **RN-TRI-04 · Depois da triagem**
-O paciente entra na fila de atendimento com a mesma senha. A ordem usa a classificação confirmada, a prioridade legal e a posição original na fila do dia (não a hora da triagem).
+O atendimento é uma fila nova: o paciente entra com a mesma senha e um número novo, atrás de quem já estava na fila do atendimento, dentro do seu nível de risco (confirmado pelo enfermeiro) e prioridade legal. Sem janela protegida e sem regra de atraso nessa passagem.
+*Decisões: AD-056.*
 
 **RN-TRI-05 · Sair entre etapas**
 A regra de presença continua valendo entre as etapas: o paciente pode tocar "Vou sair" depois da triagem e recebe um novo "saia de casa" quando o atendimento se aproximar. Ao voltar, vale a regra de atraso.

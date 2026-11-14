@@ -177,6 +177,8 @@ Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, p
 | RV5 | Nascimento depois da verificação | A conta verificada não muda a data pelo app (`nascimento_verificado`); só a recepção | Desfazer a verificação | Correção de data pede ida à recepção |
 | RV6 | Sessão aberta esquecida de outro dia | Continua na lista da fila do dia até alguém encerrar; a estação opera a sessão aberta mais recente | Encerrar sozinha (worker) | Precisa encerrar à mão |
 
+**Respondidas por você (2026-11-13):** RV8 → fila nova depois da triagem; RV9 → só o enfermeiro confirma, com as cores do Acolhimento com Classificação de Risco na fatia 3; RV10 → fim do seu nível; RV11 → todo remoto sem ninguém na frente (AD-056, implementado). RV7 continua aberta (ver abaixo).
+
 **Precisa de você (regra da spec ambígua; o código segue como estava):**
 
 | # | Pergunta | Hoje |
