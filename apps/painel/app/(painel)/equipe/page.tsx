@@ -1,7 +1,7 @@
 "use client";
 
 import { atribuicoesSchema, usuarioPainelEntradaSchema } from "@fila-saude/schemas/usuario";
-import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
@@ -224,9 +224,9 @@ export default function Equipe() {
 
   async function remover(u: Usuario) {
     const ok = await confirmar({
-      titulo: `Remover ${u.nome} da equipe?`,
+      titulo: `Excluir ${u.nome} da equipe?`,
       descricao: "A pessoa não consegue mais entrar no painel.",
-      acao: "Remover",
+      acao: "Excluir",
       perigo: true,
     });
     if (!ok) return;
@@ -284,29 +284,22 @@ export default function Equipe() {
             <TableCell>{u.login}</TableCell>
             <TableCell className="whitespace-normal">{resumoDasAtribuicoes(u, nomeDaUnidade)}</TableCell>
             <TableCell className="text-right">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Alterar ${u.nome}`}
-                title="Alterar"
-                onClick={() =>
-                  setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
-                }
-              >
-                <PencilIcon />
-              </Button>
-              {u.id !== eu.eu.id ? (
+              <div className="flex justify-end gap-2">
                 <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remover ${u.nome}`}
-                  title="Remover"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => remover(u)}
+                  size="sm"
+                  aria-label={`Editar ${u.nome}`}
+                  onClick={() =>
+                    setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
+                  }
                 >
-                  <Trash2Icon />
+                  Editar
                 </Button>
-              ) : null}
+                {u.id !== eu.eu.id ? (
+                  <Button size="sm" variant="destructive" aria-label={`Excluir ${u.nome}`} onClick={() => remover(u)}>
+                    Excluir
+                  </Button>
+                ) : null}
+              </div>
             </TableCell>
           </TableRow>
         ))}
@@ -325,7 +318,7 @@ export default function Equipe() {
           {editando ? (
             <>
               <SheetHeader className="border-b">
-                <SheetTitle>Alterar · {nomeDe(editando.id)}</SheetTitle>
+                <SheetTitle>Editar · {nomeDe(editando.id)}</SheetTitle>
                 <SheetDescription>Ocupações e funções desta pessoa em cada unidade.</SheetDescription>
               </SheetHeader>
               <div className="flex flex-col gap-4 overflow-y-auto p-4">
