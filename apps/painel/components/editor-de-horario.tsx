@@ -1,6 +1,6 @@
 "use client";
 
-import { classeDoCampo } from "@/components/formulario";
+import { Texto } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { adicionarIntervalo, type ChaveDia, DIAS, type Horario } from "@/lib/formularios/horario";
 
@@ -38,20 +38,22 @@ export function EditorDeHorario({
                 // biome-ignore lint/suspicious/noArrayIndexKey: intervalos editáveis sem id próprio
                 <div key={i} className="flex flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <input
+                    <Texto
                       type="time"
                       aria-label={`${nome}, início do intervalo ${i + 1}`}
-                      className={`${classeDoCampo} w-32`}
-                      value={iv.abre}
-                      onChange={(e) => trocar(chave, i, "abre", e.target.value)}
+                      aria-invalid={erros[`horario.${chave}.${i}`] ? true : undefined}
+                      className="w-32"
+                      valor={iv.abre}
+                      aoMudar={(hora) => trocar(chave, i, "abre", hora)}
                     />
                     <span className="text-gray-500">às</span>
-                    <input
+                    <Texto
                       type="time"
                       aria-label={`${nome}, fim do intervalo ${i + 1}`}
-                      className={`${classeDoCampo} w-32`}
-                      value={iv.fecha}
-                      onChange={(e) => trocar(chave, i, "fecha", e.target.value)}
+                      aria-invalid={erros[`horario.${chave}.${i}`] ? true : undefined}
+                      className="w-32"
+                      valor={iv.fecha}
+                      aoMudar={(hora) => trocar(chave, i, "fecha", hora)}
                     />
                     <Button type="button" variant="ghost" size="sm" onClick={() => remover(chave, i)}>
                       Remover

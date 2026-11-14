@@ -1,10 +1,12 @@
 "use client";
 
+import { atribuicoesSchema, usuarioPainelEntradaSchema } from "@fila-saude/schemas/usuario";
 import { type FormEvent, useState } from "react";
-import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
+import { useConfirmar } from "@/components/dialogos";
+import { Aviso, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
+import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import {
   type Atribuicoes,
   FUNCOES,
@@ -25,6 +27,9 @@ type Unidade = { id: string; nome: string };
 
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 const VAZIO: Atribuicoes = { vinculos: [], funcoes: [] };
+const OPCOES_OCUPACAO = TODAS_AS_OCUPACOES.map((o) => ({ valor: o, rotulo: OCUPACOES[o].rotulo }));
+// Só o que o login aceita (sem acento, espaço ou hífen): a pessoa vê na hora.
+const mascaraDoLogin = (t: string) => t.toLowerCase().replace(/[^a-z0-9_.]/g, "");
 
 /** Ocupações por unidade e funções, com só o que o ator pode conceder. */
 function EditorDeAtribuicoes({
@@ -43,17 +48,12 @@ function EditorDeAtribuicoes({
   const permitidas = unidadesQuePodeAtribuir(ator, unidades);
   const funcoes = funcoesQuePodeConceder(ator);
   const primeira = permitidas.length === 1 ? (permitidas[0]?.id ?? "") : "";
+  const opcoesDeUnidade = permitidas.map((u) => ({ valor: u.id, rotulo: u.nome }));
+  const opcoesDeFuncao = funcoes.map((fn) => ({ valor: fn, rotulo: FUNCOES[fn].rotulo }));
 
   const seletorDeUnidade = (atual: string | null, aoMudar: (id: string) => void, erro?: string) => (
     <Campo rotulo="Unidade" erro={erro}>
-      <select className={classeDoCampo} value={atual ?? ""} onChange={(e) => aoMudar(e.target.value)}>
-        <option value="">Escolha a unidade</option>
-        {permitidas.map((u) => (
-          <option key={u.id} value={u.id}>
-            {u.nome}
-          </option>
-        ))}
-      </select>
+      <Selecao valor={atual ?? ""} opcoes={opcoesDeUnidade} placeholder="Escolha a unidade" aoMudar={aoMudar} />
     </Campo>
   );
 
@@ -72,24 +72,16 @@ function EditorDeAtribuicoes({
               erros[`vinculos.${i}.unidadeId`],
             )}
             <Campo rotulo="Ocupação">
-              <select
-                className={classeDoCampo}
-                value={v.ocupacao}
-                onChange={(e) =>
+              <Selecao
+                valor={v.ocupacao}
+                opcoes={OPCOES_OCUPACAO}
+                aoMudar={(ocupacao) =>
                   mudar({
                     ...valor,
-                    vinculos: valor.vinculos.map((x, j) =>
-                      j === i ? { ...x, ocupacao: e.target.value as Ocupacao } : x,
-                    ),
+                    vinculos: valor.vinculos.map((x, j) => (j === i ? { ...x, ocupacao: ocupacao as Ocupacao } : x)),
                   })
                 }
-              >
-                {TODAS_AS_OCUPACOES.map((o) => (
-                  <option key={o} value={o}>
-                    {OCUPACOES[o].rotulo}
-                  </option>
-                ))}
-              </select>
+              />
             </Campo>
             <Button
               type="button"
@@ -123,11 +115,12 @@ function EditorDeAtribuicoes({
             // biome-ignore lint/suspicious/noArrayIndexKey: linhas editáveis sem id próprio
             <div key={i} className="flex flex-wrap items-end gap-2">
               <Campo rotulo="Função">
-                <select
-                  className={classeDoCampo}
-                  value={f.funcao}
-                  onChange={(e) => {
-                    const funcao = e.target.value as Funcao;
+                <Selecao
+                  valor={f.funcao}
+                  opcoes={opcoesDeFuncao}
+                  aoMudar={(escolhida) => {
+                    if (!escolhida) return;
+                    const funcao = escolhida as Funcao;
                     const doMunicipio = FUNCOES[funcao].escopo === "municipio";
                     mudar({
                       ...valor,
@@ -136,13 +129,7 @@ function EditorDeAtribuicoes({
                       ),
                     });
                   }}
-                >
-                  {funcoes.map((fn) => (
-                    <option key={fn} value={fn}>
-                      {FUNCOES[fn].rotulo}
-                    </option>
-                  ))}
-                </select>
+                />
               </Campo>
               {FUNCOES[f.funcao].escopo === "unidade" ? (
                 seletorDeUnidade(
@@ -203,6 +190,7 @@ export default function Equipe() {
   const [ok, setOk] = useState<string | null>(null);
   const [editando, setEditando] = useState<{ id: string; valor: Atribuicoes; erros: ErrosDoEnvio } | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const confirmar = useConfirmar();
 
   if (eu.estado !== "autenticado") return null;
   const ator: Atribuicoes = { vinculos: eu.eu.vinculos, funcoes: eu.eu.funcoes };
@@ -214,8 +202,11 @@ export default function Equipe() {
     const alvo = limpar(atribuicoes);
     const problemas = problemasDoCadastro(ator, alvo);
     if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
+    const corpo = { ...v, ...alvo };
+    const invalidos = validarNoCliente(usuarioPainelEntradaSchema, corpo);
+    if (invalidos) return setErros(invalidos);
     try {
-      await api.post("/v1/painel/usuarios", { ...v, ...alvo });
+      await api.post("/v1/painel/usuarios", corpo);
       setErros(SEM_ERROS);
       setOk(`${v.nome} cadastrado(a). Passe o login e a senha para a pessoa.`);
       setV({ login: "", nome: "", senha: "" });
@@ -227,7 +218,13 @@ export default function Equipe() {
   }
 
   async function remover(u: Usuario) {
-    if (!window.confirm(`Remover ${u.nome} da equipe? A pessoa não consegue mais entrar no painel.`)) return;
+    const ok = await confirmar({
+      titulo: `Remover ${u.nome} da equipe?`,
+      descricao: "A pessoa não consegue mais entrar no painel.",
+      acao: "Remover",
+      perigo: true,
+    });
+    if (!ok) return;
     try {
       await api.del(`/v1/painel/usuarios/${u.id}`);
       setAviso(null);
@@ -244,6 +241,8 @@ export default function Equipe() {
     const problemas = problemasDoCadastro(ator, alvo);
     if (Object.keys(problemas).length > 0)
       return setEditando({ ...editando, erros: { geral: null, campos: problemas } });
+    const invalidos = validarNoCliente(atribuicoesSchema, alvo);
+    if (invalidos) return setEditando({ ...editando, erros: invalidos });
     try {
       await api.put(`/v1/painel/usuarios/${editando.id}/atribuicoes`, alvo);
       setEditando(null);
@@ -305,32 +304,25 @@ export default function Equipe() {
         <form onSubmit={criar} className="flex flex-col gap-4">
           <div className="grid gap-3 sm:grid-cols-3">
             <Campo rotulo="Nome" erro={erros.campos.nome}>
-              <input
-                className={classeDoCampo}
-                required
-                value={v.nome}
-                onChange={(e) => setV({ ...v, nome: e.target.value })}
-              />
+              <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
             </Campo>
             <Campo rotulo="Login" erro={erros.campos.login} dica="letras, números, ponto ou _">
-              <input
-                className={classeDoCampo}
+              <Texto
                 required
                 autoCapitalize="none"
-                value={v.login}
                 maxLength={30}
-                // Só o que o login aceita (sem acento, espaço ou hífen): a pessoa vê na hora.
-                onChange={(e) => setV({ ...v, login: e.target.value.toLowerCase().replace(/[^a-z0-9_.]/g, "") })}
+                valor={v.login}
+                mascara={mascaraDoLogin}
+                aoMudar={(login) => setV({ ...v, login })}
               />
             </Campo>
             <Campo rotulo="Senha inicial" erro={erros.campos.senha} dica="mínimo 8 caracteres">
-              <input
-                className={classeDoCampo}
+              <Texto
                 required
                 type="password"
                 autoComplete="new-password"
-                value={v.senha}
-                onChange={(e) => setV({ ...v, senha: e.target.value })}
+                valor={v.senha}
+                aoMudar={(senha) => setV({ ...v, senha })}
               />
             </Campo>
           </div>

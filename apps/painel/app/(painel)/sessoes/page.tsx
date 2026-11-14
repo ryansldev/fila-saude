@@ -1,11 +1,13 @@
 "use client";
 
+import { sessaoEdicaoSchema, sessaoEntradaSchema, visibilidadeEntradaSchema } from "@fila-saude/schemas/sessao";
 import { type FormEvent, useEffect, useState } from "react";
-import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
+import { useConfirmar } from "@/components/dialogos";
+import { Aviso, Caixa, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
+import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import {
   ajustarVisibilidade,
   diaValido,
@@ -40,8 +42,18 @@ type Estacao = { id: string; nome: string; servicos: string[] };
 
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 
+/** Horário digitado → ISO; vazio ou inválido vira "" para o schema apontar o campo. */
+function horarioOuVazio(data: string, hora: string, fuso: string): string {
+  try {
+    return horarioParaEnvio(data, hora, fuso);
+  } catch {
+    return "";
+  }
+}
+
 export default function Sessoes() {
   const api = useApi();
+  const confirmar = useConfirmar();
   const {
     unidades,
     atual,
@@ -77,6 +89,8 @@ export default function Sessoes() {
   });
   const [erros, setErros] = useState(SEM_ERROS);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Edição das vagas na própria linha da tabela (vazio = sem limite).
+  const [vagasEmEdicao, setVagasEmEdicao] = useState<{ id: string; texto: string; erro?: string } | null>(null);
   // Trocou de unidade: serviço e estações escolhidos eram da anterior.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só ao trocar de unidade.
   useEffect(() => {
@@ -93,17 +107,20 @@ export default function Sessoes() {
     e.preventDefault();
     const vagas = lerVagas(v.vagas);
     if (!vagas.ok) return setErros({ geral: null, campos: { vagas: vagas.erro } });
+    const corpo = {
+      servicoId: v.servicoId,
+      inicio: horarioOuVazio(dia, v.inicio, fuso),
+      fim: horarioOuVazio(dia, v.fim, fuso),
+      vagas: vagas.vagas,
+      visibilidade: v.visibilidade,
+      dispensaPreCadastro: v.visibilidade === "publica" && v.dispensaPreCadastro,
+      profissional: v.profissional.trim() || null,
+      estacoes: v.estacoes,
+    };
+    const invalidos = validarNoCliente(sessaoEntradaSchema, corpo);
+    if (invalidos) return setErros(invalidos);
     try {
-      await api.post(`/v1/painel/unidades/${atual}/sessoes`, {
-        servicoId: v.servicoId,
-        inicio: horarioParaEnvio(dia, v.inicio, fuso),
-        fim: horarioParaEnvio(dia, v.fim, fuso),
-        vagas: vagas.vagas,
-        visibilidade: v.visibilidade,
-        dispensaPreCadastro: v.visibilidade === "publica" && v.dispensaPreCadastro,
-        profissional: v.profissional.trim() || null,
-        estacoes: v.estacoes,
-      });
+      await api.post(`/v1/painel/unidades/${atual}/sessoes`, corpo);
       setErros(SEM_ERROS);
       sessoes.recarregar();
     } catch (err) {
@@ -112,18 +129,21 @@ export default function Sessoes() {
   }
 
   async function agir(s: Sessao, acao: "visibilidade" | "cancelar") {
-    const pergunta =
+    const para = s.visibilidade === "publica" ? "privada" : "publica";
+    const ok = await confirmar(
       acao === "cancelar"
-        ? "Cancelar esta sessão?"
-        : `Tornar esta sessão ${s.visibilidade === "publica" ? "privada" : "pública"}?`;
-    if (!window.confirm(pergunta)) return;
+        ? { titulo: "Cancelar esta sessão?", acao: "Cancelar sessão", perigo: true }
+        : { titulo: `Tornar esta sessão ${para === "privada" ? "privada" : "pública"}?` },
+    );
+    if (!ok) return;
+    const corpo = { visibilidade: para, versao: s.versao };
+    if (acao === "visibilidade") {
+      const invalidos = validarNoCliente(visibilidadeEntradaSchema, corpo);
+      if (invalidos) return setAviso(invalidos.geral ?? Object.values(invalidos.campos)[0] ?? null);
+    }
     try {
       if (acao === "cancelar") await api.post(`/v1/painel/sessoes/${s.id}/cancelar`, {});
-      else
-        await api.post(`/v1/painel/sessoes/${s.id}/visibilidade`, {
-          visibilidade: s.visibilidade === "publica" ? "privada" : "publica",
-          versao: s.versao,
-        });
+      else await api.post(`/v1/painel/sessoes/${s.id}/visibilidade`, corpo);
       setAviso(null);
       sessoes.recarregar();
     } catch (err) {
@@ -131,13 +151,21 @@ export default function Sessoes() {
     }
   }
 
-  async function mudarVagas(s: Sessao) {
-    const texto = window.prompt("Vagas (vazio = sem limite)", s.vagas === null ? "" : String(s.vagas));
-    if (texto === null) return;
-    const vagas = lerVagas(texto);
-    if (!vagas.ok) return setAviso(vagas.erro);
+  async function salvarVagas(e: FormEvent, s: Sessao) {
+    e.preventDefault();
+    if (!vagasEmEdicao) return;
+    const vagas = lerVagas(vagasEmEdicao.texto);
+    if (!vagas.ok) return setVagasEmEdicao({ ...vagasEmEdicao, erro: vagas.erro });
+    const corpo = { vagas: vagas.vagas, versao: s.versao };
+    const invalidos = validarNoCliente(sessaoEdicaoSchema, corpo);
+    if (invalidos)
+      return setVagasEmEdicao({
+        ...vagasEmEdicao,
+        erro: invalidos.campos.vagas ?? invalidos.geral ?? "Confira as vagas.",
+      });
     try {
-      await api.patch(`/v1/painel/sessoes/${s.id}`, { vagas: vagas.vagas, versao: s.versao });
+      await api.patch(`/v1/painel/sessoes/${s.id}`, corpo);
+      setVagasEmEdicao(null);
       setAviso(null);
       sessoes.recarregar();
     } catch (err) {
@@ -151,12 +179,7 @@ export default function Sessoes() {
       <div className="flex flex-wrap items-end gap-4">
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         <Campo rotulo="Dia">
-          <input
-            type="date"
-            className={classeDoCampo}
-            value={dia}
-            onChange={(e) => diaValido(e.target.value) && setDia(e.target.value)}
-          />
+          <Texto type="date" valor={dia} aoMudar={(novo) => diaValido(novo) && setDia(novo)} />
         </Campo>
       </div>
       <Aviso texto={sessoes.erro ?? aviso} />
@@ -170,7 +193,29 @@ export default function Sessoes() {
                 </td>
                 <td className="py-2 pr-4">{nome(s.servicoId, servicos)}</td>
                 <td className="py-2 pr-4">
-                  {s.vagas === null ? `${s.ocupadas} / sem limite` : `${s.ocupadas} / ${s.vagas}`}
+                  {vagasEmEdicao?.id === s.id ? (
+                    <form onSubmit={(e) => salvarVagas(e, s)} className="flex items-end gap-2">
+                      <Campo rotulo="Vagas" erro={vagasEmEdicao.erro} dica="vazio = sem limite">
+                        <Texto
+                          className="w-24"
+                          inputMode="numeric"
+                          autoFocus
+                          valor={vagasEmEdicao.texto}
+                          aoMudar={(texto) => setVagasEmEdicao({ id: s.id, texto })}
+                        />
+                      </Campo>
+                      <Button type="submit" size="sm">
+                        Salvar
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setVagasEmEdicao(null)}>
+                        Voltar
+                      </Button>
+                    </form>
+                  ) : s.vagas === null ? (
+                    `${s.ocupadas} / sem limite`
+                  ) : (
+                    `${s.ocupadas} / ${s.vagas}`
+                  )}
                 </td>
                 <td className="py-2 pr-4">
                   {s.visibilidade === "publica" ? "Pública" : "Privada"}
@@ -180,7 +225,11 @@ export default function Sessoes() {
                 <td className="py-2 pr-4">{s.estado}</td>
                 <td className="flex gap-1 py-2">
                   {s.estado === "planejada" || s.estado === "aberta" ? (
-                    <Button variant="ghost" size="sm" onClick={() => mudarVagas(s)}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setVagasEmEdicao({ id: s.id, texto: s.vagas === null ? "" : String(s.vagas) })}
+                    >
                       Vagas
                     </Button>
                   ) : null}
@@ -208,82 +257,48 @@ export default function Sessoes() {
             <form onSubmit={criar} className="flex flex-col gap-3">
               <div className="grid gap-3 sm:grid-cols-3">
                 <Campo rotulo="Serviço" erro={erros.campos.servicoId}>
-                  <select
-                    className={classeDoCampo}
-                    required
-                    value={v.servicoId}
-                    onChange={(e) => {
-                      const novo = servicos.find((s) => s.id === e.target.value);
+                  <Selecao
+                    valor={v.servicoId}
+                    placeholder="Escolha o serviço"
+                    opcoes={servicos.map((s) => ({ valor: s.id, rotulo: s.nome }))}
+                    aoMudar={(servicoId) => {
+                      const novo = servicos.find((s) => s.id === servicoId);
                       const vis = visibilidadesPermitidas(novo?.modo ?? "livre").includes(v.visibilidade)
                         ? v.visibilidade
                         : "privada";
-                      setV({ ...v, servicoId: e.target.value, estacoes: [], ...ajustarVisibilidade(v, vis) });
+                      setV({ ...v, servicoId, estacoes: [], ...ajustarVisibilidade(v, vis) });
                     }}
-                  >
-                    <option value="">Escolha o serviço</option>
-                    {servicos.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nome}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Campo>
                 <Campo rotulo="Início" erro={erros.campos.inicio}>
-                  <input
-                    type="time"
-                    className={classeDoCampo}
-                    required
-                    value={v.inicio}
-                    onChange={(e) => setV({ ...v, inicio: e.target.value })}
-                  />
+                  <Texto type="time" required valor={v.inicio} aoMudar={(inicio) => setV({ ...v, inicio })} />
                 </Campo>
                 <Campo rotulo="Fim" erro={erros.campos.fim}>
-                  <input
-                    type="time"
-                    className={classeDoCampo}
-                    required
-                    value={v.fim}
-                    onChange={(e) => setV({ ...v, fim: e.target.value })}
-                  />
+                  <Texto type="time" required valor={v.fim} aoMudar={(fim) => setV({ ...v, fim })} />
                 </Campo>
                 <Campo rotulo="Vagas" erro={erros.campos.vagas} dica="vazio = sem limite">
-                  <input
-                    className={classeDoCampo}
-                    inputMode="numeric"
-                    value={v.vagas}
-                    onChange={(e) => setV({ ...v, vagas: e.target.value })}
+                  <Texto inputMode="numeric" valor={v.vagas} aoMudar={(vagas) => setV({ ...v, vagas })} />
+                </Campo>
+                <Campo rotulo="Visibilidade" erro={erros.campos.visibilidade}>
+                  <Selecao
+                    valor={v.visibilidade}
+                    aoMudar={(vis) => vis && setV({ ...v, ...ajustarVisibilidade(v, vis as Visibilidade) })}
+                    opcoes={permitidas.map((p) => ({
+                      valor: p,
+                      rotulo: p === "publica" ? "Pública (qualquer paciente pede)" : "Privada (pela lista de espera)",
+                    }))}
                   />
                 </Campo>
-                <Campo rotulo="Visibilidade">
-                  <select
-                    className={classeDoCampo}
-                    value={v.visibilidade}
-                    onChange={(e) => setV({ ...v, ...ajustarVisibilidade(v, e.target.value as Visibilidade) })}
-                  >
-                    {permitidas.map((p) => (
-                      <option key={p} value={p}>
-                        {p === "publica" ? "Pública (qualquer paciente pede)" : "Privada (pela lista de espera)"}
-                      </option>
-                    ))}
-                  </select>
-                </Campo>
-                <Campo rotulo="Profissional">
-                  <input
-                    className={classeDoCampo}
-                    value={v.profissional}
-                    onChange={(e) => setV({ ...v, profissional: e.target.value })}
-                  />
+                <Campo rotulo="Profissional" erro={erros.campos.profissional}>
+                  <Texto valor={v.profissional} aoMudar={(profissional) => setV({ ...v, profissional })} />
                 </Campo>
               </div>
               {v.visibilidade === "publica" ? (
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={v.dispensaPreCadastro}
-                    onChange={(e) => setV({ ...v, dispensaPreCadastro: e.target.checked })}
-                  />
-                  Dispensar pré-cadastro
-                </label>
+                <Caixa
+                  rotulo="Dispensar pré-cadastro"
+                  marcada={v.dispensaPreCadastro}
+                  aoMudar={(dispensaPreCadastro) => setV({ ...v, dispensaPreCadastro })}
+                />
               ) : null}
               <fieldset className="flex flex-col gap-1 text-sm text-gray-700">
                 <legend className="mb-1 font-medium">Estações</legend>
@@ -291,19 +306,17 @@ export default function Sessoes() {
                   <span className="text-gray-500">Nenhuma estação atende este serviço.</span>
                 ) : null}
                 {estacoesDoServico(estacoes, v.servicoId).map((est) => (
-                  <label key={est.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={v.estacoes.includes(est.id)}
-                      onChange={(e) =>
-                        setV({
-                          ...v,
-                          estacoes: e.target.checked ? [...v.estacoes, est.id] : v.estacoes.filter((x) => x !== est.id),
-                        })
-                      }
-                    />
-                    {est.nome}
-                  </label>
+                  <Caixa
+                    key={est.id}
+                    rotulo={est.nome}
+                    marcada={v.estacoes.includes(est.id)}
+                    aoMudar={(marcada) =>
+                      setV({
+                        ...v,
+                        estacoes: marcada ? [...v.estacoes, est.id] : v.estacoes.filter((x) => x !== est.id),
+                      })
+                    }
+                  />
                 ))}
                 {erros.campos.estacoes ? <span className="text-xs text-red-700">{erros.campos.estacoes}</span> : null}
               </fieldset>

@@ -1,11 +1,13 @@
 "use client";
 
+import { servicoEdicaoSchema, servicoEntradaSchema } from "@fila-saude/schemas/servico";
 import { type FormEvent, useState } from "react";
-import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
+import type { ZodType } from "zod";
+import { Aviso, Caixa, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { type ErrosDoEnvio, errosDoEnvio } from "@/lib/formularios/erros";
+import { type ErrosDoEnvio, errosDoEnvio, validarNoCliente } from "@/lib/formularios/erros";
 import {
   type Modo,
   mostraTempoTriagem,
@@ -34,6 +36,17 @@ const VAZIO: ValoresServico = {
   atendimento: "15",
 };
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
+const OPCOES_MODO = (Object.keys(ROTULOS_MODO) as Modo[]).map((m) => ({ valor: m, rotulo: ROTULOS_MODO[m] }));
+const ERRO_MINUTOS = "Use um número inteiro de minutos.";
+
+/** Minutos digitados: vazio vale (não vai), senão só dígitos; assim nunca vai NaN para a API. */
+function problemasDosMinutos(v: ValoresServico): Record<string, string> {
+  const invalido = (t: string) => t.trim() !== "" && !/^\d+$/.test(t.trim());
+  const campos: Record<string, string> = {};
+  if (mostraTempoTriagem(v.exigeTriagem) && invalido(v.triagem)) campos["tempoMedioMin.triagem"] = ERRO_MINUTOS;
+  if (invalido(v.atendimento)) campos["tempoMedioMin.atendimento"] = ERRO_MINUTOS;
+  return campos;
+}
 
 function deServico(s: Servico): ValoresServico {
   return {
@@ -50,11 +63,14 @@ function FormularioDeServico({
   inicial,
   enviar,
   rotulo,
+  schema,
   aoCancelar,
 }: {
   inicial: ValoresServico;
   enviar: (v: ValoresServico) => Promise<void>;
   rotulo: string;
+  /** O mesmo schema da rota da API que recebe o envio. */
+  schema: ZodType;
   aoCancelar?: () => void;
 }) {
   const [v, setV] = useState(inicial);
@@ -62,6 +78,10 @@ function FormularioDeServico({
 
   async function aoEnviar(e: FormEvent) {
     e.preventDefault();
+    const minutos = problemasDosMinutos(v);
+    if (Object.keys(minutos).length > 0) return setErros({ geral: null, campos: minutos });
+    const invalidos = validarNoCliente(schema, servicoParaEnvio(v));
+    if (invalidos) return setErros(invalidos);
     try {
       await enviar(v);
       setErros(SEM_ERROS);
@@ -74,56 +94,34 @@ function FormularioDeServico({
   return (
     <form onSubmit={aoEnviar} className="grid gap-3 sm:grid-cols-2">
       <Campo rotulo="Nome" erro={erros.campos.nome}>
-        <input
-          className={classeDoCampo}
-          required
-          value={v.nome}
-          onChange={(e) => setV({ ...v, nome: e.target.value })}
-        />
+        <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
       </Campo>
       <Campo rotulo="Prefixo da senha" erro={erros.campos.prefixo} dica="1 a 3 letras (ex.: C → C001)">
-        <input
-          className={classeDoCampo}
+        <Texto
           required
           maxLength={3}
-          value={v.prefixo}
-          onChange={(e) => setV({ ...v, prefixo: e.target.value.toUpperCase() })}
+          valor={v.prefixo}
+          mascara={(t) => t.toUpperCase()}
+          aoMudar={(prefixo) => setV({ ...v, prefixo })}
         />
       </Campo>
       <Campo rotulo="Como é marcado" erro={erros.campos.modo}>
-        <select className={classeDoCampo} value={v.modo} onChange={(e) => setV({ ...v, modo: e.target.value as Modo })}>
-          {(Object.keys(ROTULOS_MODO) as Modo[]).map((m) => (
-            <option key={m} value={m}>
-              {ROTULOS_MODO[m]}
-            </option>
-          ))}
-        </select>
+        <Selecao valor={v.modo} opcoes={OPCOES_MODO} aoMudar={(modo) => setV({ ...v, modo: modo as Modo })} />
       </Campo>
-      <label className="flex items-center gap-2 self-end pb-2 text-sm font-medium text-gray-700">
-        <input
-          type="checkbox"
-          checked={v.exigeTriagem}
-          onChange={(e) => setV({ ...v, exigeTriagem: e.target.checked })}
+      <div className="self-end pb-2">
+        <Caixa
+          rotulo="Exige triagem"
+          marcada={v.exigeTriagem}
+          aoMudar={(exigeTriagem) => setV({ ...v, exigeTriagem })}
         />
-        Exige triagem
-      </label>
+      </div>
       {mostraTempoTriagem(v.exigeTriagem) ? (
         <Campo rotulo="Tempo médio da triagem (min)" erro={erros.campos["tempoMedioMin.triagem"]}>
-          <input
-            className={classeDoCampo}
-            inputMode="numeric"
-            value={v.triagem}
-            onChange={(e) => setV({ ...v, triagem: e.target.value })}
-          />
+          <Texto inputMode="numeric" valor={v.triagem} aoMudar={(triagem) => setV({ ...v, triagem })} />
         </Campo>
       ) : null}
       <Campo rotulo="Tempo médio do atendimento (min)" erro={erros.campos["tempoMedioMin.atendimento"]}>
-        <input
-          className={classeDoCampo}
-          inputMode="numeric"
-          value={v.atendimento}
-          onChange={(e) => setV({ ...v, atendimento: e.target.value })}
-        />
+        <Texto inputMode="numeric" valor={v.atendimento} aoMudar={(atendimento) => setV({ ...v, atendimento })} />
       </Campo>
       <div className="flex flex-col gap-2 sm:col-span-2">
         <Aviso texto={erros.geral} />
@@ -183,6 +181,7 @@ export default function Servicos() {
                 key={editando.id}
                 inicial={deServico(editando)}
                 rotulo="Salvar"
+                schema={servicoEdicaoSchema}
                 aoCancelar={() => setEditando(null)}
                 enviar={async (v) => {
                   await api.patch(`/v1/painel/servicos/${editando.id}`, servicoParaEnvio(v));
@@ -196,6 +195,7 @@ export default function Servicos() {
             <FormularioDeServico
               inicial={VAZIO}
               rotulo="Criar serviço"
+              schema={servicoEntradaSchema}
               enviar={async (v) => {
                 await api.post(`/v1/painel/unidades/${atual}/servicos`, servicoParaEnvio(v));
                 recarregar();

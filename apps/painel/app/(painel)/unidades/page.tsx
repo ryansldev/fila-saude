@@ -1,12 +1,14 @@
 "use client";
 
 import { mascararCep, soDigitos } from "@fila-saude/schemas/mascaras";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { unidadeEdicaoSchema, unidadeEntradaSchema } from "@fila-saude/schemas/unidade";
+import { type ComponentProps, type FormEvent, useEffect, useMemo, useState } from "react";
+import { useConfirmar } from "@/components/dialogos";
 import { EditorDeHorario } from "@/components/editor-de-horario";
-import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
+import { Aviso, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
+import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import { opcoesDeFuso } from "@/lib/formularios/fusos";
 import { HORARIO_PADRAO, type Horario, problemasDoHorario, resumoDoHorario } from "@/lib/formularios/horario";
 import { CAMPOS_CONFIG, type ConfigEfetiva, campoHerdado, configParaEnvio } from "@/lib/formularios/unidade";
@@ -43,6 +45,11 @@ function enderecoEmTexto(e: Endereco) {
 }
 
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
+const TIPOS = [
+  { valor: "ubs", rotulo: "UBS" },
+  { valor: "policlinica", rotulo: "Policlínica" },
+  { valor: "upa", rotulo: "UPA" },
+];
 
 function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
   const api = useApi();
@@ -57,21 +64,24 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
     setOk(null);
     const problemas = problemasDoHorario(horario);
     if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
+    const corpo = {
+      nome: v.nome,
+      tipo: v.tipo,
+      cnes: v.cnes.trim() || null,
+      endereco: {
+        cep: v.cep,
+        logradouro: v.logradouro,
+        numero: v.numero,
+        complemento: v.complemento.trim() || null,
+        bairro: v.bairro,
+      },
+      fuso: v.fuso,
+      horario,
+    };
+    const invalidos = validarNoCliente(unidadeEntradaSchema, corpo);
+    if (invalidos) return setErros(invalidos);
     try {
-      await api.post("/v1/painel/unidades", {
-        nome: v.nome,
-        tipo: v.tipo,
-        cnes: v.cnes.trim() || null,
-        endereco: {
-          cep: v.cep,
-          logradouro: v.logradouro,
-          numero: v.numero,
-          complemento: v.complemento.trim() || null,
-          bairro: v.bairro,
-        },
-        fuso: v.fuso,
-        horario,
-      });
+      await api.post("/v1/painel/unidades", corpo);
       setErros(SEM_ERROS);
       setOk(`Unidade ${v.nome} criada.`);
       setV({ ...VAZIA, tipo: v.tipo, fuso: v.fuso });
@@ -87,14 +97,14 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
     cep: mascararCep,
     cnes: (t) => soDigitos(t).slice(0, 7),
   };
-  const campo = (k: keyof typeof VAZIA, rotulo: string, extra: object = {}, chaveDoErro: string = k) => (
+  const campo = (
+    k: keyof typeof VAZIA,
+    rotulo: string,
+    extra: Omit<ComponentProps<typeof Texto>, "valor" | "aoMudar"> = {},
+    chaveDoErro: string = k,
+  ) => (
     <Campo rotulo={rotulo} erro={erros.campos[chaveDoErro]}>
-      <input
-        className={classeDoCampo}
-        value={v[k]}
-        onChange={(e) => setV({ ...v, [k]: (MASCARA[k] ?? ((t: string) => t))(e.target.value) })}
-        {...extra}
-      />
+      <Texto valor={v[k]} mascara={MASCARA[k]} aoMudar={(t) => setV({ ...v, [k]: t })} {...extra} />
     </Campo>
   );
 
@@ -103,11 +113,7 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
       <form onSubmit={enviar} className="grid gap-3 sm:grid-cols-2">
         {campo("nome", "Nome", { required: true })}
         <Campo rotulo="Tipo" erro={erros.campos.tipo}>
-          <select className={classeDoCampo} value={v.tipo} onChange={(e) => setV({ ...v, tipo: e.target.value })}>
-            <option value="ubs">UBS</option>
-            <option value="policlinica">Policlínica</option>
-            <option value="upa">UPA</option>
-          </select>
+          <Selecao valor={v.tipo} opcoes={TIPOS} aoMudar={(tipo) => setV({ ...v, tipo })} />
         </Campo>
         {campo("cnes", "Código CNES (opcional)", { inputMode: "numeric", maxLength: 7 })}
         {campo(
@@ -121,13 +127,11 @@ function NovaUnidade({ aoCriar }: { aoCriar: () => void }) {
         {campo("complemento", "Complemento", {}, "endereco.complemento")}
         {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
         <Campo rotulo="Fuso horário" erro={erros.campos.fuso}>
-          <select className={classeDoCampo} value={v.fuso} onChange={(e) => setV({ ...v, fuso: e.target.value })}>
-            {fusos.map((f) => (
-              <option key={f.fuso} value={f.fuso}>
-                {f.rotulo}
-              </option>
-            ))}
-          </select>
+          <Selecao
+            valor={v.fuso}
+            opcoes={fusos.map((f) => ({ valor: f.fuso, rotulo: f.rotulo }))}
+            aoMudar={(fuso) => setV({ ...v, fuso })}
+          />
         </Campo>
         <div className="flex flex-col gap-2 sm:col-span-2">
           <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
@@ -153,6 +157,8 @@ function HorarioDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: (
     setOk(null);
     const problemas = problemasDoHorario(horario);
     if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
+    const invalidos = validarNoCliente(unidadeEdicaoSchema, { horario });
+    if (invalidos) return setErros(invalidos);
     try {
       await api.patch(`/v1/painel/unidades/${unidade.id}`, { horario });
       setErros(SEM_ERROS);
@@ -210,8 +216,18 @@ function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: ()
   async function salvar(e: FormEvent) {
     e.preventDefault();
     setOk(null);
+    // Só inteiros (ou vazio = herdar): "1,5" ou "dez" viraria NaN no envio.
+    const naoInteiros = Object.fromEntries(
+      Object.entries(valores)
+        .filter(([, t]) => t.trim() !== "" && !/^\d+$/.test(t.trim()))
+        .map(([c]) => [`config.${c}`, "Use um número inteiro, ou deixe vazio para herdar."]),
+    );
+    if (Object.keys(naoInteiros).length > 0) return setErros({ geral: null, campos: naoInteiros });
+    const corpo = { config: configParaEnvio(valores, proprios) };
+    const invalidos = validarNoCliente(unidadeEdicaoSchema, corpo);
+    if (invalidos) return setErros(invalidos);
     try {
-      await api.patch(`/v1/painel/unidades/${unidade.id}`, { config: configParaEnvio(valores, proprios) });
+      await api.patch(`/v1/painel/unidades/${unidade.id}`, corpo);
       setErros(SEM_ERROS);
       setOk("Configuração salva.");
       setEfetiva(await api.get<ConfigEfetiva>(`/v1/painel/unidades/${unidade.id}/config`));
@@ -232,12 +248,11 @@ function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: ()
             erro={erros.campos[`config.${campo}`]}
             dica={valores[campo] ? "valor da unidade (apague para herdar)" : h.texto}
           >
-            <input
-              className={classeDoCampo}
+            <Texto
               inputMode="numeric"
               placeholder={String(h.valor)}
-              value={valores[campo] ?? ""}
-              onChange={(e) => setValores({ ...valores, [campo]: e.target.value })}
+              valor={valores[campo] ?? ""}
+              aoMudar={(t) => setValores({ ...valores, [campo]: t })}
             />
           </Campo>
         );
@@ -258,10 +273,16 @@ export default function Unidades() {
   const { itens, erro, recarregar } = useLista<Unidade>("/v1/painel/unidades");
   const [aberta, setAberta] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const confirmar = useConfirmar();
 
   async function remover(u: Unidade) {
-    if (!window.confirm(`Remover a unidade ${u.nome}? A equipe perde o acesso a ela. O histórico fica guardado.`))
-      return;
+    const ok = await confirmar({
+      titulo: `Remover a unidade ${u.nome}?`,
+      descricao: "A equipe perde o acesso a ela. O histórico fica guardado.",
+      acao: "Remover",
+      perigo: true,
+    });
+    if (!ok) return;
     try {
       await api.del(`/v1/painel/unidades/${u.id}`);
       setAviso(null);

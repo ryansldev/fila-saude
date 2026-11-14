@@ -1,8 +1,9 @@
 "use client";
 
-import type { FilaDaSessao, HojeNaUnidade } from "@fila-saude/schemas/fila";
+import { type FilaDaSessao, type HojeNaUnidade, presencaEntradaSchema } from "@fila-saude/schemas/fila";
 import { useEffect, useState } from "react";
-import { Aviso, Campo, classeDoCampo, Tabela } from "@/components/formulario";
+import { useConfirmar, usePerguntar } from "@/components/dialogos";
+import { Aviso, Campo, Selecao, Tabela } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -14,7 +15,7 @@ import {
   textoDasPendencias,
   textoDoDocumento,
 } from "@/lib/fila";
-import { mensagemDoErro } from "@/lib/formularios/erros";
+import { mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import { horarioParaTela } from "@/lib/formularios/sessao";
 import { useEu } from "@/lib/sessao";
 import { useUnidadeAtual } from "@/lib/unidade-atual";
@@ -28,6 +29,8 @@ const ESTADO_DA_SESSAO: Record<string, string> = {
 
 export default function FilaDoDia() {
   const api = useApi();
+  const confirmar = useConfirmar();
+  const perguntar = usePerguntar();
   const eu = useEu();
   const {
     unidades,
@@ -55,8 +58,12 @@ export default function FilaDoDia() {
   const estado = fila.dado?.sessao.estado ?? "planejada";
   const pode = atual ? acoesDaFila(perfis, atual, estado) : { abrir: false, encerrar: false, presenca: false };
 
-  async function agir(caminho: string, corpo: unknown, pergunta?: string) {
-    if (pergunta && !window.confirm(pergunta)) return;
+  async function agir(
+    caminho: string,
+    corpo: unknown,
+    pergunta?: { titulo: string; descricao?: string; acao?: string; perigo?: boolean },
+  ) {
+    if (pergunta && !(await confirmar(pergunta))) return;
     try {
       fila.setDado(await api.post<FilaDaSessao>(caminho, corpo));
       setAviso(null);
@@ -66,6 +73,13 @@ export default function FilaDoDia() {
     }
   }
 
+  /** Confere o corpo com o schema da API antes de enviar a presença. */
+  async function presenca(corpo: { entradaId: string; resultado: "confere" | "nao_confere"; motivo?: string }) {
+    const invalidos = validarNoCliente(presencaEntradaSchema, corpo);
+    if (invalidos) return setAviso(invalidos.geral ?? Object.values(invalidos.campos)[0] ?? "Confira os dados.");
+    await agir(`/v1/painel/sessoes/${sessaoId}/presenca`, corpo);
+  }
+
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Fila do dia</h1>
@@ -73,14 +87,18 @@ export default function FilaDoDia() {
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         {sessoes.length > 0 ? (
           <Campo rotulo="Sessão">
-            <select className={classeDoCampo} value={sessaoId ?? ""} onChange={(e) => setSessaoId(e.target.value)}>
-              {sessoes.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {horarioParaTela(s.inicio, fuso).hora}–{horarioParaTela(s.fim, fuso).hora} · {s.servico} ·{" "}
-                  {ESTADO_DA_SESSAO[s.estado] ?? s.estado}
-                </option>
-              ))}
-            </select>
+            <Selecao
+              className="w-full min-w-72"
+              valor={sessaoId ?? ""}
+              aoMudar={(id) => id && setSessaoId(id)}
+              placeholder="Escolha a sessão"
+              opcoes={sessoes.map((s) => ({
+                valor: s.id,
+                rotulo: `${horarioParaTela(s.inicio, fuso).hora}–${horarioParaTela(s.fim, fuso).hora} · ${s.servico} · ${
+                  ESTADO_DA_SESSAO[s.estado] ?? s.estado
+                }`,
+              }))}
+            />
           </Campo>
         ) : null}
       </div>
@@ -97,7 +115,11 @@ export default function FilaDoDia() {
               {fila.dado.reserva > 0 ? ` · ${fila.dado.reserva} na reserva` : ""}
             </p>
             {pode.abrir ? (
-              <Button onClick={() => agir(`/v1/painel/sessoes/${sessaoId}/abrir`, {}, "Abrir a sessão agora?")}>
+              <Button
+                onClick={() =>
+                  agir(`/v1/painel/sessoes/${sessaoId}/abrir`, {}, { titulo: "Abrir a sessão agora?", acao: "Abrir" })
+                }
+              >
                 Abrir sessão
               </Button>
             ) : null}
@@ -108,7 +130,12 @@ export default function FilaDoDia() {
                   agir(
                     `/v1/painel/sessoes/${sessaoId}/encerrar`,
                     {},
-                    "Encerrar a sessão? Quem ainda está na fila vai ser remanejado ou levar falta.",
+                    {
+                      titulo: "Encerrar a sessão?",
+                      descricao: "Quem ainda está na fila vai ser remanejado ou levar falta.",
+                      acao: "Encerrar",
+                      perigo: true,
+                    },
                   )
                 }
               >
@@ -149,12 +176,7 @@ export default function FilaDoDia() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              agir(`/v1/painel/sessoes/${sessaoId}/presenca`, {
-                                entradaId: i.entradaId,
-                                resultado: "confere",
-                              })
-                            }
+                            onClick={() => presenca({ entradaId: i.entradaId, resultado: "confere" })}
                           >
                             {b.marcar}
                           </Button>
@@ -162,15 +184,16 @@ export default function FilaDoDia() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
+                              onClick={async () => {
                                 // AD-039: recusar tira da fila de hoje, sem falta; sempre com motivo.
-                                const motivo = window.prompt("Por que os documentos não conferem?")?.trim();
-                                if (!motivo) return;
-                                void agir(`/v1/painel/sessoes/${sessaoId}/presenca`, {
-                                  entradaId: i.entradaId,
-                                  resultado: "nao_confere",
-                                  motivo,
+                                const motivo = await perguntar({
+                                  titulo: "Documentos não conferem",
+                                  descricao: "O paciente sai da fila de hoje, sem falta.",
+                                  rotulo: "Motivo",
+                                  acao: "Não confere",
                                 });
+                                if (!motivo) return;
+                                await presenca({ entradaId: i.entradaId, resultado: "nao_confere", motivo });
                               }}
                             >
                               Não confere

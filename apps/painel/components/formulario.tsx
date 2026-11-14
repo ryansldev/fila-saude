@@ -10,10 +10,6 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 // Kit de formulário do painel sobre o shadcn (base-nova). As telas usam só estes componentes:
 // nada de <input>/<select> nativos. `Campo` liga o rótulo ao controle e marca o erro.
 
-/** @deprecated só enquanto as telas migram para `Texto`/`Selecao`. */
-export const classeDoCampo =
-  "w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm aria-invalid:border-destructive";
-
 const CampoAtual = createContext<{ id: string; invalido: boolean } | null>(null);
 
 export function Campo({

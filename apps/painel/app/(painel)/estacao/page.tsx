@@ -2,7 +2,8 @@
 
 import type { ComandoEstacao, HojeNaUnidade, OperacaoEstacao } from "@fila-saude/schemas/fila";
 import { useEffect, useState } from "react";
-import { Aviso, Campo, classeDoCampo } from "@/components/formulario";
+import { useConfirmar } from "@/components/dialogos";
+import { Aviso, Campo, Selecao } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -25,6 +26,7 @@ function lerEstacao(): string | null {
 /** Estação de chamada (T3.7): um paciente por vez; a tolerância só avisa (AD-006). */
 export default function Estacao() {
   const api = useApi();
+  const confirmar = useConfirmar();
   const { unidades, atual, escolher, erro: erroDasUnidades } = useUnidadeAtual(["operar_chamadas"]);
   const eu = useEu();
   const hoje = useConsulta<HojeNaUnidade>(atual ? `/v1/painel/unidades/${atual}/hoje` : null, 60_000);
@@ -60,7 +62,11 @@ export default function Estacao() {
   }
 
   async function comando(c: ComandoEstacao) {
-    if (c === "nao-compareceu" && !window.confirm("Marcar que o paciente não compareceu?")) return;
+    if (
+      c === "nao-compareceu" &&
+      !(await confirmar({ titulo: "Marcar que o paciente não compareceu?", acao: "Não compareceu", perigo: true }))
+    )
+      return;
     setEnviando(true);
     try {
       op.setDado(await api.post<OperacaoEstacao>(`/v1/painel/estacoes/${estacaoId}/${c}`, {}));
@@ -86,13 +92,16 @@ export default function Estacao() {
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         {estacoes.length > 0 ? (
           <Campo rotulo="Estação">
-            <select className={classeDoCampo} value={estacaoId ?? ""} onChange={(e) => escolherEstacao(e.target.value)}>
-              {estacoes.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nome} · {e.etapa === "triagem" ? "Triagem" : "Atendimento"}
-                </option>
-              ))}
-            </select>
+            <Selecao
+              className="w-full min-w-56"
+              valor={estacaoId ?? ""}
+              aoMudar={(id) => id && escolherEstacao(id)}
+              placeholder="Escolha a estação"
+              opcoes={estacoes.map((e) => ({
+                valor: e.id,
+                rotulo: `${e.nome} · ${e.etapa === "triagem" ? "Triagem" : "Atendimento"}`,
+              }))}
+            />
           </Campo>
         ) : null}
       </div>

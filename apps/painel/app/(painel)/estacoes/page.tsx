@@ -1,11 +1,13 @@
 "use client";
 
+import { estacaoEntradaSchema } from "@fila-saude/schemas/estacao";
 import { type FormEvent, useState } from "react";
-import { Aviso, Campo, Cartao, classeDoCampo, Tabela } from "@/components/formulario";
+import { useConfirmar } from "@/components/dialogos";
+import { Aviso, Caixa, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro } from "@/lib/formularios/erros";
+import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import { servicosParaEtapa } from "@/lib/formularios/estacao";
 import { useUnidadeAtual } from "@/lib/unidade-atual";
 import { useLista } from "@/lib/use-lista";
@@ -18,6 +20,7 @@ const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 
 export default function Estacoes() {
   const api = useApi();
+  const confirmar = useConfirmar();
   const {
     unidades,
     atual,
@@ -39,6 +42,8 @@ export default function Estacoes() {
 
   async function criar(e: FormEvent) {
     e.preventDefault();
+    const invalidos = validarNoCliente(estacaoEntradaSchema, v);
+    if (invalidos) return setErros(invalidos);
     try {
       await api.post(`/v1/painel/unidades/${atual}/estacoes`, v);
       setErros(SEM_ERROS);
@@ -50,7 +55,7 @@ export default function Estacoes() {
   }
 
   async function arquivar(est: Estacao) {
-    if (!window.confirm(`Arquivar a estação ${est.nome}?`)) return;
+    if (!(await confirmar({ titulo: `Arquivar a estação ${est.nome}?`, acao: "Arquivar", perigo: true }))) return;
     try {
       await api.del(`/v1/painel/estacoes/${est.id}`);
       setAviso(null);
@@ -85,23 +90,17 @@ export default function Estacoes() {
             <form onSubmit={criar} className="flex flex-col gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Campo rotulo="Nome" erro={erros.campos.nome}>
-                  <input
-                    className={classeDoCampo}
-                    required
-                    value={v.nome}
-                    placeholder="Consultório 1"
-                    onChange={(e) => setV({ ...v, nome: e.target.value })}
-                  />
+                  <Texto required valor={v.nome} placeholder="Consultório 1" aoMudar={(nome) => setV({ ...v, nome })} />
                 </Campo>
                 <Campo rotulo="Etapa" dica="Não muda depois de criada.">
-                  <select
-                    className={classeDoCampo}
-                    value={v.etapa}
-                    onChange={(e) => setV({ ...v, etapa: e.target.value as Etapa, servicos: [] })}
-                  >
-                    <option value="atendimento">Atendimento</option>
-                    <option value="triagem">Triagem</option>
-                  </select>
+                  <Selecao
+                    valor={v.etapa}
+                    aoMudar={(etapa) => etapa && setV({ ...v, etapa: etapa as Etapa, servicos: [] })}
+                    opcoes={[
+                      { valor: "atendimento", rotulo: "Atendimento" },
+                      { valor: "triagem", rotulo: "Triagem" },
+                    ]}
+                  />
                 </Campo>
               </div>
               <fieldset className="flex flex-col gap-1 text-sm text-gray-700">
@@ -110,19 +109,17 @@ export default function Estacoes() {
                   <span className="text-gray-500">Nenhum serviço disponível para esta etapa.</span>
                 ) : null}
                 {oferecidos.map((s) => (
-                  <label key={s.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={v.servicos.includes(s.id)}
-                      onChange={(e) =>
-                        setV({
-                          ...v,
-                          servicos: e.target.checked ? [...v.servicos, s.id] : v.servicos.filter((x) => x !== s.id),
-                        })
-                      }
-                    />
-                    {s.nome}
-                  </label>
+                  <Caixa
+                    key={s.id}
+                    rotulo={s.nome}
+                    marcada={v.servicos.includes(s.id)}
+                    aoMudar={(marcada) =>
+                      setV({
+                        ...v,
+                        servicos: marcada ? [...v.servicos, s.id] : v.servicos.filter((x) => x !== s.id),
+                      })
+                    }
+                  />
                 ))}
                 {erros.campos.servicos ? <span className="text-xs text-red-700">{erros.campos.servicos}</span> : null}
               </fieldset>
