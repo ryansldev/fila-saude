@@ -43,7 +43,7 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
           Sair
         </Button>
       </nav>
-      <main className="flex-1 p-8">
+      <main className="min-w-0 flex-1 p-8">
         <ProvedorDeDialogos>
           <ConteudoProtegido caminho={caminho} perfis={eu.eu.perfis}>
             {children}

@@ -163,3 +163,10 @@ export function Tabela({ cabecalho, children }: { cabecalho: string[]; children:
     </Table>
   );
 }
+
+/**
+ * Largura dos painéis laterais (Sheet) de cadastro e edição. Precisa do mesmo prefixo
+ * `data-[side=right]` da classe padrão do shadcn para vencer o `sm:max-w-sm`.
+ */
+export const LARGURA_DO_PAINEL_LATERAL =
+  "gap-0 data-[side=right]:w-full data-[side=right]:sm:max-w-2xl data-[side=right]:lg:max-w-3xl";

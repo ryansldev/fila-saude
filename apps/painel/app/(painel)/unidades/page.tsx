@@ -6,7 +6,7 @@ import { PlusIcon } from "lucide-react";
 import { type ComponentProps, type FormEvent, useEffect, useMemo, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { EditorDeHorario } from "@/components/editor-de-horario";
-import { Aviso, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
+import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -293,7 +293,7 @@ export default function Unidades() {
   }
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Unidades</h1>
         <Button onClick={() => setCriando(true)}>
@@ -331,7 +331,7 @@ export default function Unidades() {
       </Tabela>
       {/* Configuração ao lado, sem perder a lista de vista. */}
       <Sheet open={selecionada !== null} onOpenChange={(abrir) => !abrir && setAberta(null)}>
-        <SheetContent side="right" className="w-full gap-0 sm:max-w-xl">
+        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
           {selecionada ? (
             <>
               <SheetHeader className="border-b">
@@ -353,7 +353,7 @@ export default function Unidades() {
         </SheetContent>
       </Sheet>
       <Sheet open={criando} onOpenChange={setCriando}>
-        <SheetContent side="right" className="w-full gap-0 sm:max-w-xl">
+        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
           <SheetHeader className="border-b">
             <SheetTitle>Nova unidade</SheetTitle>
             <SheetDescription>

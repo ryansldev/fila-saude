@@ -1,10 +1,13 @@
 "use client";
 
 import { atribuicoesSchema, usuarioPainelEntradaSchema } from "@fila-saude/schemas/usuario";
+import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
-import { Aviso, Campo, Cartao, Selecao, Tabela, Texto } from "@/components/formulario";
+import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
 import {
@@ -190,6 +193,7 @@ export default function Equipe() {
   const [ok, setOk] = useState<string | null>(null);
   const [editando, setEditando] = useState<{ id: string; valor: Atribuicoes; erros: ErrosDoEnvio } | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  const [criando, setCriando] = useState(false);
   const confirmar = useConfirmar();
 
   if (eu.estado !== "autenticado") return null;
@@ -208,6 +212,7 @@ export default function Equipe() {
     try {
       await api.post("/v1/painel/usuarios", corpo);
       setErros(SEM_ERROS);
+      setCriando(false);
       setOk(`${v.nome} cadastrado(a). Passe o login e a senha para a pessoa.`);
       setV({ login: "", nome: "", senha: "" });
       setAtribuicoes(VAZIO);
@@ -245,6 +250,7 @@ export default function Equipe() {
     if (invalidos) return setEditando({ ...editando, erros: invalidos });
     try {
       await api.put(`/v1/painel/usuarios/${editando.id}/atribuicoes`, alvo);
+      setOk(`${nomeDe(editando.id)}: ocupações e funções salvas.`);
       setEditando(null);
       usuarios.recarregar();
     } catch (err) {
@@ -253,93 +259,147 @@ export default function Equipe() {
     }
   }
 
+  const nomeDe = (id: string) => usuarios.itens.find((u) => u.id === id)?.nome ?? "";
+
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
-      <h1 className="text-2xl font-bold text-gray-900">Equipe</h1>
+    <div className="flex w-full flex-col gap-6">
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-900">Equipe</h1>
+        <Button
+          onClick={() => {
+            setErros(SEM_ERROS);
+            setCriando(true);
+          }}
+        >
+          <PlusIcon />
+          Adicionar usuário
+        </Button>
+      </div>
       <Aviso texto={usuarios.erro ?? aviso} />
+      <Aviso texto={ok} tipo="ok" />
       <Tabela cabecalho={["Nome", "Login", "Ocupações e funções", ""]}>
         {usuarios.itens.map((u) => (
-          <tr key={u.id}>
-            <td className="py-2 pr-4 font-medium">{u.nome}</td>
-            <td className="py-2 pr-4">{u.login}</td>
-            <td className="py-2 pr-4">{resumoDasAtribuicoes(u, nomeDaUnidade)}</td>
-            <td className="py-2">
+          <TableRow key={u.id}>
+            <TableCell className="font-medium">{u.nome}</TableCell>
+            <TableCell>{u.login}</TableCell>
+            <TableCell className="whitespace-normal">{resumoDasAtribuicoes(u, nomeDaUnidade)}</TableCell>
+            <TableCell className="text-right">
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon-sm"
+                aria-label={`Alterar ${u.nome}`}
+                title="Alterar"
                 onClick={() =>
                   setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
                 }
               >
-                Alterar
+                <PencilIcon />
               </Button>
               {u.id !== eu.eu.id ? (
-                <Button variant="ghost" size="sm" onClick={() => remover(u)}>
-                  Remover
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Remover ${u.nome}`}
+                  title="Remover"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => remover(u)}
+                >
+                  <Trash2Icon />
                 </Button>
               ) : null}
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ))}
+        {usuarios.itens.length === 0 && !usuarios.erro ? (
+          <TableRow>
+            <TableCell colSpan={4} className="py-8 text-center text-gray-500">
+              Ninguém na equipe ainda. Use "Adicionar usuário".
+            </TableCell>
+          </TableRow>
+        ) : null}
       </Tabela>
-      {editando ? (
-        <Cartao titulo={`Ocupações e funções de ${usuarios.itens.find((u) => u.id === editando.id)?.nome ?? ""}`}>
-          <EditorDeAtribuicoes
-            valor={editando.valor}
-            mudar={(valor) => setEditando({ ...editando, valor })}
-            ator={ator}
-            unidades={unidades}
-            erros={editando.erros.campos}
-          />
-          <Aviso texto={editando.erros.geral} />
-          <div className="flex gap-2">
-            <Button onClick={salvar}>Salvar</Button>
-            <Button variant="ghost" onClick={() => setEditando(null)}>
-              Cancelar
-            </Button>
-          </div>
-        </Cartao>
-      ) : null}
-      <Cartao titulo="Cadastrar pessoa">
-        <form onSubmit={criar} className="flex flex-col gap-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Campo rotulo="Nome" erro={erros.campos.nome}>
-              <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
-            </Campo>
-            <Campo rotulo="Login" erro={erros.campos.login} dica="letras, números, ponto ou _">
-              <Texto
-                required
-                autoCapitalize="none"
-                maxLength={30}
-                valor={v.login}
-                mascara={mascaraDoLogin}
-                aoMudar={(login) => setV({ ...v, login })}
+
+      {/* Alterar: ocupações e funções ao lado, sem perder a lista de vista. */}
+      <Sheet open={editando !== null} onOpenChange={(abrir) => !abrir && setEditando(null)}>
+        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
+          {editando ? (
+            <>
+              <SheetHeader className="border-b">
+                <SheetTitle>Alterar · {nomeDe(editando.id)}</SheetTitle>
+                <SheetDescription>Ocupações e funções desta pessoa em cada unidade.</SheetDescription>
+              </SheetHeader>
+              <div className="flex flex-col gap-4 overflow-y-auto p-4">
+                <EditorDeAtribuicoes
+                  valor={editando.valor}
+                  mudar={(valor) => setEditando({ ...editando, valor })}
+                  ator={ator}
+                  unidades={unidades}
+                  erros={editando.erros.campos}
+                />
+                <Aviso texto={editando.erros.geral} />
+              </div>
+              <SheetFooter className="border-t sm:flex-row sm:justify-start">
+                <Button onClick={salvar}>Salvar</Button>
+                <Button variant="ghost" onClick={() => setEditando(null)}>
+                  Cancelar
+                </Button>
+              </SheetFooter>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+
+      {/* Cadastro de pessoa num painel lateral, aberto pelo botão "Adicionar usuário". */}
+      <Sheet open={criando} onOpenChange={setCriando}>
+        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
+          <SheetHeader className="border-b">
+            <SheetTitle>Adicionar usuário</SheetTitle>
+            <SheetDescription>
+              Login e senha inicial para o painel, e o que a pessoa faz em cada unidade.
+            </SheetDescription>
+          </SheetHeader>
+          <form onSubmit={criar} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex flex-col gap-4 overflow-y-auto p-4">
+              <Campo rotulo="Nome" erro={erros.campos.nome}>
+                <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
+              </Campo>
+              <Campo rotulo="Login" erro={erros.campos.login} dica="letras, números, ponto ou _">
+                <Texto
+                  required
+                  autoCapitalize="none"
+                  maxLength={30}
+                  valor={v.login}
+                  mascara={mascaraDoLogin}
+                  aoMudar={(login) => setV({ ...v, login })}
+                />
+              </Campo>
+              <Campo rotulo="Senha inicial" erro={erros.campos.senha} dica="mínimo 8 caracteres">
+                <Texto
+                  required
+                  type="password"
+                  autoComplete="new-password"
+                  valor={v.senha}
+                  aoMudar={(senha) => setV({ ...v, senha })}
+                />
+              </Campo>
+              <EditorDeAtribuicoes
+                valor={atribuicoes}
+                mudar={setAtribuicoes}
+                ator={ator}
+                unidades={unidades}
+                erros={erros.campos}
               />
-            </Campo>
-            <Campo rotulo="Senha inicial" erro={erros.campos.senha} dica="mínimo 8 caracteres">
-              <Texto
-                required
-                type="password"
-                autoComplete="new-password"
-                valor={v.senha}
-                aoMudar={(senha) => setV({ ...v, senha })}
-              />
-            </Campo>
-          </div>
-          <EditorDeAtribuicoes
-            valor={atribuicoes}
-            mudar={setAtribuicoes}
-            ator={ator}
-            unidades={unidades}
-            erros={erros.campos}
-          />
-          <Aviso texto={erros.geral} />
-          <Aviso texto={ok} tipo="ok" />
-          <Button type="submit" className="self-start">
-            Cadastrar
-          </Button>
-        </form>
-      </Cartao>
+              <Aviso texto={erros.geral} />
+            </div>
+            <SheetFooter className="border-t sm:flex-row sm:justify-start">
+              <Button type="submit">Cadastrar</Button>
+              <Button type="button" variant="ghost" onClick={() => setCriando(false)}>
+                Cancelar
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

@@ -174,7 +174,7 @@ export default function Sessoes() {
   }
 
   return (
-    <div className="flex max-w-5xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Sessões</h1>
       <div className="flex flex-wrap items-end gap-4">
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />

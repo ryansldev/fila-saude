@@ -66,7 +66,7 @@ export default function Estacoes() {
   }
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <h1 className="text-2xl font-bold text-gray-900">Estações</h1>
       <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={estacoes.erro ?? aviso} />
