@@ -1,7 +1,6 @@
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import { useState } from "react";
-import { Text } from "react-native";
-import { Botao, Campo, Erro, e, Tela } from "@/components/ui";
+import { Botao, Campo, Espaco, Faixa, Tela, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
 
@@ -25,15 +24,13 @@ export default function Entrar() {
   }
 
   return (
-    <Tela titulo="Fila Saúde">
-      <Text style={e.texto}>Acompanhe sua vez no posto de saúde sem precisar esperar lá.</Text>
-      <Campo rotulo="CPF" value={cpf} onChangeText={setCpf} keyboardType="number-pad" autoComplete="off" />
-      <Campo rotulo="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
-      <Erro texto={erro} />
-      <Botao texto="Entrar" onPress={enviar} carregando={enviando} desativado={!cpf || !senha} />
-      <Link href="/cadastro" style={[e.texto, { textAlign: "center", color: "#0b7fc0", padding: 8 }]}>
-        Ainda não tenho conta
-      </Link>
+    <Tela>
+      <Titulo>entrar</Titulo>
+      <Campo rotulo="CPF" value={cpf} onChangeText={setCpf} keyboardType="number-pad" placeholder="000.000.000-00" />
+      <Campo rotulo="senha" value={senha} onChangeText={setSenha} secureTextEntry />
+      {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
+      <Espaco />
+      <Botao texto="entrar" onPress={enviar} carregando={enviando} desativado={!cpf || !senha} />
     </Tela>
   );
 }

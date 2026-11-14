@@ -17,14 +17,18 @@ const base: MinhaEntrada = {
   pendencias: [],
 };
 
-describe("textos da tela da vez (T3.4)", () => {
-  it("posição e tempo; venha agora; sua vez com a sala", () => {
+describe("minha fila: estado de cada entrada, como no design do app", () => {
+  it("posição em casa e na unidade; venha agora; sua vez com a sala", () => {
     expect(situacaoDaEntrada({ ...base, estimativa: { tipo: "posicao", posicao: 4, minutos: 12 } })).toEqual({
-      destaque: "normal",
-      titulo: "Você é o 4º da fila",
-      detalhe: "Cerca de 12 min",
+      tipo: "posicao",
+      posicao: 4,
+      minutos: 12,
+      presente: false,
     });
-    expect(situacaoDaEntrada({ ...base, estimativa: { tipo: "venha_agora" } }).destaque).toBe("venha");
+    expect(
+      situacaoDaEntrada({ ...base, itemEstado: "presente", estimativa: { tipo: "posicao", posicao: 2, minutos: 5 } }),
+    ).toMatchObject({ tipo: "posicao", presente: true });
+    expect(situacaoDaEntrada({ ...base, estimativa: { tipo: "venha_agora" } })).toEqual({ tipo: "venha" });
     expect(
       situacaoDaEntrada({
         ...base,
@@ -32,34 +36,31 @@ describe("textos da tela da vez (T3.4)", () => {
         estimativa: { tipo: "chamado" },
         chamada: { estacao: "Sala 1", em: "2026-11-12T12:00:00.000Z" },
       }),
-    ).toEqual({ destaque: "vez", titulo: "É a sua vez!", detalhe: "Vá para Sala 1 com a senha C-001" });
+    ).toEqual({ tipo: "vez", senha: "C-001", estacao: "Sala 1" });
   });
 
-  it("RN-FILA-05: QR recusado por pendência → passe na recepção", () => {
-    expect(situacaoDaEntrada({ ...base, pendencias: ["conta"] })).toMatchObject({
-      destaque: "venha",
-      titulo: "Passe na recepção",
-    });
+  it("RN-FILA-05: QR recusado → passe na recepção, antes da posição", () => {
+    expect(
+      situacaoDaEntrada({ ...base, pendencias: ["conta"], estimativa: { tipo: "posicao", posicao: 3, minutos: 9 } }),
+    ).toEqual({ tipo: "recepcao" });
   });
 
-  it("antes de abrir, confirmada e reserva; depois, atendido e remanejado", () => {
-    expect(situacaoDaEntrada({ ...base, estado: "confirmada", senha: null, itemEstado: null }).titulo).toBe(
-      "Inscrição confirmada",
-    );
-    expect(situacaoDaEntrada({ ...base, estado: "na_reserva", senha: null, itemEstado: null }).titulo).toBe(
-      "Você está na reserva",
-    );
-    expect(situacaoDaEntrada({ ...base, estado: "concluida", itemEstado: "atendido_na_etapa" }).titulo).toBe(
-      "Atendimento concluído",
-    );
-    expect(situacaoDaEntrada({ ...base, estado: "remanejada", itemEstado: "remanejado" }).titulo).toBe(
-      "Sua vez não chegou hoje",
+  it("antes de abrir, reserva e lista; depois, atendido, remanejado e saiu", () => {
+    const sem = { ...base, senha: null, itemEstado: null };
+    expect(situacaoDaEntrada({ ...sem, estado: "confirmada" }).tipo).toBe("confirmada");
+    expect(situacaoDaEntrada({ ...sem, estado: "na_reserva" }).tipo).toBe("reserva");
+    expect(situacaoDaEntrada({ ...sem, estado: "aguardando" }).tipo).toBe("lista");
+    expect(situacaoDaEntrada({ ...base, estimativa: { tipo: "aguardando_inicio" } }).tipo).toBe("aguardando");
+    expect(situacaoDaEntrada({ ...base, estado: "concluida", itemEstado: "atendido_na_etapa" }).tipo).toBe("concluida");
+    expect(situacaoDaEntrada({ ...base, estado: "remanejada", itemEstado: "remanejado" }).tipo).toBe("remanejada");
+    expect(situacaoDaEntrada({ ...base, estado: "encerrada_sem_atendimento", itemEstado: "saiu_da_fila" }).tipo).toBe(
+      "saiu",
     );
   });
 
-  it("mensagens de erro da inscrição", () => {
-    expect(mensagemDoErro(new ErroDaApi(409, "duplicada"))).toMatch(/já está/);
-    expect(mensagemDoErro(new ErroDaApi(0, "sem_conexao"))).toMatch(/conexão/);
-    expect(mensagemDoErro(new Error("x"))).toMatch(/Tente de novo/);
+  it("mensagens de erro em minúsculas, como o resto do app", () => {
+    expect(mensagemDoErro(new ErroDaApi(409, "duplicada"))).toBe("essa pessoa já está inscrita neste atendimento.");
+    expect(mensagemDoErro(new ErroDaApi(0, "sem_conexao"))).toMatch(/^sem internet/);
+    expect(mensagemDoErro(new Error("x"))).toBe("não deu certo. tente de novo.");
   });
 });

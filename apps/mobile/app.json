@@ -30,7 +30,8 @@
           "cameraPermission": "O Fila Saúde usa a câmera para ler o QR de entrada da unidade.",
           "barcodeScannerEnabled": true
         }
-      ]
+      ],
+      "expo-font"
     ],
     "scheme": "filasaude",
     "experiments": {

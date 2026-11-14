@@ -30,16 +30,16 @@ export function deParametros(p: {
 
 type Resultado = { pessoa: string; senha: string; resultado: "presente" | "pendencia" | "ja_na_unidade" };
 
-const RECEPCAO = "passe na recepção para confirmar seus documentos · você ainda não entrou na fila da unidade";
+const RECEPCAO = "passe na recepção para confirmar seus documentos. você ainda não entrou na fila da unidade.";
 
 /** RN-PRES-01 / RN-FILA-05: o que o app diz depois de ler o QR. */
 export function textoDoCheckIn(lista: Resultado[]): { ok: boolean; linhas: string[] } {
-  if (lista.length === 0) return { ok: false, linhas: ["Você não tem senha aberta nesta unidade agora."] };
+  if (lista.length === 0) return { ok: false, linhas: ["você não tem senha aberta nesta unidade agora."] };
   const linhas = lista.map((r) => {
     const quem = `${r.pessoa} (${r.senha})`;
     if (r.resultado === "pendencia") return `${quem}: ${RECEPCAO}`;
     if (r.resultado === "ja_na_unidade") return `${quem}: você já está na fila da unidade.`;
-    return `${quem}: você está na fila da unidade. Aguarde a chamada.`;
+    return `${quem}: você está na unidade. fique de olho na TV e no celular.`;
   });
   return { ok: lista.every((r) => r.resultado !== "pendencia"), linhas };
 }

@@ -1,67 +1,58 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { ErroDaApi } from "./api";
 
-export type Situacao = { destaque: "vez" | "venha" | "normal" | "fim"; titulo: string; detalhe: string };
+/** Estado de uma entrada na tela "minha fila", na mesma divisão das telas do design do app. */
+export type Situacao =
+  | { tipo: "vez"; senha: string; estacao: string }
+  | { tipo: "recepcao" }
+  | { tipo: "venha" }
+  | { tipo: "posicao"; posicao: number; minutos: number; presente: boolean }
+  | { tipo: "aguardando" }
+  | { tipo: "confirmada" }
+  | { tipo: "reserva" }
+  | { tipo: "lista" }
+  | { tipo: "concluida" }
+  | { tipo: "remanejada" }
+  | { tipo: "saiu" }
+  | { tipo: "cancelada" };
 
-/** O que a tela da vez mostra para cada entrada (T3.4, RN-ETA). */
+/** T3.4 / RN-ETA / RN-FILA-05: o que a tela mostra para cada entrada. */
 export function situacaoDaEntrada(e: MinhaEntrada): Situacao {
-  if (e.itemEstado === "chamado" && e.chamada) {
-    return { destaque: "vez", titulo: "É a sua vez!", detalhe: `Vá para ${e.chamada.estacao} com a senha ${e.senha}` };
+  if (e.itemEstado === "chamado" && e.chamada && e.senha) {
+    return { tipo: "vez", senha: e.senha, estacao: e.chamada.estacao };
   }
-  if (e.itemEstado === "remoto" && e.pendencias.length > 0)
-    return {
-      destaque: "venha",
-      titulo: "Passe na recepção",
-      detalhe: "Confirme seus documentos na recepção · você ainda não entrou na fila da unidade.",
-    };
-  if (e.estado === "concluida") return { destaque: "fim", titulo: "Atendimento concluído", detalhe: "Obrigado!" };
-  if (e.estado === "remanejada")
-    return {
-      destaque: "fim",
-      titulo: "Sua vez não chegou hoje",
-      detalhe: "Você continua na lista e vai receber outra data.",
-    };
-  if (e.estado === "encerrada_sem_atendimento" || e.itemEstado === "saiu_da_fila")
-    return { destaque: "fim", titulo: "Você saiu da fila", detalhe: "Procure a recepção se precisar." };
-  if (e.estado === "cancelada") return { destaque: "fim", titulo: "Inscrição cancelada", detalhe: "" };
-  if (e.estado === "na_reserva")
-    return { destaque: "normal", titulo: "Você está na reserva", detalhe: "Se abrir uma vaga, ela é sua." };
-  if (e.estado === "confirmada")
-    return {
-      destaque: "normal",
-      titulo: "Inscrição confirmada",
-      detalhe: "Quando a sessão abrir, você recebe sua senha e a posição na fila.",
-    };
+  if (e.estado === "concluida" || e.itemEstado === "atendido_na_etapa") return { tipo: "concluida" };
+  if (e.estado === "remanejada") return { tipo: "remanejada" };
+  if (e.estado === "encerrada_sem_atendimento" || e.itemEstado === "saiu_da_fila") return { tipo: "saiu" };
+  if (e.estado === "cancelada") return { tipo: "cancelada" };
+  if (e.estado === "na_reserva") return { tipo: "reserva" };
+  if (e.estado === "confirmada") return { tipo: "confirmada" };
+  if (e.estado === "aguardando" || e.estado === "alocada") return { tipo: "lista" };
+  if (e.itemEstado === "remoto" && e.pendencias.length > 0) return { tipo: "recepcao" };
   const est = e.estimativa;
-  if (est?.tipo === "venha_agora")
-    return { destaque: "venha", titulo: "Venha agora", detalhe: "Você é o próximo. Vá para a unidade." };
+  if (est?.tipo === "venha_agora") return { tipo: "venha" };
   if (est?.tipo === "posicao") {
-    const titulo = `Você é o ${est.posicao}º da fila`;
-    const presente = e.itemEstado === "presente" ? " · você está na unidade" : "";
-    return { destaque: "normal", titulo, detalhe: `Cerca de ${est.minutos} min${presente}` };
+    return { tipo: "posicao", posicao: est.posicao, minutos: est.minutos, presente: e.itemEstado === "presente" };
   }
-  if (est?.tipo === "aguardando_inicio")
-    return { destaque: "normal", titulo: "Aguardando o início", detalhe: "A fila ainda não começou a andar." };
-  if (e.itemEstado === "atendido_na_etapa") return { destaque: "fim", titulo: "Atendimento concluído", detalhe: "" };
-  return { destaque: "normal", titulo: "Na fila", detalhe: "" };
+  return { tipo: "aguardando" };
 }
 
 const MENSAGENS: Record<string, string> = {
-  sem_conexao: "Sem conexão com o servidor. Confira a internet e tente de novo.",
-  nao_autenticado: "Sua sessão expirou. Entre de novo.",
+  sem_conexao: "sem internet. confira a conexão e tente de novo.",
+  nao_autenticado: "sua sessão expirou. entre de novo.",
   credenciais: "CPF ou senha incorretos.",
-  duplicada: "Essa pessoa já está inscrita para este atendimento.",
-  emergencia: "Pelo que você marcou, procure atendimento de emergência agora: ligue 192.",
-  sessao_privada: "Esta agenda é só pela lista de espera da unidade.",
-  sessao_fechada: "Esta sessão já foi encerrada.",
-  servico_regulado: "Este atendimento é marcado pela central de regulação.",
-  requisicao_pendente: "Este atendimento pede requisição médica.",
+  duplicada: "essa pessoa já está inscrita neste atendimento.",
+  emergencia: "isso pode ser uma emergência. ligue 192.",
+  sessao_privada: "este atendimento é só por agendamento da unidade.",
+  sessao_fechada: "este atendimento já foi encerrado.",
+  servico_regulado: "este atendimento é marcado pela regulação.",
+  requisicao_pendente: "este atendimento pede requisição médica.",
   cpf_invalido: "CPF inválido.",
-  qr_invalido: "QR vencido. Leia de novo o QR da unidade.",
-  entrada_invalida: "Confira os dados preenchidos.",
+  entrada_invalida: "confira os dados preenchidos.",
+  qr_invalido: "QR vencido. leia de novo o QR da unidade.",
 };
 
 export function mensagemDoErro(e: unknown): string {
-  if (e instanceof ErroDaApi) return e.mensagem ?? MENSAGENS[e.erro] ?? "Não foi possível concluir. Tente de novo.";
-  return "Não foi possível concluir. Tente de novo.";
+  if (e instanceof ErroDaApi) return e.mensagem ?? MENSAGENS[e.erro] ?? "não deu certo. tente de novo.";
+  return "não deu certo. tente de novo.";
 }
