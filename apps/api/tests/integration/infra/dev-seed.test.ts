@@ -41,7 +41,7 @@ async function contagens() {
 
 describe("dev:seed", () => {
   it("exemplo: unidade, três serviços (um com triagem), quatro estações e três sessões", async () => {
-    expect(await contagens()).toEqual({ unidades: 1, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
+    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
     const servicos = await db().select().from(servico);
     expect(servicos.filter((s) => s.exigeTriagem)).toHaveLength(1);
   });
@@ -117,7 +117,7 @@ describe("dev:seed", () => {
         .filter((l) => l.usuarioId === id(login))
         .map((l) => l.alvoTipo)
         .sort();
-    expect(por("gestor")).toEqual(["unidade", "usuario", "usuario"]);
+    expect(por("gestor")).toEqual(["unidade", "unidade", "unidade", "unidade", "usuario", "usuario"]);
     expect(por("gerente")).toEqual([
       "estacao",
       "estacao",
@@ -136,7 +136,7 @@ describe("dev:seed", () => {
       "usuario",
     ]);
     expect(por("recepcao")).toEqual(["entrada"]);
-    expect(linhas).toHaveLength(19);
+    expect(linhas).toHaveLength(22); // + 3 unidades vizinhas (tela 5)
   });
 
   it("PD-40: rodar de novo apaga e recria — mesmas contagens, ids novos, sessão antiga inválida", async () => {
@@ -147,7 +147,7 @@ describe("dev:seed", () => {
     resumo = await semearExemplo(deps());
     const [depois] = await db().select().from(unidade);
     expect(depois?.id).not.toBe(antes?.id);
-    expect(await contagens()).toEqual({ unidades: 1, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
+    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
     expect((await orchestrator.pedirPainel(slug, "GET", "/v1/painel/eu", { cookie })).status).toBe(401);
     const novo = await orchestrator.loginPainel(slug, "gestor", "exemplo123");
     expect((await orchestrator.pedirPainel(slug, "GET", "/v1/painel/eu", { cookie: novo })).status).toBe(200);
@@ -162,7 +162,7 @@ describe("dev:seed", () => {
     resumo = await semearExemplo(deps());
     const [linha] = await database.select().from(municipio).where(eq(municipio.slug, slug));
     expect(linha?.status).toBe("ativo");
-    expect(await contagens()).toEqual({ unidades: 1, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
+    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 3, entradas: 6 });
     const r = await database.execute<{ n: number }>(sql`select count(*)::int as n from paciente where email_verified`);
     expect(r.rows[0]?.n).toBeGreaterThanOrEqual(3);
   }, 60_000);

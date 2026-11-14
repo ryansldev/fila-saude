@@ -51,6 +51,19 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     expect(r.corpo.map((x: { slug: string }) => x.slug)).toContain(c.slug);
   });
 
+  it("RN-AG-01 (tela 5): unidades do município com endereço, coordenadas e quantos atendimentos abertos", async () => {
+    const r = await app("GET", `${m()}/unidades`);
+    expect(r.status).toBe(200);
+    const u = r.corpo.find((x: { id: string }) => x.id === c.unidadeId);
+    expect(u).toMatchObject({
+      nome: "UBS Centro",
+      endereco: { logradouro: expect.any(String), bairro: expect.any(String) },
+      atendimentos: 1,
+    });
+    expect(u).toHaveProperty("lat");
+    expect(u).toHaveProperty("lng");
+  });
+
   it("T3.2: a agenda traz só sessões públicas, com vagas restantes e sem dado de paciente", async () => {
     const r = await app("GET", `${m()}/agenda`);
     expect(r.status).toBe(200);

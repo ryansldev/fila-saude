@@ -135,6 +135,49 @@ export async function semearExemplo(deps: {
       horario: Object.fromEntries(["1", "2", "3", "4", "5"].map((d) => [d, [{ abre: "07:00", fecha: "17:00" }]])),
       config: {},
     });
+    // Unidades vizinhas, para o mapa e a lista "perto de você" do app (tela 5); sem sessões.
+    const vizinhas = [
+      {
+        nome: "UBS Vila Nova",
+        tipo: "ubs" as const,
+        rua: "Rua Augusta",
+        numero: "850",
+        bairro: "Consolação",
+        lat: -23.5531,
+        lng: -46.6528,
+      },
+      {
+        nome: "UBS Jardim das Flores",
+        tipo: "ubs" as const,
+        rua: "Rua Vergueiro",
+        numero: "1200",
+        bairro: "Liberdade",
+        lat: -23.5647,
+        lng: -46.6383,
+      },
+      {
+        nome: "Policlínica Sul",
+        tipo: "policlinica" as const,
+        rua: "Avenida Paulista",
+        numero: "2000",
+        bairro: "Bela Vista",
+        lat: -23.5613,
+        lng: -46.6565,
+      },
+    ];
+    for (const v of vizinhas) {
+      await criarUnidade(comoGestor, {
+        nome: v.nome,
+        tipo: v.tipo,
+        cnes: null,
+        endereco: { cep: "01310100", logradouro: v.rua, numero: v.numero, complemento: null, bairro: v.bairro },
+        lat: v.lat,
+        lng: v.lng,
+        fuso: FUSO,
+        horario: Object.fromEntries(["1", "2", "3", "4", "5"].map((d) => [d, [{ abre: "07:00", fecha: "17:00" }]])),
+        config: {},
+      });
+    }
     const usuarios: ResumoExemplo["usuarios"] = [
       { id: gestorId, papel: FUNCOES.gestao_sms.rotulo, login: "gestor", senha: SENHA_EXEMPLO },
     ];

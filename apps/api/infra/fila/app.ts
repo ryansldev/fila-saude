@@ -1,5 +1,5 @@
 import { cancelarEntrada, estimar, preencherDaReserva, vouSair } from "@fila-saude/domain";
-import type { InscricaoEntrada, MinhaEntrada, SessaoDaAgenda } from "@fila-saude/schemas/fila";
+import type { InscricaoEntrada, MinhaEntrada, SessaoDaAgenda, UnidadePublica } from "@fila-saude/schemas/fila";
 import { and, asc, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
 import type { PacienteAutenticado } from "infra/auth/sessao-paciente";
 import { exigirServico } from "infra/config/servicos";
@@ -92,6 +92,22 @@ export async function verificarInscricao(
     if (!(err instanceof SoVerificar)) throw err;
   }
   return { ok: true as const };
+}
+
+// Tela 5 / RN-AG-01: as unidades do município (sem as removidas), para o mapa e a lista "perto de você".
+export async function unidadesDoMunicipio(db: DbDoTenant, agora: number): Promise<UnidadePublica[]> {
+  const linhas = await db.select().from(unidade).where(isNull(unidade.arquivadaEm)).orderBy(asc(unidade.nome));
+  const porUnidade = new Map<string, number>();
+  for (const s of await agenda(db, agora)) porUnidade.set(s.unidade.id, (porUnidade.get(s.unidade.id) ?? 0) + 1);
+  return linhas.map((u) => ({
+    id: u.id,
+    nome: u.nome,
+    tipo: u.tipo,
+    endereco: { logradouro: u.logradouro, numero: u.numero, bairro: u.bairro, cep: u.cep },
+    lat: u.lat,
+    lng: u.lng,
+    atendimentos: porUnidade.get(u.id) ?? 0,
+  }));
 }
 
 // T3.3 / AD-018: "para mim" usa os dados da conta; "outra pessoa" fica com a conta como responsável.

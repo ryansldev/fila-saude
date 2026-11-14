@@ -70,6 +70,19 @@ export type ComandoEstacao = z.infer<typeof comandoEstacaoSchema>;
 
 // ---- App do paciente ----
 
+/** Tela 5 (unidades próximas): onde fica cada unidade e quantos atendimentos abertos ela tem. */
+export const unidadePublicaSchema = z.object({
+  id: z.uuid(),
+  nome: z.string(),
+  tipo: z.string(),
+  endereco: z.object({ logradouro: z.string(), numero: z.string(), bairro: z.string(), cep: z.string() }),
+  lat: z.number().nullable(),
+  lng: z.number().nullable(),
+  /** Atendimentos públicos com inscrição aberta (os mesmos da agenda). */
+  atendimentos: z.number().int().min(0),
+});
+export type UnidadePublica = z.infer<typeof unidadePublicaSchema>;
+
 export const municipioPublicoSchema = z.object({ slug: z.string(), nome: z.string(), uf: z.string().nullable() });
 
 /** Agenda pública (T3.2): só dados da sessão, nunca de paciente. */
