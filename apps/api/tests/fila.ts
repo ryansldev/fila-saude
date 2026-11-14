@@ -6,7 +6,8 @@ import { gerente, municipioComUnidade, ocupacao, usuarioLogado } from "tests/pai
 export const ROTINA: Respostas = { alarmes: [], motivo: "acompanhamento", gravidade: null, condicoes: [], grupos: [] };
 
 // Município com unidade, admin, enfermeiro, um serviço, duas estações de atendimento e uma sessão pública de hoje.
-export async function cenarioDaFila(opcoes: { vagas?: number } = {}) {
+/** Com `triagem`, o serviço exige triagem e há a estação "Acolhimento" (triagem) além das salas. */
+export async function cenarioDaFila(opcoes: { vagas?: number; triagem?: boolean } = {}) {
   const { slug, gestor, unidadeId } = await municipioComUnidade();
   const admin = (await usuarioLogado(slug, gestor, "admin", gerente(unidadeId))).cookie;
   const enfermeiro = (await usuarioLogado(slug, gestor, "enfermeira", ocupacao(unidadeId, "enfermeiro"))).cookie;
@@ -16,21 +17,22 @@ export async function cenarioDaFila(opcoes: { vagas?: number } = {}) {
     await pedir("POST", `/v1/painel/unidades/${unidadeId}/servicos`, admin, {
       nome: "Clínico",
       prefixo: "C",
-      exigeTriagem: false,
+      exigeTriagem: opcoes.triagem ?? false,
       modo: "livre",
       tempoMedioMin: {},
     })
   ).corpo.id as string;
-  const estacao = async (nome: string) =>
+  const estacao = async (nome: string, etapa = "atendimento") =>
     (
       await pedir("POST", `/v1/painel/unidades/${unidadeId}/estacoes`, admin, {
         nome,
-        etapa: "atendimento",
+        etapa,
         servicos: [servicoId],
       })
     ).corpo.id as string;
   const e1 = await estacao("Sala 1");
   const e2 = await estacao("Sala 2");
+  const t1 = opcoes.triagem ? await estacao("Acolhimento", "triagem") : null;
   const agora = Date.now();
   const s = await pedir("POST", `/v1/painel/unidades/${unidadeId}/sessoes`, admin, {
     servicoId,
@@ -41,10 +43,10 @@ export async function cenarioDaFila(opcoes: { vagas?: number } = {}) {
     visibilidade: "publica",
     dispensaPreCadastro: false,
     profissional: null,
-    estacoes: [e1, e2],
+    estacoes: t1 ? [e1, e2, t1] : [e1, e2],
   });
   if (s.status !== 201) throw new Error(`sessão: ${s.status} ${JSON.stringify(s.corpo)}`);
-  return { slug, gestor, unidadeId, admin, enfermeiro, servicoId, e1, e2, sessaoId: s.corpo.id as string, pedir };
+  return { slug, gestor, unidadeId, admin, enfermeiro, servicoId, e1, e2, t1, sessaoId: s.corpo.id as string, pedir };
 }
 
 // Inscrição de uma pessoa sem conta pela mesma função da rota do app.

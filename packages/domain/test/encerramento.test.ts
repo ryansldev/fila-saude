@@ -623,6 +623,11 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
     expect(erro(desfechoDaEntrada({ ...bruno, estado: "concluida" }, item(dia, "bruno")))).toBe("transicao_proibida");
   });
 
+  it("H2: encaminhado à emergência na triagem (atendido na triagem, sem atendimento) → Concluída", () => {
+    const naTriagem = comItem(diaCom(["bruno"]), "bruno", { etapa: "triagem", estado: "atendido_na_etapa" });
+    expect(aplicar(desfechoDaEntrada(primeira(["bruno"]), item(naTriagem, "bruno"))).estado).toBe("concluida");
+  });
+
   it("RN-FILA-05: não conferiu → entrada Cancelada, sem falta", () => {
     const d = passo(conferirEMarcar(diaCom(["ana"]), { itemId: "ana", resultado: "nao_confere", motivo: "doc" }, T));
     expect(item(d, "ana")).toMatchObject({ estado: "saiu_da_fila", motivoSaida: "nao_conferiu" });

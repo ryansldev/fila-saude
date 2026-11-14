@@ -1,4 +1,4 @@
-import { comandoEstacaoSchema, operacaoEstacaoSchema } from "@fila-saude/schemas/fila";
+import { comandoEstacaoSchema, corpoComandoSchema, operacaoEstacaoSchema } from "@fila-saude/schemas/fila";
 import type { FastifyInstance } from "fastify";
 import { idDoCaminho } from "infra/config/comum";
 import { validar } from "infra/erros";
@@ -12,7 +12,12 @@ export function rotaDoComando(comando: string) {
     app.post("/", { config: { acao: OPERAR } }, async (req) =>
       validar(
         operacaoEstacaoSchema,
-        await comandoNaEstacao(await contextoDoPainel(req), idDoCaminho(req, "estacaoId"), cmd),
+        await comandoNaEstacao(
+          await contextoDoPainel(req),
+          idDoCaminho(req, "estacaoId"),
+          cmd,
+          validar(corpoComandoSchema, req.body ?? {}).riscoConfirmado,
+        ),
       ),
     );
   };

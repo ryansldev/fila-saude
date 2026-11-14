@@ -125,7 +125,8 @@ const EVENTO_DO_MOTIVO: Partial<Record<MotivoSaida, string>> = {
 export function desfechoDaEntrada(entrada: Entrada, item: ItemFila): Resultado<Entrada> {
   if (entrada.estado !== "na_fila" || item.entradaId !== entrada.id) return falha("transicao_proibida");
   let evento: string | undefined;
-  if (item.estado === "atendido_na_etapa" && item.etapa === "atendimento") evento = ENTRADA_CONCLUIDA;
+  // Atendido que não segue para outra etapa: o atendimento, ou a triagem que encaminhou à emergência (H2).
+  if (item.estado === "atendido_na_etapa") evento = ENTRADA_CONCLUIDA;
   else if (item.estado === "saiu_da_fila" && item.motivoSaida !== null) evento = EVENTO_DO_MOTIVO[item.motivoSaida];
   if (evento === undefined) return falha("transicao_proibida");
   const para = garantido(TRANSICOES_ENTRADA, entrada.estado, evento);

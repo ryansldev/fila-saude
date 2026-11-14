@@ -41,6 +41,20 @@ export const filaDaSessaoSchema = z.object({
 export type ItemDaFila = z.infer<typeof itemDaFilaSchema>;
 export type FilaDaSessao = z.infer<typeof filaDaSessaoSchema>;
 
+export const nivelRiscoSchema = z.enum(["emergencia", "urgente", "atencao", "rotina"]);
+export type NivelRiscoApi = z.infer<typeof nivelRiscoSchema>;
+
+/**
+ * Só na estação de triagem (RN-RISCO-01, RN-RISCO-06): o que o app sugeriu, a regra que gerou o
+ * sugerido, os grupos de prioridade declarados e `apoio` (resposta sobre autolesão: CVV e SAMU).
+ */
+export const fichaDaTriagemSchema = z.object({
+  riscoSugerido: nivelRiscoSchema,
+  regra: z.string(),
+  apoio: z.boolean(),
+  prioridade: z.array(z.string()),
+});
+
 export const chamadoSchema = z.object({
   itemId: z.string(),
   senha: z.string(),
@@ -49,7 +63,11 @@ export const chamadoSchema = z.object({
   pulos: z.number().int().min(0),
   chamadoEm: z.iso.datetime(),
   toleranciaEsgotada: z.boolean(),
+  triagem: fichaDaTriagemSchema.optional(),
 });
+
+/** Corpo de "chamar" e "finalizar": na triagem, a cor dada a quem sai (H3: obrigatória com alguém chamado). */
+export const corpoComandoSchema = z.object({ riscoConfirmado: nivelRiscoSchema.optional() }).default({});
 
 /** Tela da estação (T3.7): a sessão aberta de hoje que ela atende, o chamado e quantos aguardam presentes. */
 export const operacaoEstacaoSchema = z.object({

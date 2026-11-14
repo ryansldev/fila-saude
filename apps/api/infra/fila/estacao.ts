@@ -4,16 +4,19 @@ import {
   type DiaSessao,
   desfechoDaEntrada,
   type Entrada,
+  type Evento,
   elegiveis,
   finalizar,
+  type NivelRisco,
   naoCompareceu,
   type Resultado,
   rechamar,
   toleranciaEsgotada,
 } from "@fila-saude/domain";
 import type { ComandoEstacao, OperacaoEstacao } from "@fila-saude/schemas/fila";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { exigirEstacao } from "infra/config/estacoes";
+import { entrada } from "infra/database/municipal/schema/entrada";
 import { servico } from "infra/database/municipal/schema/servico";
 import { sessao, sessaoEstacao } from "infra/database/municipal/schema/sessao";
 import type { BancoDoTenant } from "infra/database/tenants";
@@ -45,6 +48,16 @@ async function sessaoAberta(db: BancoDoTenant, estacaoId: string) {
   return linha ?? null;
 }
 
+// RN-RISCO-01/06: a ficha que a triagem precisa para classificar; só na estação de triagem.
+async function fichaDaTriagem(db: BancoDoTenant, entradaId: string) {
+  const [e] = await db
+    .select({ c: entrada.classificacao, p: entrada.prioridade })
+    .from(entrada)
+    .where(inArray(entrada.id, [entradaId]));
+  if (!e) return undefined;
+  return { riscoSugerido: e.c.nivel, regra: e.c.regra, apoio: e.c.apoio, prioridade: e.p.grupos };
+}
+
 async function montar(
   db: BancoDoTenant,
   e: LinhaEstacao,
@@ -70,6 +83,7 @@ async function montar(
             pulos: item.pulos,
             chamadoEm: new Date(ultima ? ultima.em : agora).toISOString(),
             toleranciaEsgotada: toleranciaEsgotada(dia, e.id, agora),
+            ...(e.etapa === "triagem" ? { triagem: await fichaDaTriagem(db, item.entradaId) } : {}),
           }
         : null,
     aguardando: dia && est ? elegiveis(dia, e.id).length : 0,
@@ -97,9 +111,20 @@ function fecharEntradas(dia: DiaSessao, entradas: Entrada[]): Entrada[] {
   });
 }
 
+// INV-07: o risco que a triagem deu vai para a entrada (vermelho também, H2).
+function comRiscoConfirmado(entradas: Entrada[], eventos: Evento[]): Entrada[] {
+  const nivel = new Map<string, NivelRisco>();
+  for (const ev of eventos) {
+    if (!ev.entradaId) continue;
+    if (ev.tipo === "risco_confirmado") nivel.set(ev.entradaId, ev.dados?.nivel as NivelRisco);
+    if (ev.tipo === "encaminhado_emergencia") nivel.set(ev.entradaId, "emergencia");
+  }
+  return entradas.map((en) => (nivel.has(en.id) ? { ...en, riscoConfirmado: nivel.get(en.id) ?? null } : en));
+}
+
 const COMANDOS: Record<
   ComandoEstacao,
-  (d: DiaSessao, cmd: { estacaoId: string }, agora: number) => Resultado<DiaSessao>
+  (d: DiaSessao, cmd: { estacaoId: string; riscoConfirmado?: NivelRisco }, agora: number) => Resultado<DiaSessao>
 > = {
   chamar: chamarProximo,
   rechamar,
@@ -112,6 +137,7 @@ export async function comandoNaEstacao(
   ctx: ContextoDaAcao,
   estacaoId: string,
   comando: ComandoEstacao,
+  riscoConfirmado?: NivelRisco,
 ): Promise<OperacaoEstacao> {
   const e = await exigirEstacao(ctx.db, estacaoId);
   return executarAcao(
@@ -128,7 +154,17 @@ export async function comandoNaEstacao(
       if (!s) throw new ErroApi(409, "sessao_fechada", undefined, "Nenhuma sessão aberta nesta estação.");
       return naSessao(tx, s.id, async (c) => {
         if (!c.dia) throw new ErroApi(409, "sessao_fechada");
-        const r = COMANDOS[comando](c.dia, { estacaoId }, ctx.agora);
+        // H3: na triagem, quem sai do chamado sai classificado (só o enfermeiro confirma, AD-056).
+        const fecha = comando === "chamar" || comando === "finalizar";
+        const chamado = c.dia.estacoes.find((x) => x.id === estacaoId)?.chamadoItemId;
+        if (e.etapa === "triagem" && fecha && chamado && riscoConfirmado === undefined) {
+          throw new ErroApi(422, "classifique_o_risco", undefined, "Escolha a cor da classificação de risco.");
+        }
+        const r = COMANDOS[comando](
+          c.dia,
+          { estacaoId, ...(fecha && riscoConfirmado ? { riscoConfirmado } : {}) },
+          ctx.agora,
+        );
         if (!r.ok) {
           if (r.erro === "nenhum_elegivel" && comando === "chamar") {
             return { resultado: await montar(tx, e, s, c.dia, ctx.agora, "ninguem_aguardando") };
@@ -139,7 +175,7 @@ export async function comandoNaEstacao(
         const ninguem = comando === "chamar" && !dia.estacoes.find((x) => x.id === estacaoId)?.chamadoItemId;
         return {
           dia,
-          entradas: fecharEntradas(dia, c.entradas),
+          entradas: fecharEntradas(dia, comRiscoConfirmado(c.entradas, r.eventos)),
           eventos: r.eventos,
           resultado: await montar(tx, e, s, dia, ctx.agora, ninguem ? "ninguem_aguardando" : null),
         };
