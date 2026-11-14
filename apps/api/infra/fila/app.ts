@@ -1,7 +1,8 @@
-import { estimar, vouSair } from "@fila-saude/domain";
+import { cancelarEntrada, estimar, preencherDaReserva, vouSair } from "@fila-saude/domain";
 import type { InscricaoEntrada, MinhaEntrada, SessaoDaAgenda } from "@fila-saude/schemas/fila";
 import { and, asc, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
 import type { PacienteAutenticado } from "infra/auth/sessao-paciente";
+import { exigirServico } from "infra/config/servicos";
 import database from "infra/database";
 import { paciente } from "infra/database/central/schema/auth";
 import { municipio } from "infra/database/central/schema/municipio";
@@ -13,7 +14,8 @@ import { sessao } from "infra/database/municipal/schema/sessao";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import type { DbDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
-import { lerDia, naSessao } from "./dia";
+import { lerDia, naSessao, paraServico } from "./dia";
+import { atualizarEntrada, lerEntrada } from "./entradas";
 import { inscrever } from "./inscricao";
 
 const FINAIS = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"] as const;
@@ -177,5 +179,48 @@ export async function vouSairDoPaciente(db: DbDoTenant, pacienteId: string, entr
     const r = vouSair(c.dia, { itemId: item.id }, agora);
     if (!r.ok) throw new ErroApi(409, r.erro);
     return { dia: r.estado, eventos: r.eventos, resultado: { senha: item.senha, itemEstado: "remoto" as const } };
+  });
+}
+
+const COM_VAGA = ["alocada", "confirmada", "na_fila"];
+
+// RN-CANC-01..03: "Não vou poder ir", antes ou no dia, só pela conta responsável. Quem tinha vaga a
+// libera (e o primeiro da reserva entra, RN-PUB-02); quem cancela perde o lugar.
+export async function cancelarDoPaciente(db: DbDoTenant, pacienteId: string, entradaId: string, agora: number) {
+  const [linha] = await db
+    .select({ sessaoId: entrada.sessaoId, estado: entrada.estado })
+    .from(entrada)
+    .where(and(eq(entrada.id, entradaId), eq(entrada.responsavelPacienteId, pacienteId)));
+  if (!linha) throw new ErroApi(404, "nao_encontrado");
+  if (!linha.sessaoId) {
+    // Na lista de espera, sem sessão: só cancela.
+    return db.transaction(async (tx) => {
+      const e = await lerEntrada(tx, entradaId);
+      if (!e) throw new ErroApi(404, "nao_encontrado");
+      const r = cancelarEntrada(e, null, null, { servico: paraServico(await exigirServico(tx, e.servicoId)) }, agora);
+      if (!r.ok) throw new ErroApi(409, r.erro);
+      await atualizarEntrada(tx, r.estado.entrada);
+      return { estado: "cancelada" as const };
+    });
+  }
+  return naSessao(db, linha.sessaoId, async (c) => {
+    const e = c.entradas.find((x) => x.id === entradaId);
+    if (!e) throw new ErroApi(409, "transicao_proibida");
+    const comVaga = COM_VAGA.includes(e.estado);
+    const r = cancelarEntrada(e, comVaga ? c.sessao : null, c.dia, { servico: c.servico }, agora);
+    if (!r.ok) throw new ErroApi(409, r.erro);
+    const sessaoDepois = r.estado.sessao ?? c.sessao;
+    const entradas = c.entradas.map((x) => (x.id === entradaId ? r.estado.entrada : x));
+    const reserva = preencherDaReserva(
+      sessaoDepois,
+      r.estado.dia,
+      entradas,
+      { servico: c.servico, fotosAceitas: [] },
+      agora,
+    );
+    const final = reserva.ok
+      ? { dia: reserva.estado.dia, sessao: reserva.estado.sessao, entradas: reserva.estado.entradas }
+      : { dia: r.estado.dia, sessao: sessaoDepois, entradas };
+    return { ...final, eventos: r.eventos, resultado: { estado: "cancelada" as const } };
   });
 }

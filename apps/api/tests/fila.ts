@@ -34,7 +34,8 @@ export async function cenarioDaFila(opcoes: { vagas?: number } = {}) {
   const agora = Date.now();
   const s = await pedir("POST", `/v1/painel/unidades/${unidadeId}/sessoes`, admin, {
     servicoId,
-    inicio: new Date(agora - 3600_000).toISOString(),
+    // Começou há 1 min: "hoje" no fuso da unidade a qualquer hora (1 h antes falhava depois da meia-noite).
+    inicio: new Date(agora - 60_000).toISOString(),
     fim: new Date(agora + 3 * 3600_000).toISOString(),
     vagas: opcoes.vagas ?? 20,
     visibilidade: "publica",

@@ -28,6 +28,7 @@ const inscrever = (cookie: string, paraQuem: unknown = { tipo: "eu" }) =>
   app("POST", `${m()}/sessoes/${c.sessaoId}/inscricoes`, cookie, { paraQuem, respostas: ROTINA });
 const qr = (cookie = recepcao) => c.pedir("GET", `/v1/painel/unidades/${c.unidadeId}/qr`, cookie);
 const tokensDe = (conteudo: string) => (new URL(conteudo).searchParams.get("t") ?? "").split(",");
+const c_fila = async () => (await c.pedir("GET", `/v1/painel/sessoes/${c.sessaoId}/fila`, recepcao)).corpo;
 const checkIn = (cookie: string | undefined, tokens: string[]) =>
   app("POST", `${m()}/check-in`, cookie, { unidadeId: c.unidadeId, tokens });
 
@@ -128,5 +129,23 @@ describe('"Vou sair" (RN-PRES-02)', () => {
       status: 409,
       corpo: { erro: "transicao_proibida" },
     });
+  });
+});
+
+describe('"Não vou poder ir" (RN-CANC-01..03)', () => {
+  it("só a conta responsável cancela; libera a vaga; a entrada sai da fila e do app como cancelada", async () => {
+    const carla = await orchestrator.loginPaciente(orchestrator.dadosDeCadastro({ nome: "Carla Dias" }));
+    const r = await inscrever(carla.cookie);
+    expect(r.status).toBe(201);
+    const id = r.corpo.entradaId;
+    expect((await app("POST", `${m()}/entradas/${id}/cancelar`, ana.cookie)).status).toBe(404);
+    const c = await app("POST", `${m()}/entradas/${id}/cancelar`, carla.cookie);
+    expect(c.status).toBe(200);
+    const minhas = await app("GET", `${m()}/minhas`, carla.cookie);
+    expect(minhas.corpo.find((e: { entradaId: string }) => e.entradaId === id)).toBeUndefined();
+    const fila = await c_fila();
+    // Fica no dia como "saiu da fila" (histórico); a vaga volta.
+    expect(fila.itens.find((i: { entradaId: string }) => i.entradaId === id)).toMatchObject({ estado: "saiu_da_fila" });
+    expect(await app("POST", `${m()}/entradas/${id}/cancelar`, carla.cookie)).toMatchObject({ status: 409 });
   });
 });
