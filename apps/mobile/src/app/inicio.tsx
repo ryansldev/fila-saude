@@ -378,7 +378,7 @@ export default function MinhaFila() {
     );
 
   return (
-    <Tela voltar={false} rodape={<Abas atual="fila" />}>
+    <Tela voltar={false} rodape={<Abas atual="hoje" />}>
       <View style={{ gap: 2 }}>
         {s.conta ? <TextoSuave>olá, {primeiroNome(s.conta.nome)}</TextoSuave> : null}
         <Titulo>minha fila</Titulo>

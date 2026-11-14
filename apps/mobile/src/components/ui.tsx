@@ -2,13 +2,17 @@ import { BottomSheet, BottomSheetView } from "@expo/ui/community/bottom-sheet";
 import { router } from "expo-router";
 import {
   Building2,
+  CalendarDays,
   Check,
   ChevronRight,
   CircleAlert,
   CircleCheck,
+  CircleUserRound,
+  House,
   Info,
   ListOrdered,
   type LucideIcon,
+  MapPin,
   TriangleAlert,
   X,
 } from "lucide-react-native";
@@ -490,29 +494,43 @@ export function Chip({ texto }: { texto: string }) {
 }
 
 /** Abas de baixo: minha fila e unidades. */
-export function Abas({ atual }: { atual: "fila" | "unidades" }) {
-  const aba = (id: "fila" | "unidades", rotulo: string, destino: "/inicio" | "/agenda", Icone: LucideIcon) => {
-    const ativa = atual === id;
-    const cor = ativa ? COR.action : COR.inkMuted;
-    return (
-      <Pressable
-        accessibilityRole="tab"
-        accessibilityLabel={rotulo}
-        accessibilityState={{ selected: ativa }}
-        onPress={() => !ativa && router.replace(destino)}
-        style={e.tab}
-      >
-        <View style={[e.pilulaTab, ativa && { backgroundColor: COR.primary50 }]}>
-          <Icone size={26} color={cor} strokeWidth={ativa ? 2.75 : 2.25} />
-        </View>
-        <Text style={[e.textoTab, { color: cor }, ativa && { fontFamily: FONTE.extra }]}>{rotulo}</Text>
-      </Pressable>
-    );
-  };
+export type AbaDoApp = "hoje" | "atendimentos" | "unidades" | "conta";
+
+const ABAS: {
+  id: AbaDoApp;
+  rotulo: string;
+  destino: "/inicio" | "/atendimentos" | "/unidades" | "/conta";
+  Icone: LucideIcon;
+}[] = [
+  { id: "hoje", rotulo: "hoje", destino: "/inicio", Icone: House },
+  { id: "atendimentos", rotulo: "atendimentos", destino: "/atendimentos", Icone: CalendarDays },
+  { id: "unidades", rotulo: "unidades", destino: "/unidades", Icone: MapPin },
+  { id: "conta", rotulo: "conta", destino: "/conta", Icone: CircleUserRound },
+];
+
+/** Abas de baixo, como em apps de governo e no Duolingo: ícone grande, rótulo curto, a atual em destaque. */
+export function Abas({ atual }: { atual: AbaDoApp }) {
   return (
     <View style={e.abas} accessibilityRole="tablist">
-      {aba("fila", "minha fila", "/inicio", ListOrdered)}
-      {aba("unidades", "unidades", "/agenda", Building2)}
+      {ABAS.map(({ id, rotulo, destino, Icone }) => {
+        const ativa = atual === id;
+        const cor = ativa ? COR.action : COR.inkMuted;
+        return (
+          <Pressable
+            key={id}
+            accessibilityRole="tab"
+            accessibilityLabel={rotulo}
+            accessibilityState={{ selected: ativa }}
+            onPress={() => !ativa && router.replace(destino)}
+            style={e.tab}
+          >
+            <View style={[e.pilulaTab, ativa && { backgroundColor: COR.primary50 }]}>
+              <Icone size={26} color={cor} strokeWidth={ativa ? 2.75 : 2.25} />
+            </View>
+            <Text style={[e.textoTab, { color: cor }, ativa && { fontFamily: FONTE.extra }]}>{rotulo}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
