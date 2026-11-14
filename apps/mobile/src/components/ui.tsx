@@ -781,7 +781,7 @@ export const e = StyleSheet.create({
   abas: { flexDirection: "row", borderTopWidth: 1, borderTopColor: COR.border, backgroundColor: COR.surface },
   tab: { flex: 1, minHeight: 72, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 8 },
   pilulaTab: { paddingHorizontal: 20, paddingVertical: 4, borderRadius: 999 },
-  textoTab: { fontFamily: FONTE.bold, fontSize: 16, lineHeight: 22 },
+  textoTab: { fontFamily: FONTE.bold, fontSize: 13, lineHeight: 18 },
   cheia: { flex: 1, backgroundColor: COR.surface },
   gaveta: { gap: 16, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
 });
