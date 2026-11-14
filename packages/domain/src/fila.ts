@@ -69,6 +69,11 @@ export type DiaSessao = {
   chamadas: Chamada[];
   /** "Saia de casa" já enviados (RN-ETA-03): um por item e etapa; o estado carrega, o domínio não memoriza. */
   avisosSaiaDeCasa: { itemId: string; etapa: Etapa }[];
+  /**
+   * "Venha agora" dados (RN-ETA-06): um por item e etapa, com a hora; vale enquanto o item não
+   * voltou a remoto depois dele. Ausente nos dias gravados antes da AD-057.
+   */
+  venhaAgora?: { itemId: string; etapa: Etapa; em: number }[];
   /** Tempo médio inicial por etapa (RN-ETA-05), quando difere do padrão da unidade (ex.: triagem mais curta). */
   tempoInicialMin?: Partial<Record<Etapa, number>>;
   estacoes: Estacao[];
@@ -93,6 +98,7 @@ export const CONFIG_PADRAO: ConfigUnidade = {
   janelaK: 1,
   toleranciaMin: 5,
   saiaDeCasaMin: 30,
+  prazoChegadaMin: 15,
   qrSegundos: 30,
   destaqueTvSegundos: 10,
   prazoConfirmacaoHoras: 24,
@@ -150,16 +156,29 @@ export const emContingencia = (dia: DiaSessao, em: number): boolean =>
   dia.contingencias.some((c) => em >= c.inicio && em <= c.fim);
 
 /**
+ * Fim do prazo de chegada de X (RN-ETA-06, AD-057): hora do "venha agora" da etapa atual mais o
+ * prazo da unidade. `null` enquanto X não recebeu "venha agora" desde que ficou remoto.
+ */
+export function fimDoPrazoDeChegada(dia: DiaSessao, x: ItemFila): number | null {
+  const aviso = dia.venhaAgora?.find((a) => a.itemId === x.id && a.etapa === x.etapa);
+  if (!aviso || (x.saiuEm !== null && aviso.em < x.saiuEm)) return null;
+  return aviso.em + dia.config.prazoChegadaMin * 60_000;
+}
+
+/**
  * Chamadas que fazem a vez de X passar (AD-010): nesta etapa, de alguém que vem depois de X em
  * ordem. Só contam as feitas enquanto X estava remoto, ou seja, desde `saiuEm` ("remoto desde"):
  * a entrada na fila (`porNaFila`), "Vou sair" ou o 2º pulo. Sem `saiuEm` (item que passou da
- * triagem ao atendimento estando na unidade), contam todas as da etapa. Não filtra contingência:
- * quem usa decide (AD-033).
+ * triagem ao atendimento estando na unidade), contam todas as da etapa. Remoto só perde a vez por
+ * chamadas feitas depois do fim do prazo de chegada (AD-057). Não filtra contingência: quem usa
+ * decide (AD-033).
  */
 export function chamadasQuePassamAVez(dia: DiaSessao, x: ItemFila): Chamada[] {
+  const fimDoPrazo = x.estado === "remoto" ? fimDoPrazoDeChegada(dia, x) : undefined;
   return dia.chamadas.filter((c) => {
     if (c.etapa !== x.etapa || c.itemId === x.id) return false;
     if (x.saiuEm !== null && c.em < x.saiuEm) return false;
+    if (fimDoPrazo !== undefined && (fimDoPrazo === null || c.em < fimDoPrazo)) return false;
     const chamado = dia.itens.find((i) => i.id === c.itemId);
     return chamado !== undefined && antes(dia, x, chamado) < 0;
   });

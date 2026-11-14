@@ -82,6 +82,7 @@ export function validarConfig(c: ConfigParcial): ResultadoValidacao {
   checa("janelaK", (v: number) => inteiroEntre(v, 1), "K deve ser inteiro ≥ 1");
   checa("toleranciaMin", (v: number) => inteiroEntre(v, 1), "tolerância deve ser ≥ 1 min");
   checa("saiaDeCasaMin", (v: number) => inteiroEntre(v, 1), '"saia de casa" deve ser ≥ 1 min');
+  checa("prazoChegadaMin", (v: number) => inteiroEntre(v, 1), "prazo de chegada deve ser ≥ 1 min");
   checa("qrSegundos", (v: number) => inteiroEntre(v, 10, 300), "QR deve ficar entre 10 e 300 s");
   checa("destaqueTvSegundos", (v: number) => inteiroEntre(v, 3, 60), "destaque da TV deve ficar entre 3 e 60 s");
   checa("prazoConfirmacaoHoras", (v: number) => inteiroEntre(v, 1), "prazo de confirmação deve ser ≥ 1 h");

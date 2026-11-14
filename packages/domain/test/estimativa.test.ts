@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chamarProximo, finalizar, naoCompareceu } from "../src/chamada.ts";
-import { avisosSaiaDeCasa, estimar, tempoMedio } from "../src/estimativa.ts";
+import { avisosSaiaDeCasa, avisosVenhaAgora, estimar, tempoMedio } from "../src/estimativa.ts";
 import { CONFIG_PADRAO, checkIn, type DiaSessao, type Estacao, vouSair } from "../src/fila.ts";
 import type { Resultado } from "../src/resultado.ts";
 import { comItem, congelar, diaCom, itemFila } from "./fixtures.ts";
@@ -295,6 +295,75 @@ describe("I4: estimativa só para quem espera na sessão aberta", () => {
     for (const estado of ["encerrada", "cancelada"] as const) {
       expect(estimar(congelar({ ...quatro(), estado }), "ana", T, AUTO)).toEqual({ tipo: "fora_da_fila" });
     }
+  });
+});
+
+describe("RN-ETA-06/AD-057: prazo de chegada depois do 'venha agora'", () => {
+  const PRAZO = CONFIG_PADRAO.prazoChegadaMin * MIN;
+  const avisar = (dia: DiaSessao, em: number) => avisosVenhaAgora(dia, em, AUTO);
+  const checkInEm = (dia: DiaSessao, id: string, em: number) => checkIn(dia, { itemId: id }, em);
+  const chamarEm = (dia: DiaSessao, em: number) => aplicar(chamarProximo(dia, { estacaoId: "e1" }, em));
+  const perdeu = (r: ReturnType<typeof checkIn>) => {
+    if (!r.ok) throw new Error(r.erro);
+    return r.eventos.find((e) => e.tipo === "presente")?.dados?.perdeuAVez;
+  };
+
+  it("registra o 'venha agora' uma vez, com a hora, e avisa só quem é o próximo", () => {
+    const a1 = avisar(diaCom(["ana", "bruno"]), T);
+    expect(a1.eventos).toEqual([
+      expect.objectContaining({ tipo: "venha_agora", itemId: "ana", dados: { etapa: "atendimento", em: T } }),
+    ]);
+    expect(a1.dia.venhaAgora).toEqual([{ itemId: "ana", etapa: "atendimento", em: T }]);
+    expect(avisar(congelar(a1.dia), T + MIN).eventos).toEqual([]);
+  });
+
+  it("fila parada: quem não chega no prazo deixa de travar a estimativa do próximo", () => {
+    const d = congelar(avisar(diaCom(["ana", "bruno"]), T).dia);
+    expect(estimar(d, "bruno", T + PRAZO - 1, AUTO)).toEqual({ tipo: "posicao", posicao: 2, minutos: 15 });
+    expect(estimar(d, "bruno", T + PRAZO, AUTO)).toEqual({ tipo: "venha_agora" });
+    const a2 = avisar(d, T + PRAZO);
+    expect(a2.eventos.map((e) => e.itemId)).toEqual(["bruno"]);
+    // Ana não perde o lugar: ninguém depois dela foi chamado.
+    expect(estimar(congelar(a2.dia), "ana", T + PRAZO, AUTO)).toEqual({ tipo: "venha_agora" });
+  });
+
+  it("dentro do prazo, chamar quem vem depois não tira a vez de quem está a caminho", () => {
+    let d = congelar(avisar(diaCom(["ana", "pedro"]), T).dia);
+    d = aplicar(checkInEm(d, "pedro", T));
+    d = chamarEm(d, T + PRAZO - MIN);
+    const r = checkInEm(d, "ana", T + PRAZO + 5 * MIN);
+    expect(perdeu(r)).toBe(false);
+  });
+
+  it("depois do prazo, a regra de atraso volta a valer", () => {
+    let d = congelar(avisar(diaCom(["ana", "pedro"]), T).dia);
+    d = aplicar(checkInEm(d, "pedro", T));
+    d = chamarEm(d, T + PRAZO);
+    expect(perdeu(checkInEm(d, "ana", T + PRAZO + MIN))).toBe(true);
+  });
+
+  it("antes do 'venha agora', ninguém perde a vez (o 10º não cai porque o balcão andou)", () => {
+    // Ana #1 e Bia #2 remotas; Pedro #3 entra pelo balcão e é chamado antes de qualquer aviso.
+    let d = aplicar(checkInEm(diaCom(["ana", "bia", "pedro"]), "pedro", T));
+    d = chamarEm(d, T + MIN);
+    expect(perdeu(checkInEm(d, "bia", T + 30 * MIN))).toBe(false);
+    expect(estimar(d, "bia", T + 30 * MIN, AUTO)).toEqual({ tipo: "posicao", posicao: 2, minutos: 15 });
+  });
+
+  it("'Vou sair' recomeça o prazo no próximo 'venha agora'", () => {
+    let d = congelar(avisar(diaCom(["ana", "bruno"]), T).dia);
+    d = aplicar(checkInEm(d, "ana", T + MIN));
+    d = aplicar(vouSair(d, { itemId: "ana" }, T + 30 * MIN));
+    const a = avisar(d, T + 31 * MIN);
+    expect(a.eventos.map((e) => [e.itemId, e.dados?.em])).toEqual([["ana", T + 31 * MIN]]);
+    expect(a.dia.venhaAgora).toEqual([{ itemId: "ana", etapa: "atendimento", em: T + 31 * MIN }]);
+  });
+
+  it("modo manual não registra nem avisa", () => {
+    const d = diaCom(["ana"]);
+    const r = avisosVenhaAgora(d, T, MANUAL);
+    expect(r.eventos).toEqual([]);
+    expect(r.dia).toBe(d);
   });
 });
 

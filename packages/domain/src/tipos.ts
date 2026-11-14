@@ -75,6 +75,8 @@ export type ConfigUnidade = {
   janelaK: number;
   toleranciaMin: number;
   saiaDeCasaMin: number;
+  /** Prazo para o remoto chegar depois do "venha agora" (RN-ETA-06, AD-057). */
+  prazoChegadaMin: number;
   qrSegundos: number;
   destaqueTvSegundos: number;
   prazoConfirmacaoHoras: number;
