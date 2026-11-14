@@ -73,6 +73,7 @@ export default function Cadastro() {
         }
       >
         <Titulo>seus dados</Titulo>
+        <TextoSuave>passo 1 de 2. leva menos de 2 minutos.</TextoSuave>
         <Campo
           rotulo="nome completo"
           value={v.nome}
@@ -123,7 +124,7 @@ export default function Cadastro() {
       acoes={<Botao texto="criar conta" onPress={enviar} carregando={enviando} />}
     >
       <Titulo>crie sua senha</Titulo>
-      <TextoSuave>você vai usar o CPF e esta senha para entrar.</TextoSuave>
+      <TextoSuave>passo 2 de 2. você vai usar o CPF e esta senha para entrar.</TextoSuave>
       <CampoSenha
         rotulo="senha"
         erro={doPasso(2)("senha")}

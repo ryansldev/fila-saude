@@ -1,6 +1,7 @@
 import type { CheckIn } from "@fila-saude/schemas/fila";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
+import { Camera } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Text, View } from "react-native";
 import { Botao, COR, Faixa, FONTE, LinkBotao, Tela, TextoSuave } from "@/components/ui";
@@ -98,6 +99,7 @@ export default function CheckInPeloQr() {
       <Tela voltar={false} acoes={<Botao texto="ver minha fila" onPress={verFila} />}>
         <Faixa
           tipo="ok"
+          grande
           titulo="você está na unidade"
           texto="fique de olho na TV e no celular."
           style={{ marginTop: 8 }}
@@ -192,11 +194,18 @@ export default function CheckInPeloQr() {
           />
         ) : enviando ? (
           <ActivityIndicator size="large" color="#ffffff" />
-        ) : null}
+        ) : (
+          <View style={{ alignItems: "center", gap: 12, padding: 16 }}>
+            <Camera size={48} color="#ffffff" strokeWidth={2} />
+            <Text style={{ fontFamily: FONTE.semi, fontSize: 17, lineHeight: 24, textAlign: "center", ...branco }}>
+              a câmera aparece aqui
+            </Text>
+          </View>
+        )}
       </View>
       {naoLe ? (
         <Text style={{ fontFamily: FONTE.regular, fontSize: 18, lineHeight: 28, textAlign: "center", ...branco }}>
-          peça ajuda na recepção. eles marcam a sua presença.
+          sem problema: peça ajuda na recepção. eles marcam a sua presença.
         </Text>
       ) : null}
     </Tela>

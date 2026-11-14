@@ -2,7 +2,7 @@ import { cpfValido } from "@fila-saude/schemas/cpf";
 import { mascararCpf } from "@fila-saude/schemas/mascaras";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Botao, Campo, CampoSenha, Faixa, LinkBotao, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { Botao, Campo, CampoSenha, Faixa, LinkBotao, Pequeno, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
 
@@ -38,7 +38,7 @@ export default function Entrar() {
       acoes={
         <>
           <Botao texto="entrar" onPress={enviar} carregando={enviando} desativado={!cpf || !senha} />
-          <LinkBotao texto="ainda não tenho conta" onPress={() => router.replace("/cadastro")} />
+          <LinkBotao texto="criar uma conta" onPress={() => router.replace("/cadastro")} />
         </>
       }
     >
@@ -70,6 +70,7 @@ export default function Entrar() {
         returnKeyType="go"
       />
       {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
+      <Pequeno>esqueceu a senha? a recepção da sua unidade de saúde ajuda.</Pequeno>
     </Tela>
   );
 }

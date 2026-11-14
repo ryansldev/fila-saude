@@ -53,7 +53,7 @@ type Passo =
 type DadosDaSessao = { servicoId?: string; servico?: string; unidade?: string; inicio?: string; aberta?: boolean };
 
 const irParaMinhaFila = () => router.dismissTo("/inicio");
-const irParaAgenda = () => router.dismissTo("/agenda");
+const irParaAgenda = () => router.dismissTo("/unidades");
 const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? nome;
 
 /** T3.3: "para quem é?" (AD-018), questionário v1 e a inscrição, como no design do app. */
@@ -348,7 +348,7 @@ export default function Inscricao() {
     // Pelo link, a sessão pode já ter fechado ou não ser aberta ao público.
     if (daAgenda === "fora")
       return (
-        <Tela acoes={<Botao texto="ver os atendimentos" onPress={() => router.replace("/agenda")} />}>
+        <Tela acoes={<Botao texto="ver os atendimentos" onPress={() => router.replace("/unidades")} />}>
           <Faixa
             tipo="aviso"
             titulo="este atendimento não está aberto"
@@ -383,7 +383,7 @@ export default function Inscricao() {
       <Tela
         progresso={{ atual: 1, total }}
         // Aberta pelo link, não há tela anterior: o X leva aos atendimentos.
-        aoVoltar={() => (router.canGoBack() ? router.back() : router.replace("/agenda"))}
+        aoVoltar={() => (router.canGoBack() ? router.back() : router.replace("/unidades"))}
         acoes={
           erroQuem?.tipo === "faixa" && erroQuem.saida ? (
             <Botao
