@@ -8,7 +8,7 @@ Como rodar a v0.1 local e apresentá-la, tela a tela. Cada fatia acrescenta o se
 npm install
 npm run dev:seed      # apaga e recria o município "exemplo"; imprime logins e sessões
 npm run dev           # API em :3333, painel em http://exemplo.localhost:3000
-EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:3333 npm run dev:mobile   # app no celular (Expo Go)
+npm run dev:mobile    # app no celular (Expo Go); IP da API em apps/mobile/.env (copie de .env.example)
 ```
 
 Senha de todos: `exemplo123`. O seed cria a sessão pública **Curativos** começando na hora cheia de agora (4 h), na "Sala de procedimentos", com Ana e Bruno já inscritos, e a **Clínico geral (com triagem)** no mesmo horário, na "Triagem 1" e no "Consultório 1", com Ana (rotina), Bruno (urgente) e Carla (atenção) inscritos.
