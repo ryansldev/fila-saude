@@ -11,6 +11,7 @@ import {
   PainelLateral,
   Secao,
   Selecao,
+  Senha,
   Tabela,
   Texto,
 } from "@/components/formulario";
@@ -384,13 +385,7 @@ export default function Equipe() {
               />
             </Campo>
             <Campo rotulo="Senha inicial" erro={erros.campos.senha} dica="Mínimo de 8 caracteres.">
-              <Texto
-                required
-                type="password"
-                autoComplete="new-password"
-                valor={v.senha}
-                aoMudar={(senha) => setV({ ...v, senha })}
-              />
+              <Senha required autoComplete="new-password" valor={v.senha} aoMudar={(senha) => setV({ ...v, senha })} />
             </Campo>
           </div>
         </Secao>

@@ -1,7 +1,7 @@
 "use client";
 
-import { PlusIcon } from "lucide-react";
-import { createContext, type ReactNode, useContext, useId } from "react";
+import { EyeIcon, EyeOffIcon, PlusIcon } from "lucide-react";
+import { createContext, type ReactNode, useContext, useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -452,5 +452,31 @@ export function BotaoAdicionarLinha({
       <PlusIcon className="size-4" strokeWidth={2.5} />
       {rotulo}
     </button>
+  );
+}
+
+/** Senha com o botão de mostrar/esconder dentro do campo (olho). */
+export function Senha({
+  valor,
+  aoMudar,
+  ...props
+}: Omit<React.ComponentProps<typeof Input>, "value" | "onChange" | "type"> & {
+  valor: string;
+  aoMudar: (v: string) => void;
+}) {
+  const [ver, setVer] = useState(false);
+  return (
+    <div className="relative">
+      <Texto type={ver ? "text" : "password"} valor={valor} aoMudar={aoMudar} className="pr-12" {...props} />
+      <button
+        type="button"
+        onClick={() => setVer(!ver)}
+        aria-label={ver ? "Esconder senha" : "Mostrar senha"}
+        title={ver ? "Esconder senha" : "Mostrar senha"}
+        className="absolute inset-y-0 right-1 flex w-10 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-primary"
+      >
+        {ver ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
+      </button>
+    </div>
   );
 }
