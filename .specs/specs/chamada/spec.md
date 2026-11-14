@@ -48,7 +48,8 @@ Serviços com triagem têm duas etapas, triagem e atendimento, com as mesmas reg
 Uma estação de triagem pode atender vários serviços; junta os pacientes deles numa só ordem.
 
 **RN-TRI-03 · Classificação na triagem**
-Na triagem o profissional confirma ou reclassifica o risco; essa passa a ser a classificação confirmada.
+Na triagem o profissional confirma ou reclassifica o risco pelas cinco cores do Manchester (vermelho, laranja, amarelo, verde, azul); essa passa a ser a classificação confirmada. Laranja (muito urgente) só vem da triagem e vem antes de amarelo.
+*Decisões: AD-058.*
 
 **RN-TRI-04 · Depois da triagem**
 O atendimento é uma fila nova: o paciente entra com a mesma senha e um número novo, atrás de quem já estava na fila do atendimento, dentro do seu nível de risco (confirmado pelo enfermeiro) e prioridade legal. Sem janela protegida e sem regra de atraso nessa passagem.

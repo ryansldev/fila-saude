@@ -24,7 +24,7 @@ export const itemDaFilaSchema = z.object({
   etapa: etapaSchema,
   estado: estadoItemSchema,
   pulos: z.number().int().min(0),
-  risco: z.enum(["urgente", "atencao", "rotina"]),
+  risco: z.enum(["muito_urgente", "urgente", "atencao", "rotina"]),
   prioridade: z.boolean(),
   estacaoId: z.string().nullable(),
   /** RN-FILA-05: o que a recepção precisa conferir antes da presença. */
@@ -41,7 +41,7 @@ export const filaDaSessaoSchema = z.object({
 export type ItemDaFila = z.infer<typeof itemDaFilaSchema>;
 export type FilaDaSessao = z.infer<typeof filaDaSessaoSchema>;
 
-export const nivelRiscoSchema = z.enum(["emergencia", "urgente", "atencao", "rotina"]);
+export const nivelRiscoSchema = z.enum(["emergencia", "muito_urgente", "urgente", "atencao", "rotina"]);
 export type NivelRiscoApi = z.infer<typeof nivelRiscoSchema>;
 
 /**

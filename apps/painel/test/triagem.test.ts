@@ -2,14 +2,16 @@ import { describe, expect, it } from "vitest";
 import { CORES_DA_TRIAGEM, corDoNivel, precisaClassificar, textoDaPrioridade } from "@/lib/triagem";
 
 describe("triagem na estação (fatia 3)", () => {
-  it("H1: quatro cores do ACCR, da mais grave para a mais leve", () => {
-    expect(CORES_DA_TRIAGEM.map((c) => [c.cor, c.nivel])).toEqual([
-      ["vermelho", "emergencia"],
-      ["amarelo", "urgente"],
-      ["verde", "atencao"],
-      ["azul", "rotina"],
+  it("AD-058: as cinco cores do Manchester, da mais grave para a mais leve, com o tempo-alvo", () => {
+    expect(CORES_DA_TRIAGEM.map((c) => [c.cor, c.nivel, c.tempoAlvo])).toEqual([
+      ["vermelho", "emergencia", "imediato"],
+      ["laranja", "muito_urgente", "até 10 min"],
+      ["amarelo", "urgente", "até 60 min"],
+      ["verde", "atencao", "até 120 min"],
+      ["azul", "rotina", "até 240 min"],
     ]);
     expect(corDoNivel("atencao").rotulo).toBe("Verde");
+    expect(corDoNivel("muito_urgente").descricao).toBe("Muito urgente");
   });
 
   it("H3: na triagem, com alguém chamado, Finalizar e Chamar próximo pedem a cor", () => {

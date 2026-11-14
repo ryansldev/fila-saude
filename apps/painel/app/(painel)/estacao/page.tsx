@@ -176,7 +176,7 @@ export default function Estacao() {
                 </dl>
                 <fieldset className="flex flex-col gap-2">
                   <legend className="mb-2 font-medium text-gray-900">Classificação de risco</legend>
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                     {CORES_DA_TRIAGEM.map((c) => (
                       <button
                         key={c.nivel}
@@ -188,7 +188,9 @@ export default function Estacao() {
                         }`}
                       >
                         <span className="font-bold text-lg">{c.rotulo}</span>
-                        <span className="text-sm">{c.descricao}</span>
+                        <span className="text-sm">
+                          {c.descricao} · {c.tempoAlvo}
+                        </span>
                         {c.nivel === ficha.riscoSugerido ? (
                           <span className="mt-1 rounded bg-white/80 px-1.5 text-gray-900 text-xs">
                             sugerido pelo app

@@ -24,7 +24,7 @@ import { temPrioridade } from "./prioridade.ts";
 import { classificar } from "./questionario.ts";
 import { type CodigoErro, type Evento, falha, ok, type Resultado } from "./resultado.ts";
 import { idadeEm } from "./tempo.ts";
-import type { ConfigUnidade, NivelRisco, Respostas } from "./tipos.ts";
+import { type ConfigUnidade, ehUrgencia, type NivelRisco, type Respostas } from "./tipos.ts";
 
 // Eventos das tabelas de transição (textos copiados das specs).
 const SESSAO_ABRE = "Horário de início chega, ou admin abre antes";
@@ -117,7 +117,7 @@ export function porNaFila(
     etapa: dia.exigeTriagem ? "triagem" : "atendimento",
     estado,
     pendencias: [],
-    urgenciaConfirmada: entrada.riscoConfirmado === "urgente",
+    urgenciaConfirmada: ehUrgencia(entrada.riscoConfirmado),
     risco: riscoVigente(entrada),
     // AD-027/AD-024: idade no dia desta sessão, mais a conferência guardada na entrada.
     prioridade: prioridadeDaEntrada(entrada, agora, dia.config.fuso),

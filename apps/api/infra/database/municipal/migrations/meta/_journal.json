@@ -85,6 +85,13 @@
       "when": 1794618671915,
       "tag": "0011_aviso",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794661621101,
+      "tag": "0012_manchester",
+      "breakpoints": true
     }
   ]
 }

@@ -461,6 +461,15 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     });
   });
 
+  it("AD-058: Manchester — laranja (muito urgente) confirmado passa à frente do amarelo confirmado", () => {
+    let d = caioNaTriagem();
+    d = comItem(d, "ana", { risco: "urgente", urgenciaConfirmada: true });
+    const r = finalizar(d, { estacaoId: "t1", riscoConfirmado: "muito_urgente" }, T + 5 * MIN);
+    const depois = aplicar(r);
+    expect(item(depois, "caio")).toMatchObject({ risco: "muito_urgente", urgenciaConfirmada: true });
+    expect(ordem(depois)).toEqual(["caio", "ana", "joao"]);
+  });
+
   it("RN-TRI-03: chamar o próximo também confirma ou reclassifica quem sai da triagem", () => {
     let d = caioNaTriagem();
     d = comItem(d, "caio", { risco: "atencao" });
@@ -476,7 +485,9 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     expect(item(d, "caio")).toMatchObject({ etapa: "triagem", estado: "atendido_na_etapa" });
     expect(ordem(d)).toEqual(["ana", "joao"]);
     expect(r.ok && r.eventos.map((e) => e.tipo)).toEqual(["atendido", "encaminhado_emergencia"]);
-    const viaChamar = aplicar(chamarProximo(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN));
+    const viaChamar = aplicar(
+      chamarProximo(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN),
+    );
     expect(item(viaChamar, "caio").estado).toBe("atendido_na_etapa");
   });
 

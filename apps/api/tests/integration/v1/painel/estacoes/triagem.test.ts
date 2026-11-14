@@ -110,7 +110,8 @@ describe("triagem (T6.1, fatia 3)", () => {
     expect(await minha()).toMatchObject({ etapa: "triagem", triado: false, encaminhado: false });
     await cmd(t1, "chamar", { riscoConfirmado: "rotina" }); // ninguém chamado: a cor é ignorada; chama Carla
     await cmd(t1, "chamar", { riscoConfirmado: "rotina" }); // Carla sai da triagem; Davi é chamado
-    await cmd(t1, "finalizar", { riscoConfirmado: "rotina" });
+    await cmd(t1, "finalizar", { riscoConfirmado: "muito_urgente" }); // AD-058: laranja do Manchester
     expect(await minha()).toMatchObject({ etapa: "atendimento", triado: true, itemEstado: "presente" });
+    expect(await riscoGravado("Davi")).toEqual({ r: "muito_urgente", estado: "na_fila" });
   });
 });

@@ -5,7 +5,7 @@ import { aConferir, type Grupo, grupoDeDeclarado, type PrioridadeLegal, priorida
 import { classificar } from "./questionario.ts";
 import { type Evento, falha, ok, type Resultado } from "./resultado.ts";
 import { idadeEm, mesmoDia } from "./tempo.ts";
-import type { Classificacao, ConfigUnidade, NivelRisco, Respostas } from "./tipos.ts";
+import { type Classificacao, type ConfigUnidade, ehUrgencia, type NivelRisco, type Respostas } from "./tipos.ts";
 
 /** Pessoa atendida (AD-018): pode não ser o dono da conta (responsável). */
 export type Pessoa = { nome: string; nascimento: string; cpf: string | null };
@@ -200,7 +200,7 @@ export function riscoVigente(e: Entrada): Risco {
 }
 
 const chaveSugestao = (e: Entrada, agora: number, fuso: string): ChaveSugestao => ({
-  urgenciaConfirmada: e.riscoConfirmado === "urgente",
+  urgenciaConfirmada: ehUrgencia(e.riscoConfirmado),
   remanejada: e.remanejada !== null,
   risco: riscoVigente(e),
   prioridade: prioridadeDaEntrada(e, agora, fuso),
@@ -208,7 +208,12 @@ const chaveSugestao = (e: Entrada, agora: number, fuso: string): ChaveSugestao =
   id: e.id,
 });
 
-const ROTULO_RISCO: Record<Risco, string> = { urgente: "urgente", atencao: "atenção", rotina: "rotina" };
+const ROTULO_RISCO: Record<Risco, string> = {
+  muito_urgente: "muito urgente",
+  urgente: "urgente",
+  atencao: "atenção",
+  rotina: "rotina",
+};
 
 const ROTULO_GRUPO: Record<Exclude<Grupo, "idoso" | "idoso80">, string> = {
   gestante: "gestante",

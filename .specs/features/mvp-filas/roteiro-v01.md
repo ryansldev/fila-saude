@@ -67,7 +67,7 @@ Para o push chegar no celular é preciso um projeto EAS e um build de desenvolvi
 | --- | --- | --- | --- | --- |
 | 1 | Gerente | Painel → Fila do dia | Abrir a sessão "Clínico geral" | Senhas C-001.. remotas |
 | 2 | Recepção | Painel → Fila do dia | Conferir e marcar presença de Ana, Bruno e Carla | "Na unidade"; no app, "primeiro, a triagem" |
-| 3 | Enfermeira | Painel → Estação | Escolher "Triagem 1 · Triagem", "Chamar próximo" | Bruno (urgente sugerido) vem primeiro; abaixo, "Sugerido pelo app: Amarelo · Problema novo forte", a prioridade declarada e as quatro cores; "Finalizar" e "Chamar próximo" ficam bloqueados até escolher |
+| 3 | Enfermeira | Painel → Estação | Escolher "Triagem 1 · Triagem", "Chamar próximo" | Bruno (urgente sugerido) vem primeiro; abaixo, "Sugerido pelo app: Amarelo · Problema novo forte", a prioridade declarada e as cinco cores do Manchester com o tempo-alvo; "Finalizar" e "Chamar próximo" ficam bloqueados até escolher |
 | 4 | Enfermeira | Estação de triagem | Tocar "Verde" e "Chamar próximo" | Bruno vai para a fila do atendimento com a mesma senha; no app dele, "triagem feita. agora, o atendimento" |
 | 5 | Enfermeira | Estação de triagem | Com Carla chamada, tocar "Vermelho" e "Finalizar" | Pede confirmação ("Encaminhar à emergência?"); Carla sai da fila; no app, selo "emergência" e "a enfermagem encaminhou você para a emergência" |
 | 6 | Médica | Painel → Estação | Entrar como `medica` (ou a enfermeira), "Consultório 1 · Atendimento", "Chamar próximo" | Só quem já passou pela triagem é chamado; sem cores nesta tela |

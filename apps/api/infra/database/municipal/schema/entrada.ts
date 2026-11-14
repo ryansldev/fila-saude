@@ -18,7 +18,7 @@ export const estadoEntrada = pgEnum("estado_entrada", [
   "cancelada",
   "encerrada_sem_atendimento",
 ]);
-export const nivelRisco = pgEnum("nivel_risco", ["emergencia", "urgente", "atencao", "rotina"]);
+export const nivelRisco = pgEnum("nivel_risco", ["emergencia", "muito_urgente", "urgente", "atencao", "rotina"]);
 export const origemRemanejada = pgEnum("origem_remanejada", ["privada", "publica", "regulada"]);
 
 // PD-36: toda entrada aponta para uma `pessoa_local`; INV-01 pelo índice único parcial.

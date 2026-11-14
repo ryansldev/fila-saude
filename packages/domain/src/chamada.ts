@@ -1,7 +1,7 @@
 import { type EstadoItem, TRANSICOES_ITEM, transicionar } from "./contratos.ts";
 import { type DiaSessao, type Estacao, elegiveis, ficarElegivel, type ItemFila } from "./fila.ts";
 import { type CodigoErro, type Evento, falha, ok, type Resultado } from "./resultado.ts";
-import type { NivelRisco } from "./tipos.ts";
+import { ehUrgencia, type NivelRisco } from "./tipos.ts";
 
 type Cmd = { estacaoId: string };
 
@@ -97,7 +97,7 @@ function encerrarChamado(
   }
   let triado: ItemFila = { ...item, etapa: proximaEtapa, atendidoEmEtapas, saiuEm: null };
   if (riscoConfirmado !== undefined && riscoConfirmado !== "emergencia") {
-    triado = { ...triado, risco: riscoConfirmado, urgenciaConfirmada: riscoConfirmado === "urgente" };
+    triado = { ...triado, risco: riscoConfirmado, urgenciaConfirmada: ehUrgencia(riscoConfirmado) };
     // A API grava entrada.riscoConfirmado (INV-07: só agendador ou triagem).
     eventos.push({
       tipo: "risco_confirmado",

@@ -4,7 +4,7 @@ import type { NivelRisco, OrdemMunicipio } from "./tipos.ts";
 /** Risco vigente na fila: emergência nunca entra (vai ao 192). */
 export type Risco = Exclude<NivelRisco, "emergencia">;
 
-const PESO_RISCO: Record<Risco, number> = { urgente: 2, atencao: 1, rotina: 0 };
+const PESO_RISCO: Record<Risco, number> = { muito_urgente: 3, urgente: 2, atencao: 1, rotina: 0 };
 
 /** Chave da ordem de chamada (RN-ORD). `risco` é o vigente: confirmado, se houver; senão, sugerido. */
 export type ChaveOrdem = {

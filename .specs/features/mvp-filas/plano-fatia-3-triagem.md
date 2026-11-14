@@ -12,7 +12,7 @@
 
 | ID | Decisão | Custa se errado |
 | --- | --- | --- |
-| H1 | Cores do ACCR do Ministério: **vermelho** = emergência, **amarelo** = urgente, **verde** = atenção, **azul** = rotina | Baixo: só rótulo e cor |
+| H1 | ~~ACCR de 4 cores~~ → **Manchester padrão, 5 cores** (AD-058, sua decisão) | — |
 | H2 | **Vermelho na triagem** fecha a triagem como atendida e não vai ao atendimento (entrada concluída), com evento `encaminhado_emergencia` na auditoria | Médio: se a unidade atende a emergência ali mesmo, falta um "chamar já" |
 | H3 | **Classificar é obrigatório** para "Finalizar" ou "Chamar próximo" com alguém chamado na triagem (`422 classifique_o_risco`); "Não compareceu" não pede | Baixo |
 | H4 | Triagem com vários serviços: entre as sessões, vence urgência confirmada, risco e prioridade; empate vai para quem está presente há mais tempo (senão, a sessão que abriu antes) | Médio: números de sessões diferentes não se comparam |

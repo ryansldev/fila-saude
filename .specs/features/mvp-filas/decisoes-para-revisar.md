@@ -197,7 +197,7 @@ Execução rápida, como as fatias anteriores. Plano: [plano-fatia-3-triagem](pl
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
-| H1 | Cores da triagem (AD-056) | ACCR do Ministério: vermelho = emergência, amarelo = urgente, verde = atenção, azul = rotina | Manchester (5 cores, com laranja) | Baixo: só rótulo e cor; se a unidade usar Manchester, falta um nível |
+| H1 | Cores da triagem (AD-056) | **Respondida por você (2026-11-14): Manchester padrão** → AD-058, cinco cores com o nível novo `muito_urgente` (laranja) | — | — |
 | H2 | Vermelho na triagem | A triagem fecha como atendida, a pessoa não vai para o atendimento desta unidade e a entrada fica concluída, com `risco_confirmado = emergencia` e o evento `encaminhado_emergencia`. O painel pede confirmação; o app diz "a enfermagem encaminhou você para a emergência" | Chamar já no consultório da unidade (urgência máxima) | Médio: se a UBS atende a emergência ali mesmo, falta o "chamar já" |
 | H3 | Classificar é obrigatório? | Sim: com alguém chamado na triagem, "Finalizar" e "Chamar próximo" pedem a cor (`422 classifique_o_risco`); "Não compareceu" e "Rechamar" não | Manter o sugerido quando o enfermeiro não escolhe | Baixo; um toque a mais por paciente |
 | H4 | **Triagem com vários serviços (RN-TRI-02): adiada** | A estação de triagem atende uma sessão aberta por vez (a mais recente), como antes. Juntar filas de sessões diferentes numa chamada fica para depois da v0.1 (já anotado como RN-EST-03) | Comparar o 1º elegível de cada sessão (urgência, risco, prioridade; empate por quem chegou antes) | Médio: com dois serviços com triagem abertos ao mesmo tempo na mesma sala, só um é chamado |
@@ -206,4 +206,4 @@ Execução rápida, como as fatias anteriores. Plano: [plano-fatia-3-triagem](pl
 | H7 | AD-057 em modo manual | Sem "venha agora" não há prazo, então remoto não perde a vez por atraso; só os pulos decidem | Usar a hora de abertura da sessão como início do prazo | Baixo: modo manual é exceção |
 | H8 | Chave do push "venha agora" | Passou a incluir a hora (`venha_agora:item:etapa:em`), porque "Vou sair" recomeça e pode haver um segundo "venha agora" na mesma etapa | Manter uma por etapa | Nenhum conhecido |
 
-**Precisa de você:** confirmar H1 (ACCR de 4 cores) e H2 (vermelho tira da fila), que são decisões clínicas. RV7 continua aberta.
+**Precisa de você:** confirmar H2 (vermelho tira da fila), que é decisão clínica. RV7 continua aberta.

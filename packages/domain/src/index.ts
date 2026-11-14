@@ -122,3 +122,4 @@ export type {
   OrdemMunicipio,
   Respostas,
 } from "./tipos.ts";
+export { ehUrgencia } from "./tipos.ts";

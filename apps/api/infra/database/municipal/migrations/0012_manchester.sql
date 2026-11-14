@@ -1,0 +1,1 @@
+ALTER TYPE "public"."nivel_risco" ADD VALUE 'muito_urgente' BEFORE 'urgente';

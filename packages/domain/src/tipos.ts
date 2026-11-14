@@ -1,7 +1,14 @@
 import type { Grupo } from "./prioridade.ts";
 
-/** Nível de risco sugerido pelo questionário (Manchester reduzido). */
-export type NivelRisco = "emergencia" | "urgente" | "atencao" | "rotina";
+/**
+ * Nível de risco. O questionário sugere quatro (Manchester reduzido, sem "muito_urgente"); a
+ * triagem confirma pelas cinco cores do Manchester (AD-058): vermelho emergência, laranja muito
+ * urgente, amarelo urgente, verde atenção (pouco urgente), azul rotina (não urgente).
+ */
+export type NivelRisco = "emergencia" | "muito_urgente" | "urgente" | "atencao" | "rotina";
+
+/** Urgência confirmada (RN-ORD: sempre primeiro): amarelo ou laranja dados pela triagem. */
+export const ehUrgencia = (nivel: NivelRisco | null): boolean => nivel === "urgente" || nivel === "muito_urgente";
 
 /**
  * Tela 1 do questionário v1. "Nenhum destes" não entra aqui: é a lista vazia.

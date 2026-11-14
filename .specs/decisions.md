@@ -63,6 +63,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-055 | Uma leitura do QR vale para todas as pessoas da conta | ativa |
 | AD-056 | Decisões da revisão de 2026-11-13 | ativa |
 | AD-057 | Prazo de chegada depois do "venha agora" | ativa |
+| AD-058 | Triagem pelo Manchester padrão (cinco cores) | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -292,6 +293,10 @@ Quem lê o QR marca a presença de todas as pessoas da conta com senha nas sess�
 ### AD-057 · Prazo de chegada depois do "venha agora"
 2026-11-14 · ativa · Muda: AD-010, RN-ORD (atraso), RN-ETA-06
 O remoto só perde a vez por chamadas feitas depois do fim do prazo de chegada (padrão 15 min, config da unidade), contado da hora em que recebeu o "venha agora". Quem nunca recebeu "venha agora" não perde a vez porque a fila andou. Quem estoura o prazo deixa de contar à frente dos outros. **Por quê:** com a regra antiga, o 10º remoto podia perder a vez porque o balcão andou rápido, sem nunca ter sido avisado para vir. Custo: em modo manual não há "venha agora", então remoto não perde a vez por atraso; quem decide é o pulo.
+
+### AD-058 · Triagem pelo Manchester padrão (cinco cores)
+2026-11-14 · ativa · Muda: AD-056 (2), RN-TRI-03, RN-RISCO-01
+A triagem classifica pelas cinco cores do Sistema Manchester: vermelho (emergência, imediato), laranja (muito urgente, até 10 min), amarelo (urgente, até 60 min), verde (pouco urgente, até 120 min), azul (não urgente, até 240 min). O nível novo `muito_urgente` só vem da triagem; o questionário do app continua sugerindo quatro níveis. Laranja e amarelo confirmados são urgência confirmada (sempre primeiro), e laranja vem antes de amarelo. Vermelho segue H2 (encaminha à emergência). **Por quê:** decisão sua, 2026-11-14 ("usa o protocolo manchester padrão"). Os tempos-alvo aparecem só como referência na estação; a fila não muda de ordem pelo tempo.
 
 ## Arquitetura
 
