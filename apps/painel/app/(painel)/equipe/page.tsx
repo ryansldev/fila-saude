@@ -1,7 +1,7 @@
 "use client";
 
 import { atribuicoesSchema, usuarioPainelEntradaSchema } from "@fila-saude/schemas/usuario";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
@@ -284,20 +284,29 @@ export default function Equipe() {
             <TableCell>{u.login}</TableCell>
             <TableCell className="whitespace-normal">{resumoDasAtribuicoes(u, nomeDaUnidade)}</TableCell>
             <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-1">
                 <Button
-                  size="sm"
-                  variant="secondary"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="text-gray-500 hover:text-gray-900"
                   aria-label={`Editar ${u.nome}`}
+                  title="Editar"
                   onClick={() =>
                     setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
                   }
                 >
-                  Editar
+                  <SettingsIcon />
                 </Button>
                 {u.id !== eu.eu.id ? (
-                  <Button size="sm" variant="secondary" aria-label={`Excluir ${u.nome}`} onClick={() => remover(u)}>
-                    Excluir
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    className="text-gray-500 hover:text-gray-900"
+                    aria-label={`Excluir ${u.nome}`}
+                    title="Excluir"
+                    onClick={() => remover(u)}
+                  >
+                    <Trash2Icon />
                   </Button>
                 ) : null}
               </div>
