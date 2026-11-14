@@ -7,6 +7,7 @@ import { municipio } from "./central/schema/municipio";
 import type { Db } from "./index";
 import * as auditoria from "./municipal/schema/auditoria";
 import * as auth from "./municipal/schema/auth";
+import * as aviso from "./municipal/schema/aviso";
 import * as diaSessao from "./municipal/schema/dia-sessao";
 import * as entrada from "./municipal/schema/entrada";
 import * as equipe from "./municipal/schema/equipe";
@@ -14,6 +15,7 @@ import * as estacao from "./municipal/schema/estacao";
 import * as pessoaLocal from "./municipal/schema/pessoa-local";
 import * as servico from "./municipal/schema/servico";
 import * as sessao from "./municipal/schema/sessao";
+import * as tv from "./municipal/schema/tv";
 import * as unidade from "./municipal/schema/unidade";
 import { urlDoBanco } from "./url-do-banco";
 
@@ -30,6 +32,8 @@ export const schemaMunicipal = {
   ...auth,
   ...equipe,
   ...auditoria,
+  ...tv,
+  ...aviso,
 };
 
 export type DbDoTenant = NodePgDatabase<typeof schemaMunicipal> & { $client: Pool };

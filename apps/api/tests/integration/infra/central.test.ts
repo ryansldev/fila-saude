@@ -18,6 +18,11 @@ const colunasPermitidas = [
   "account.scope",
   "account.updated_at",
   "account.user_id",
+  // T3.8: token de push do aparelho; não é dado clínico nem da fila.
+  "dispositivo_push.atualizado_em",
+  "dispositivo_push.id",
+  "dispositivo_push.paciente_id",
+  "dispositivo_push.token",
   "municipio.banco_ref",
   "municipio.criado_em",
   "municipio.fuso",
@@ -70,7 +75,7 @@ describe("banco central", () => {
 
     expect(resultado.rows[0]?.banco).toBe("fila_central");
     const tabelas = resultado.rows.map((linha) => linha.table_name);
-    expect(tabelas).toEqual(["account", "municipio", "paciente", "session", "verification"]);
+    expect(tabelas).toEqual(["account", "dispositivo_push", "municipio", "paciente", "session", "verification"]);
   });
 
   it("INV-11: o central só tem colunas permitidas", async () => {

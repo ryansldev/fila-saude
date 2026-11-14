@@ -78,6 +78,13 @@
       "when": 1794618375009,
       "tag": "0010_tv",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794618671915,
+      "tag": "0011_aviso",
+      "breakpoints": true
     }
   ]
 }

@@ -3,10 +3,12 @@ import { fileURLToPath } from "node:url";
 import autoload from "@fastify/autoload";
 import Fastify, { type FastifyInstance } from "fastify";
 import { pluginDoPaciente } from "infra/auth/sessao-paciente";
+import { iniciarVarredura } from "infra/avisos/varredura";
 import database from "infra/database";
 import { fonteDosTenants } from "infra/database/tenants";
 import env from "infra/env";
 import { naoEncontrado, tratarErro } from "infra/erros";
+import { municipiosAtivos } from "infra/fila/app";
 import { registrarRotas } from "infra/painel/acao";
 import { corsDoPainel } from "infra/painel/cors";
 import pluginDoTenant from "infra/tenant/plugin";
@@ -35,6 +37,16 @@ export async function construirApp(opcoes: { logger?: boolean } = {}): Promise<F
     fuso: env.TENANT_FUSO,
   });
   app.addHook("onClose", () => pools.encerrar());
+
+  // PD-50: avisos do tempo e envio dos push; fora dos testes (lá a função é chamada direto).
+  if (process.env.NODE_ENV !== "test") {
+    const parar = iniciarVarredura(
+      async () => (env.TENANT_SLUG ? [env.TENANT_SLUG] : (await municipiosAtivos()).map((m) => m.slug)),
+      async (slug) => (await pools.obter(slug))?.db ?? null,
+      (erro, slug) => app.log.error({ err: erro, slug }, "varredura"),
+    );
+    app.addHook("onClose", async () => parar());
+  }
 
   // PD-15: `app.exigirTenant` resolve o tenant pelo Host e pelo caminho (`municipios/:slug`).
   app.register(pluginDoTenant, {

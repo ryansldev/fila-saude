@@ -139,6 +139,7 @@ export async function comandoNaEstacao(
         return {
           dia,
           entradas: fecharEntradas(dia, c.entradas),
+          eventos: r.eventos,
           resultado: await montar(tx, e, s, dia, ctx.agora, ninguem ? "ninguem_aguardando" : null),
         };
       });

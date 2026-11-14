@@ -11,6 +11,7 @@ import {
 } from "@fila-saude/domain";
 import { eq } from "drizzle-orm";
 import { PgTransaction } from "drizzle-orm/pg-core";
+import { gravarAvisos } from "infra/avisos/outbox";
 import { diaSessao } from "infra/database/municipal/schema/dia-sessao";
 import { estacao, estacaoServico } from "infra/database/municipal/schema/estacao";
 import { servico } from "infra/database/municipal/schema/servico";
@@ -150,6 +151,7 @@ export async function naSessao<T>(
     for (const e of m.entradas ?? []) {
       if (antes.get(e.id) !== JSON.stringify(e)) await atualizarEntrada(tx, e);
     }
+    if (m.eventos) await gravarAvisos(tx, u.nome, m.dia ?? dia, m.entradas ?? entradas, m.eventos);
     const mudancas: Partial<typeof sessao.$inferInsert> = {};
     if (m.sessao && m.sessao.ocupadas !== s.ocupadas) mudancas.ocupadas = m.sessao.ocupadas;
     if (m.dia && m.dia.estado !== "planejada") {

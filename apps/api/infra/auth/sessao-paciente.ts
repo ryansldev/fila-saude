@@ -45,3 +45,9 @@ export function doPaciente(req: FastifyRequest) {
   if (!req.tenant || !req.paciente) throw new ErroApi(401, "nao_autenticado");
   return { db: req.tenant.db, paciente: req.paciente };
 }
+
+// Depois de `exigirPaciente`, nas rotas da central (sem município).
+export function pacienteDaRequisicao(req: FastifyRequest): PacienteAutenticado {
+  if (!req.paciente) throw new ErroApi(401, "nao_autenticado");
+  return req.paciente;
+}
