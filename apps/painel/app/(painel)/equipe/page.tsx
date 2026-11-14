@@ -287,6 +287,7 @@ export default function Equipe() {
               <div className="flex justify-end gap-2">
                 <Button
                   size="sm"
+                  variant="secondary"
                   aria-label={`Editar ${u.nome}`}
                   onClick={() =>
                     setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
@@ -295,7 +296,7 @@ export default function Equipe() {
                   Editar
                 </Button>
                 {u.id !== eu.eu.id ? (
-                  <Button size="sm" variant="destructive" aria-label={`Excluir ${u.nome}`} onClick={() => remover(u)}>
+                  <Button size="sm" variant="secondary" aria-label={`Excluir ${u.nome}`} onClick={() => remover(u)}>
                     Excluir
                   </Button>
                 ) : null}
