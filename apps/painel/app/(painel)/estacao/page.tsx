@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComandoEstacao, HojeNaUnidade, OperacaoEstacao } from "@fila-saude/schemas/fila";
+import type { ComandoEstacao, HojeNaUnidade, NivelRiscoApi, OperacaoEstacao } from "@fila-saude/schemas/fila";
 import { useEffect, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Selecao } from "@/components/formulario";
@@ -11,6 +11,7 @@ import { useApi } from "@/lib/api-context";
 import { cronometro, estacoesQueOpera } from "@/lib/fila";
 import { mensagemDoErro } from "@/lib/formularios/erros";
 import { useEu } from "@/lib/sessao";
+import { CORES_DA_TRIAGEM, corDoNivel, precisaClassificar, textoDaPrioridade } from "@/lib/triagem";
 import { useUnidadeAtual } from "@/lib/unidade-atual";
 import { useConsulta } from "@/lib/use-consulta";
 
@@ -36,6 +37,12 @@ export default function Estacao() {
   const [aviso, setAviso] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [agora, setAgora] = useState(() => Date.now());
+  // Cor escolhida na triagem para quem está chamado; volta a nada a cada novo chamado.
+  const [cor, setCor] = useState<NivelRiscoApi | null>(null);
+  const chamadoId = op.dado?.chamado?.itemId ?? null;
+  useEffect(() => {
+    if (chamadoId !== undefined) setCor(null);
+  }, [chamadoId]);
 
   // PD-46: só as estações que o perfil opera nesta unidade.
   const perfis = eu.estado === "autenticado" ? eu.eu.perfis : [];
@@ -68,9 +75,23 @@ export default function Estacao() {
       !(await confirmar({ titulo: "Marcar que o paciente não compareceu?", acao: "Não compareceu", perigo: true }))
     )
       return;
+    // H3: na triagem, quem sai do chamado sai com a cor; vermelho encaminha à emergência (H2).
+    const classifica = triagem && Boolean(chamado) && (c === "chamar" || c === "finalizar");
+    if (
+      classifica &&
+      cor === "emergencia" &&
+      !(await confirmar({
+        titulo: "Encaminhar à emergência?",
+        descricao: "A pessoa sai da fila de hoje e não vai para o atendimento desta unidade.",
+        acao: "Encaminhar",
+        perigo: true,
+      }))
+    )
+      return;
     setEnviando(true);
     try {
-      op.setDado(await api.post<OperacaoEstacao>(`/v1/painel/estacoes/${estacaoId}/${c}`, {}));
+      const corpo = classifica && cor ? { riscoConfirmado: cor } : {};
+      op.setDado(await api.post<OperacaoEstacao>(`/v1/painel/estacoes/${estacaoId}/${c}`, corpo));
       setAviso(null);
     } catch (e) {
       setAviso(mensagemDoErro(e));
@@ -86,6 +107,9 @@ export default function Estacao() {
     if (d?.agora) setDesvio(Date.parse(d.agora) - Date.now());
   }, [d?.agora]);
   const chamado = d?.chamado ?? null;
+  const triagem = d?.estacao.etapa === "triagem";
+  const falta = d ? precisaClassificar(d.estacao.etapa, Boolean(chamado), cor) : false;
+  const ficha = chamado?.triagem;
   return (
     <div className="flex w-full flex-col gap-6">
       <CabecalhoDaPagina titulo="Estação" descricao="Chame o próximo paciente e acompanhe quem está na sua sala." />
@@ -129,15 +153,63 @@ export default function Estacao() {
                   {chamado.pulos > 0 ? ` · ${chamado.pulos} pulo(s)` : ""}
                 </span>
               </div>
-            ) : (
+            ) : null}
+            {chamado && triagem && ficha ? (
+              <div className="flex flex-col gap-4 border-t border-gray-100 pt-5">
+                {ficha.apoio ? (
+                  <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-900">
+                    <strong>Atenção:</strong> respondeu no app que tem pensamentos de tirar a própria vida ou de se
+                    machucar. Acolha agora. CVV 188 · SAMU 192.
+                  </p>
+                ) : null}
+                <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-gray-500">Sugerido pelo app</dt>
+                    <dd className="text-gray-900">
+                      {corDoNivel(ficha.riscoSugerido).rotulo} · {ficha.regra}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Prioridade declarada</dt>
+                    <dd className="text-gray-900">{textoDaPrioridade(ficha.prioridade)}</dd>
+                  </div>
+                </dl>
+                <fieldset className="flex flex-col gap-2">
+                  <legend className="mb-2 font-medium text-gray-900">Classificação de risco</legend>
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    {CORES_DA_TRIAGEM.map((c) => (
+                      <button
+                        key={c.nivel}
+                        type="button"
+                        aria-pressed={cor === c.nivel}
+                        onClick={() => setCor(c.nivel)}
+                        className={`flex min-h-20 flex-col items-start justify-center rounded-xl px-4 py-3 text-left transition ${c.classes} ${
+                          cor === c.nivel ? "ring-4 ring-gray-900 ring-offset-2" : cor ? "opacity-60" : ""
+                        }`}
+                      >
+                        <span className="font-bold text-lg">{c.rotulo}</span>
+                        <span className="text-sm">{c.descricao}</span>
+                        {c.nivel === ficha.riscoSugerido ? (
+                          <span className="mt-1 rounded bg-white/80 px-1.5 text-gray-900 text-xs">
+                            sugerido pelo app
+                          </span>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              </div>
+            ) : null}
+            {chamado ? null : (
               <p className="text-lg text-gray-700">
                 {d.aviso === "ninguem_aguardando" || d.aguardando === 0
                   ? "Ninguém aguardando na unidade no momento."
                   : "Estação livre."}
               </p>
             )}
+            {falta ? <p className="text-gray-600 text-sm">Escolha a cor para finalizar ou chamar o próximo.</p> : null}
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" disabled={enviando} onClick={() => comando("chamar")}>
+              <Button size="lg" disabled={enviando || falta} onClick={() => comando("chamar")}>
                 Chamar próximo
               </Button>
               {chamado ? (
@@ -145,7 +217,7 @@ export default function Estacao() {
                   <Button size="lg" variant="outline" disabled={enviando} onClick={() => comando("rechamar")}>
                     Rechamar
                   </Button>
-                  <Button size="lg" variant="success" disabled={enviando} onClick={() => comando("finalizar")}>
+                  <Button size="lg" variant="success" disabled={enviando || falta} onClick={() => comando("finalizar")}>
                     Finalizar
                   </Button>
                   <Button size="lg" variant="destructive" disabled={enviando} onClick={() => comando("nao-compareceu")}>
