@@ -479,16 +479,35 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     expect(ordem(d)).toEqual(["ana", "joao", "caio"]);
   });
 
-  it("H2: vermelho na triagem encaminha à emergência: atendido na triagem, não vai ao atendimento", () => {
-    const r = finalizar(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN);
+  it("AD-059: vermelho na triagem vai para o 1º lugar do atendimento, à frente até do laranja", () => {
+    let d = caioNaTriagem();
+    d = comItem(d, "ana", { risco: "muito_urgente", urgenciaConfirmada: true });
+    const r = finalizar(d, { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN);
+    const depois = aplicar(r);
+    expect(item(depois, "caio")).toMatchObject({ etapa: "atendimento", risco: "emergencia", urgenciaConfirmada: true });
+    expect(ordem(depois)).toEqual(["caio", "ana", "joao"]);
+    expect(r.ok && r.eventos.map((e) => e.tipo)).toEqual(["atendido", "risco_confirmado"]);
+  });
+
+  it("AD-059: encaminhar à emergência é explícito: atendido na triagem, sai da fila desta unidade", () => {
+    const r = finalizar(
+      caioNaTriagem(),
+      { estacaoId: "t1", riscoConfirmado: "emergencia", encaminhar: true },
+      T + 5 * MIN,
+    );
     const d = aplicar(r);
     expect(item(d, "caio")).toMatchObject({ etapa: "triagem", estado: "atendido_na_etapa" });
     expect(ordem(d)).toEqual(["ana", "joao"]);
     expect(r.ok && r.eventos.map((e) => e.tipo)).toEqual(["atendido", "encaminhado_emergencia"]);
     const viaChamar = aplicar(
-      chamarProximo(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN),
+      chamarProximo(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia", encaminhar: true }, T + 5 * MIN),
     );
     expect(item(viaChamar, "caio").estado).toBe("atendido_na_etapa");
+    // Encaminhar só com vermelho.
+    expect(finalizar(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "urgente", encaminhar: true }, T)).toEqual({
+      ok: false,
+      erro: "transicao_proibida",
+    });
   });
 
   it("RN-TRI-03: só a triagem confirma; sem confirmação, nada muda", () => {

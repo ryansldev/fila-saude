@@ -229,7 +229,8 @@ export async function minhas(db: DbDoTenant, pacienteId: string, agora: number):
       podeCancelar: e.remanejada === null && CANCELAVEIS.includes(e.estado) && item?.estado !== "chamado",
       etapa: item?.etapa ?? null,
       triado: Boolean(item?.atendidoEmEtapas.includes("triagem")),
-      encaminhado: e.riscoConfirmado === "emergencia" && e.estado === "concluida",
+      // AD-059: só quem a triagem encaminhou fica "atendido" na triagem; vermelho atendido aqui segue.
+      encaminhado: item?.etapa === "triagem" && item.estado === "atendido_na_etapa",
       saiaDeCasa:
         item?.estado === "remoto" &&
         Boolean(dia?.avisosSaiaDeCasa.some((a) => a.itemId === item.id && a.etapa === item.etapa)),

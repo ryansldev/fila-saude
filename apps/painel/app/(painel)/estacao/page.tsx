@@ -11,7 +11,7 @@ import { useApi } from "@/lib/api-context";
 import { cronometro, estacoesQueOpera } from "@/lib/fila";
 import { mensagemDoErro } from "@/lib/formularios/erros";
 import { useEu } from "@/lib/sessao";
-import { CORES_DA_TRIAGEM, corDoNivel, precisaClassificar, textoDaPrioridade } from "@/lib/triagem";
+import { CORES_DA_TRIAGEM, corDoNivel, podeEncaminhar, precisaClassificar, textoDaPrioridade } from "@/lib/triagem";
 import { useUnidadeAtual } from "@/lib/unidade-atual";
 import { useConsulta } from "@/lib/use-consulta";
 
@@ -69,20 +69,20 @@ export default function Estacao() {
     }
   }
 
-  async function comando(c: ComandoEstacao) {
+  async function comando(c: ComandoEstacao, encaminhar = false) {
     if (
       c === "nao-compareceu" &&
       !(await confirmar({ titulo: "Marcar que o paciente não compareceu?", acao: "Não compareceu", perigo: true }))
     )
       return;
-    // H3: na triagem, quem sai do chamado sai com a cor; vermelho encaminha à emergência (H2).
+    // H3: na triagem, quem sai do chamado sai com a cor. Vermelho vai ao 1º lugar do atendimento;
+    // encaminhar à emergência é a ação à parte, com confirmação (AD-059).
     const classifica = triagem && Boolean(chamado) && (c === "chamar" || c === "finalizar");
     if (
-      classifica &&
-      cor === "emergencia" &&
+      encaminhar &&
       !(await confirmar({
         titulo: "Encaminhar à emergência?",
-        descricao: "A pessoa sai da fila de hoje e não vai para o atendimento desta unidade.",
+        descricao: "A pessoa sai da fila de hoje desta unidade. Use quando ela precisa ir para outro serviço.",
         acao: "Encaminhar",
         perigo: true,
       }))
@@ -90,7 +90,7 @@ export default function Estacao() {
       return;
     setEnviando(true);
     try {
-      const corpo = classifica && cor ? { riscoConfirmado: cor } : {};
+      const corpo = classifica && cor ? { riscoConfirmado: cor, ...(encaminhar ? { encaminhar: true } : {}) } : {};
       op.setDado(await api.post<OperacaoEstacao>(`/v1/painel/estacoes/${estacaoId}/${c}`, corpo));
       setAviso(null);
     } catch (e) {
@@ -210,6 +210,12 @@ export default function Estacao() {
               </p>
             )}
             {falta ? <p className="text-gray-600 text-sm">Escolha a cor para finalizar ou chamar o próximo.</p> : null}
+            {chamado && triagem && podeEncaminhar(cor) ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-900 text-sm">
+                Vermelho: ao finalizar, a pessoa vai para o 1º lugar do atendimento desta unidade. Se ela precisa ir
+                para outro serviço, use "Encaminhar à emergência".
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-3">
               <Button size="lg" disabled={enviando || falta} onClick={() => comando("chamar")}>
                 Chamar próximo
@@ -225,6 +231,16 @@ export default function Estacao() {
                   <Button size="lg" variant="destructive" disabled={enviando} onClick={() => comando("nao-compareceu")}>
                     Não compareceu
                   </Button>
+                  {triagem && podeEncaminhar(cor) ? (
+                    <Button
+                      size="lg"
+                      variant="destructive"
+                      disabled={enviando}
+                      onClick={() => comando("finalizar", true)}
+                    >
+                      Encaminhar à emergência
+                    </Button>
+                  ) : null}
                 </>
               ) : null}
             </div>

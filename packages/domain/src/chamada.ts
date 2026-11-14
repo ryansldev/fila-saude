@@ -9,7 +9,8 @@ type Cmd = { estacaoId: string };
  * Fechar o chamado da estação (Finalizar ou chamar o próximo). Na triagem, o profissional pode
  * confirmar ou reclassificar o risco de quem sai dela (RN-TRI-03, RN-RISCO-01).
  */
-type CmdFechar = Cmd & { riscoConfirmado?: NivelRisco };
+/** `encaminhar`: com vermelho, encaminha à emergência e tira da fila desta unidade (AD-059). */
+type CmdFechar = Cmd & { riscoConfirmado?: NivelRisco; encaminhar?: boolean };
 
 const MIN = 60_000;
 const EVENTO_CHAMAR = "Estação chama o próximo";
@@ -58,11 +59,12 @@ function chamadoNaEstacao(dia: DiaSessao, estacaoId: string): ChamadoNaEstacao {
 }
 
 /**
- * Risco confirmado na saída da triagem (RN-TRI-03): só na etapa de triagem. Emergência (vermelho)
- * não volta à fila: é encaminhada à emergência (H2).
+ * Risco confirmado na saída da triagem (RN-TRI-03): só na etapa de triagem. Encaminhar à
+ * emergência só com vermelho (AD-059).
  */
-function riscoInvalido(item: ItemFila | undefined, risco: NivelRisco | undefined): CodigoErro | null {
-  if (risco === undefined) return null;
+function riscoInvalido(item: ItemFila | undefined, cmd: CmdFechar): CodigoErro | null {
+  if (cmd.encaminhar && cmd.riscoConfirmado !== "emergencia") return "transicao_proibida";
+  if (cmd.riscoConfirmado === undefined) return null;
   return item?.estado !== "chamado" || item.etapa !== "triagem" ? "transicao_proibida" : null;
 }
 
@@ -77,13 +79,14 @@ function encerrarChamado(
   item: ItemFila,
   agora: number,
   riscoConfirmado?: NivelRisco,
+  encaminhar = false,
 ): { dia: DiaSessao; eventos: Evento[] } {
   if (transicionar(TRANSICOES_ITEM, item.estado, EVENTO_ENCERRAR) !== "atendido_na_etapa") {
     throw new Error(`contrato: ${item.estado} não encerra`);
   }
   const atendidoEmEtapas = [...item.atendidoEmEtapas, item.etapa];
-  // H2: vermelho na triagem encaminha à emergência; a triagem fecha e não há atendimento aqui.
-  const emergencia = riscoConfirmado === "emergencia";
+  // AD-059: vermelho vai ao 1º lugar do atendimento; só "encaminhar" tira da fila desta unidade.
+  const emergencia = encaminhar && riscoConfirmado === "emergencia";
   const proximaEtapa = item.etapa === "triagem" && !emergencia ? ("atendimento" as const) : null;
   const eventos: Evento[] = [
     { tipo: "atendido", ...base(dia, item, estacao.id), dados: { etapa: item.etapa, proximaEtapa, em: agora } },
@@ -96,7 +99,7 @@ function encerrarChamado(
     return { dia: comItem(livre, { ...item, estado: "atendido_na_etapa", atendidoEmEtapas }), eventos };
   }
   let triado: ItemFila = { ...item, etapa: proximaEtapa, atendidoEmEtapas, saiuEm: null };
-  if (riscoConfirmado !== undefined && riscoConfirmado !== "emergencia") {
+  if (riscoConfirmado !== undefined) {
     triado = { ...triado, risco: riscoConfirmado, urgenciaConfirmada: ehUrgencia(riscoConfirmado) };
     // A API grava entrada.riscoConfirmado (INV-07: só agendador ou triagem).
     eventos.push({
@@ -126,13 +129,13 @@ export function chamarProximo(dia: DiaSessao, cmd: CmdFechar, agora: number): Re
   const anterior = estacao.chamadoItemId ? dia.itens.find((i) => i.id === estacao.chamadoItemId) : undefined;
   // Chamado de outra sessão em aberto nesta estação: não é derrubado.
   if (estacao.chamadoItemId !== null && anterior === undefined) return falha("estacao_ocupada");
-  const invalido = riscoInvalido(anterior, cmd.riscoConfirmado);
+  const invalido = riscoInvalido(anterior, cmd);
   if (invalido) return falha(invalido);
 
   let atual = dia;
   const eventos: Evento[] = [];
   if (anterior?.estado === "chamado") {
-    const fechado = encerrarChamado(atual, estacao, anterior, agora, cmd.riscoConfirmado);
+    const fechado = encerrarChamado(atual, estacao, anterior, agora, cmd.riscoConfirmado, cmd.encaminhar);
     atual = fechado.dia;
     eventos.push(...fechado.eventos);
   }
@@ -175,9 +178,9 @@ export function rechamar(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<Dia
 export function finalizar(dia: DiaSessao, cmd: CmdFechar, agora: number): Resultado<DiaSessao> {
   const achado = chamadoNaEstacao(dia, cmd.estacaoId);
   if (!achado.ok) return falha(achado.erro);
-  const invalido = riscoInvalido(achado.item, cmd.riscoConfirmado);
+  const invalido = riscoInvalido(achado.item, cmd);
   if (invalido) return falha(invalido);
-  const fechado = encerrarChamado(dia, achado.estacao, achado.item, agora, cmd.riscoConfirmado);
+  const fechado = encerrarChamado(dia, achado.estacao, achado.item, agora, cmd.riscoConfirmado, cmd.encaminhar);
   return ok(fechado.dia, fechado.eventos);
 }
 

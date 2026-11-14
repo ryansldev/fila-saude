@@ -16,7 +16,7 @@ export function rotaDoComando(comando: string) {
           await contextoDoPainel(req),
           idDoCaminho(req, "estacaoId"),
           cmd,
-          validar(corpoComandoSchema, req.body ?? {}).riscoConfirmado,
+          validar(corpoComandoSchema, req.body ?? {}),
         ),
       ),
     );

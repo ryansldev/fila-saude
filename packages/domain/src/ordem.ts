@@ -1,10 +1,13 @@
 import { type PrioridadeLegal, rankPrioridade } from "./prioridade.ts";
 import type { NivelRisco, OrdemMunicipio } from "./tipos.ts";
 
-/** Risco vigente na fila: emergência nunca entra (vai ao 192). */
-export type Risco = Exclude<NivelRisco, "emergencia">;
+/**
+ * Risco vigente na fila. Emergência sugerida pelo app nunca entra (vai ao 192); emergência só
+ * existe na fila quando a triagem dá vermelho e a pessoa é atendida aqui (AD-059).
+ */
+export type Risco = NivelRisco;
 
-const PESO_RISCO: Record<Risco, number> = { muito_urgente: 3, urgente: 2, atencao: 1, rotina: 0 };
+const PESO_RISCO: Record<Risco, number> = { emergencia: 4, muito_urgente: 3, urgente: 2, atencao: 1, rotina: 0 };
 
 /** Chave da ordem de chamada (RN-ORD). `risco` é o vigente: confirmado, se houver; senão, sugerido. */
 export type ChaveOrdem = {

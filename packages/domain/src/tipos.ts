@@ -7,8 +7,9 @@ import type { Grupo } from "./prioridade.ts";
  */
 export type NivelRisco = "emergencia" | "muito_urgente" | "urgente" | "atencao" | "rotina";
 
-/** Urgência confirmada (RN-ORD: sempre primeiro): amarelo ou laranja dados pela triagem. */
-export const ehUrgencia = (nivel: NivelRisco | null): boolean => nivel === "urgente" || nivel === "muito_urgente";
+/** Urgência confirmada (RN-ORD: sempre primeiro): vermelho, laranja ou amarelo dados pela triagem. */
+export const ehUrgencia = (nivel: NivelRisco | null): boolean =>
+  nivel === "urgente" || nivel === "muito_urgente" || nivel === "emergencia";
 
 /**
  * Tela 1 do questionário v1. "Nenhum destes" não entra aqui: é a lista vazia.

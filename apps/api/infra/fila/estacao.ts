@@ -111,7 +111,7 @@ function fecharEntradas(dia: DiaSessao, entradas: Entrada[]): Entrada[] {
   });
 }
 
-// INV-07: o risco que a triagem deu vai para a entrada (vermelho também, H2).
+// INV-07: o risco que a triagem deu vai para a entrada (vermelho também, AD-059).
 function comRiscoConfirmado(entradas: Entrada[], eventos: Evento[]): Entrada[] {
   const nivel = new Map<string, NivelRisco>();
   for (const ev of eventos) {
@@ -124,7 +124,11 @@ function comRiscoConfirmado(entradas: Entrada[], eventos: Evento[]): Entrada[] {
 
 const COMANDOS: Record<
   ComandoEstacao,
-  (d: DiaSessao, cmd: { estacaoId: string; riscoConfirmado?: NivelRisco }, agora: number) => Resultado<DiaSessao>
+  (
+    d: DiaSessao,
+    cmd: { estacaoId: string; riscoConfirmado?: NivelRisco; encaminhar?: boolean },
+    agora: number,
+  ) => Resultado<DiaSessao>
 > = {
   chamar: chamarProximo,
   rechamar,
@@ -137,8 +141,9 @@ export async function comandoNaEstacao(
   ctx: ContextoDaAcao,
   estacaoId: string,
   comando: ComandoEstacao,
-  riscoConfirmado?: NivelRisco,
+  corpo: { riscoConfirmado?: NivelRisco | undefined; encaminhar?: boolean | undefined } = {},
 ): Promise<OperacaoEstacao> {
+  const { riscoConfirmado, encaminhar } = corpo;
   const e = await exigirEstacao(ctx.db, estacaoId);
   return executarAcao(
     ctx,
@@ -160,11 +165,11 @@ export async function comandoNaEstacao(
         if (e.etapa === "triagem" && fecha && chamado && riscoConfirmado === undefined) {
           throw new ErroApi(422, "classifique_o_risco", undefined, "Escolha a cor da classificação de risco.");
         }
-        const r = COMANDOS[comando](
-          c.dia,
-          { estacaoId, ...(fecha && chamado && riscoConfirmado ? { riscoConfirmado } : {}) },
-          ctx.agora,
-        );
+        const extra =
+          fecha && chamado
+            ? { ...(riscoConfirmado ? { riscoConfirmado } : {}), ...(encaminhar ? { encaminhar } : {}) }
+            : {};
+        const r = COMANDOS[comando](c.dia, { estacaoId, ...extra }, ctx.agora);
         if (!r.ok) {
           if (r.erro === "nenhum_elegivel" && comando === "chamar") {
             return { resultado: await montar(tx, e, s, c.dia, ctx.agora, "ninguem_aguardando") };

@@ -84,3 +84,6 @@ const GRUPOS: Record<string, string> = {
 
 export const textoDaPrioridade = (grupos: string[]): string =>
   grupos.length > 0 ? grupos.map((g) => GRUPOS[g] ?? g).join(", ") : "Nenhuma";
+
+/** AD-059: vermelho vai ao 1º lugar do atendimento; encaminhar à emergência é uma ação à parte. */
+export const podeEncaminhar = (cor: NivelRiscoApi | null): boolean => cor === "emergencia";

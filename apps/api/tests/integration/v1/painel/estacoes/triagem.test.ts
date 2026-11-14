@@ -90,8 +90,9 @@ describe("triagem (T6.1, fatia 3)", () => {
     expect(await riscoGravado("Ana")).toEqual({ r: "atencao", estado: "na_fila" });
   });
 
-  it("H2: vermelho encaminha à emergência e conclui a entrada", async () => {
-    const r = await cmd(t1, "finalizar", { riscoConfirmado: "emergencia" });
+  it("AD-059: encaminhar à emergência (só com vermelho) conclui a entrada", async () => {
+    expect((await cmd(t1, "finalizar", { riscoConfirmado: "urgente", encaminhar: true })).status).toBe(409);
+    const r = await cmd(t1, "finalizar", { riscoConfirmado: "emergencia", encaminhar: true });
     expect(r.status).toBe(200);
     expect(r.corpo.chamado).toBeNull();
     expect(await riscoGravado("Bruno")).toEqual({ r: "emergencia", estado: "concluida" });
@@ -109,9 +110,16 @@ describe("triagem (T6.1, fatia 3)", () => {
       ((await doApp("GET", `/v1/municipios/${c.slug}/minhas`, davi.cookie)) as MinhaEntrada[])[0];
     expect(await minha()).toMatchObject({ etapa: "triagem", triado: false, encaminhado: false });
     await cmd(t1, "chamar", { riscoConfirmado: "rotina" }); // ninguém chamado: a cor é ignorada; chama Carla
-    await cmd(t1, "chamar", { riscoConfirmado: "rotina" }); // Carla sai da triagem; Davi é chamado
+    // AD-059: vermelho sem encaminhar fica na unidade, em 1º no atendimento.
+    await cmd(t1, "chamar", { riscoConfirmado: "emergencia" }); // Carla sai da triagem; Davi é chamado
+    expect(await riscoGravado("Carla")).toEqual({ r: "emergencia", estado: "na_fila" });
     await cmd(t1, "finalizar", { riscoConfirmado: "muito_urgente" }); // AD-058: laranja do Manchester
-    expect(await minha()).toMatchObject({ etapa: "atendimento", triado: true, itemEstado: "presente" });
+    expect(await minha()).toMatchObject({
+      etapa: "atendimento",
+      triado: true,
+      itemEstado: "presente",
+      encaminhado: false,
+    });
     expect(await riscoGravado("Davi")).toEqual({ r: "muito_urgente", estado: "na_fila" });
   });
 });

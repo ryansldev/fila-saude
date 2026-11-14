@@ -24,7 +24,7 @@ export const itemDaFilaSchema = z.object({
   etapa: etapaSchema,
   estado: estadoItemSchema,
   pulos: z.number().int().min(0),
-  risco: z.enum(["muito_urgente", "urgente", "atencao", "rotina"]),
+  risco: z.enum(["emergencia", "muito_urgente", "urgente", "atencao", "rotina"]),
   prioridade: z.boolean(),
   estacaoId: z.string().nullable(),
   /** RN-FILA-05: o que a recepção precisa conferir antes da presença. */
@@ -66,8 +66,13 @@ export const chamadoSchema = z.object({
   triagem: fichaDaTriagemSchema.optional(),
 });
 
-/** Corpo de "chamar" e "finalizar": na triagem, a cor dada a quem sai (H3: obrigatória com alguém chamado). */
-export const corpoComandoSchema = z.object({ riscoConfirmado: nivelRiscoSchema.optional() }).default({});
+/**
+ * Corpo de "chamar" e "finalizar": na triagem, a cor dada a quem sai (H3: obrigatória com alguém
+ * chamado) e, só com vermelho, `encaminhar` à emergência, que tira da fila desta unidade (AD-059).
+ */
+export const corpoComandoSchema = z
+  .object({ riscoConfirmado: nivelRiscoSchema.optional(), encaminhar: z.boolean().optional() })
+  .default({});
 
 /** Tela da estação (T3.7): a sessão aberta de hoje que ela atende, o chamado e quantos aguardam presentes. */
 export const operacaoEstacaoSchema = z.object({

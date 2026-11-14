@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CORES_DA_TRIAGEM, corDoNivel, precisaClassificar, textoDaPrioridade } from "@/lib/triagem";
+import { CORES_DA_TRIAGEM, corDoNivel, podeEncaminhar, precisaClassificar, textoDaPrioridade } from "@/lib/triagem";
 
 describe("triagem na estação (fatia 3)", () => {
   it("AD-058: as cinco cores do Manchester, da mais grave para a mais leve, com o tempo-alvo", () => {
@@ -24,5 +24,11 @@ describe("triagem na estação (fatia 3)", () => {
   it("prioridade declarada em português; sem grupos, 'Nenhuma'", () => {
     expect(textoDaPrioridade(["idoso80", "colo"])).toBe("80 anos ou mais, criança de colo");
     expect(textoDaPrioridade([])).toBe("Nenhuma");
+  });
+
+  it("AD-059: 'encaminhar à emergência' só aparece com vermelho escolhido", () => {
+    expect(podeEncaminhar("emergencia")).toBe(true);
+    expect(podeEncaminhar("muito_urgente")).toBe(false);
+    expect(podeEncaminhar(null)).toBe(false);
   });
 });

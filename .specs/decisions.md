@@ -64,6 +64,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-056 | Decisões da revisão de 2026-11-13 | ativa |
 | AD-057 | Prazo de chegada depois do "venha agora" | ativa |
 | AD-058 | Triagem pelo Manchester padrão (cinco cores) | ativa |
+| AD-059 | Vermelho fica na unidade; encaminhar à emergência é à parte | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -296,7 +297,11 @@ O remoto só perde a vez por chamadas feitas depois do fim do prazo de chegada (
 
 ### AD-058 · Triagem pelo Manchester padrão (cinco cores)
 2026-11-14 · ativa · Muda: AD-056 (2), RN-TRI-03, RN-RISCO-01
-A triagem classifica pelas cinco cores do Sistema Manchester: vermelho (emergência, imediato), laranja (muito urgente, até 10 min), amarelo (urgente, até 60 min), verde (pouco urgente, até 120 min), azul (não urgente, até 240 min). O nível novo `muito_urgente` só vem da triagem; o questionário do app continua sugerindo quatro níveis. Laranja e amarelo confirmados são urgência confirmada (sempre primeiro), e laranja vem antes de amarelo. Vermelho segue H2 (encaminha à emergência). **Por quê:** decisão sua, 2026-11-14 ("usa o protocolo manchester padrão"). Os tempos-alvo aparecem só como referência na estação; a fila não muda de ordem pelo tempo.
+A triagem classifica pelas cinco cores do Sistema Manchester: vermelho (emergência, imediato), laranja (muito urgente, até 10 min), amarelo (urgente, até 60 min), verde (pouco urgente, até 120 min), azul (não urgente, até 240 min). O nível novo `muito_urgente` só vem da triagem; o questionário do app continua sugerindo quatro níveis. Laranja e amarelo confirmados são urgência confirmada (sempre primeiro), e laranja vem antes de amarelo. Vermelho: ver AD-059. **Por quê:** decisão sua, 2026-11-14 ("usa o protocolo manchester padrão"). Os tempos-alvo aparecem só como referência na estação; a fila não muda de ordem pelo tempo.
+
+### AD-059 · Vermelho fica na unidade; encaminhar à emergência é à parte
+2026-11-14 · ativa · Muda: AD-058, RN-TRI-03, RN-TRI-04
+Vermelho na triagem põe a pessoa em 1º lugar no atendimento desta unidade, à frente do laranja (urgência confirmada de maior peso). Encaminhar à emergência é uma ação explícita do enfermeiro, só com vermelho, com confirmação: a triagem fecha, a pessoa sai da fila da unidade e a entrada fica concluída, com o evento `encaminhado_emergencia`. **Por quê:** decisão sua, 2026-11-14: muitas vezes a pessoa está na unidade e pode ser atendida ali; tirar da fila de imediato não faz sentido.
 
 ## Arquitetura
 

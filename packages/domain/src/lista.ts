@@ -193,9 +193,10 @@ export function conferenciaNaEntrada(e: Entrada, item: { entradaId: string; prio
   return { ...e, prioridade: { grupos: aConferir(p), conferida: p.conferida, conferidaEm: p.conferidaEm } };
 }
 
-/** Risco vigente: confirmado, se houver; senão, sugerido. Emergência não fica na lista. */
+/** Risco vigente: confirmado, se houver; senão, sugerido (emergência sugerida não fica na lista). */
 export function riscoVigente(e: Entrada): Risco {
-  const nivel = e.riscoConfirmado ?? e.classificacao.nivel;
+  if (e.riscoConfirmado !== null) return e.riscoConfirmado;
+  const nivel = e.classificacao.nivel;
   return nivel === "emergencia" ? "urgente" : nivel;
 }
 
@@ -209,6 +210,7 @@ const chaveSugestao = (e: Entrada, agora: number, fuso: string): ChaveSugestao =
 });
 
 const ROTULO_RISCO: Record<Risco, string> = {
+  emergencia: "emergência",
   muito_urgente: "muito urgente",
   urgente: "urgente",
   atencao: "atenção",
