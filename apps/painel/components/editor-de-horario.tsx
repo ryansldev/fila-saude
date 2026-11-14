@@ -1,10 +1,14 @@
 "use client";
 
+import { PlusIcon, XIcon } from "lucide-react";
 import { Texto } from "@/components/formulario";
 import { Button } from "@/components/ui/button";
 import { adicionarIntervalo, type ChaveDia, DIAS, type Horario } from "@/lib/formularios/horario";
 
-/** Horário de funcionamento: uma lista de intervalos por dia; dia sem intervalo = fechado. */
+/**
+ * Horário de funcionamento: uma linha por dia, com os intervalos daquele dia; dia sem intervalo = fechado.
+ * O título fica com quem usa (a seção do painel lateral).
+ */
 export function EditorDeHorario({
   valor,
   mudar,
@@ -25,52 +29,68 @@ export function EditorDeHorario({
   };
 
   return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="mb-1 text-sm font-semibold text-gray-800">Horário de funcionamento</legend>
+    <div className="flex flex-col divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
       {DIAS.map(({ chave, nome }) => {
         const intervalos = valor[chave] ?? [];
         return (
-          <div key={chave} className="flex flex-wrap items-start gap-3 border-b border-gray-100 py-2">
-            <span className="w-20 pt-2 text-sm font-medium text-gray-700">{nome}</span>
+          <div key={chave} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:gap-4">
+            <span className="w-24 shrink-0 pt-1.5 text-sm font-semibold text-slate-900">{nome}</span>
             <div className="flex flex-1 flex-col gap-2">
-              {intervalos.length === 0 ? <span className="pt-2 text-sm text-gray-500">Fechado</span> : null}
-              {intervalos.map((iv, i) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: intervalos editáveis sem id próprio
-                <div key={i} className="flex flex-col gap-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Texto
-                      type="time"
-                      aria-label={`${nome}, início do intervalo ${i + 1}`}
-                      aria-invalid={erros[`horario.${chave}.${i}`] ? true : undefined}
-                      className="w-32"
-                      valor={iv.abre}
-                      aoMudar={(hora) => trocar(chave, i, "abre", hora)}
-                    />
-                    <span className="text-gray-500">às</span>
-                    <Texto
-                      type="time"
-                      aria-label={`${nome}, fim do intervalo ${i + 1}`}
-                      aria-invalid={erros[`horario.${chave}.${i}`] ? true : undefined}
-                      className="w-32"
-                      valor={iv.fecha}
-                      aoMudar={(hora) => trocar(chave, i, "fecha", hora)}
-                    />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => remover(chave, i)}>
-                      Remover
-                    </Button>
+              {intervalos.length === 0 ? <span className="pt-1.5 text-sm text-slate-400">Fechado</span> : null}
+              {intervalos.map((iv, i) => {
+                const erro = erros[`horario.${chave}.${i}`];
+                return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: intervalos editáveis sem id próprio
+                  <div key={i} className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <Texto
+                        type="time"
+                        aria-label={`${nome}, início do intervalo ${i + 1}`}
+                        aria-invalid={erro ? true : undefined}
+                        className="w-28"
+                        valor={iv.abre}
+                        aoMudar={(hora) => trocar(chave, i, "abre", hora)}
+                      />
+                      <span className="text-sm text-slate-500">às</span>
+                      <Texto
+                        type="time"
+                        aria-label={`${nome}, fim do intervalo ${i + 1}`}
+                        aria-invalid={erro ? true : undefined}
+                        className="w-28"
+                        valor={iv.fecha}
+                        aoMudar={(hora) => trocar(chave, i, "fecha", hora)}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                        aria-label={`Remover intervalo ${i + 1} de ${nome}`}
+                        title="Remover intervalo"
+                        onClick={() => remover(chave, i)}
+                      >
+                        <XIcon />
+                      </Button>
+                    </div>
+                    {erro ? <span className="text-xs text-destructive">{erro}</span> : null}
                   </div>
-                  {erros[`horario.${chave}.${i}`] ? (
-                    <span className="text-xs text-red-700">{erros[`horario.${chave}.${i}`]}</span>
-                  ) : null}
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => mudar(adicionarIntervalo(valor, chave))}>
-              + Intervalo
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="self-start"
+              aria-label={`Adicionar intervalo em ${nome}`}
+              onClick={() => mudar(adicionarIntervalo(valor, chave))}
+            >
+              <PlusIcon data-icon="inline-start" />
+              Adicionar intervalo
             </Button>
           </div>
         );
       })}
-    </fieldset>
+    </div>
   );
 }

@@ -2,14 +2,13 @@
 
 import { mascararCep, soDigitos } from "@fila-saude/schemas/mascaras";
 import { unidadeEdicaoSchema, unidadeEntradaSchema } from "@fila-saude/schemas/unidade";
-import { PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
-import { type ComponentProps, type FormEvent, useEffect, useMemo, useState } from "react";
+import { PlusIcon } from "lucide-react";
+import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { EditorDeHorario } from "@/components/editor-de-horario";
-import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
-import { CabecalhoDaPagina } from "@/components/pagina";
+import { Aviso, Campo, Escolha, Numero, PainelLateral, Secao, Selecao, Tabela, Texto } from "@/components/formulario";
+import { AcoesDaLinha, CabecalhoDaPagina } from "@/components/pagina";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
@@ -50,19 +49,43 @@ function enderecoEmTexto(e: Endereco) {
 
 const SEM_ERROS: ErrosDoEnvio = { geral: null, campos: {} };
 const TIPOS = [
-  { valor: "ubs", rotulo: "UBS" },
-  { valor: "policlinica", rotulo: "Policlínica" },
-  { valor: "upa", rotulo: "UPA" },
+  { valor: "ubs", rotulo: "UBS", descricao: "Atenção básica: consultas, vacinas e acompanhamento." },
+  { valor: "policlinica", rotulo: "Policlínica", descricao: "Especialidades e exames, em geral com encaminhamento." },
+  { valor: "upa", rotulo: "UPA", descricao: "Urgência e emergência, aberta por mais horas." },
 ];
+const ROTULO_DO_TIPO: Record<string, string> = Object.fromEntries(TIPOS.map((t) => [t.valor, t.rotulo]));
 
-function NovaUnidade({ aoCriar }: { aoCriar: (nome: string) => void }) {
+/** Rótulo sem a unidade entre parênteses: ela vai como sufixo do campo. */
+const REGRAS: Record<(typeof CAMPOS_CONFIG)[number]["campo"], { rotulo: string; sufixo: string }> = {
+  janelaK: { rotulo: "Janela de chamada (K)", sufixo: "pessoas" },
+  toleranciaMin: { rotulo: "Tolerância", sufixo: "min" },
+  saiaDeCasaMin: { rotulo: 'Aviso "saia de casa"', sufixo: "min" },
+  prazoConfirmacaoHoras: { rotulo: "Prazo de confirmação", sufixo: "h" },
+};
+const comMaiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+/** Cadastro de unidade num painel lateral: identificação, endereço, fuso e horário. */
+function NovaUnidade({
+  aberto,
+  aoFechar,
+  aoCriar,
+}: {
+  aberto: boolean;
+  aoFechar: () => void;
+  aoCriar: (nome: string) => void;
+}) {
   const api = useApi();
   const [v, setV] = useState(VAZIA);
   const [horario, setHorario] = useState<Horario>(HORARIO_PADRAO);
   const fusos = useMemo(() => opcoesDeFuso(), []);
   const [erros, setErros] = useState(SEM_ERROS);
-  async function enviar(e: FormEvent) {
-    e.preventDefault();
+  const [enviando, setEnviando] = useState(false);
+  // Reabriu: sem erros antigos.
+  useEffect(() => {
+    if (aberto) setErros(SEM_ERROS);
+  }, [aberto]);
+
+  async function enviar() {
     const problemas = problemasDoHorario(horario);
     if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
     const corpo = {
@@ -81,6 +104,7 @@ function NovaUnidade({ aoCriar }: { aoCriar: (nome: string) => void }) {
     };
     const invalidos = validarNoCliente(unidadeEntradaSchema, corpo);
     if (invalidos) return setErros(invalidos);
+    setEnviando(true);
     try {
       await api.post("/v1/painel/unidades", corpo);
       setErros(SEM_ERROS);
@@ -89,6 +113,8 @@ function NovaUnidade({ aoCriar }: { aoCriar: (nome: string) => void }) {
       aoCriar(v.nome);
     } catch (err) {
       setErros(errosDoEnvio(err));
+    } finally {
+      setEnviando(false);
     }
   }
 
@@ -97,95 +123,91 @@ function NovaUnidade({ aoCriar }: { aoCriar: (nome: string) => void }) {
     cep: mascararCep,
     cnes: (t) => soDigitos(t).slice(0, 7),
   };
-  const campo = (
-    k: keyof typeof VAZIA,
-    rotulo: string,
-    extra: Omit<ComponentProps<typeof Texto>, "valor" | "aoMudar"> = {},
-    chaveDoErro: string = k,
-  ) => (
-    <Campo rotulo={rotulo} erro={erros.campos[chaveDoErro]}>
-      <Texto valor={v[k]} mascara={MASCARA[k]} aoMudar={(t) => setV({ ...v, [k]: t })} {...extra} />
-    </Campo>
+  const texto = (k: keyof typeof VAZIA, extra: Omit<ComponentProps<typeof Texto>, "valor" | "aoMudar"> = {}) => (
+    <Texto valor={v[k]} mascara={MASCARA[k]} aoMudar={(t) => setV({ ...v, [k]: t })} {...extra} />
   );
 
   return (
-    <form onSubmit={enviar} className="grid gap-3 sm:grid-cols-2">
-      {campo("nome", "Nome", { required: true })}
-      <Campo rotulo="Tipo" erro={erros.campos.tipo}>
-        <Selecao valor={v.tipo} opcoes={TIPOS} aoMudar={(tipo) => setV({ ...v, tipo })} />
-      </Campo>
-      {campo("cnes", "Código CNES (opcional)", { inputMode: "numeric", maxLength: 7 })}
-      {campo(
-        "cep",
-        "CEP",
-        { inputMode: "numeric", required: true, maxLength: 9, placeholder: "00000-000" },
-        "endereco.cep",
-      )}
-      {campo("logradouro", "Logradouro", { required: true, placeholder: "Rua, avenida…" }, "endereco.logradouro")}
-      {campo("numero", "Número", { required: true, placeholder: "ou s/n" }, "endereco.numero")}
-      {campo("complemento", "Complemento", {}, "endereco.complemento")}
-      {campo("bairro", "Bairro", { required: true }, "endereco.bairro")}
-      <Campo rotulo="Fuso horário" erro={erros.campos.fuso}>
-        <Selecao
-          valor={v.fuso}
-          opcoes={fusos.map((f) => ({ valor: f.fuso, rotulo: f.rotulo }))}
-          aoMudar={(fuso) => setV({ ...v, fuso })}
-        />
-      </Campo>
-      <div className="flex flex-col gap-2 sm:col-span-2">
+    <PainelLateral
+      aberto={aberto}
+      aoFechar={aoFechar}
+      titulo="Adicionar unidade"
+      descricao="As regras da fila vêm do município; dá para ajustar depois, em Configurar."
+      aoEnviar={enviar}
+      acao="Criar unidade"
+      enviando={enviando}
+    >
+      <Secao titulo="Identificação" descricao="Como a unidade aparece no app e no painel.">
+        <Campo rotulo="Nome" erro={erros.campos.nome}>
+          {texto("nome", { required: true, placeholder: "Ex.: UBS Centro" })}
+        </Campo>
+        <Campo rotulo="Tipo" erro={erros.campos.tipo}>
+          <Escolha colunas={3} valor={v.tipo} opcoes={TIPOS} aoMudar={(tipo) => setV({ ...v, tipo })} />
+        </Campo>
+        <Campo
+          rotulo="Código CNES (opcional)"
+          erro={erros.campos.cnes}
+          dica="7 dígitos, do cadastro nacional de estabelecimentos."
+          className="sm:w-60"
+        >
+          {texto("cnes", { inputMode: "numeric", maxLength: 7, placeholder: "0000000" })}
+        </Campo>
+      </Secao>
+      <Secao titulo="Endereço" descricao="Cidade e estado vêm do município.">
+        <div className="grid gap-4 sm:grid-cols-[10rem_1fr]">
+          <Campo rotulo="CEP" erro={erros.campos["endereco.cep"]}>
+            {texto("cep", { inputMode: "numeric", required: true, maxLength: 9, placeholder: "00000-000" })}
+          </Campo>
+          <Campo rotulo="Logradouro" erro={erros.campos["endereco.logradouro"]}>
+            {texto("logradouro", { required: true, placeholder: "Rua, avenida…" })}
+          </Campo>
+          <Campo rotulo="Número" erro={erros.campos["endereco.numero"]}>
+            {texto("numero", { required: true, placeholder: "ou s/n" })}
+          </Campo>
+          <Campo rotulo="Complemento" erro={erros.campos["endereco.complemento"]}>
+            {texto("complemento", { placeholder: "Opcional" })}
+          </Campo>
+        </div>
+        <Campo rotulo="Bairro" erro={erros.campos["endereco.bairro"]}>
+          {texto("bairro", { required: true })}
+        </Campo>
+      </Secao>
+      <Secao titulo="Fuso e horário" descricao="Dias sem intervalo ficam fechados.">
+        <Campo rotulo="Fuso horário" erro={erros.campos.fuso} className="sm:w-80">
+          <Selecao
+            valor={v.fuso}
+            opcoes={fusos.map((f) => ({ valor: f.fuso, rotulo: f.rotulo }))}
+            aoMudar={(fuso) => setV({ ...v, fuso })}
+          />
+        </Campo>
         <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
-        <Aviso texto={erros.geral} />
-        <Button type="submit" className="self-end">
-          Criar unidade
-        </Button>
-      </div>
-    </form>
+      </Secao>
+      <Aviso texto={erros.geral} />
+    </PainelLateral>
   );
 }
 
-function HorarioDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: () => void }) {
+/**
+ * Horário e regras da fila de uma unidade, num só envio (o PATCH aceita os dois juntos).
+ * Regra vazia = herda do município ou do padrão.
+ */
+function ConfigurarUnidade({
+  unidade,
+  aoFechar,
+  aoSalvar,
+}: {
+  unidade: Unidade;
+  aoFechar: () => void;
+  aoSalvar: (nome: string) => void;
+}) {
   const api = useApi();
   const [horario, setHorario] = useState<Horario>(unidade.horario);
-  const [erros, setErros] = useState(SEM_ERROS);
-  const [ok, setOk] = useState<string | null>(null);
-
-  async function salvar(e: FormEvent) {
-    e.preventDefault();
-    setOk(null);
-    const problemas = problemasDoHorario(horario);
-    if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
-    const invalidos = validarNoCliente(unidadeEdicaoSchema, { horario });
-    if (invalidos) return setErros(invalidos);
-    try {
-      await api.patch(`/v1/painel/unidades/${unidade.id}`, { horario });
-      setErros(SEM_ERROS);
-      setOk("Horário salvo.");
-      aoSalvar();
-    } catch (err) {
-      setErros(errosDoEnvio(err));
-    }
-  }
-
-  return (
-    <form onSubmit={salvar} className="flex flex-col gap-3">
-      <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
-      <Aviso texto={erros.geral} />
-      <Aviso texto={ok} tipo="ok" />
-      <Button type="submit" className="self-end">
-        Salvar horário
-      </Button>
-    </form>
-  );
-}
-
-function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: () => void }) {
-  const api = useApi();
   const [efetiva, setEfetiva] = useState<ConfigEfetiva | null>(null);
   const [valores, setValores] = useState<Record<string, string>>({});
   const [erros, setErros] = useState(SEM_ERROS);
-  const [ok, setOk] = useState<string | null>(null);
-
   const [erroAoLer, setErroAoLer] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
   useEffect(() => {
     let ativo = true;
     api
@@ -206,13 +228,9 @@ function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: ()
     };
   }, [api, unidade.id]);
 
-  if (erroAoLer) return <Aviso texto={erroAoLer} />;
-  if (!efetiva) return null;
-  const proprios = CAMPOS_CONFIG.map((c) => c.campo).filter((c) => campoHerdado(efetiva, c).proprio);
-
-  async function salvar(e: FormEvent) {
-    e.preventDefault();
-    setOk(null);
+  async function salvar() {
+    const problemas = problemasDoHorario(horario);
+    if (Object.keys(problemas).length > 0) return setErros({ geral: null, campos: problemas });
     // Só inteiros (ou vazio = herdar): "1,5" ou "dez" viraria NaN no envio.
     const naoInteiros = Object.fromEntries(
       Object.entries(valores)
@@ -220,48 +238,65 @@ function ConfigDaUnidade({ unidade, aoSalvar }: { unidade: Unidade; aoSalvar: ()
         .map(([c]) => [`config.${c}`, "Use um número inteiro, ou deixe vazio para herdar."]),
     );
     if (Object.keys(naoInteiros).length > 0) return setErros({ geral: null, campos: naoInteiros });
-    const corpo = { config: configParaEnvio(valores, proprios) };
+    // Sem a config lida, só o horário vai (não dá para saber o que é próprio da unidade).
+    const proprios = efetiva ? CAMPOS_CONFIG.map((c) => c.campo).filter((c) => campoHerdado(efetiva, c).proprio) : [];
+    const config = efetiva ? configParaEnvio(valores, proprios) : {};
+    const corpo = Object.keys(config).length > 0 ? { horario, config } : { horario };
     const invalidos = validarNoCliente(unidadeEdicaoSchema, corpo);
     if (invalidos) return setErros(invalidos);
+    setEnviando(true);
     try {
       await api.patch(`/v1/painel/unidades/${unidade.id}`, corpo);
       setErros(SEM_ERROS);
-      setOk("Configuração salva.");
-      setEfetiva(await api.get<ConfigEfetiva>(`/v1/painel/unidades/${unidade.id}/config`));
-      aoSalvar();
+      aoSalvar(unidade.nome);
     } catch (err) {
       setErros(errosDoEnvio(err));
+    } finally {
+      setEnviando(false);
     }
   }
 
   return (
-    <form onSubmit={salvar} className="grid gap-3 sm:grid-cols-2">
-      {CAMPOS_CONFIG.map(({ campo, rotulo }) => {
-        const h = campoHerdado(efetiva, campo);
-        return (
-          <Campo
-            key={campo}
-            rotulo={rotulo}
-            erro={erros.campos[`config.${campo}`]}
-            dica={valores[campo] ? "valor da unidade (apague para herdar)" : h.texto}
-          >
-            <Texto
-              inputMode="numeric"
-              placeholder={String(h.valor)}
-              valor={valores[campo] ?? ""}
-              aoMudar={(t) => setValores({ ...valores, [campo]: t })}
-            />
-          </Campo>
-        );
-      })}
-      <div className="flex flex-col gap-2 sm:col-span-2">
-        <Aviso texto={erros.geral} />
-        <Aviso texto={ok} tipo="ok" />
-        <Button type="submit" className="self-end">
-          Salvar configuração
-        </Button>
-      </div>
-    </form>
+    <PainelLateral
+      aberto
+      aoFechar={aoFechar}
+      titulo={`Configurar ${unidade.nome}`}
+      descricao={enderecoEmTexto(unidade.endereco)}
+      aoEnviar={salvar}
+      acao="Salvar"
+      enviando={enviando}
+    >
+      <Secao titulo="Horário de funcionamento" descricao="Dias sem intervalo ficam fechados.">
+        <EditorDeHorario valor={horario} mudar={setHorario} erros={erros.campos} />
+      </Secao>
+      <Secao titulo="Regras da fila" descricao="Deixe vazio para seguir o valor do município ou do padrão.">
+        {erroAoLer ? <Aviso texto={erroAoLer} /> : null}
+        {efetiva ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {CAMPOS_CONFIG.map(({ campo }) => {
+              const h = campoHerdado(efetiva, campo);
+              const regra = REGRAS[campo];
+              return (
+                <Campo
+                  key={campo}
+                  rotulo={regra.rotulo}
+                  erro={erros.campos[`config.${campo}`]}
+                  dica={valores[campo] ? "Valor da unidade. Apague para herdar." : `${comMaiuscula(h.texto)}.`}
+                >
+                  <Numero
+                    sufixo={regra.sufixo}
+                    placeholder={String(h.valor)}
+                    valor={valores[campo] ?? ""}
+                    aoMudar={(t) => setValores({ ...valores, [campo]: t })}
+                  />
+                </Campo>
+              );
+            })}
+          </div>
+        ) : null}
+      </Secao>
+      <Aviso texto={erros.geral} />
+    </PainelLateral>
   );
 }
 
@@ -310,86 +345,48 @@ export default function Unidades() {
       <Tabela cabecalho={["Nome", "Tipo", "CNES", "Endereço", "Horário", ""]}>
         {itens.map((u) => (
           <TableRow key={u.id}>
-            <TableCell className="font-medium">{u.nome}</TableCell>
-            <TableCell className="uppercase">{u.tipo}</TableCell>
+            <TableCell className="font-semibold text-slate-900">{u.nome}</TableCell>
+            <TableCell>{ROTULO_DO_TIPO[u.tipo] ?? u.tipo}</TableCell>
             <TableCell>{u.cnes ?? "—"}</TableCell>
             <TableCell className="whitespace-normal">{enderecoEmTexto(u.endereco)}</TableCell>
             <TableCell className="whitespace-normal">{resumoDoHorario(u.horario)}</TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-gray-500 hover:text-gray-900"
-                  aria-label={`Remover ${u.nome}`}
-                  title="Remover"
-                  onClick={() => remover(u)}
-                >
-                  <Trash2Icon />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-gray-500 hover:text-gray-900"
-                  aria-label={`Configurar ${u.nome}`}
-                  title="Configurar"
-                  onClick={() => setAberta(u.id)}
-                >
-                  <SettingsIcon />
-                </Button>
-              </div>
+            <TableCell>
+              <AcoesDaLinha
+                excluir={{ rotulo: `Remover ${u.nome}`, aoClicar: () => remover(u) }}
+                editar={{ rotulo: `Configurar ${u.nome}`, aoClicar: () => setAberta(u.id) }}
+              />
             </TableCell>
           </TableRow>
         ))}
         {itens.length === 0 && !erro ? (
           <TableRow>
-            <TableCell colSpan={6} className="py-8 text-center text-gray-500">
+            <TableCell colSpan={6} className="py-8 text-center text-slate-500">
               Nenhuma unidade ainda. Use "Adicionar unidade".
             </TableCell>
           </TableRow>
         ) : null}
       </Tabela>
-      {/* Configuração ao lado, sem perder a lista de vista. */}
-      <Sheet open={selecionada !== null} onOpenChange={(abrir) => !abrir && setAberta(null)}>
-        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
-          {selecionada ? (
-            <>
-              <SheetHeader className="border-b">
-                <SheetTitle>Configurar · {selecionada.nome}</SheetTitle>
-                <SheetDescription>{enderecoEmTexto(selecionada.endereco)}</SheetDescription>
-              </SheetHeader>
-              <div className="flex flex-col gap-8 overflow-y-auto p-4">
-                <section className="flex flex-col gap-3">
-                  <HorarioDaUnidade key={`h-${selecionada.id}`} unidade={selecionada} aoSalvar={recarregar} />
-                </section>
-                <section className="flex flex-col gap-3">
-                  <h3 className="font-semibold text-gray-900">Regras da fila</h3>
-                  <ConfigDaUnidade key={`c-${selecionada.id}`} unidade={selecionada} aoSalvar={recarregar} />
-                </section>
-              </div>
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
-      <Sheet open={criando} onOpenChange={setCriando}>
-        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
-          <SheetHeader className="border-b">
-            <SheetTitle>Nova unidade</SheetTitle>
-            <SheetDescription>
-              Endereço, fuso e horário de funcionamento. As regras da fila vêm do município.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="overflow-y-auto p-4">
-            <NovaUnidade
-              aoCriar={(nome) => {
-                setCriando(false);
-                setOk(`Unidade ${nome} criada.`);
-                recarregar();
-              }}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
+      {selecionada ? (
+        <ConfigurarUnidade
+          key={selecionada.id}
+          unidade={selecionada}
+          aoFechar={() => setAberta(null)}
+          aoSalvar={(nome) => {
+            setAberta(null);
+            setOk(`Unidade ${nome} salva.`);
+            recarregar();
+          }}
+        />
+      ) : null}
+      <NovaUnidade
+        aberto={criando}
+        aoFechar={() => setCriando(false)}
+        aoCriar={(nome) => {
+          setCriando(false);
+          setOk(`Unidade ${nome} criada.`);
+          recarregar();
+        }}
+      />
     </div>
   );
 }

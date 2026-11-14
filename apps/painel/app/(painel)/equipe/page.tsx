@@ -1,13 +1,12 @@
 "use client";
 
 import { atribuicoesSchema, usuarioPainelEntradaSchema } from "@fila-saude/schemas/usuario";
-import { PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { PlusIcon, XIcon } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
-import { Aviso, Campo, Cartao, LARGURA_DO_PAINEL_LATERAL, Selecao, Tabela, Texto } from "@/components/formulario";
-import { CabecalhoDaPagina } from "@/components/pagina";
+import { Aviso, Campo, PainelLateral, Secao, Selecao, Tabela, Texto } from "@/components/formulario";
+import { AcoesDaLinha, CabecalhoDaPagina } from "@/components/pagina";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
 import { type ErrosDoEnvio, errosDoEnvio, mensagemDoErro, validarNoCliente } from "@/lib/formularios/erros";
@@ -35,6 +34,36 @@ const OPCOES_OCUPACAO = TODAS_AS_OCUPACOES.map((o) => ({ valor: o, rotulo: OCUPA
 // Só o que o login aceita (sem acento, espaço ou hífen): a pessoa vê na hora.
 const mascaraDoLogin = (t: string) => t.toLowerCase().replace(/[^a-z0-9_.]/g, "");
 
+/** Botão neutro de tirar uma linha da lista (só o ícone; o nome vai no aria-label). */
+function BotaoRemover({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="mb-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+      aria-label={rotulo}
+      title={rotulo}
+      onClick={aoClicar}
+    >
+      <XIcon />
+    </Button>
+  );
+}
+
+/** Subtítulo de um grupo dentro da seção, com a linha de explicação. */
+function Grupo({ titulo, descricao, children }: { titulo: string; descricao: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-0.5">
+        <h3 className="text-sm font-semibold text-slate-900">{titulo}</h3>
+        <p className="text-sm text-slate-500">{descricao}</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /** Ocupações por unidade e funções, com só o que o ator pode conceder. */
 function EditorDeAtribuicoes({
   valor,
@@ -54,6 +83,7 @@ function EditorDeAtribuicoes({
   const primeira = permitidas.length === 1 ? (permitidas[0]?.id ?? "") : "";
   const opcoesDeUnidade = permitidas.map((u) => ({ valor: u.id, rotulo: u.nome }));
   const opcoesDeFuncao = funcoes.map((fn) => ({ valor: fn, rotulo: FUNCOES[fn].rotulo }));
+  const linha = "grid items-end gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:grid-cols-[1fr_1fr_auto]";
 
   const seletorDeUnidade = (atual: string | null, aoMudar: (id: string) => void, erro?: string) => (
     <Campo rotulo="Unidade" erro={erro}>
@@ -62,13 +92,11 @@ function EditorDeAtribuicoes({
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-gray-800">Ocupação na unidade</legend>
-        <p className="text-xs text-gray-500">O que a pessoa é na unidade (o mesmo do vínculo no CNES).</p>
+    <div className="flex flex-col gap-6">
+      <Grupo titulo="Ocupação na unidade" descricao="O que a pessoa é na unidade (o mesmo do vínculo no CNES).">
         {valor.vinculos.map((v, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: linhas editáveis sem id próprio
-          <div key={i} className="flex flex-wrap items-end gap-2">
+          <div key={i} className={linha}>
             {seletorDeUnidade(
               v.unidadeId,
               (id) =>
@@ -87,19 +115,15 @@ function EditorDeAtribuicoes({
                 }
               />
             </Campo>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => mudar({ ...valor, vinculos: valor.vinculos.filter((_, j) => j !== i) })}
-            >
-              Remover
-            </Button>
+            <BotaoRemover
+              rotulo={`Remover ocupação ${i + 1}`}
+              aoClicar={() => mudar({ ...valor, vinculos: valor.vinculos.filter((_, j) => j !== i) })}
+            />
           </div>
         ))}
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
           className="self-start"
           disabled={permitidas.length === 0}
@@ -107,17 +131,19 @@ function EditorDeAtribuicoes({
             mudar({ ...valor, vinculos: [...valor.vinculos, { unidadeId: primeira, ocupacao: "recepcao" }] })
           }
         >
+          <PlusIcon data-icon="inline-start" />
           Adicionar ocupação
         </Button>
-      </fieldset>
+      </Grupo>
 
       {funcoes.length > 0 ? (
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-semibold text-gray-800">Funções e permissões</legend>
-          <p className="text-xs text-gray-500">Gestão e permissões extras. Só aparece o que você pode conceder.</p>
+        <Grupo
+          titulo="Funções e permissões"
+          descricao="Gestão e permissões extras. Só aparece o que você pode conceder."
+        >
           {valor.funcoes.map((f, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: linhas editáveis sem id próprio
-            <div key={i} className="flex flex-wrap items-end gap-2">
+            <div key={i} className={linha}>
               <Campo rotulo="Função">
                 <Selecao
                   valor={f.funcao}
@@ -146,21 +172,17 @@ function EditorDeAtribuicoes({
                   erros[`funcoes.${i}.unidadeId`],
                 )
               ) : (
-                <span className="pb-2 text-sm text-gray-500">todo o município</span>
+                <span className="pb-2 text-sm text-slate-500">Vale para todo o município</span>
               )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => mudar({ ...valor, funcoes: valor.funcoes.filter((_, j) => j !== i) })}
-              >
-                Remover
-              </Button>
+              <BotaoRemover
+                rotulo={`Remover função ${i + 1}`}
+                aoClicar={() => mudar({ ...valor, funcoes: valor.funcoes.filter((_, j) => j !== i) })}
+              />
             </div>
           ))}
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
             className="self-start"
             onClick={() => {
@@ -169,11 +191,12 @@ function EditorDeAtribuicoes({
               mudar({ ...valor, funcoes: [...valor.funcoes, { funcao, unidadeId }] });
             }}
           >
+            <PlusIcon data-icon="inline-start" />
             Adicionar função
           </Button>
-        </fieldset>
+        </Grupo>
       ) : null}
-      {erros._ ? <span className="text-sm text-red-700">{erros._}</span> : null}
+      {erros._ ? <span className="text-sm text-destructive">{erros._}</span> : null}
     </div>
   );
 }
@@ -195,14 +218,14 @@ export default function Equipe() {
   const [editando, setEditando] = useState<{ id: string; valor: Atribuicoes; erros: ErrosDoEnvio } | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [criando, setCriando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const confirmar = useConfirmar();
 
   if (eu.estado !== "autenticado") return null;
   const ator: Atribuicoes = { vinculos: eu.eu.vinculos, funcoes: eu.eu.funcoes };
   const nomeDaUnidade = (id: string | null) => (id ? (unidades.find((u) => u.id === id)?.nome ?? "?") : "");
 
-  async function criar(e: FormEvent) {
-    e.preventDefault();
+  async function criar() {
     setOk(null);
     const alvo = limpar(atribuicoes);
     const problemas = problemasDoCadastro(ator, alvo);
@@ -210,6 +233,7 @@ export default function Equipe() {
     const corpo = { ...v, ...alvo };
     const invalidos = validarNoCliente(usuarioPainelEntradaSchema, corpo);
     if (invalidos) return setErros(invalidos);
+    setEnviando(true);
     try {
       await api.post("/v1/painel/usuarios", corpo);
       setErros(SEM_ERROS);
@@ -220,6 +244,8 @@ export default function Equipe() {
       usuarios.recarregar();
     } catch (err) {
       setErros(errosDoEnvio(err));
+    } finally {
+      setEnviando(false);
     }
   }
 
@@ -249,6 +275,7 @@ export default function Equipe() {
       return setEditando({ ...editando, erros: { geral: null, campos: problemas } });
     const invalidos = validarNoCliente(atribuicoesSchema, alvo);
     if (invalidos) return setEditando({ ...editando, erros: invalidos });
+    setEnviando(true);
     try {
       await api.put(`/v1/painel/usuarios/${editando.id}/atribuicoes`, alvo);
       setOk(`${nomeDe(editando.id)}: ocupações e funções salvas.`);
@@ -257,6 +284,8 @@ export default function Equipe() {
     } catch (err) {
       const e = errosDoEnvio(err);
       setEditando({ ...editando, erros: e.geral ? e : { geral: mensagemDoErro(err), campos: e.campos } });
+    } finally {
+      setEnviando(false);
     }
   }
 
@@ -284,129 +313,101 @@ export default function Equipe() {
       <Tabela cabecalho={["Nome", "Login", "Ocupações e funções", ""]}>
         {usuarios.itens.map((u) => (
           <TableRow key={u.id}>
-            <TableCell className="font-medium">{u.nome}</TableCell>
+            <TableCell className="font-semibold text-slate-900">{u.nome}</TableCell>
             <TableCell>{u.login}</TableCell>
             <TableCell className="whitespace-normal">{resumoDasAtribuicoes(u, nomeDaUnidade)}</TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-1">
-                {u.id !== eu.eu.id ? (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="text-gray-500 hover:text-gray-900"
-                    aria-label={`Excluir ${u.nome}`}
-                    title="Excluir"
-                    onClick={() => remover(u)}
-                  >
-                    <Trash2Icon />
-                  </Button>
-                ) : null}
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className="text-gray-500 hover:text-gray-900"
-                  aria-label={`Editar ${u.nome}`}
-                  title="Editar"
-                  onClick={() =>
-                    setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS })
-                  }
-                >
-                  <SettingsIcon />
-                </Button>
-              </div>
+            <TableCell>
+              <AcoesDaLinha
+                {...(u.id !== eu.eu.id ? { excluir: { rotulo: `Excluir ${u.nome}`, aoClicar: () => remover(u) } } : {})}
+                editar={{
+                  rotulo: `Editar ${u.nome}`,
+                  aoClicar: () =>
+                    setEditando({ id: u.id, valor: { vinculos: u.vinculos, funcoes: u.funcoes }, erros: SEM_ERROS }),
+                }}
+              />
             </TableCell>
           </TableRow>
         ))}
         {usuarios.itens.length === 0 && !usuarios.erro ? (
           <TableRow>
-            <TableCell colSpan={4} className="py-8 text-center text-gray-500">
+            <TableCell colSpan={4} className="py-8 text-center text-slate-500">
               Ninguém na equipe ainda. Use "Adicionar usuário".
             </TableCell>
           </TableRow>
         ) : null}
       </Tabela>
 
-      {/* Alterar: ocupações e funções ao lado, sem perder a lista de vista. */}
-      <Sheet open={editando !== null} onOpenChange={(abrir) => !abrir && setEditando(null)}>
-        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
-          {editando ? (
-            <>
-              <SheetHeader className="border-b">
-                <SheetTitle>Editar · {nomeDe(editando.id)}</SheetTitle>
-                <SheetDescription>Ocupações e funções desta pessoa em cada unidade.</SheetDescription>
-              </SheetHeader>
-              <div className="flex flex-col gap-4 overflow-y-auto p-4">
-                <EditorDeAtribuicoes
-                  valor={editando.valor}
-                  mudar={(valor) => setEditando({ ...editando, valor })}
-                  ator={ator}
-                  unidades={unidades}
-                  erros={editando.erros.campos}
-                />
-                <Aviso texto={editando.erros.geral} />
-              </div>
-              <SheetFooter className="border-t sm:flex-row sm:justify-end">
-                <Button variant="ghost" onClick={() => setEditando(null)}>
-                  Cancelar
-                </Button>
-                <Button onClick={salvar}>Salvar</Button>
-              </SheetFooter>
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
-
-      {/* Cadastro de pessoa num painel lateral, aberto pelo botão "Adicionar usuário". */}
-      <Sheet open={criando} onOpenChange={setCriando}>
-        <SheetContent side="right" className={LARGURA_DO_PAINEL_LATERAL}>
-          <SheetHeader className="border-b">
-            <SheetTitle>Adicionar usuário</SheetTitle>
-            <SheetDescription>
-              Login e senha inicial para o painel, e o que a pessoa faz em cada unidade.
-            </SheetDescription>
-          </SheetHeader>
-          <form onSubmit={criar} className="flex min-h-0 flex-1 flex-col">
-            <div className="flex flex-col gap-4 overflow-y-auto p-4">
-              <Campo rotulo="Nome" erro={erros.campos.nome}>
-                <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
-              </Campo>
-              <Campo rotulo="Login" erro={erros.campos.login} dica="letras, números, ponto ou _">
-                <Texto
-                  required
-                  autoCapitalize="none"
-                  maxLength={30}
-                  valor={v.login}
-                  mascara={mascaraDoLogin}
-                  aoMudar={(login) => setV({ ...v, login })}
-                />
-              </Campo>
-              <Campo rotulo="Senha inicial" erro={erros.campos.senha} dica="mínimo 8 caracteres">
-                <Texto
-                  required
-                  type="password"
-                  autoComplete="new-password"
-                  valor={v.senha}
-                  aoMudar={(senha) => setV({ ...v, senha })}
-                />
-              </Campo>
+      <PainelLateral
+        aberto={editando !== null}
+        aoFechar={() => setEditando(null)}
+        titulo={`Editar ${editando ? nomeDe(editando.id) : "usuário"}`}
+        descricao="Ocupações e funções desta pessoa em cada unidade."
+        aoEnviar={salvar}
+        acao="Salvar"
+        enviando={enviando}
+      >
+        {editando ? (
+          <>
+            <Secao titulo="O que a pessoa faz" descricao="Define as telas e as ações que ela vê no painel.">
               <EditorDeAtribuicoes
-                valor={atribuicoes}
-                mudar={setAtribuicoes}
+                valor={editando.valor}
+                mudar={(valor) => setEditando({ ...editando, valor })}
                 ator={ator}
                 unidades={unidades}
-                erros={erros.campos}
+                erros={editando.erros.campos}
               />
-              <Aviso texto={erros.geral} />
-            </div>
-            <SheetFooter className="border-t sm:flex-row sm:justify-end">
-              <Button type="button" variant="ghost" onClick={() => setCriando(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit">Cadastrar</Button>
-            </SheetFooter>
-          </form>
-        </SheetContent>
-      </Sheet>
+            </Secao>
+            <Aviso texto={editando.erros.geral} />
+          </>
+        ) : null}
+      </PainelLateral>
+
+      <PainelLateral
+        aberto={criando}
+        aoFechar={() => setCriando(false)}
+        titulo="Adicionar usuário"
+        descricao="Login e senha inicial para o painel, e o que a pessoa faz em cada unidade."
+        aoEnviar={criar}
+        acao="Cadastrar"
+        enviando={enviando}
+      >
+        <Secao titulo="Acesso ao painel" descricao="Passe o login e a senha para a pessoa; ela entra com eles.">
+          <Campo rotulo="Nome" erro={erros.campos.nome}>
+            <Texto required valor={v.nome} aoMudar={(nome) => setV({ ...v, nome })} />
+          </Campo>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Login" erro={erros.campos.login} dica="Letras, números, ponto ou _.">
+              <Texto
+                required
+                autoCapitalize="none"
+                maxLength={30}
+                valor={v.login}
+                mascara={mascaraDoLogin}
+                aoMudar={(login) => setV({ ...v, login })}
+              />
+            </Campo>
+            <Campo rotulo="Senha inicial" erro={erros.campos.senha} dica="Mínimo de 8 caracteres.">
+              <Texto
+                required
+                type="password"
+                autoComplete="new-password"
+                valor={v.senha}
+                aoMudar={(senha) => setV({ ...v, senha })}
+              />
+            </Campo>
+          </div>
+        </Secao>
+        <Secao titulo="O que a pessoa faz" descricao="Define as telas e as ações que ela vê no painel.">
+          <EditorDeAtribuicoes
+            valor={atribuicoes}
+            mudar={setAtribuicoes}
+            ator={ator}
+            unidades={unidades}
+            erros={erros.campos}
+          />
+        </Secao>
+        <Aviso texto={erros.geral} />
+      </PainelLateral>
     </div>
   );
 }
