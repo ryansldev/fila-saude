@@ -282,6 +282,17 @@ export async function semearExemplo(deps: {
       profissional: "Enf. Carla",
       estacoes: [procedimentos.id],
     });
+    // Fatia 3: Clínico geral "de agora" com triagem, para chamar na Triagem 1 e depois no Consultório 1.
+    const clinicoDeAgora = await criarSessao(comoAdmin, ubs.id, {
+      servicoId: clinico.id,
+      inicio: new Date(deAgora.instante).toISOString(),
+      fim: new Date(deAgora.instante + 4 * 3600_000).toISOString(),
+      vagas: 10,
+      visibilidade: "publica",
+      dispensaPreCadastro: false,
+      profissional: "Dra. Helena",
+      estacoes: [triagem1.id, consultorio1.id],
+    });
     const tarde = { ini: amanha(agora, "13:00"), fim: amanha(agora, "17:00") };
     await criarSessao(comoAdmin, ubs.id, {
       servicoId: clinico.id,
@@ -331,6 +342,22 @@ export async function semearExemplo(deps: {
       });
     }
 
+    // Fatia 3: os três no Clínico de agora, cada um com um risco sugerido (a triagem confirma).
+    const queixas: Record<string, Partial<Respostas>> = {
+      [PACIENTES[0].cpf]: {},
+      [PACIENTES[1].cpf]: { motivo: "novo", gravidade: "forte" },
+      [PACIENTES[2].cpf]: { motivo: "novo", gravidade: "leve" },
+    };
+    for (const p of PACIENTES) {
+      const pacienteId = contas.get(p.cpf) as string;
+      await inscrever(db, clinicoDeAgora.id, {
+        pessoa: { nome: p.nome, nascimento: p.nascimento, cpf: p.cpf, pacienteId },
+        responsavelPacienteId: pacienteId,
+        respostas: { ...respostas(p.grupos), ...queixas[p.cpf] } as Respostas,
+        agora,
+      });
+    }
+
     // Como recepção: a pessoa sem app.
     const comoRecepcao = await contextoDoUsuario(db, idDe("recepcao"), agora);
     await executarAcao<Entrada>(
@@ -355,6 +382,7 @@ export async function semearExemplo(deps: {
       pacientes: PACIENTES.map((p) => ({ nome: p.nome, cpf: p.cpf, senha: SENHA_EXEMPLO })),
       sessoes: [
         { servico: curativos.nome, visibilidade: "publica", inicioLocal: deAgora.local },
+        { servico: `${clinico.nome} (com triagem)`, visibilidade: "publica", inicioLocal: deAgora.local },
         { servico: clinico.nome, visibilidade: "publica", inicioLocal: manha.ini.local },
         { servico: odonto.nome, visibilidade: "privada", inicioLocal: tarde.ini.local },
       ],
