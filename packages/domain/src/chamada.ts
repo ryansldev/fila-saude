@@ -201,10 +201,15 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
   const livre = comEstacao(dia, cmd.estacaoId, { chamadoItemId: null });
   const ids = base(dia, item, cmd.estacaoId);
   const pulado: Evento = { tipo: "pulado", ...ids, dados: { pulos, para, em: agora } };
+  const ultimaChamada = dia.chamadas.findLastIndex((c) => c.itemId === item.id);
+  const marcarPulo = (d: DiaSessao): DiaSessao => ({
+    ...d,
+    chamadas: d.chamadas.map((c, i) => (i === ultimaChamada ? { ...c, naoCompareceu: true } : c)),
+  });
 
   if (para === "presente") {
     const eleg = ficarElegivel(comItem(livre, { ...item, pulos }), item.id, agora, { aplicarAtraso: false });
-    return ok(eleg.estado, [pulado]);
+    return ok(marcarPulo(eleg.estado), [pulado]);
   }
   const fora: ItemFila = {
     ...item,
@@ -215,8 +220,8 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
     motivoSaida: para === "saiu_da_fila" ? "pulos" : null,
   };
   const atual = soltarTravas(comItem(livre, fora), item.id);
-  if (para === "remoto") return ok(atual, [pulado]);
-  return ok(atual, [
+  if (para === "remoto") return ok(marcarPulo(atual), [pulado]);
+  return ok(marcarPulo(atual), [
     pulado,
     { tipo: "falta", ...ids, motivo: "não compareceu à chamada" },
     { tipo: "saiu_da_fila", ...ids },

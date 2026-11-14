@@ -1,5 +1,6 @@
 // Configuração de uma sessão (RN-ENC-05, RN-PUB-03, AD-016, AD-038, INV-02).
 
+import type { Etapa } from "./fila.ts";
 import { falha, ok, type Resultado } from "./resultado.ts";
 import type { ModoServico } from "./servico.ts";
 
@@ -22,7 +23,13 @@ export type ValidacaoSessao =
  * (`entrada_invalida`); com os campos válidos, serviço regulado só aceita privada.
  */
 export function validarSessao(
-  servico: { modo: ModoServico; estacoesDoServico: string[] },
+  servico: {
+    modo: ModoServico;
+    estacoesDoServico: string[];
+    /** Com as etapas, exige estação que chame cada etapa do serviço (sem isso ninguém é chamado). */
+    exigeTriagem?: boolean;
+    etapas?: Record<string, Etapa>;
+  },
   c: ConfigSessao,
 ): ValidacaoSessao {
   const campos: Record<string, string> = {};
@@ -35,6 +42,13 @@ export function validarSessao(
   const fora = c.estacoes.filter((e) => !servico.estacoesDoServico.includes(e));
   if (fora.length > 0) {
     campos.estacoes = "a sessão só pode usar estações que atendem o serviço";
+  } else if (new Set(c.estacoes).size !== c.estacoes.length) {
+    campos.estacoes = "estação repetida";
+  } else if (servico.etapas) {
+    const etapas = new Set(c.estacoes.map((e) => servico.etapas?.[e]));
+    if (!etapas.has("atendimento")) campos.estacoes = "inclua uma estação de atendimento";
+    else if (servico.exigeTriagem && !etapas.has("triagem"))
+      campos.estacoes = "inclua uma estação de triagem: o serviço exige triagem";
   }
   if (Object.keys(campos).length > 0) return { ok: false, erro: "entrada_invalida", campos };
   if (servico.modo === "regulado" && c.visibilidade === "publica") return { ok: false, erro: "servico_regulado" };

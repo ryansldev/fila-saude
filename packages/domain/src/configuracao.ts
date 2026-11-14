@@ -91,5 +91,8 @@ export function validarConfig(c: ConfigParcial): ResultadoValidacao {
     "faltas e dias devem ser ≥ 1",
   );
   checa("fuso", (v: string) => fusoValido(v), "fuso IANA inválido");
+  // Com 0, toda estimativa dá 0 min e todo remoto recebe "saia de casa" na abertura.
+  checa("tempoMedioInicialMin", (v: number) => inteiroEntre(v, 1, 480), "tempo médio inicial entre 1 e 480 min");
+  checa("ordemMunicipio", (v: string) => v === "risco" || v === "prioridade", "ordem deve ser risco ou prioridade");
   return Object.keys(campos).length === 0 ? { ok: true } : { ok: false, campos };
 }

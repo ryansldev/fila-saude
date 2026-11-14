@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chamarProximo, finalizar } from "../src/chamada.ts";
+import { chamarProximo, finalizar, naoCompareceu } from "../src/chamada.ts";
 import { avisosSaiaDeCasa, estimar, tempoMedio } from "../src/estimativa.ts";
 import { CONFIG_PADRAO, checkIn, type DiaSessao, type Estacao, vouSair } from "../src/fila.ts";
 import type { Resultado } from "../src/resultado.ts";
@@ -295,5 +295,42 @@ describe("I4: estimativa só para quem espera na sessão aberta", () => {
     for (const estado of ["encerrada", "cancelada"] as const) {
       expect(estimar(congelar({ ...quatro(), estado }), "ana", T, AUTO)).toEqual({ tipo: "fora_da_fila" });
     }
+  });
+});
+
+describe("revisão 2026-11-13: estimativa honesta", () => {
+  it("remoto cuja vez já passou não recebe 'venha agora' nem 'saia de casa' como se fosse o próximo", () => {
+    // Ana #1 remota; Bruno #2 e Carla #3 presentes; Bruno é chamado: a vez de Ana passou (AD-010).
+    let d = diaCom(["ana", "bruno", "carla"]);
+    d = entrar(d, "bruno");
+    d = entrar(d, "carla");
+    d = chamar(d);
+    const e = estimar(d, "ana", T, AUTO);
+    expect(e.tipo).toBe("posicao");
+    // Ela vai para o fim: Carla presente vem antes.
+    expect(e).toMatchObject({ posicao: 2 });
+    expect(avisosSaiaDeCasa(d, T, AUTO).eventos.filter((x) => x.itemId === "ana")).toEqual([
+      expect.objectContaining({ tipo: "saia_de_casa" }),
+    ]);
+  });
+
+  it("RN-ETA-05: chamada que terminou em 'não compareceu' não conta como atendimento no tempo médio", () => {
+    let d = diaCom(["a", "b", "c", "d", "e", "f", "g"]);
+    for (const id of ["a", "b", "c", "d", "e", "f", "g"]) d = entrar(d, id);
+    let t = T;
+    const passo = (min: number, pular: boolean) => {
+      d = aplicar(chamarProximo(d, { estacaoId: "e1" }, t));
+      if (pular) d = aplicar(naoCompareceu(d, { estacaoId: "e1" }, t + min * MIN));
+      t += min * MIN;
+    };
+    // atendimentos de 20 min intercalados com pulos de 5 min (a mediana não filtra os pulos)
+    passo(20, false);
+    passo(5, true);
+    passo(20, false);
+    passo(5, true);
+    passo(20, false);
+    passo(5, true);
+    d = aplicar(chamarProximo(d, { estacaoId: "e1" }, t));
+    expect(tempoMedio(d, "atendimento", "cli", t)).toBe(20);
   });
 });

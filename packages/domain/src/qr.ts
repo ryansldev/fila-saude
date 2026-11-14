@@ -27,6 +27,13 @@ export function tokenQr(segredo: string, agora: number, intervaloMs = INTERVALO_
 }
 
 /** Índice da sessão cujo segredo gerou o token na janela atual ou na anterior; senão null. */
+// Comparação em tempo constante: o tempo da resposta não diz quantos caracteres do token acertaram.
+function iguais(a: string, b: string): boolean {
+  let dif = a.length ^ b.length;
+  for (let k = 0; k < a.length; k++) dif |= a.charCodeAt(k) ^ b.charCodeAt(k % Math.max(b.length, 1));
+  return dif === 0;
+}
+
 export async function validarQr(
   segredos: string[],
   token: string,
@@ -36,7 +43,7 @@ export async function validarQr(
   const janela = Math.floor(agora / intervaloMs);
   for (const [i, segredo] of segredos.entries()) {
     for (const j of [janela, janela - 1]) {
-      if ((await tokenDaJanela(segredo, j)) === token) return i;
+      if (iguais(await tokenDaJanela(segredo, j), token)) return i;
     }
   }
   return null;

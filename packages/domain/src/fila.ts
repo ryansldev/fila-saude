@@ -50,7 +50,15 @@ export type ItemFila = {
 export type Estacao = { id: string; etapa: Etapa; servicos: string[]; aberta: boolean; chamadoItemId: string | null };
 
 /** `rechamadas`: horários de "Rechamar" (RN-CHAM-02), para a TV repetir o anúncio; `em` não muda. */
-export type Chamada = { itemId: string; etapa: Etapa; estacaoId: string; em: number; rechamadas?: number[] };
+export type Chamada = {
+  itemId: string;
+  etapa: Etapa;
+  estacaoId: string;
+  em: number;
+  rechamadas?: number[];
+  /** RN-ETA-05: chamada que terminou em "não compareceu" não é atendimento concluído. */
+  naoCompareceu?: boolean;
+};
 
 export type DiaSessao = {
   sessaoId: string;
@@ -161,7 +169,7 @@ export function chamadasQuePassamAVez(dia: DiaSessao, x: ItemFila): Chamada[] {
  * Atraso (AD-010, AD-033): a vez de X passou por uma chamada fora de contingência.
  * Quem fica elegível estando na unidade (1º pulo, triagem → atendimento) não passa por aqui.
  */
-function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
+export function aVezPassou(dia: DiaSessao, x: ItemFila): boolean {
   return chamadasQuePassamAVez(dia, x).some((c) => !emContingencia(dia, c.em));
 }
 

@@ -106,3 +106,13 @@ describe("validarConfig", () => {
     if (!r.ok) expect(Object.keys(r.campos).sort()).toEqual(["janelaK", "qrSegundos"]);
   });
 });
+
+describe("validarConfig: campos que quebravam a estimativa (revisão 2026-11-13)", () => {
+  it("tempo médio inicial ≥ 1 min e ordem do município só risco ou prioridade", () => {
+    expect(validarConfig({ tempoMedioInicialMin: 0 }).ok).toBe(false);
+    expect(validarConfig({ tempoMedioInicialMin: -5 }).ok).toBe(false);
+    bom({ tempoMedioInicialMin: 15 });
+    expect(validarConfig({ ordemMunicipio: "qualquer" as never }).ok).toBe(false);
+    bom({ ordemMunicipio: "risco" });
+  });
+});

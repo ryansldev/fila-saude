@@ -63,3 +63,31 @@ describe("mudarVisibilidade", () => {
     expect(r.ok && r.estado).toEqual({ ...BASE, visibilidade: "publica" });
   });
 });
+
+describe("validarSessao: estações que chamam (revisão 2026-11-13)", () => {
+  const COM_ETAPAS = congelar({
+    modo: "livre" as const,
+    estacoesDoServico: ["t1", "a1"],
+    exigeTriagem: true,
+    etapas: { t1: "triagem" as const, a1: "atendimento" as const },
+  });
+
+  it("sem estação de atendimento (ou de triagem, se o serviço exige) ninguém seria chamado", () => {
+    expect(validarSessao(COM_ETAPAS, { ...BASE, estacoes: [] })).toMatchObject({ ok: false, erro: "entrada_invalida" });
+    expect(validarSessao(COM_ETAPAS, { ...BASE, estacoes: ["a1"] })).toEqual({
+      ok: false,
+      erro: "entrada_invalida",
+      campos: { estacoes: "inclua uma estação de triagem: o serviço exige triagem" },
+    });
+    expect(validarSessao(COM_ETAPAS, { ...BASE, estacoes: ["t1"] }).ok).toBe(false);
+    expect(validarSessao(COM_ETAPAS, { ...BASE, estacoes: ["t1", "a1"] })).toEqual({ ok: true });
+  });
+
+  it("estação repetida é recusada", () => {
+    expect(validarSessao(LIVRE, { ...BASE, estacoes: ["e1", "e1"] })).toEqual({
+      ok: false,
+      erro: "entrada_invalida",
+      campos: { estacoes: "estação repetida" },
+    });
+  });
+});

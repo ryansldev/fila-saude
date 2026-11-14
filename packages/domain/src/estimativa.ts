@@ -1,4 +1,4 @@
-import { type DiaSessao, type Etapa, elegiveis, type ItemFila } from "./fila.ts";
+import { aVezPassou, type DiaSessao, type Etapa, elegiveis, type ItemFila } from "./fila.ts";
 import { compararOrdem } from "./ordem.ts";
 import type { Evento } from "./resultado.ts";
 
@@ -33,17 +33,19 @@ const inicial = (dia: DiaSessao, etapa: Etapa): number =>
  */
 export function tempoMedio(dia: DiaSessao, etapa: Etapa, servicoId: string, agora: number): number {
   if (servicoId !== dia.servicoId) return inicial(dia, etapa);
-  const porEstacao = new Map<string, number[]>();
+  const porEstacao = new Map<string, { em: number; pulo: boolean }[]>();
   for (const c of dia.chamadas) {
     if (c.etapa !== etapa || c.em > agora) continue;
-    porEstacao.set(c.estacaoId, [...(porEstacao.get(c.estacaoId) ?? []), c.em]);
+    porEstacao.set(c.estacaoId, [...(porEstacao.get(c.estacaoId) ?? []), { em: c.em, pulo: Boolean(c.naoCompareceu) }]);
   }
   const duracoes: { fim: number; min: number }[] = [];
   for (const tempos of porEstacao.values()) {
-    const ordenados = [...tempos].sort((a, b) => a - b);
+    const ordenados = [...tempos].sort((a, b) => a.em - b.em);
     ordenados.forEach((inicio, k) => {
       const proxima = ordenados[k + 1];
-      if (proxima !== undefined) duracoes.push({ fim: proxima, min: (proxima - inicio) / MIN });
+      // "Não compareceu" não é atendimento concluído (RN-ETA-05.2).
+      if (proxima !== undefined && !inicio.pulo)
+        duracoes.push({ fim: proxima.em, min: (proxima.em - inicio.em) / MIN });
     });
   }
   const ultimas = duracoes
@@ -91,10 +93,15 @@ export function estimar(dia: DiaSessao, itemId: string, agora: number, opcoes: O
   if (!primeira) return { tipo: "aguardando_inicio" };
 
   const naEtapa = dia.itens.filter((i) => naFila(i) && i.etapa === item.etapa);
+  // AD-010: remoto cuja vez já passou vai para o fim ao chegar; não está "à frente" de ninguém e
+  // não pode ouvir "venha agora" como se fosse o próximo.
+  const passou = (i: ItemFila) => i.estado === "remoto" && !i.urgenciaConfirmada && aVezPassou(dia, i);
   const aFrente =
     item.estado === "presente"
       ? elegiveis(dia, primeira.id).findIndex((i) => i.id === item.id)
-      : naEtapa.filter((i) => ordem(dia, i, item) < 0).length;
+      : passou(item)
+        ? naEtapa.filter((i) => i.id !== item.id && !passou(i)).length
+        : naEtapa.filter((i) => ordem(dia, i, item) < 0 && !passou(i)).length;
   if (aFrente < 0) return { tipo: "aguardando_inicio" };
   const comeNow = item.estado === "remoto" && aFrente === 0;
   const minutos = Math.ceil((aFrente * tempoMedio(dia, item.etapa, dia.servicoId, agora)) / n);
