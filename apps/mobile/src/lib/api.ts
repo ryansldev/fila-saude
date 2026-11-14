@@ -45,6 +45,9 @@ async function pedirBruto(
     resposta = await fetcher(url, {
       method: metodo,
       headers,
+      // A conta vai só no token: o fetch do React Native reenviaria o cookie de uma sessão anterior, e o
+      // better-auth recusa (403) pedido com cookie e sem Origin confiável.
+      credentials: "omit",
       ...(corpo !== undefined ? { body: JSON.stringify(corpo) } : {}),
     });
   } catch {

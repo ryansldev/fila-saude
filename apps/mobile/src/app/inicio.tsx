@@ -1,17 +1,19 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Alert, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Abas,
   Botao,
+  Carregando,
   Cartao,
   CartaoPosicao,
   COR,
   Espaco,
   Faixa,
   FONTE,
+  Gaveta,
   LinkBotao,
   Logo,
   Mascote,
@@ -36,6 +38,78 @@ const faltam = (posicao: number, minutos: number) =>
 
 // "é a sua vez" dispensado não volta ao trocar de aba (a tela remonta); vale enquanto o app está aberto.
 const VEZES_VISTAS = new Set<string>();
+
+// RN-CANC-01: dá para desistir antes de ser chamado, em casa ou na unidade.
+const CANCELAVEIS: Situacao["tipo"][] = [
+  "confirmada",
+  "alocada",
+  "reserva",
+  "lista",
+  "aguardando",
+  "atrasada",
+  "posicao",
+  "venha",
+  "sem_previsao",
+  "recepcao",
+];
+const efeitoDoCancelamento = (sit: Situacao) =>
+  sit.tipo === "reserva"
+    ? "você sai da reserva."
+    : sit.tipo === "lista"
+      ? "você sai da lista de espera."
+      : "você perde esta vaga.";
+
+/** Confirmação do "não vou poder ir" (tela 10): diz o efeito antes; o botão de perigo é o principal. */
+function ConfirmarCancelamento({
+  alvo,
+  fechar,
+  confirmar,
+}: {
+  alvo: { en: MinhaEntrada; sit: Situacao; ctx: string } | null;
+  fechar: () => void;
+  confirmar: (entradaId: string) => Promise<void>;
+}) {
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  return (
+    <Gaveta
+      aberta={alvo !== null}
+      fechar={() => {
+        setErro(null);
+        fechar();
+      }}
+    >
+      {alvo ? (
+        <>
+          <Titulo>não vou poder ir?</Titulo>
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 28, color: COR.dangerInk }}>
+            {efeitoDoCancelamento(alvo.sit)}
+          </Text>
+          <Pequeno>{alvo.ctx}</Pequeno>
+          <TextoSuave>para outro dia, faça uma nova inscrição.</TextoSuave>
+          {erro ? <Faixa tipo="perigo" titulo="não deu certo" texto={erro} /> : null}
+          <Botao
+            texto="não vou poder ir"
+            tipo="perigoCheio"
+            carregando={enviando}
+            onPress={async () => {
+              setEnviando(true);
+              setErro(null);
+              try {
+                await confirmar(alvo.en.entradaId);
+              } catch (err) {
+                setErro(mensagemDoErro(err));
+              } finally {
+                setEnviando(false);
+              }
+            }}
+          />
+          <Botao texto="voltar, eu vou" tipo="secundario" onPress={fechar} desativado={enviando} />
+        </>
+      ) : null}
+    </Gaveta>
+  );
+}
 
 /** "é a sua vez!": tela cheia verde, como no design. */
 function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: string | null; fechar: () => void }) {
@@ -257,6 +331,10 @@ export default function MinhaFila() {
   const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
   const [vistas, setVistas] = useState<string[]>(() => [...VEZES_VISTAS]);
   const [saindo, setSaindo] = useState<string | null>(null);
+  const [cancelar, setCancelar] = useState<{ en: MinhaEntrada; sit: Situacao; ctx: string } | null>(null);
+  const [cancelada, setCancelada] = useState(false);
+  const [tentando, setTentando] = useState(false);
+  const buscarAgora = useRef<(() => Promise<void>) | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -272,15 +350,25 @@ export default function MinhaFila() {
             setEntradas(l);
             setErro(null);
           })
-          .catch((err) => ativo && setErro(avisoDoErro(err)));
+          .catch((err) => {
+            if (ativo) setErro(avisoDoErro(err));
+          });
+      buscarAgora.current = buscar;
       void buscar();
       const id = setInterval(buscar, INTERVALO_DA_CONSULTA_MS);
       return () => {
         ativo = false;
+        buscarAgora.current = null;
         clearInterval(id);
       };
     }, [s.api, s.municipio]),
   );
+
+  const tentarDeNovo = async () => {
+    setTentando(true);
+    await buscarAgora.current?.();
+    setTentando(false);
+  };
 
   const agora = Date.now();
   const lista = (entradas ?? []).map((en) => ({ en, sit: situacaoDaEntrada(en, agora) }));
@@ -304,7 +392,33 @@ export default function MinhaFila() {
   return (
     <Tela voltar={false} rodape={<Abas atual="fila" />}>
       <Titulo>minha fila</Titulo>
-      {erro ? <Faixa tipo="perigo" titulo={erro.titulo} texto={erro.texto} /> : null}
+      {erro ? (
+        <Faixa
+          tipo="perigo"
+          titulo={erro.titulo}
+          texto={erro.texto}
+          acao={{ texto: "tentar de novo", onPress: () => void tentarDeNovo(), carregando: tentando }}
+        />
+      ) : null}
+      {s.avisos && s.avisos.tipo !== "ligados" ? (
+        <Faixa
+          tipo="aviso"
+          titulo="os avisos estão desligados"
+          texto={
+            s.avisos.tipo === "desligados" && !s.avisos.podePedir
+              ? "sem eles, você só sabe a hora de sair com o app aberto. ligue nos ajustes do celular, em notificações."
+              : "sem eles, você só sabe a hora de sair com o app aberto."
+          }
+          acao={{
+            texto: s.avisos.tipo === "desligados" && !s.avisos.podePedir ? "abrir os ajustes" : "ligar os avisos",
+            onPress: () => void s.ligarAvisos(),
+          }}
+        />
+      ) : null}
+      {cancelada ? (
+        <Faixa tipo="ok" titulo="pronto, inscrição cancelada" texto="a vaga fica para outra pessoa." />
+      ) : null}
+      {entradas === null && !erro ? <Carregando texto="buscando a sua fila…" /> : null}
       {entradas?.length === 0 ? (
         <>
           <Texto>você não tem atendimento marcado.</Texto>
@@ -321,31 +435,52 @@ export default function MinhaFila() {
             texto={`vá para ${sit.estacao ? sit.estacao.toLowerCase() : "a sala indicada na TV"} com a senha ${sit.senha}`}
           />
         ) : (
-          <Bloco
-            key={en.entradaId}
-            en={en}
-            sit={sit}
-            dono={s.conta?.nome}
-            vouSair={
-              saindo === en.entradaId
-                ? null
-                : () => {
-                    // RN-PRES-02: volta a remoto mantendo a posição; um toque por vez.
-                    setSaindo(en.entradaId);
-                    s.api
-                      .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
-                      .then(() =>
-                        setEntradas((l) =>
-                          (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
-                        ),
-                      )
-                      .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
-                      .finally(() => setSaindo(null));
-                  }
-            }
-          />
+          <View key={en.entradaId} style={{ gap: 4 }}>
+            <Bloco
+              en={en}
+              sit={sit}
+              dono={s.conta?.nome}
+              vouSair={
+                saindo === en.entradaId
+                  ? null
+                  : () => {
+                      // RN-PRES-02: volta a remoto mantendo a posição; um toque por vez.
+                      setSaindo(en.entradaId);
+                      s.api
+                        .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
+                        .then(() =>
+                          setEntradas((l) =>
+                            (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
+                          ),
+                        )
+                        .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
+                        .finally(() => setSaindo(null));
+                    }
+              }
+            />
+            {CANCELAVEIS.includes(sit.tipo) ? (
+              <LinkBotao
+                texto="não vou poder ir"
+                cor={COR.dangerInk}
+                onPress={() => {
+                  setCancelada(false);
+                  setCancelar({ en, sit, ctx: contexto(en, s.conta?.nome) });
+                }}
+              />
+            ) : null}
+          </View>
         ),
       )}
+      <ConfirmarCancelamento
+        alvo={cancelar}
+        fechar={() => setCancelar(null)}
+        confirmar={async (entradaId) => {
+          await s.api.post(`/v1/municipios/${s.municipio}/entradas/${entradaId}/cancelar`);
+          setEntradas((l) => (l ?? []).filter((x) => x.entradaId !== entradaId));
+          setCancelar(null);
+          setCancelada(true);
+        }}
+      />
       <Espaco />
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <LinkBotao texto="trocar município" cor={COR.inkMuted} onPress={() => router.push("/municipio")} />

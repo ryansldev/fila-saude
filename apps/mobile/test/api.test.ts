@@ -70,6 +70,8 @@ describe("cliente da API do app (PD-34, token)", () => {
     const token = await entrar("http://api", "123.456.789-09", "senha", fetcher);
     expect(token).toBe("abc");
     expect(pedidos[0]?.url).toBe("http://api/v1/auth/sign-in/username");
+    // O fetch do React Native guarda o cookie da sessão anterior; com ele e sem Origin, o login dá 403.
+    expect(pedidos[0]?.init.credentials).toBe("omit");
     expect(JSON.parse(String(pedidos[0]?.init.body))).toEqual({ username: "12345678909", password: "senha" });
   });
 

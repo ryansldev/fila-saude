@@ -55,6 +55,8 @@ export function situacaoDaEntrada(e: MinhaEntrada, agora: number): Situacao {
 const MENSAGENS: Record<string, string> = {
   sem_conexao: "sem internet. confira a conexão e tente de novo.",
   nao_autenticado: "sua sessão expirou. entre de novo.",
+  sem_permissao: "o servidor recusou o pedido. feche o app, abra de novo e tente outra vez.",
+  muitas_tentativas: "muitas tentativas seguidas. espere um minuto e tente de novo.",
   credenciais: "CPF ou senha incorretos.",
   duplicada: "essa pessoa já está inscrita neste atendimento.",
   emergencia: "isso pode ser uma emergência. ligue 192.",
@@ -72,9 +74,11 @@ export function mensagemDoErro(e: unknown): string {
   return "não deu certo. tente de novo.";
 }
 
-/** Faixa da minha fila: "sem internet" só quando a rede falhou; o resto diz o motivo. */
-export function avisoDoErro(e: unknown): { titulo: string; texto: string } {
-  if (e instanceof ErroDaApi && e.erro === "sem_conexao")
-    return { titulo: "sem internet", texto: "a sua posição volta a aparecer quando a conexão voltar." };
+/** Faixa de erro de uma tela: "sem internet" só quando a rede falhou; o resto diz o motivo. */
+export function avisoDoErro(
+  e: unknown,
+  semInternet = "a sua posição volta a aparecer quando a conexão voltar.",
+): { titulo: string; texto: string } {
+  if (e instanceof ErroDaApi && e.erro === "sem_conexao") return { titulo: "sem internet", texto: semInternet };
   return { titulo: "não deu para atualizar", texto: mensagemDoErro(e) };
 }

@@ -1,11 +1,13 @@
-import * as SecureStore from "expo-secure-store";
+import * as armazenamento from "./armazenamento";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 import { type Api, cadastrar, criarApi, type DadosDoCadastro, entrar } from "./api";
 import { API_URL } from "./config";
-import { registrarPush, sairDoPush } from "./push";
+import { type EstadoDosAvisos, estadoDosAvisos, ligarAvisos, registrarPush, sairDoPush } from "./push";
 
 const CHAVE_TOKEN = "fila-saude.token";
 const CHAVE_MUNICIPIO = "fila-saude.municipio";
+const CHAVE_AVISOS_EXPLICADOS = "fila-saude.avisos-explicados";
 
 export type Conta = { nome: string; nascimento: string };
 
@@ -15,6 +17,12 @@ type Sessao = {
   municipio: string | null;
   conta: Conta | null;
   api: Api;
+  /** null enquanto lê; relido quando o app volta para a frente (a pessoa pode ter mudado nos ajustes). */
+  avisos: EstadoDosAvisos | null;
+  /** A tela que explica os avisos já passou neste aparelho ("ligar" ou "agora não"). */
+  avisosExplicados: boolean;
+  ligarAvisos(): Promise<void>;
+  pularAvisos(): Promise<void>;
   entrar(cpf: string, senha: string): Promise<void>;
   cadastrar(dados: DadosDoCadastro): Promise<void>;
   escolherMunicipio(slug: string): Promise<void>;
@@ -29,23 +37,36 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [municipio, setMunicipio] = useState<string | null>(null);
   const [conta, setConta] = useState<Conta | null>(null);
+  const [avisos, setAvisos] = useState<EstadoDosAvisos | null>(null);
+  const [avisosExplicados, setAvisosExplicados] = useState(false);
 
   useEffect(() => {
     void (async () => {
+      setAvisos(await estadoDosAvisos());
       // Keystore com problema em alguns Android: sem isso o app ficaria em branco para sempre.
       try {
-        setToken(await SecureStore.getItemAsync(CHAVE_TOKEN));
-        setMunicipio(await SecureStore.getItemAsync(CHAVE_MUNICIPIO));
+        setToken(await armazenamento.ler(CHAVE_TOKEN));
+        setMunicipio(await armazenamento.ler(CHAVE_MUNICIPIO));
+        setAvisosExplicados((await armazenamento.ler(CHAVE_AVISOS_EXPLICADOS)) === "1");
       } catch {
         setToken(null);
       } finally {
         setPronto(true);
       }
     })();
+    const sub = AppState.addEventListener("change", (estado) => {
+      if (estado === "active") void estadoDosAvisos().then(setAvisos);
+    });
+    return () => sub.remove();
+  }, []);
+
+  const marcarExplicados = useCallback(async () => {
+    await armazenamento.gravar(CHAVE_AVISOS_EXPLICADOS, "1").catch(() => {});
+    setAvisosExplicados(true);
   }, []);
 
   const esquecerConta = useCallback(async () => {
-    await SecureStore.deleteItemAsync(CHAVE_TOKEN).catch(() => {});
+    await armazenamento.apagar(CHAVE_TOKEN).catch(() => {});
     setToken(null);
     setConta(null);
   }, []);
@@ -71,12 +92,17 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
       .get<{ user: { name: string; nascimento: string } } | null>("/v1/auth/get-session")
       .then((s) => setConta(s ? { nome: s.user.name, nascimento: s.user.nascimento } : null))
       .catch(() => setConta(null));
-    // T3.8: a cada login (ou abertura com conta), o aparelho avisa a conta certa.
-    void registrarPush(api);
   }, [api, token]);
 
+  // T3.8: a cada login, abertura com conta ou volta dos ajustes com os avisos ligados, o aparelho avisa a
+  // conta certa. Só registra: o pedido de permissão vem depois da tela que explica os avisos.
+  const avisosLigados = avisos?.tipo === "ligados";
+  useEffect(() => {
+    if (token && avisosLigados) void registrarPush(api);
+  }, [api, token, avisosLigados]);
+
   const guardarToken = useCallback(async (t: string) => {
-    await SecureStore.setItemAsync(CHAVE_TOKEN, t);
+    await armazenamento.gravar(CHAVE_TOKEN, t);
     setToken(t);
   }, []);
 
@@ -86,10 +112,17 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
     municipio,
     conta,
     api,
+    avisos,
+    avisosExplicados,
+    ligarAvisos: async () => {
+      setAvisos(await ligarAvisos());
+      await marcarExplicados();
+    },
+    pularAvisos: marcarExplicados,
     entrar: async (cpf, senha) => guardarToken(await entrar(API_URL, cpf, senha)),
     cadastrar: async (dados) => guardarToken(await cadastrar(API_URL, dados)),
     escolherMunicipio: async (slug) => {
-      await SecureStore.setItemAsync(CHAVE_MUNICIPIO, slug);
+      await armazenamento.gravar(CHAVE_MUNICIPIO, slug);
       setMunicipio(slug);
     },
     sair: async () => {

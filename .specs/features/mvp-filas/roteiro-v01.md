@@ -47,3 +47,16 @@ Para o push chegar no celular é preciso um projeto EAS e um build de desenvolvi
 | 9 | Gerente | Painel → TVs | "Revogar" | A TV volta para um código novo |
 
 **Executado em 2026-11-13** por HTTP contra `npm run dev` (mesmas rotas do painel e da TV): passos 1–4 e 6 conferidos, com a rechamada anunciada de novo e sem nomes na tela; a varredura gravou o "sua vez" e marcou `sem_dispositivo`. `next build` do painel ok com `/tv` e `/tvs`. Falta o clique no navegador (som e fila de anúncios) e o push num celular com build de desenvolvimento.
+
+## Acabamento do app (revisão de design de 2026-11-14)
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Paciente | App, conta nova num celular que nunca deu a permissão | Criar conta | Tela "a gente te avisa a hora de sair de casa" antes do pedido do celular; "agora não" segue sem pedir |
+| 2 | Paciente | App → Minha fila | Com os avisos negados ou pulados | Faixa "os avisos estão desligados" com "ligar os avisos" (ou "abrir os ajustes", se o celular não pergunta mais) |
+| 3 | Paciente | App → Minha fila | Inscrito em Curativos, tocar "não vou poder ir" | Gaveta de baixo: "você perde esta vaga"; ao confirmar, a entrada some e, no painel, fica como "saiu da fila"; o 1º da reserva entra |
+| 4 | Paciente | App → Unidades | Tocar em qualquer parte do cartão do atendimento | Abre "para quem é?"; não há mais um botão azul por cartão |
+| 5 | Paciente | App, modo avião | Abrir minha fila, unidades ou municípios | Faixa "sem internet" com "tentar de novo"; ao abrir, logo e roda girando em vez de tela branca |
+| 6 | Paciente | App → Entrar e Criar conta (iPhone) | Tocar no último campo | O teclado não cobre o campo nem o botão |
+
+**Ainda não executado.** Conferido por código: `tsc`, lint, testes do app e da API (rota de cancelar), `expo export` para Android e iOS e `expo-doctor`. Falta rodar no celular.

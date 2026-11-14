@@ -1,6 +1,20 @@
+import { BottomSheet, BottomSheetView } from "@expo/ui/community/bottom-sheet";
 import { router } from "expo-router";
+import {
+  Building2,
+  Check,
+  ChevronRight,
+  CircleAlert,
+  CircleCheck,
+  Info,
+  ListOrdered,
+  type LucideIcon,
+  TriangleAlert,
+} from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
   Linking,
   Pressable,
   ScrollView,
@@ -112,14 +126,46 @@ export function Tela({
   rodape?: ReactNode;
   fundo?: string;
 }) {
+  // Android edge-to-edge não redimensiona a janela com o teclado: sem o "padding" ele cobre o rodapé.
   return (
     <SafeAreaView style={[e.tela, { backgroundColor: fundo }]} edges={["top", "bottom"]}>
       {topo ? <Topo voltar={voltar} aoVoltar={aoVoltar} /> : null}
-      <ScrollView contentContainerStyle={e.scr} keyboardShouldPersistTaps="handled">
-        {children}
-      </ScrollView>
-      {rodape}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={e.scr} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
+          {children}
+        </ScrollView>
+        {rodape}
+      </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+/** Enquanto busca: logo e roda girando, para não parecer tela travada. */
+export function Carregando({ texto, cheia = false }: { texto?: string; cheia?: boolean }) {
+  return (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityLabel={texto ?? "carregando"}
+      style={[{ alignItems: "center", justifyContent: "center", gap: 16, paddingVertical: 32 }, cheia && e.cheia]}
+    >
+      {cheia ? <Logo tamanho={64} /> : null}
+      <ActivityIndicator size="large" color={COR.action} />
+      {texto ? <Text style={[e.pm, { textAlign: "center" }]}>{texto}</Text> : null}
+    </View>
+  );
+}
+
+/** Gaveta nativa que sobe de baixo (confirmações, escolhas): o gesto que o paciente já conhece do celular. */
+export function Gaveta({ aberta, fechar, children }: { aberta: boolean; fechar: () => void; children: ReactNode }) {
+  return (
+    <BottomSheet
+      index={aberta ? 0 : -1}
+      enablePanDownToClose
+      onClose={fechar}
+      backgroundStyle={{ backgroundColor: COR.surface }}
+    >
+      <BottomSheetView style={e.gaveta}>{children}</BottomSheetView>
+    </BottomSheet>
   );
 }
 
@@ -184,7 +230,10 @@ export function Botao({
         },
       ]}
     >
-      <Text style={[e.textoBtn, { color: corTexto ?? c.texto }]}>{carregando ? "aguarde…" : texto}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        {carregando ? <ActivityIndicator color={corTexto ?? c.texto} /> : null}
+        <Text style={[e.textoBtn, { color: corTexto ?? c.texto }]}>{carregando ? "aguarde…" : texto}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -269,7 +318,7 @@ export function Opcao({
           marcada && { backgroundColor: COR.action, borderColor: COR.action },
         ]}
       >
-        {marcada ? <Text style={e.check}>✓</Text> : null}
+        {marcada ? <Check size={18} color="#ffffff" strokeWidth={3.5} /> : null}
       </View>
       <Text style={e.textoOpt}>{texto}</Text>
     </Pressable>
@@ -277,39 +326,51 @@ export function Opcao({
 }
 
 type TipoFaixa = "aviso" | "info" | "perigo" | "ok";
-const FAIXA: Record<TipoFaixa, { fundo: string; cor: string; icone: string }> = {
-  aviso: { fundo: COR.warningBg, cor: COR.warningInk, icone: "!" },
-  info: { fundo: COR.primary50, cor: COR.actionPressed, icone: "i" },
-  perigo: { fundo: COR.dangerBg, cor: COR.dangerInk, icone: "!" },
-  ok: { fundo: COR.successBg, cor: COR.successInk, icone: "✓" },
+const FAIXA: Record<TipoFaixa, { fundo: string; cor: string; Icone: LucideIcon }> = {
+  aviso: { fundo: COR.warningBg, cor: COR.warningInk, Icone: TriangleAlert },
+  info: { fundo: COR.primary50, cor: COR.actionPressed, Icone: Info },
+  perigo: { fundo: COR.dangerBg, cor: COR.dangerInk, Icone: CircleAlert },
+  ok: { fundo: COR.successBg, cor: COR.successInk, Icone: CircleCheck },
 };
 
-/** Faixa de aviso do design: ícone redondo, título forte e texto. */
+/** Faixa de aviso do design: ícone, título forte, texto e, quando há o que fazer, um botão. */
 export function Faixa({
   tipo,
   titulo,
   texto,
   grande = false,
+  acao,
   style,
 }: {
   tipo: TipoFaixa;
   titulo: string;
-  texto?: string;
+  texto?: string | undefined;
   grande?: boolean;
+  acao?: { texto: string; onPress: () => void; carregando?: boolean } | undefined;
   style?: ViewStyle;
 }) {
-  const f = FAIXA[tipo];
+  const { fundo, cor, Icone } = FAIXA[tipo];
   return (
     <View
       accessibilityRole={tipo === "perigo" || tipo === "aviso" ? "alert" : "summary"}
-      style={[e.faixa, { backgroundColor: f.fundo }, grande && { paddingVertical: 20 }, style]}
+      style={[e.faixa, { backgroundColor: fundo }, grande && { paddingVertical: 20 }, style]}
     >
-      <View style={[e.ic, { borderColor: f.cor }]}>
-        <Text style={[e.textoIc, { color: f.cor }]}>{f.icone}</Text>
-      </View>
+      <Icone size={grande ? 30 : 26} color={cor} strokeWidth={2.5} style={{ marginTop: grande ? 0 : 1 }} />
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[e.ft, { color: f.cor }, grande && { fontSize: 24, lineHeight: 30 }]}>{titulo}</Text>
-        {texto ? <Text style={[e.fs, { color: f.cor }]}>{texto}</Text> : null}
+        <Text style={[e.ft, { color: cor }, grande && { fontSize: 24, lineHeight: 30 }]}>{titulo}</Text>
+        {texto ? <Text style={[e.fs, { color: cor }]}>{texto}</Text> : null}
+        {acao ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: acao.carregando ?? false }}
+            disabled={acao.carregando}
+            onPress={acao.onPress}
+            style={({ pressed }) => [e.acaoFaixa, { borderColor: cor }, pressed && { opacity: 0.6 }]}
+          >
+            {acao.carregando ? <ActivityIndicator color={cor} /> : null}
+            <Text style={[e.textoBtn, { color: cor, fontSize: 17 }]}>{acao.carregando ? "aguarde…" : acao.texto}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -317,6 +378,30 @@ export function Faixa({
 
 export function Cartao({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[e.card, style]}>{children}</View>;
+}
+
+/** Cartão inteiro tocável, com a seta e o que acontece ao tocar: na lista, cada item não vira um botão azul. */
+export function CartaoTocavel({ children, acao, onPress }: { children: ReactNode; acao: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint={acao}
+      onPress={onPress}
+      style={({ pressed }) => [
+        e.card,
+        { flexDirection: "row", alignItems: "center", gap: 12 },
+        pressed && { backgroundColor: COR.primary50, borderColor: COR.action },
+      ]}
+    >
+      <View style={{ flex: 1, gap: 4 }}>
+        {children}
+        <Text style={{ fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, color: COR.action, marginTop: 4 }}>
+          {acao}
+        </Text>
+      </View>
+      <ChevronRight size={28} color={COR.action} strokeWidth={2.5} />
+    </Pressable>
+  );
 }
 
 /** Cartão da posição: o maior texto da tela. */
@@ -341,20 +426,28 @@ export function Chip({ texto }: { texto: string }) {
 
 /** Abas de baixo: minha fila e unidades. */
 export function Abas({ atual }: { atual: "fila" | "unidades" }) {
-  const aba = (id: "fila" | "unidades", rotulo: string, destino: "/inicio" | "/agenda") => (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: atual === id }}
-      onPress={() => atual !== id && router.replace(destino)}
-      style={e.tab}
-    >
-      <Text style={[e.textoTab, atual === id && { color: COR.action }]}>{rotulo}</Text>
-    </Pressable>
-  );
+  const aba = (id: "fila" | "unidades", rotulo: string, destino: "/inicio" | "/agenda", Icone: LucideIcon) => {
+    const ativa = atual === id;
+    const cor = ativa ? COR.action : COR.inkMuted;
+    return (
+      <Pressable
+        accessibilityRole="tab"
+        accessibilityLabel={rotulo}
+        accessibilityState={{ selected: ativa }}
+        onPress={() => !ativa && router.replace(destino)}
+        style={e.tab}
+      >
+        <View style={[e.pilulaTab, ativa && { backgroundColor: COR.primary50 }]}>
+          <Icone size={26} color={cor} strokeWidth={ativa ? 2.75 : 2.25} />
+        </View>
+        <Text style={[e.textoTab, { color: cor }, ativa && { fontFamily: FONTE.extra }]}>{rotulo}</Text>
+      </Pressable>
+    );
+  };
   return (
     <View style={e.abas} accessibilityRole="tablist">
-      {aba("fila", "minha fila", "/inicio")}
-      {aba("unidades", "unidades", "/agenda")}
+      {aba("fila", "minha fila", "/inicio", ListOrdered)}
+      {aba("unidades", "unidades", "/agenda", Building2)}
     </View>
   );
 }
@@ -421,18 +514,20 @@ export const e = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  check: { color: "#ffffff", fontFamily: FONTE.extra, fontSize: 15, lineHeight: 18 },
   textoOpt: { flex: 1, fontFamily: FONTE.bold, fontSize: 18, lineHeight: 24, color: COR.ink },
   faixa: { flexDirection: "row", gap: 12, alignItems: "flex-start", padding: 16, borderRadius: 16 },
-  ic: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    borderWidth: 2,
+  acaoFaixa: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
+    minHeight: 48,
+    marginTop: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    borderWidth: 2,
+    backgroundColor: "#ffffff",
   },
-  textoIc: { fontFamily: FONTE.extra, fontSize: 15 },
   ft: { fontFamily: FONTE.extra, fontSize: 18, lineHeight: 26 },
   fs: { fontFamily: FONTE.semi, fontSize: 16, lineHeight: 24 },
   card: {
@@ -461,6 +556,9 @@ export const e = StyleSheet.create({
     backgroundColor: COR.surfaceMuted,
   },
   abas: { flexDirection: "row", borderTopWidth: 1, borderTopColor: COR.border, backgroundColor: COR.surface },
-  tab: { flex: 1, minHeight: 64, alignItems: "center", justifyContent: "center" },
-  textoTab: { fontFamily: FONTE.bold, fontSize: 15, color: COR.inkMuted },
+  tab: { flex: 1, minHeight: 72, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 8 },
+  pilulaTab: { paddingHorizontal: 20, paddingVertical: 4, borderRadius: 999 },
+  textoTab: { fontFamily: FONTE.bold, fontSize: 16, lineHeight: 22 },
+  cheia: { flex: 1, backgroundColor: COR.surface },
+  gaveta: { gap: 16, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
 });

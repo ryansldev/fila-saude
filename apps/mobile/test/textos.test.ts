@@ -87,6 +87,10 @@ describe("aviso de erro na minha fila", () => {
       titulo: "não deu para atualizar",
       texto: "sua sessão expirou. entre de novo.",
     });
+    // Agenda e municípios não têm posição: o texto do "sem internet" é da tela.
+    expect(avisoDoErro(new ErroDaApi(0, "sem_conexao"), "confira a conexão e tente de novo.").texto).toBe(
+      "confira a conexão e tente de novo.",
+    );
   });
 });
 
