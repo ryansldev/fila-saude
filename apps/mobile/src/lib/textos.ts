@@ -116,7 +116,7 @@ export function resumoDaEntrada(
       case "confirmada":
       case "aguardando":
       case "atrasada":
-        return { selo: "inscrito", tom: "azul" as Tom, naFila: false, etapa: 1 };
+        return { selo: "inscrito · fila ainda não abriu", tom: "azul" as Tom, naFila: false, etapa: 1 };
       case "recepcao":
         return { selo: "passe na recepção", tom: "amarelo" as Tom, naFila: true, etapa: 1 };
       case "venha":

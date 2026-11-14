@@ -8,7 +8,6 @@ import {
   Botao,
   Carregando,
   Cartao,
-  CartaoPosicao,
   COR,
   Espaco,
   Faixa,
@@ -18,15 +17,16 @@ import {
   Logo,
   Mascote,
   Pequeno,
+  Selo,
   Tela,
-  Texto,
   TextoSuave,
   Titulo,
+  Trilha,
 } from "@/components/ui";
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
 import { diaCurto, ehHoje, hora } from "@/lib/datas";
 import { useSessao } from "@/lib/sessao";
-import { avisoDoErro, mensagemDoErro, type Situacao, situacaoDaEntrada } from "@/lib/textos";
+import { avisoDoErro, mensagemDoErro, resumoDaEntrada, type Situacao, situacaoDaEntrada } from "@/lib/textos";
 
 // "hoje" só quando a sessão é hoje no fuso da unidade; senão, o dia.
 const quando = (en: MinhaEntrada) =>
@@ -136,193 +136,185 @@ function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: string | n
   );
 }
 
-function Bloco({
+const primeiroNome = (nome: string | undefined) => (nome ? nome.split(/\s+/)[0]?.toLowerCase() : undefined);
+
+/** A frase que responde "já estou na fila?" e o que vem depois, para cada situação. */
+function Explicacao({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
+  const inicio = en.sessao ? `${diaCurto(en.sessao.inicio)}, às ${hora(en.sessao.inicio)}` : "";
+  switch (sit.tipo) {
+    case "lista":
+      return <TextoSuave>você ainda não está em nenhuma fila. a unidade marca a data e te avisa aqui.</TextoSuave>;
+    case "reserva":
+      return <TextoSuave>você ainda não tem vaga. se alguém desistir, a vaga é sua e a gente te avisa.</TextoSuave>;
+    case "alocada":
+      return (
+        <>
+          <Destaque>{inicio}</Destaque>
+          <TextoSuave>a unidade marcou esta data para você.</TextoSuave>
+        </>
+      );
+    case "confirmada":
+    case "aguardando":
+      return (
+        <>
+          <Destaque>{inicio}</Destaque>
+          <TextoSuave>
+            você tem vaga, mas ainda não está na fila: a senha e a sua posição aparecem aqui quando a fila abrir.
+          </TextoSuave>
+        </>
+      );
+    case "atrasada":
+      return (
+        <TextoSuave>
+          já passou do horário, mas a unidade ainda não abriu a fila. quando abrir, a sua senha aparece aqui.
+        </TextoSuave>
+      );
+    case "posicao":
+      return (
+        <>
+          <Posicao senha={en.senha} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />
+          <TextoSuave>
+            {sit.presente
+              ? "você está na unidade. fique de olho na TV e no celular."
+              : sit.sair
+                ? "saia agora para chegar a tempo. ao chegar, leia o QR da TV."
+                : "pode esperar em casa. a gente avisa a hora de sair."}
+          </TextoSuave>
+        </>
+      );
+    case "sem_previsao":
+      return (
+        <>
+          <Posicao senha={en.senha} detalhe="a fila já começou. sem previsão de tempo agora." />
+          <TextoSuave>
+            {sit.presente ? "você está na unidade. fique de olho na TV." : "a gente avisa quando estiver perto."}
+          </TextoSuave>
+        </>
+      );
+    case "venha":
+      return (
+        <>
+          <Posicao senha={en.senha} detalhe="você é o próximo" />
+          <TextoSuave>venha agora. ao chegar, leia o QR da TV para ser chamado.</TextoSuave>
+        </>
+      );
+    case "recepcao":
+      return (
+        <>
+          <Posicao senha={en.senha} detalhe="mostre esta senha e um documento com foto" />
+          <TextoSuave>
+            passe na recepção para conferir seus documentos. só na primeira vez; depois, é só ler o QR.
+          </TextoSuave>
+        </>
+      );
+    case "concluida":
+      return <TextoSuave>atendimento concluído. obrigado por esperar em casa, cuide-se!</TextoSuave>;
+    case "remanejada":
+      return <TextoSuave>a sua vez não chegou hoje. você continua na lista e recebe outra data.</TextoSuave>;
+    case "saiu":
+      return (
+        <TextoSuave>você foi chamado e não apareceu. estava na unidade e não ouviu? fale com a recepção.</TextoSuave>
+      );
+    case "cancelada":
+      return <TextoSuave>esta inscrição foi cancelada. para ir outro dia, faça uma nova inscrição.</TextoSuave>;
+    default:
+      return null;
+  }
+}
+
+const Destaque = ({ children }: { children: React.ReactNode }) => (
+  <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>{children}</Text>
+);
+
+/** Senha e posição, o maior texto do cartão. */
+function Posicao({ senha, posicao, detalhe }: { senha: string | null; posicao?: number; detalhe: string }) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 16,
+        padding: 16,
+        borderRadius: 18,
+        backgroundColor: COR.primary50,
+      }}
+    >
+      {posicao !== undefined ? (
+        <View style={{ alignItems: "center", minWidth: 72 }}>
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 48, lineHeight: 52, color: COR.action }}>{posicao}º</Text>
+          <Pequeno>da fila</Pequeno>
+        </View>
+      ) : null}
+      <View style={{ flex: 1, gap: 2 }}>
+        {senha ? (
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink, letterSpacing: 1 }}>
+            senha {senha}
+          </Text>
+        ) : null}
+        <Text style={{ fontFamily: FONTE.bold, fontSize: 17, lineHeight: 24, color: COR.actionPressed }}>
+          {detalhe}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** Um atendimento: selo, para quem e onde, a trilha, a explicação e as ações, tudo no mesmo cartão. */
+function CartaoDoAtendimento({
   en,
   sit,
   dono,
   vouSair,
+  aoCancelar,
 }: {
   en: MinhaEntrada;
   sit: Situacao;
   dono: string | undefined;
   vouSair: (() => void) | null;
+  aoCancelar: (() => void) | null;
 }) {
-  const ctx = contexto(en, dono);
-  const naUnidade = <Botao texto="estou na unidade" onPress={() => router.push("/check-in")} />;
-  switch (sit.tipo) {
-    case "recepcao":
-      return (
-        <View style={{ gap: 16 }}>
-          <Faixa
-            tipo="aviso"
-            grande
-            titulo="passe na recepção"
-            texto="para confirmar seus documentos. você ainda não entrou na fila da unidade."
-          />
-          <Cartao>
-            <Pequeno>{ctx}</Pequeno>
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 32, lineHeight: 38, color: COR.ink, letterSpacing: 2 }}>
-              {en.senha}
-            </Text>
-            <Pequeno>mostre a senha e um documento com foto</Pequeno>
-          </Cartao>
-          <TextoSuave>só na primeira vez. depois disso, é só ler o QR.</TextoSuave>
-          <Botao texto="ler o QR de novo" tipo="secundario" onPress={() => router.push("/check-in")} />
-        </View>
-      );
-    case "venha":
-      return (
-        <View style={{ gap: 16 }}>
-          <Faixa tipo="aviso" grande titulo="venha agora" texto="o atendimento está te esperando" />
-          <Cartao>
-            <Texto>{ctx}</Texto>
-          </Cartao>
-          <TextoSuave>você é o próximo. ao chegar, leia o QR da TV para ser chamado.</TextoSuave>
-          {naUnidade}
-        </View>
-      );
-    case "posicao":
-      return sit.presente ? (
-        <View style={{ gap: 16 }}>
-          <Faixa tipo="ok" titulo="você está na unidade" texto="fique de olho na TV e no celular." />
-          <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />
-          {vouSair ? <LinkBotao texto="vou sair um pouco" onPress={vouSair} /> : <Pequeno>um momento…</Pequeno>}
-          <Pequeno>você continua na fila, no mesmo lugar. ao voltar, leia o QR de novo.</Pequeno>
-        </View>
-      ) : (
-        <View style={{ gap: 16 }}>
-          <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />
-          {sit.sair ? (
-            <Faixa tipo="aviso" grande titulo="hora de sair de casa" texto="ao chegar, leia o QR da TV." />
-          ) : (
-            <Faixa
-              tipo="info"
-              titulo="pode esperar em casa"
-              texto="avisamos a hora de sair. mantenha o celular por perto."
-            />
-          )}
-          {naUnidade}
-        </View>
-      );
-    case "aguardando":
-      return (
-        <View style={{ gap: 16 }}>
-          <Cartao style={{ backgroundColor: COR.primary50 }}>
-            <Pequeno>{ctx}</Pequeno>
-            {en.senha ? (
-              <Text style={{ fontFamily: FONTE.extra, fontSize: 40, color: COR.primary500 }}>{en.senha}</Text>
-            ) : null}
-            <Pequeno>aguardando início do atendimento</Pequeno>
-          </Cartao>
-          <TextoSuave>quando o atendimento começar, mostramos quanto falta.</TextoSuave>
-          {en.senha ? naUnidade : null}
-        </View>
-      );
-    case "sem_previsao":
-      return (
-        <View style={{ gap: 16 }}>
-          <Cartao>
-            <Pequeno>{ctx}</Pequeno>
-            {en.senha ? (
-              <Text style={{ fontFamily: FONTE.extra, fontSize: 40, color: COR.primary500 }}>{en.senha}</Text>
-            ) : null}
-            <Pequeno>a fila já começou. sem previsão de tempo agora.</Pequeno>
-          </Cartao>
-          {sit.presente ? (
-            <Faixa tipo="ok" titulo="você está na unidade" texto="fique de olho na TV e no celular." />
-          ) : (
-            <>
-              <TextoSuave>avisamos quando estiver perto da sua vez.</TextoSuave>
-              {en.senha ? naUnidade : null}
-            </>
-          )}
-        </View>
-      );
-    case "atrasada":
-      return (
-        <View style={{ gap: 16 }}>
-          <Cartao>
-            <Pequeno>{ctx}</Pequeno>
-            <Texto>a unidade ainda não abriu a fila.</Texto>
-          </Cartao>
-          <TextoSuave>quando abrir, você recebe sua senha e a posição aqui.</TextoSuave>
-        </View>
-      );
-    case "alocada":
-      return (
-        <Cartao>
-          <Pequeno>data marcada</Pequeno>
-          {en.sessao ? (
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
-              {diaCurto(en.sessao.inicio)} · {hora(en.sessao.inicio)}
-            </Text>
-          ) : null}
-          <Texto>
-            {en.unidade} · {en.servico.toLowerCase()}
-          </Texto>
-        </Cartao>
-      );
-    case "confirmada":
-      return (
-        <View style={{ gap: 16 }}>
-          <Cartao>
-            <Pequeno>próximo atendimento</Pequeno>
-            {en.sessao ? (
-              <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
-                {diaCurto(en.sessao.inicio)}
-              </Text>
-            ) : null}
-            <Texto>
-              {en.unidade} · {en.servico.toLowerCase()}
-              {dono && en.pessoa !== dono ? ` · para ${en.pessoa}` : ""}
-            </Texto>
-          </Cartao>
-          {en.sessao ? (
-            <Faixa
-              tipo="info"
-              titulo={`a fila começa às ${hora(en.sessao.inicio)}`}
-              texto="você pode esperar em casa. avisamos a sua posição e a hora de sair."
-            />
-          ) : null}
-        </View>
-      );
-    case "reserva":
-      return <Faixa tipo="aviso" titulo="você está na reserva" texto={`${ctx}. se alguém desistir, a vaga é sua.`} />;
-    case "lista":
-      return (
-        <Cartao>
-          <Pequeno>lista de espera</Pequeno>
-          <Texto>
-            {en.unidade} · {en.servico.toLowerCase()}
-          </Texto>
-          <Pequeno>a unidade marca a data e te avisa.</Pequeno>
-        </Cartao>
-      );
-    case "concluida":
-      return (
-        <View style={{ gap: 12, alignItems: "center" }}>
-          <Mascote tamanho={140} />
-          <Titulo style={{ textAlign: "center" }}>atendimento concluído</Titulo>
-          <TextoSuave style={{ textAlign: "center" }}>obrigado por esperar em casa. cuide-se!</TextoSuave>
-        </View>
-      );
-    case "remanejada":
-      return (
-        <Faixa tipo="aviso" titulo="sua vez não chegou hoje" texto="você continua na lista e recebe outra data." />
-      );
-    case "saiu":
-      return (
-        <View style={{ gap: 12 }}>
-          <Faixa tipo="perigo" titulo="você saiu da fila de hoje" texto="você foi chamado e não apareceu." />
-          <TextoSuave>estava na unidade e não ouviu? fale com a recepção.</TextoSuave>
-        </View>
-      );
-    case "cancelada":
-      return <Faixa tipo="perigo" titulo="inscrição cancelada" texto={ctx} />;
-    default:
-      return null;
-  }
+  const r = resumoDaEntrada(en, sit, Date.now());
+  const paraOutra = dono && en.pessoa !== dono ? en.pessoa.split(/\s+/)[0] : null;
+  const podeCheckIn = ["posicao", "venha", "sem_previsao"].includes(sit.tipo) && en.itemEstado === "remoto";
+  return (
+    <Cartao style={{ gap: 14 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <Selo texto={r.selo} tom={r.tom} />
+        {paraOutra ? <Pequeno>para {paraOutra}</Pequeno> : null}
+      </View>
+      <View style={{ gap: 2 }}>
+        <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink }}>
+          {en.servico.toLowerCase()}
+        </Text>
+        <Pequeno>
+          {en.unidade}
+          {quando(en)}
+        </Pequeno>
+      </View>
+      {r.etapa !== null && r.etapa < 4 ? <Trilha etapa={r.etapa} pendente={!r.naFila && r.etapa > 0} /> : null}
+      <Explicacao en={en} sit={sit} />
+      {sit.tipo === "recepcao" ? (
+        <Botao texto="ler o QR de novo" tipo="secundario" onPress={() => router.push("/check-in")} />
+      ) : null}
+      {podeCheckIn ? <Botao texto="cheguei na unidade" onPress={() => router.push("/check-in")} /> : null}
+      {(sit.tipo === "posicao" || sit.tipo === "sem_previsao") && sit.presente ? (
+        vouSair ? (
+          <Botao texto="vou sair um pouco" tipo="secundario" onPress={vouSair} />
+        ) : (
+          <Carregando />
+        )
+      ) : null}
+      {aoCancelar ? <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} /> : null}
+    </Cartao>
+  );
 }
+
+const SECOES: { id: "hoje" | "proximos" | "sem_data" | "encerrados"; titulo: string }[] = [
+  { id: "hoje", titulo: "hoje" },
+  { id: "proximos", titulo: "próximos" },
+  { id: "sem_data", titulo: "sem data marcada" },
+  { id: "encerrados", titulo: "encerrados" },
+];
 
 /** Minha fila (T3.4): consulta a cada ~3 s enquanto está na frente (PD-33). */
 export default function MinhaFila() {
@@ -391,7 +383,10 @@ export default function MinhaFila() {
 
   return (
     <Tela voltar={false} rodape={<Abas atual="fila" />}>
-      <Titulo>minha fila</Titulo>
+      <View style={{ gap: 2 }}>
+        {s.conta ? <TextoSuave>olá, {primeiroNome(s.conta.nome)}</TextoSuave> : null}
+        <Titulo>minha fila</Titulo>
+      </View>
       {erro ? (
         <Faixa
           tipo="perigo"
@@ -420,57 +415,59 @@ export default function MinhaFila() {
       ) : null}
       {entradas === null && !erro ? <Carregando texto="buscando a sua fila…" /> : null}
       {entradas?.length === 0 ? (
-        <>
-          <Texto>você não tem atendimento marcado.</Texto>
-          <Botao texto="ver próximos atendimentos" onPress={() => router.replace("/agenda")} />
-        </>
-      ) : null}
-      {lista.map(({ en, sit }) =>
-        sit.tipo === "vez" ? (
-          <Faixa
-            key={en.entradaId}
-            tipo="ok"
-            grande
-            titulo="é a sua vez!"
-            texto={`vá para ${sit.estacao ? sit.estacao.toLowerCase() : "a sala indicada na TV"} com a senha ${sit.senha}`}
-          />
-        ) : (
-          <View key={en.entradaId} style={{ gap: 4 }}>
-            <Bloco
-              en={en}
-              sit={sit}
-              dono={s.conta?.nome}
-              vouSair={
-                saindo === en.entradaId
-                  ? null
-                  : () => {
-                      // RN-PRES-02: volta a remoto mantendo a posição; um toque por vez.
-                      setSaindo(en.entradaId);
-                      s.api
-                        .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
-                        .then(() =>
-                          setEntradas((l) =>
-                            (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
-                          ),
-                        )
-                        .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
-                        .finally(() => setSaindo(null));
-                    }
-              }
-            />
-            {CANCELAVEIS.includes(sit.tipo) ? (
-              <LinkBotao
-                texto="não vou poder ir"
-                cor={COR.dangerInk}
-                onPress={() => {
-                  setCancelada(false);
-                  setCancelar({ en, sit, ctx: contexto(en, s.conta?.nome) });
-                }}
-              />
-            ) : null}
+        <Cartao style={{ alignItems: "center", gap: 12, paddingVertical: 28 }}>
+          <Mascote tamanho={120} />
+          <Destaque>nenhum atendimento ainda</Destaque>
+          <TextoSuave style={{ textAlign: "center" }}>
+            escolha um atendimento na agenda da unidade. depois, ele aparece aqui.
+          </TextoSuave>
+          <View style={{ alignSelf: "stretch" }}>
+            <Botao texto="ver a agenda" onPress={() => router.replace("/agenda")} />
           </View>
-        ),
-      )}
+        </Cartao>
+      ) : null}
+      {SECOES.map((secao) => {
+        const daSecao = lista.filter(({ en, sit }) => resumoDaEntrada(en, sit, agora).grupo === secao.id);
+        if (daSecao.length === 0) return null;
+        return (
+          <View key={secao.id} style={{ gap: 12 }}>
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 18, color: COR.inkMuted }}>{secao.titulo}</Text>
+            {daSecao.map(({ en, sit }) => (
+              <CartaoDoAtendimento
+                key={en.entradaId}
+                en={en}
+                sit={sit}
+                dono={s.conta?.nome}
+                aoCancelar={
+                  CANCELAVEIS.includes(sit.tipo)
+                    ? () => {
+                        setCancelada(false);
+                        setCancelar({ en, sit, ctx: contexto(en, s.conta?.nome) });
+                      }
+                    : null
+                }
+                vouSair={
+                  saindo === en.entradaId
+                    ? null
+                    : () => {
+                        // RN-PRES-02: volta a remoto mantendo a posição; um toque por vez.
+                        setSaindo(en.entradaId);
+                        s.api
+                          .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
+                          .then(() =>
+                            setEntradas((l) =>
+                              (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
+                            ),
+                          )
+                          .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
+                          .finally(() => setSaindo(null));
+                      }
+                }
+              />
+            ))}
+          </View>
+        );
+      })}
       <ConfirmarCancelamento
         alvo={cancelar}
         fechar={() => setCancelar(null)}

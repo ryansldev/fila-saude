@@ -177,7 +177,7 @@ describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 202
       naFila: false,
       etapa: 1,
       grupo: "proximos",
-      selo: "inscrito",
+      selo: "inscrito · fila ainda não abriu",
     });
   });
 

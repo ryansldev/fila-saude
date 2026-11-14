@@ -558,7 +558,9 @@ const ETAPAS = ["inscrição", "fila", "unidade", "sala"];
  * A trilha do atendimento: inscrição → fila → unidade → sala. As feitas ganham ✓, a atual fica
  * em destaque; assim a pessoa vê se já está na fila de verdade.
  */
-export function Trilha({ etapa }: { etapa: number }) {
+export function Trilha({ etapa, pendente = false }: { etapa: number; pendente?: boolean }) {
+  // `pendente`: a etapa atual ainda não começou (ex.: inscrito com a fila fechada) e fica cinza.
+  const corAtual = pendente ? "#9aa3a5" : COR.action;
   return (
     <View
       accessibilityLabel={`etapa ${Math.min(etapa + 1, ETAPAS.length)} de ${ETAPAS.length}: ${ETAPAS[Math.min(etapa, 3)]}`}
@@ -569,12 +571,13 @@ export function Trilha({ etapa }: { etapa: number }) {
         const atual = i === etapa;
         return (
           <View key={nome} style={{ flex: 1, alignItems: "center", gap: 6 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", alignSelf: "stretch" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", alignSelf: "stretch", height: 34 }}>
               <View
                 style={{
                   flex: 1,
                   height: 4,
-                  backgroundColor: i === 0 ? "transparent" : i <= etapa ? COR.action : COR.linha,
+                  backgroundColor:
+                    i === 0 ? "transparent" : i < etapa || (i === etapa && !pendente) ? COR.action : COR.linha,
                 }}
               />
               <View
@@ -586,11 +589,12 @@ export function Trilha({ etapa }: { etapa: number }) {
                   justifyContent: "center",
                   backgroundColor: feita ? COR.action : atual ? COR.surface : COR.linha,
                   borderWidth: atual ? 4 : 0,
-                  borderColor: COR.action,
+                  borderColor: corAtual,
+                  borderStyle: atual && pendente ? "dashed" : "solid",
                 }}
               >
                 {feita ? <Check size={16} color="#ffffff" strokeWidth={3.5} /> : null}
-                {atual ? (
+                {atual && !pendente ? (
                   <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: COR.action }} />
                 ) : null}
               </View>
@@ -606,7 +610,7 @@ export function Trilha({ etapa }: { etapa: number }) {
               style={{
                 fontFamily: atual ? FONTE.extra : FONTE.semi,
                 fontSize: 14,
-                color: atual ? COR.action : feita ? COR.ink : COR.inkMuted,
+                color: atual ? corAtual : feita ? COR.ink : COR.inkMuted,
               }}
             >
               {nome}
