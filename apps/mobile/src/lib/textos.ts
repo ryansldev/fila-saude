@@ -134,20 +134,28 @@ export function resumoDaEntrada(
       case "concluida":
         return { selo: "atendido", tom: "verde" as Tom, naFila: false, etapa: 4 };
       case "remanejada":
-        return { selo: "não foi atendido hoje", tom: "cinza" as Tom, naFila: false, etapa: null };
+        // Continua no serviço: a unidade marca outra data (não é encerrada).
+        return { selo: "aguardando nova data", tom: "cinza" as Tom, naFila: false, etapa: 0 };
       case "saiu":
         return { selo: "saiu da fila", tom: "vermelho" as Tom, naFila: false, etapa: null };
       case "cancelada":
         return { selo: "cancelado", tom: "cinza" as Tom, naFila: false, etapa: null };
     }
   })();
-  const terminou = ["concluida", "remanejada", "saiu", "cancelada"].includes(sit.tipo);
+  const terminou = ["concluida", "saiu", "cancelada"].includes(sit.tipo);
   const grupo = terminou
     ? "encerrados"
-    : !en.sessao
+    : !en.sessao || sit.tipo === "remanejada"
       ? "sem_data"
       : base.naFila || ehHoje(en.sessao.inicio, agora)
         ? "hoje"
         : "proximos";
   return { ...base, grupo };
+}
+
+/** A faixa depois do "não vou poder ir" diz o que aconteceu, pelo tipo da inscrição. */
+export function avisoDoCancelamento(sit: Pick<Situacao, "tipo">): string {
+  if (sit.tipo === "reserva") return "você saiu da reserva.";
+  if (sit.tipo === "lista") return "você saiu da lista de espera.";
+  return "a vaga fica para outra pessoa.";
 }

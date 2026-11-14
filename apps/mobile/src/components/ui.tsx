@@ -12,9 +12,10 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react-native";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  BackHandler,
   KeyboardAvoidingView,
   Linking,
   Pressable,
@@ -140,6 +141,19 @@ export function Tela({
   progresso?: { atual: number; total: number };
   fundo?: string;
 }) {
+  // Botão "voltar" do Android: com `aoVoltar`, vai ao passo anterior em vez de sair da tela.
+  const voltarRef = useRef(aoVoltar);
+  voltarRef.current = aoVoltar;
+  const temAoVoltar = Boolean(aoVoltar);
+  useEffect(() => {
+    if (!temAoVoltar) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (!voltarRef.current) return false;
+      voltarRef.current();
+      return true;
+    });
+    return () => sub.remove();
+  }, [temAoVoltar]);
   // Android edge-to-edge não redimensiona a janela com o teclado: sem o "padding" ele cobre o rodapé.
   return (
     <SafeAreaView style={[e.tela, { backgroundColor: fundo }]} edges={["top", "bottom"]}>
@@ -179,11 +193,22 @@ export function Carregando({ texto, cheia = false }: { texto?: string; cheia?: b
 }
 
 /** Gaveta nativa que sobe de baixo (confirmações, escolhas): o gesto que o paciente já conhece do celular. */
-export function Gaveta({ aberta, fechar, children }: { aberta: boolean; fechar: () => void; children: ReactNode }) {
+export function Gaveta({
+  aberta,
+  fechar,
+  travada = false,
+  children,
+}: {
+  aberta: boolean;
+  fechar: () => void;
+  /** Enquanto algo está sendo enviado, o gesto de puxar para baixo não fecha. */
+  travada?: boolean;
+  children: ReactNode;
+}) {
   return (
     <BottomSheet
       index={aberta ? 0 : -1}
-      enablePanDownToClose
+      enablePanDownToClose={!travada}
       onClose={fechar}
       backgroundStyle={{ backgroundColor: COR.surface }}
     >

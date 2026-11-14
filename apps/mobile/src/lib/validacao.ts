@@ -55,11 +55,26 @@ export function erroDoCadastro(v: {
   ]);
 }
 
-/** "Outra pessoa" (AD-018): CPF opcional, mas válido quando preenchido. */
-export function erroDaOutraPessoa(v: { nome: string; nascimento: string; cpf: string }): Erros {
+export const CPF_DA_CONTA = 'esse é o seu CPF. para você, escolha "para mim".';
+
+const digitos = (t: string) => t.replace(/\D/g, "");
+
+/** "Outra pessoa" (AD-018): CPF opcional, mas válido quando preenchido e nunca o do dono da conta. */
+export function erroDaOutraPessoa(
+  v: { nome: string; nascimento: string; cpf: string },
+  cpfDaConta?: string | undefined,
+): Erros {
+  const cpf =
+    v.cpf.trim() === ""
+      ? null
+      : !cpfValido(v.cpf)
+        ? CPF_INVALIDO
+        : cpfDaConta && digitos(cpfDaConta) === digitos(v.cpf)
+          ? CPF_DA_CONTA
+          : null;
   return juntar([
     ["nome", v.nome.trim().length < 3 ? "escreva o nome completo." : null],
     ["nascimento", erroDoNascimento(v.nascimento)],
-    ["cpf", v.cpf.trim() === "" || cpfValido(v.cpf) ? null : CPF_INVALIDO],
+    ["cpf", cpf],
   ]);
 }

@@ -35,4 +35,11 @@ describe("validação dos formulários do app (revisão 2026-11-13)", () => {
     expect(erroDaOutraPessoa({ ...outra, cpf: "12345678900" }).cpf).toBe("CPF inválido. confira os números.");
     expect(erroDaOutraPessoa({ ...outra, nascimento: "03/03/2999" }).nascimento).toBeDefined();
   });
+
+  it("outra pessoa com o CPF do dono da conta: já avisa, antes de ir ao servidor", () => {
+    const outra = { nome: "João Souza", nascimento: "01/02/2015", cpf: "529.982.247-25" };
+    expect(erroDaOutraPessoa(outra, "52998224725").cpf).toBe('esse é o seu CPF. para você, escolha "para mim".');
+    expect(erroDaOutraPessoa(outra, "11144477735")).toEqual({});
+    expect(erroDaOutraPessoa(outra, undefined)).toEqual({});
+  });
 });

@@ -26,32 +26,26 @@ import {
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
 import { diaCurto, ehHoje, hora } from "@/lib/datas";
 import { useSessao } from "@/lib/sessao";
-import { avisoDoErro, mensagemDoErro, resumoDaEntrada, type Situacao, situacaoDaEntrada } from "@/lib/textos";
+import {
+  avisoDoCancelamento,
+  avisoDoErro,
+  mensagemDoErro,
+  resumoDaEntrada,
+  type Situacao,
+  situacaoDaEntrada,
+} from "@/lib/textos";
 
 // "hoje" só quando a sessão é hoje no fuso da unidade; senão, o dia.
 const quando = (en: MinhaEntrada) =>
   en.sessao ? (ehHoje(en.sessao.inicio, Date.now()) ? " · hoje" : ` · ${diaCurto(en.sessao.inicio)}`) : "";
-const contexto = (en: MinhaEntrada, dono: string | undefined) =>
-  `${en.unidade} · ${en.servico.toLowerCase()}${quando(en)}${dono && en.pessoa !== dono ? ` · para ${en.pessoa}` : ""}`;
+const contexto = (en: MinhaEntrada) =>
+  `${en.unidade} · ${en.servico.toLowerCase()}${quando(en)}${en.paraMim ? "" : ` · para ${en.pessoa}`}`;
 const faltam = (posicao: number, minutos: number) =>
   minutos <= 0 || posicao <= 1 ? "você é o próximo" : `cerca de ${minutos} min para a sua vez`;
 
 // "é a sua vez" dispensado não volta ao trocar de aba (a tela remonta); vale enquanto o app está aberto.
 const VEZES_VISTAS = new Set<string>();
 
-// RN-CANC-01: dá para desistir antes de ser chamado, em casa ou na unidade.
-const CANCELAVEIS: Situacao["tipo"][] = [
-  "confirmada",
-  "alocada",
-  "reserva",
-  "lista",
-  "aguardando",
-  "atrasada",
-  "posicao",
-  "venha",
-  "sem_previsao",
-  "recepcao",
-];
 const efeitoDoCancelamento = (sit: Situacao) =>
   sit.tipo === "reserva"
     ? "você sai da reserva."
@@ -71,14 +65,15 @@ function ConfirmarCancelamento({
 }) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Enquanto envia, a gaveta não fecha (o pedido terminaria sem ninguém ver o resultado). Ao fechar, o
+  // erro some: a próxima abertura começa limpa.
+  const fecharGaveta = () => {
+    if (enviando) return;
+    setErro(null);
+    fechar();
+  };
   return (
-    <Gaveta
-      aberta={alvo !== null}
-      fechar={() => {
-        setErro(null);
-        fechar();
-      }}
-    >
+    <Gaveta aberta={alvo !== null} fechar={fecharGaveta} travada={enviando}>
       {alvo ? (
         <>
           <Titulo>não vou poder ir?</Titulo>
@@ -104,7 +99,7 @@ function ConfirmarCancelamento({
               }
             }}
           />
-          <Botao texto="voltar, eu vou" tipo="secundario" onPress={fechar} desativado={enviando} />
+          <Botao texto="voltar, eu vou" tipo="secundario" onPress={fecharGaveta} desativado={enviando} />
         </>
       ) : null}
     </Gaveta>
@@ -210,7 +205,9 @@ function Explicacao({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
     case "concluida":
       return <TextoSuave>atendimento concluído. obrigado por esperar em casa, cuide-se!</TextoSuave>;
     case "remanejada":
-      return <TextoSuave>a sua vez não chegou hoje. você continua na lista e recebe outra data.</TextoSuave>;
+      return (
+        <TextoSuave>a sua vez não chegou hoje. você continua neste serviço e a unidade marca outra data.</TextoSuave>
+      );
     case "saiu":
       return (
         <TextoSuave>você foi chamado e não apareceu. estava na unidade e não ouviu? fale com a recepção.</TextoSuave>
@@ -263,18 +260,16 @@ function Posicao({ senha, posicao, detalhe }: { senha: string | null; posicao?: 
 function CartaoDoAtendimento({
   en,
   sit,
-  dono,
   vouSair,
   aoCancelar,
 }: {
   en: MinhaEntrada;
   sit: Situacao;
-  dono: string | undefined;
   vouSair: (() => void) | null;
   aoCancelar: (() => void) | null;
 }) {
   const r = resumoDaEntrada(en, sit, Date.now());
-  const paraOutra = dono && en.pessoa !== dono ? en.pessoa.split(/\s+/)[0] : null;
+  const paraOutra = en.paraMim ? null : en.pessoa.split(/\s+/)[0];
   const podeCheckIn = ["posicao", "venha", "sem_previsao"].includes(sit.tipo) && en.itemEstado === "remoto";
   return (
     <Cartao style={{ gap: 14 }}>
@@ -324,7 +319,8 @@ export default function MinhaFila() {
   const [vistas, setVistas] = useState<string[]>(() => [...VEZES_VISTAS]);
   const [saindo, setSaindo] = useState<string | null>(null);
   const [cancelar, setCancelar] = useState<{ en: MinhaEntrada; sit: Situacao; ctx: string } | null>(null);
-  const [cancelada, setCancelada] = useState(false);
+  // Texto da faixa depois do "não vou poder ir" (depende de ser reserva, lista ou vaga).
+  const [cancelada, setCancelada] = useState<string | null>(null);
   const [tentando, setTentando] = useState(false);
   const buscarAgora = useRef<(() => Promise<void>) | null>(null);
 
@@ -410,9 +406,7 @@ export default function MinhaFila() {
           }}
         />
       ) : null}
-      {cancelada ? (
-        <Faixa tipo="ok" titulo="pronto, inscrição cancelada" texto="a vaga fica para outra pessoa." />
-      ) : null}
+      {cancelada ? <Faixa tipo="ok" titulo="pronto, inscrição cancelada" texto={cancelada} /> : null}
       {entradas === null && !erro ? <Carregando texto="buscando a sua fila…" /> : null}
       {entradas?.length === 0 ? (
         <Cartao style={{ alignItems: "center", gap: 12, paddingVertical: 28 }}>
@@ -437,12 +431,12 @@ export default function MinhaFila() {
                 key={en.entradaId}
                 en={en}
                 sit={sit}
-                dono={s.conta?.nome}
                 aoCancelar={
-                  CANCELAVEIS.includes(sit.tipo)
+                  // RN-CANC-01: a API diz quando o "não vou poder ir" vale.
+                  en.podeCancelar
                     ? () => {
-                        setCancelada(false);
-                        setCancelar({ en, sit, ctx: contexto(en, s.conta?.nome) });
+                        setCancelada(null);
+                        setCancelar({ en, sit, ctx: contexto(en) });
                       }
                     : null
                 }
@@ -454,11 +448,13 @@ export default function MinhaFila() {
                         setSaindo(en.entradaId);
                         s.api
                           .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
-                          .then(() =>
+                          .then(() => {
                             setEntradas((l) =>
                               (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
-                            ),
-                          )
+                            );
+                            // Posição e previsão novas já, sem esperar a próxima consulta.
+                            void buscarAgora.current?.();
+                          })
                           .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
                           .finally(() => setSaindo(null));
                       }
@@ -473,9 +469,11 @@ export default function MinhaFila() {
         fechar={() => setCancelar(null)}
         confirmar={async (entradaId) => {
           await s.api.post(`/v1/municipios/${s.municipio}/entradas/${entradaId}/cancelar`);
+          const aviso = cancelar ? avisoDoCancelamento(cancelar.sit) : avisoDoCancelamento({ tipo: "confirmada" });
           setEntradas((l) => (l ?? []).filter((x) => x.entradaId !== entradaId));
           setCancelar(null);
-          setCancelada(true);
+          setCancelada(aviso);
+          void buscarAgora.current?.();
         }}
       />
       <Espaco />

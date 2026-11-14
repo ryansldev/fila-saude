@@ -37,8 +37,8 @@ export default function CheckInPeloQr() {
           unidadeId: qr.unidadeId,
           tokens: qr.tokens,
         });
-        // Só troca de município depois de um check-in aceito.
-        if (s.municipio !== qr.municipio) await s.escolherMunicipio(qr.municipio);
+        // Só troca de município quando o check-in achou alguma senha da conta naquele município.
+        if (r.length > 0 && s.municipio !== qr.municipio) await s.escolherMunicipio(qr.municipio);
         const { tipo, linhas } = textoDoCheckIn(r);
         setEstado({ tipo: "fim", resultado: tipo, linhas });
       } catch (err) {

@@ -1,4 +1,5 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { router } from "expo-router";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { type Api, cadastrar, criarApi, type DadosDoCadastro, entrar } from "./api";
 import * as armazenamento from "./armazenamento";
@@ -9,7 +10,8 @@ const CHAVE_TOKEN = "fila-saude.token";
 const CHAVE_MUNICIPIO = "fila-saude.municipio";
 const CHAVE_AVISOS_EXPLICADOS = "fila-saude.avisos-explicados";
 
-export type Conta = { nome: string; nascimento: string };
+/** `cpf`: só dígitos; serve para não aceitar o CPF do dono como "outra pessoa". */
+export type Conta = { nome: string; nascimento: string; cpf: string };
 
 type Sessao = {
   pronto: boolean;
@@ -71,14 +73,23 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
     setConta(null);
   }, []);
 
-  // 401 em qualquer rota: a sessão expirou ou foi revogada; volta ao login (o índice redireciona).
+  // 401 em qualquer rota: a sessão expirou ou foi revogada; esquece a conta e vai direto ao login, para a
+  // pessoa nunca ficar presa numa tela que só dá erro.
+  // Vários pedidos com o mesmo token podem voltar 401 juntos: só o primeiro leva ao login.
+  const tokenAtual = useRef<string | null>(null);
+  tokenAtual.current = token;
   const api = useMemo(
     () =>
       criarApi(
         API_URL,
         async () => token,
         fetch,
-        () => void esquecerConta(),
+        () => {
+          if (!token || tokenAtual.current !== token) return;
+          tokenAtual.current = null;
+          void esquecerConta();
+          router.replace("/entrar");
+        },
       ),
     [token, esquecerConta],
   );
@@ -89,8 +100,8 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
       return;
     }
     api
-      .get<{ user: { name: string; nascimento: string } } | null>("/v1/auth/get-session")
-      .then((s) => setConta(s ? { nome: s.user.name, nascimento: s.user.nascimento } : null))
+      .get<{ user: { name: string; nascimento: string; cpf: string } } | null>("/v1/auth/get-session")
+      .then((s) => setConta(s ? { nome: s.user.name, nascimento: s.user.nascimento, cpf: s.user.cpf ?? "" } : null))
       .catch(() => setConta(null));
   }, [api, token]);
 

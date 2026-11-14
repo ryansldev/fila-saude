@@ -101,12 +101,15 @@ export default function Agenda() {
             .map((x) => {
               const situacao = inscricaoNaAgenda(x, minhas);
               const inscrito = situacao.tipo === "inscrito";
+              // Dono já no serviço: ainda dá para inscrever outra pessoa (o "para mim" fica desligado
+              // na próxima tela). Só sem nada a fazer o cartão leva à minha fila.
+              const soVer = inscrito && !situacao.podeOutra;
               return (
                 <CartaoTocavel
                   key={x.id}
-                  acao={inscrito ? "ver minha fila" : "quero ir"}
+                  acao={soVer ? "ver minha fila" : inscrito ? "inscrever outra pessoa" : "quero ir"}
                   onPress={() =>
-                    inscrito
+                    soVer
                       ? router.replace("/inicio")
                       : router.push({
                           pathname: "/inscricao/[sessaoId]",
@@ -121,21 +124,16 @@ export default function Agenda() {
                         })
                   }
                 >
-                  {inscrito ? (
-                    <Selo
-                      texto={situacao.nestaData ? "você já está inscrito" : "você já está neste serviço"}
-                      tom="verde"
-                    />
-                  ) : null}
+                  {inscrito ? <Selo texto={situacao.selo} tom="verde" /> : null}
                   <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
                     {diaCurto(x.inicio)} · {hora(x.inicio)} às {hora(x.fim)}
                   </Text>
                   <Texto>{x.servico.nome.toLowerCase()}</Texto>
                   <Pequeno>
                     {inscrito
-                      ? situacao.nestaData
-                        ? "sua inscrição está em minha fila."
-                        : "você já tem inscrição em outra data. cada pessoa entra uma vez por serviço."
+                      ? soVer
+                        ? "sua conta já inscreveu o máximo de pessoas nesta data."
+                        : "cada pessoa entra uma vez por serviço. sua inscrição está em minha fila."
                       : `${x.estado === "aberta" ? "fila andando · " : ""}${vagas(x)}${x.profissional ? ` · ${x.profissional}` : ""}`}
                   </Pequeno>
                 </CartaoTocavel>

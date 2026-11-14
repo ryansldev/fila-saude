@@ -44,6 +44,8 @@ export default function Cadastro() {
     setErro(null);
     try {
       await s.cadastrar({ ...v, email: v.email.trim(), nascimento: dataIso(v.nascimento) });
+      // Pilha nova: o "voltar" não leva de volta ao cadastro, ao login ou ao "conhecer o app".
+      if (router.canDismiss()) router.dismissAll();
       router.replace("/");
     } catch (err) {
       const codigo = err instanceof ErroDaApi ? err.erro : (err as { erro?: string }).erro;

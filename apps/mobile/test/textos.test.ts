@@ -1,7 +1,7 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { describe, expect, it } from "vitest";
 import { ErroDaApi } from "@/lib/api";
-import { avisoDoErro, mensagemDoErro, resumoDaEntrada, situacaoDaEntrada } from "@/lib/textos";
+import { avisoDoCancelamento, avisoDoErro, mensagemDoErro, resumoDaEntrada, situacaoDaEntrada } from "@/lib/textos";
 
 const sit = (e: MinhaEntrada) => situacaoDaEntrada(e, 0);
 
@@ -203,5 +203,18 @@ describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 202
       grupo: "encerrados",
     });
     expect(r({ ...base, estado: "cancelada", itemEstado: null })).toMatchObject({ etapa: null, grupo: "encerrados" });
+  });
+
+  it("remanejada: continua no serviço esperando nova data (não é encerrada)", () => {
+    const rem = r({ ...base, sessao: hoje, estado: "remanejada", itemEstado: "remanejado", senha: null });
+    expect(rem).toMatchObject({ naFila: false, etapa: 0, grupo: "sem_data", selo: "aguardando nova data" });
+  });
+});
+
+describe("faixa depois do 'não vou poder ir', pelo tipo da inscrição", () => {
+  it("reserva, lista de espera e vaga", () => {
+    expect(avisoDoCancelamento({ tipo: "reserva" })).toBe("você saiu da reserva.");
+    expect(avisoDoCancelamento({ tipo: "lista" })).toBe("você saiu da lista de espera.");
+    expect(avisoDoCancelamento({ tipo: "confirmada" })).toBe("a vaga fica para outra pessoa.");
   });
 });

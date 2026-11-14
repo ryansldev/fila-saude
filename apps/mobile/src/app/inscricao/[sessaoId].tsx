@@ -1,7 +1,7 @@
 import { alternarOpcao } from "@fila-saude/domain";
 import type { InscricaoEntrada, MinhaEntrada, SessaoDaAgenda } from "@fila-saude/schemas/fila";
 import { mascararCpf, mascararData } from "@fila-saude/schemas/mascaras";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import {
@@ -25,11 +25,12 @@ import {
 } from "@/components/ui";
 import { ErroDaApi } from "@/lib/api";
 import { diaCurto } from "@/lib/datas";
-import { outraPessoaJaInscrita, paraMimNoServico } from "@/lib/inscricoes";
+import { type ErroDaVerificacao, erroDaVerificacao, outraPessoaJaInscrita, paraMimNoServico } from "@/lib/inscricoes";
 import {
   completas,
   desfechoDoQuestionario,
   PERGUNTAS,
+  perguntaDe,
   RESPOSTAS_VAZIAS,
   type RespostasDoApp,
   type Tela as TelaDoQuestionario,
@@ -45,11 +46,15 @@ type Passo =
   | { tipo: "emergencia" }
   | { tipo: "apoio" }
   | { tipo: "inscrito" }
-  | { tipo: "reserva" };
+  | { tipo: "reserva" }
+  /** Serviço com requisição: inscrito, mas o pedido médico ainda precisa chegar à unidade. */
+  | { tipo: "pedido" };
 
 type DadosDaSessao = { servicoId?: string; servico?: string; unidade?: string; inicio?: string; aberta?: boolean };
 
 const irParaMinhaFila = () => router.dismissTo("/inicio");
+const irParaAgenda = () => router.dismissTo("/agenda");
+const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? nome;
 
 /** T3.3: "para quem é?" (AD-018), questionário v1 e a inscrição, como no design do app. */
 export default function Inscricao() {
@@ -70,6 +75,9 @@ export default function Inscricao() {
   const [erro, setErro] = useState<{ texto: string; duplicada: boolean } | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [tentouQuem, setTentouQuem] = useState(false);
+  // Recusa do /verificar no passo "para quem" (antes do questionário).
+  const [erroQuem, setErroQuem] = useState<ErroDaVerificacao | null>(null);
+  const [verificando, setVerificando] = useState(false);
   // Dois toques no mesmo instante não mandam duas inscrições.
   const enviandoRef = useRef(false);
 
@@ -131,29 +139,31 @@ export default function Inscricao() {
     </Cartao>
   );
 
+  const paraQuem = (q: "eu" | "outra"): InscricaoEntrada["paraQuem"] =>
+    q === "eu"
+      ? { tipo: "eu" }
+      : {
+          tipo: "outra",
+          nome: outra.nome.trim(),
+          nascimento: dataIso(outra.nascimento),
+          cpf: outra.cpf.trim() ? outra.cpf : null,
+        };
+
   async function enviar() {
     if (!completas(r) || enviandoRef.current || !quem) return;
     enviandoRef.current = true;
     setEnviando(true);
     setErro(null);
-    const corpo: InscricaoEntrada = {
-      paraQuem:
-        quem === "eu"
-          ? { tipo: "eu" }
-          : {
-              tipo: "outra",
-              nome: outra.nome.trim(),
-              nascimento: dataIso(outra.nascimento),
-              cpf: outra.cpf.trim() ? outra.cpf : null,
-            },
-      respostas: r,
-    };
+    const corpo: InscricaoEntrada = { paraQuem: paraQuem(quem), respostas: r };
     try {
       const res = await s.api.post<{ estado: string }>(
         `/v1/municipios/${s.municipio}/sessoes/${p.sessaoId}/inscricoes`,
         corpo,
       );
-      setPasso({ tipo: res.estado === "na_reserva" ? "reserva" : "inscrito" });
+      setPasso({
+        tipo:
+          res.estado === "na_reserva" ? "reserva" : res.estado === "aguardando_encaminhamento" ? "pedido" : "inscrito",
+      });
     } catch (err) {
       setErro({ texto: mensagemDoErro(err), duplicada: err instanceof ErroDaApi && err.erro === "duplicada" });
     } finally {
@@ -162,8 +172,25 @@ export default function Inscricao() {
     }
   }
 
+  /** "para quem" → confere na API (sem gravar) o que a inscrição recusaria; só então começa o questionário. */
+  async function verificarQuem(q: "eu" | "outra") {
+    if (verificando) return;
+    setVerificando(true);
+    setErroQuem(null);
+    try {
+      await s.api.post(`/v1/municipios/${s.municipio}/sessoes/${p.sessaoId}/inscricoes/verificar`, {
+        paraQuem: paraQuem(q),
+      });
+      setQuem(q);
+      setPasso({ tipo: "pergunta", indice: 0 });
+    } catch (err) {
+      setErroQuem(erroDaVerificacao(err));
+    } finally {
+      setVerificando(false);
+    }
+  }
+
   function avancar() {
-    if (passo.tipo === "quem") return setPasso({ tipo: "pergunta", indice: 0 });
     if (passo.tipo !== "pergunta") return;
     if (telas[passo.indice] === "alarmes") {
       const d = desfechoDoQuestionario(r, nascimento, Date.now());
@@ -177,6 +204,29 @@ export default function Inscricao() {
   // "para quem é" + uma pergunta por tela; o resultado enche a barra.
   const total = 1 + telas.length;
 
+  // Pelo link (deep link), a tela pode abrir sem conta ou sem município escolhido.
+  if (s.pronto && !s.token)
+    return (
+      <Tela
+        voltar={false}
+        acoes={
+          <>
+            <Botao texto="entrar" onPress={() => router.replace("/entrar")} />
+            <LinkBotao texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
+          </>
+        }
+      >
+        <Faixa
+          tipo="aviso"
+          titulo="entre na sua conta"
+          texto="para se inscrever neste atendimento, entre no app e escolha o atendimento de novo."
+          style={{ marginTop: 8 }}
+        />
+      </Tela>
+    );
+  if (s.pronto && !s.municipio) return <Redirect href="/municipio" />;
+  if (!s.pronto) return <Carregando cheia />;
+
   if (passo.tipo === "inscrito")
     return (
       <Tela
@@ -185,11 +235,19 @@ export default function Inscricao() {
         acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
       >
         <Mascote tamanho={140} />
-        <Faixa tipo="ok" titulo="você está inscrito!" texto="a vaga é sua. não precisa confirmar." />
+        {quem === "outra" ? (
+          <Faixa
+            tipo="ok"
+            titulo={`${primeiroNome(outra.nome)} está inscrito(a)!`}
+            texto="a vaga é dele(a). não precisa confirmar. você recebe os avisos."
+          />
+        ) : (
+          <Faixa tipo="ok" titulo="você está inscrito!" texto="a vaga é sua. não precisa confirmar." />
+        )}
         {resumo}
         <TextoSuave>
           {sessao.aberta
-            ? "a fila de hoje já começou: sua senha e a posição já estão em minha fila."
+            ? `a fila de hoje já começou: ${quem === "outra" ? "a senha" : "sua senha"} e a posição já estão em minha fila.`
             : "no dia, avisamos quando a fila começar e a hora de sair de casa."}
         </TextoSuave>
       </Tela>
@@ -205,11 +263,37 @@ export default function Inscricao() {
         <Faixa
           tipo="aviso"
           titulo="as vagas acabaram"
-          texto="você está na lista de reserva desta data."
+          texto={
+            quem === "outra"
+              ? `${primeiroNome(outra.nome)} está na lista de reserva desta data.`
+              : "você está na lista de reserva desta data."
+          }
           style={{ marginTop: 8 }}
         />
         {resumo}
         <TextoSuave>se alguém desistir, a vaga é sua e avisamos na hora.</TextoSuave>
+      </Tela>
+    );
+
+  if (passo.tipo === "pedido")
+    return (
+      <Tela
+        progresso={{ atual: total, total }}
+        aoVoltar={irParaMinhaFila}
+        acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
+      >
+        <Faixa
+          tipo="aviso"
+          titulo="falta o pedido médico"
+          texto="leve o pedido na recepção da unidade antes do dia."
+          style={{ marginTop: 8 }}
+        />
+        {resumo}
+        <TextoSuave>
+          {quem === "outra"
+            ? `a inscrição de ${primeiroNome(outra.nome)} está feita. a vaga só fica garantida quando a unidade receber o pedido.`
+            : "a sua inscrição está feita. a vaga só fica garantida quando a unidade receber o pedido."}
+        </TextoSuave>
       </Tela>
     );
 
@@ -276,9 +360,22 @@ export default function Inscricao() {
       );
 
     const escolhido = quem === "eu" && donoInscrito ? null : quem;
-    const errosOutra = escolhido === "outra" ? erroDaOutraPessoa(outra) : {};
-    const outraRepetida = escolhido === "outra" && outraPessoaJaInscrita(minhas, sessao.servicoId, outra.nome);
+    const errosOutra = escolhido === "outra" ? erroDaOutraPessoa(outra, s.conta?.cpf) : {};
+    const outraRepetida =
+      escolhido === "outra" &&
+      outraPessoaJaInscrita(minhas, sessao.servicoId, {
+        nome: outra.nome,
+        nascimento: dataIso(outra.nascimento),
+        cpf: outra.cpf,
+      });
     const mostrar = (k: keyof typeof errosOutra) => (tentouQuem ? errosOutra[k] : undefined);
+    // Recusa da API que é de um campo: aparece embaixo dele.
+    const erroCpfDaApi = erroQuem?.tipo === "campo" ? erroQuem.texto : undefined;
+    const erroPessoaDaApi = erroQuem?.tipo === "pessoa" ? erroQuem.texto : undefined;
+    const mudarOutra = (v: Partial<typeof outra>) => {
+      setOutra({ ...outra, ...v });
+      setErroQuem(null);
+    };
     const contaPronta = escolhido === "outra" || (escolhido === "eu" && Boolean(s.conta?.nascimento));
     // Sem as inscrições da conta, só deixa seguir se a busca falhou (a API ainda recusa a duplicada).
     const pode = contaPronta && (carregado || erroAoCarregar !== null) && !outraRepetida;
@@ -288,20 +385,27 @@ export default function Inscricao() {
         // Aberta pelo link, não há tela anterior: o X leva aos atendimentos.
         aoVoltar={() => (router.canGoBack() ? router.back() : router.replace("/agenda"))}
         acoes={
-          <Botao
-            texto="continuar"
-            desativado={!pode}
-            onPress={() => {
-              setTentouQuem(true);
-              if (Object.keys(errosOutra).length === 0 && !outraRepetida) {
-                setQuem(escolhido);
-                avancar();
-              }
-            }}
-          />
+          erroQuem?.tipo === "faixa" && erroQuem.saida ? (
+            <Botao
+              texto={erroQuem.saida === "agenda" ? "ver os atendimentos" : "ver minha fila"}
+              onPress={erroQuem.saida === "agenda" ? irParaAgenda : irParaMinhaFila}
+            />
+          ) : (
+            <Botao
+              texto="continuar"
+              desativado={!pode}
+              carregando={verificando}
+              onPress={() => {
+                setTentouQuem(true);
+                if (escolhido && Object.keys(errosOutra).length === 0 && !outraRepetida) void verificarQuem(escolhido);
+              }}
+            />
+          )
         }
       >
         <Titulo>para quem é o atendimento?</Titulo>
+        {/* No alto, para ser vista sem rolar: o botão de baixo vira a saída. */}
+        {erroQuem?.tipo === "faixa" ? <Faixa tipo="perigo" titulo={erroQuem.titulo} texto={erroQuem.texto} /> : null}
         {sessao.inicio || sessao.servico ? resumo : null}
         {erroAoCarregar ? (
           <Faixa
@@ -345,9 +449,25 @@ export default function Inscricao() {
                 <Pequeno>cada pessoa entra uma vez em cada serviço. sua inscrição está em minha fila.</Pequeno>
               </View>
             ) : (
-              <Opcao texto="para mim" unica marcada={escolhido === "eu"} onPress={() => setQuem("eu")} />
+              <Opcao
+                texto="para mim"
+                unica
+                marcada={escolhido === "eu"}
+                onPress={() => {
+                  setQuem("eu");
+                  setErroQuem(null);
+                }}
+              />
             )}
-            <Opcao texto="para outra pessoa" unica marcada={escolhido === "outra"} onPress={() => setQuem("outra")} />
+            <Opcao
+              texto="para outra pessoa"
+              unica
+              marcada={escolhido === "outra"}
+              onPress={() => {
+                setQuem("outra");
+                setErroQuem(null);
+              }}
+            />
           </>
         )}
         {escolhido === "outra" ? (
@@ -355,12 +475,12 @@ export default function Inscricao() {
             <Campo
               rotulo="nome de quem será atendido"
               value={outra.nome}
-              onChangeText={(t) => setOutra({ ...outra, nome: t })}
+              onChangeText={(t) => mudarOutra({ nome: t })}
               autoCapitalize="words"
               erro={
                 outraRepetida
                   ? "esta pessoa já está inscrita neste serviço pela sua conta. veja em minha fila."
-                  : mostrar("nome")
+                  : (erroPessoaDaApi ?? mostrar("nome"))
               }
             />
             <Campo
@@ -368,18 +488,18 @@ export default function Inscricao() {
               placeholder="dd/mm/aaaa"
               keyboardType="number-pad"
               value={outra.nascimento}
-              onChangeText={(t) => setOutra({ ...outra, nascimento: mascararData(t) })}
+              onChangeText={(t) => mudarOutra({ nascimento: mascararData(t) })}
               maxLength={10}
-              erro={mostrar("nascimento")}
+              erro={erroPessoaDaApi ? "confira a data de nascimento." : mostrar("nascimento")}
             />
             <Campo
               rotulo="CPF (se tiver)"
               keyboardType="number-pad"
               value={outra.cpf}
-              onChangeText={(t) => setOutra({ ...outra, cpf: mascararCpf(t) })}
+              onChangeText={(t) => mudarOutra({ cpf: mascararCpf(t) })}
               maxLength={14}
               placeholder="000.000.000-00"
-              erro={mostrar("cpf")}
+              erro={erroCpfDaApi ?? mostrar("cpf")}
             />
             <Pequeno>você recebe os avisos e leva a pessoa no dia.</Pequeno>
           </View>
@@ -394,8 +514,7 @@ export default function Inscricao() {
   const lista = Array.isArray(valor) ? (valor as string[]) : [];
   const respondida = pergunta.multipla ? lista.length > 0 || Boolean(nenhum[tela]) : valor !== null;
   const ultima = passo.indice + 1 === telas.length;
-  const titulo =
-    tela === "grupos" && quem === "outra" ? "alguma destas se aplica a quem vai ser atendido?" : pergunta.pergunta;
+  const titulo = perguntaDe(tela, quem);
 
   function marcar(op: string) {
     setErro(null);

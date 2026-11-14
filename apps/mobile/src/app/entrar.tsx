@@ -23,6 +23,8 @@ export default function Entrar() {
     setErro(null);
     try {
       await s.entrar(cpf, senha);
+      // Pilha nova: o "voltar" não leva de volta ao cadastro, ao login ou ao "conhecer o app".
+      if (router.canDismiss()) router.dismissAll();
       router.replace("/");
     } catch (err) {
       setErro(mensagemDoErro(err));
