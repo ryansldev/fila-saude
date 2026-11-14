@@ -31,7 +31,10 @@ export async function registrarTv(db: DbDoTenant): Promise<TvRegistro> {
 
 async function tvDoToken(db: BancoDoTenant, token: string | null) {
   if (!token) throw new ErroApi(401, "tv_nao_pareada");
-  const [linha] = await db.select().from(tv).where(eq(tv.tokenHash, hash(token)));
+  const [linha] = await db
+    .select()
+    .from(tv)
+    .where(eq(tv.tokenHash, hash(token)));
   if (!linha || linha.revogadaEm) throw new ErroApi(401, "tv_nao_pareada");
   return linha;
 }
@@ -73,7 +76,10 @@ export async function revogarTv(ctx: ContextoDaAcao, tvId: string): Promise<{ id
   const [t] = await ctx.db.select().from(tv).where(eq(tv.id, tvId));
   if (!t?.unidadeId || t.revogadaEm) throw new ErroApi(404, "nao_encontrado");
   return executarAcao(ctx, { acao: CONFIGURAR, alvo: { tipo: "tv", id: tvId }, unidadeId: t.unidadeId }, async (tx) => {
-    await tx.update(tv).set({ revogadaEm: new Date(ctx.agora) }).where(eq(tv.id, tvId));
+    await tx
+      .update(tv)
+      .set({ revogadaEm: new Date(ctx.agora) })
+      .where(eq(tv.id, tvId));
     return { id: tvId };
   });
 }

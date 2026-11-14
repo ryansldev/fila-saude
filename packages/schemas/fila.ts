@@ -4,7 +4,14 @@ import { sessaoSchema } from "./sessao";
 // Fatia 1 da v0.1: fila do dia (painel), operação da estação e as telas do app.
 
 export const etapaSchema = z.enum(["triagem", "atendimento"]);
-export const estadoItemSchema = z.enum(["remoto", "presente", "chamado", "atendido_na_etapa", "saiu_da_fila", "remanejado"]);
+export const estadoItemSchema = z.enum([
+  "remoto",
+  "presente",
+  "chamado",
+  "atendido_na_etapa",
+  "saiu_da_fila",
+  "remanejado",
+]);
 
 /** Item da fila como o painel vê: nome para a equipe; nada clínico além do nível de risco usado na ordem. */
 export const itemDaFilaSchema = z.object({
@@ -129,9 +136,7 @@ export const minhaEntradaSchema = z.object({
   estado: z.string(),
   servico: z.string(),
   unidade: z.string(),
-  sessao: z
-    .object({ id: z.uuid(), inicio: z.iso.datetime(), fim: z.iso.datetime(), estado: z.string() })
-    .nullable(),
+  sessao: z.object({ id: z.uuid(), inicio: z.iso.datetime(), fim: z.iso.datetime(), estado: z.string() }).nullable(),
   senha: z.string().nullable(),
   itemEstado: estadoItemSchema.nullable(),
   estimativa: estimativaSchema.nullable(),
@@ -169,7 +174,10 @@ export const qrDaUnidadeSchema = z.object({
 });
 export type QrDaUnidade = z.infer<typeof qrDaUnidadeSchema>;
 
-export const checkInEntradaSchema = z.object({ unidadeId: z.uuid(), tokens: z.array(z.string().max(64)).min(1).max(20) });
+export const checkInEntradaSchema = z.object({
+  unidadeId: z.uuid(),
+  tokens: z.array(z.string().max(64)).min(1).max(20),
+});
 export type CheckInEntrada = z.infer<typeof checkInEntradaSchema>;
 
 export const pendenciaSchema = z.enum(["conta", "pessoa_atendida", "pre_cadastro", "prioridade"]);

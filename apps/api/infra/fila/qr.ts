@@ -31,7 +31,12 @@ const intervaloDe = (abertas: Awaited<ReturnType<typeof abertasDaUnidade>>) =>
 
 // RN-PRES-01: um link com o token de cada sessão aberta; o app abre direto pela câmera do celular.
 // Sem checar quem pede: a tela do QR no painel e a TV pareada (RN-TV-02) checam antes.
-export async function conteudoDoQr(db: BancoDoTenant, slug: string, unidadeId: string, agora: number): Promise<QrDaUnidade> {
+export async function conteudoDoQr(
+  db: BancoDoTenant,
+  slug: string,
+  unidadeId: string,
+  agora: number,
+): Promise<QrDaUnidade> {
   const abertas = (await abertasDaUnidade(db, unidadeId)).filter((s) => s.segredo !== null);
   const intervalo = intervaloDe(abertas);
   if (abertas.length === 0) return { conteudo: null, intervaloSegundos: intervalo / 1000, expiraEm: null, sessoes: [] };
