@@ -65,6 +65,12 @@ export function tratarErro(err: unknown, req: FastifyRequest, reply: FastifyRepl
   if (err instanceof ErroApi) {
     return reply.status(err.status).send(corpoDoErro(err));
   }
+  // Duas requisições ao mesmo tempo esbarraram num índice único (ex.: a mesma pessoa inscrita em
+  // duas sessões do serviço): é conflito do cliente, não erro interno.
+  const pg = (err as { code?: string; cause?: { code?: string } } | null) ?? {};
+  if (pg.code === "23505" || pg.cause?.code === "23505") {
+    return reply.status(409).send({ erro: "duplicada" });
+  }
   // Erros do próprio Fastify (JSON malformado, corpo grande, tipo não suportado).
   const status = (err as { statusCode?: number } | null)?.statusCode;
   if (typeof status === "number" && status >= 400 && status < 500) {

@@ -28,6 +28,16 @@ const servicoEm = async (cookie: string, unidadeId: string) =>
     })
   ).corpo.id as string;
 
+// Sessão precisa de estação que chame (revisão 2026-11-13).
+const estacaoEm = async (cookie: string, unidadeId: string, servicoId: string) =>
+  (
+    await pedir("POST", `/v1/painel/unidades/${unidadeId}/estacoes`, cookie, {
+      nome: "C1",
+      etapa: "atendimento",
+      servicos: [servicoId],
+    })
+  ).corpo.id as string;
+
 describe("DELETE /v1/painel/unidades/:id", () => {
   it("SMS remove unidade sem uso: some da lista e a equipe perde a atribuição nela", async () => {
     const id = await novaUnidade("UBS Vazia");
@@ -57,7 +67,7 @@ describe("DELETE /v1/painel/unidades/:id", () => {
       visibilidade: "privada",
       dispensaPreCadastro: false,
       profissional: null,
-      estacoes: [],
+      estacoes: [await estacaoEm(g.cookie, id, servicoId)],
     });
     expect(await pedir("DELETE", `/v1/painel/unidades/${id}`, gestor)).toMatchObject({
       status: 409,

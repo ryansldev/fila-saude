@@ -2,7 +2,7 @@ import { cadastroPacienteSchema } from "@fila-saude/schemas/auth";
 import { cpfValido } from "@fila-saude/schemas/cpf";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { bearer, username } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import database, { schemaCentral } from "infra/database";
@@ -70,16 +70,32 @@ async function prepararCadastro(corpo: Record<string, unknown>) {
   });
 }
 
-function prepararAtualizacao(corpo: Record<string, unknown>) {
+function prepararAtualizacao(corpo: Record<string, unknown>, verificada: boolean) {
   const campos: Record<string, string[]> = {};
   for (const chave of CAMPOS_IMUTAVEIS) if (chave in corpo) campos[chave] = ["campo_imutavel"];
   if (Object.keys(campos).length > 0) throw new ErroApi(400, "entrada_invalida", campos);
+  // O better-auth grava `name`; o contrato é `nome`. Os dois passam pela mesma validação.
+  const entrada = { ...corpo };
+  if ("name" in entrada && !("nome" in entrada)) entrada.nome = entrada.name;
   const editaveis = Object.fromEntries(
-    Object.entries(corpo).filter(([chave]) => chave in atualizacaoPacienteSchema.shape),
+    Object.entries(entrada).filter(([chave]) => chave in atualizacaoPacienteSchema.shape),
   );
   const dados = validar(atualizacaoPacienteSchema, editaveis);
-  // Grava os valores normalizados (telefone só com dígitos, nome sem espaços nas pontas).
-  for (const [chave, valor] of Object.entries(dados)) if (valor !== undefined) corpo[chave] = valor;
+  // RN-ID-05: a data de nascimento foi conferida no documento; mudar daria prioridade de idoso sem conferência.
+  if (verificada && dados.nascimento !== undefined) {
+    throw new ErroApi(
+      409,
+      "nascimento_verificado",
+      undefined,
+      "A data de nascimento foi conferida na recepção. Para corrigir, procure a recepção.",
+    );
+  }
+  // Só os campos editáveis seguem, já normalizados (o resto do corpo some).
+  substituirCorpo(corpo, {
+    ...(dados.nome !== undefined ? { name: dados.nome } : {}),
+    ...(dados.telefone !== undefined ? { telefone: dados.telefone } : {}),
+    ...(dados.nascimento !== undefined ? { nascimento: dados.nascimento } : {}),
+  });
 }
 
 // O better-auth responde direto, sem passar pelo handler de erros do Fastify: o `ErroApi` vira um
@@ -120,7 +136,11 @@ export const authCentral = betterAuth({
     before: createAuthMiddleware(async (ctx) => {
       try {
         if (ctx.path === "/sign-up/email") await prepararCadastro(corpoDe(ctx));
-        if (ctx.path === "/update-user") prepararAtualizacao(corpoDe(ctx));
+        if (ctx.path === "/update-user") {
+          const sessao = await getSessionFromCtx(ctx).catch(() => null);
+          const verificada = Boolean((sessao?.user as { verificadoEm?: Date | null } | undefined)?.verificadoEm);
+          prepararAtualizacao(corpoDe(ctx), verificada);
+        }
       } catch (err) {
         throw comoErroDoAuth(err);
       }

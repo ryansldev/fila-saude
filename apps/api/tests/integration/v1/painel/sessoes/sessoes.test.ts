@@ -79,7 +79,7 @@ describe("sessões avulsas", () => {
   });
 
   it("pública em serviço regulado → 409 servico_regulado", async () => {
-    expect(await criar(base({ servicoId: reguladoId, estacoes: [] }))).toMatchObject({
+    expect(await criar(base({ servicoId: reguladoId, estacoes: [estacaoOutra] }))).toMatchObject({
       status: 409,
       corpo: { erro: "servico_regulado" },
     });

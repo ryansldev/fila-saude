@@ -121,7 +121,9 @@ export async function checkInDoPaciente(
           const efetivas = [...pendencias];
           if (efetivas.length === 0) efetivas.push("prioridade");
           saida.push({ ...base, resultado: "pendencia", pendencias: efetivas });
-        } else throw new ErroApi(409, r.erro);
+        }
+        // Outro motivo (ex.: chamado agora): essa pessoa fica como está e as demais seguem; um erro
+        // aqui desfaria a resposta das sessões já gravadas.
       }
       return { dia, resultado: null };
     });

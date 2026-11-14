@@ -23,7 +23,13 @@ async function validarAtribuicoes(db: BancoDoTenant, a: AtribuicoesEntrada): Pro
   ] as string[];
   if (ids.length > 0) {
     const achadas = new Set(
-      (await db.select({ id: unidade.id }).from(unidade).where(inArray(unidade.id, ids))).map((u) => u.id),
+      // Unidade removida (arquivada) não recebe ninguém (R1).
+      (
+        await db
+          .select({ id: unidade.id })
+          .from(unidade)
+          .where(and(inArray(unidade.id, ids), isNull(unidade.arquivadaEm)))
+      ).map((u) => u.id),
     );
     a.vinculos.forEach((v, i) => {
       if (!achadas.has(v.unidadeId)) campos[`vinculos.${i}.unidadeId`] = ["unidade não encontrada"];

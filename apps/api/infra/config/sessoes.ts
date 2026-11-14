@@ -1,4 +1,10 @@
-import { type ConfigSessao, type ModoServico, mudarVisibilidade, validarSessao } from "@fila-saude/domain";
+import {
+  type ConfigSessao,
+  type ModoServico,
+  mudarVisibilidade,
+  preencherDaReserva,
+  validarSessao,
+} from "@fila-saude/domain";
 import type { Sessao, SessaoEdicao, SessaoEntrada, VisibilidadeEntrada } from "@fila-saude/schemas/sessao";
 import { and, asc, eq, gte, inArray, isNull, lt, notInArray } from "drizzle-orm";
 import { entrada } from "infra/database/municipal/schema/entrada";
@@ -7,6 +13,7 @@ import { servico } from "infra/database/municipal/schema/servico";
 import { sessao, sessaoEstacao } from "infra/database/municipal/schema/sessao";
 import type { BancoDoTenant } from "infra/database/tenants";
 import { camposDoDominio, ErroApi } from "infra/erros";
+import { naSessao } from "infra/fila/dia";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
 import { CONFIGURAR, exigirUnidade, SESSAO } from "./comum";
 import { exigirServico } from "./servicos";
@@ -34,18 +41,30 @@ export async function paraSessao(db: BancoDoTenant, s: Linha): Promise<Sessao> {
   };
 }
 
-async function estacoesDoServico(db: BancoDoTenant, servicoId: string): Promise<string[]> {
-  const linhas = await db
-    .select({ id: estacao.id })
+async function estacoesDoServico(db: BancoDoTenant, servicoId: string) {
+  return db
+    .select({ id: estacao.id, etapa: estacao.etapa })
     .from(estacaoServico)
     .innerJoin(estacao, eq(estacaoServico.estacaoId, estacao.id))
     .where(and(eq(estacaoServico.servicoId, servicoId), isNull(estacao.arquivadaEm)));
-  return linhas.map((l) => l.id);
 }
 
 // RN-ENC-05 / AD-016: a configuração valida pelo domínio; erros de campo → 400, regulado público → 409.
-async function conferir(db: BancoDoTenant, s: { id: string; modo: ModoServico }, c: ConfigSessao) {
-  const v = validarSessao({ modo: s.modo, estacoesDoServico: await estacoesDoServico(db, s.id) }, c);
+async function conferir(
+  db: BancoDoTenant,
+  s: { id: string; modo: ModoServico; exigeTriagem: boolean },
+  c: ConfigSessao,
+) {
+  const ests = await estacoesDoServico(db, s.id);
+  const v = validarSessao(
+    {
+      modo: s.modo,
+      estacoesDoServico: ests.map((e) => e.id),
+      exigeTriagem: s.exigeTriagem,
+      etapas: Object.fromEntries(ests.map((e) => [e.id, e.etapa])),
+    },
+    c,
+  );
   if (v.ok) return;
   if (v.erro === "servico_regulado") throw new ErroApi(409, "servico_regulado");
   throw new ErroApi(400, "entrada_invalida", camposDoDominio(v.campos ?? {}));
@@ -115,6 +134,9 @@ export async function editarSessao(ctx: ContextoDaAcao, id: string, dados: Sessa
     const fim = dados.fim ? new Date(dados.fim) : atual.fim;
     const mudouHorario = inicio.getTime() !== atual.inicio.getTime() || fim.getTime() !== atual.fim.getTime();
     if (mudouHorario && atual.estado !== "planejada") throw new ErroApi(409, "transicao_proibida");
+    // Com a sessão aberta, as estações já estão no dia: tirar uma com paciente chamado travaria o encerramento.
+    if (dados.estacoes && atual.estado !== "planejada")
+      throw new ErroApi(409, "transicao_proibida", undefined, "As estações só mudam antes de abrir a sessão.");
     if (fim <= inicio) throw new ErroApi(400, "entrada_invalida", { fim: ["fim deve ser depois do início"] });
     const vagas = dados.vagas !== undefined ? dados.vagas : atual.vagas;
     if (vagas !== null && vagas < atual.ocupadas) {
@@ -139,6 +161,17 @@ export async function editarSessao(ctx: ContextoDaAcao, id: string, dados: Sessa
       ...(dados.profissional !== undefined ? { profissional: dados.profissional } : {}),
     });
     if (dados.estacoes) await trocarEstacoes(tx, id, dados.estacoes);
+    // RN-PUB-02: vaga a mais vai ao primeiro da reserva.
+    const maisVagas = atual.vagas !== null && (vagas === null || vagas > atual.vagas);
+    if (maisVagas && linha.visibilidade === "publica" && (linha.estado === "planejada" || linha.estado === "aberta")) {
+      await naSessao(tx, id, async (c) => {
+        const r = preencherDaReserva(c.sessao, c.dia, c.entradas, { servico: c.servico, fotosAceitas: [] }, ctx.agora);
+        if (!r.ok) return { resultado: null };
+        return { dia: r.estado.dia, sessao: r.estado.sessao, entradas: r.estado.entradas, resultado: null };
+      });
+      const [nova] = await tx.select().from(sessao).where(eq(sessao.id, id));
+      return paraSessao(tx, nova ?? linha);
+    }
     return paraSessao(tx, linha);
   });
 }

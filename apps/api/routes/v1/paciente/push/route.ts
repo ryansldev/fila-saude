@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { pacienteDaRequisicao } from "infra/auth/sessao-paciente";
 import database from "infra/database";
@@ -17,6 +18,16 @@ export default async function (app: FastifyInstance) {
       .insert(dispositivoPush)
       .values({ pacienteId, token })
       .onConflictDoUpdate({ target: dispositivoPush.token, set: { pacienteId, atualizadoEm: new Date() } });
+    return { ok: true };
+  });
+
+  // Ao sair da conta, o aparelho deixa de receber os avisos dela (aparelho compartilhado).
+  app.delete("/", { preHandler: [app.exigirPaciente] }, async (req) => {
+    const { pacienteId } = pacienteDaRequisicao(req);
+    const { token } = validar(entrada, req.body);
+    await database
+      .delete(dispositivoPush)
+      .where(and(eq(dispositivoPush.token, token), eq(dispositivoPush.pacienteId, pacienteId)));
     return { ok: true };
   });
 }

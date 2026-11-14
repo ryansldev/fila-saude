@@ -2,7 +2,13 @@ import { randomUUID } from "node:crypto";
 import { type Entrada, inscreverPublica, type Respostas } from "@fila-saude/domain";
 import { ErroApi } from "infra/erros";
 import { configDaUnidade, naSessao } from "./dia";
-import { entradasAtivasDoServico, inserirEntrada, type PessoaInformada, pessoaAtendida } from "./entradas";
+import {
+  entradasAtivasDoServico,
+  inserirEntrada,
+  type PessoaInformada,
+  pessoaAtendida,
+  pessoaPorCpf,
+} from "./entradas";
 
 export type CmdInscrever = {
   pessoa: PessoaInformada;
@@ -19,7 +25,11 @@ export async function inscrever(
 ): Promise<Entrada> {
   return naSessao(db, sessaoId, async (c) => {
     if (c.linha.estado !== "planejada" && c.linha.estado !== "aberta") throw new ErroApi(409, "sessao_fechada");
+    // Passou do fim: ninguém mais seria atendido nela, mesmo que ninguém tenha encerrado.
+    if (c.linha.fim.getTime() <= cmd.agora)
+      throw new ErroApi(409, "sessao_fechada", undefined, "Este atendimento já terminou.");
     if (!c.servicoLinha.ativo) throw new ErroApi(404, "nao_encontrado");
+    await pessoaPorCpf(c.tx, cmd.pessoa);
     const r = inscreverPublica(
       c.sessao,
       c.dia,

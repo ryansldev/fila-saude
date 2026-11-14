@@ -18,6 +18,7 @@ import { inscrever } from "./inscricao";
 
 const FINAIS = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"] as const;
 const DIAS_DA_AGENDA = 14;
+const MAX_POR_CONTA = 5;
 
 export async function municipiosAtivos() {
   return database
@@ -68,6 +69,24 @@ export async function inscreverPaciente(
   const [s] = await db.select({ visibilidade: sessao.visibilidade }).from(sessao).where(eq(sessao.id, sessaoId));
   if (!s) throw new ErroApi(404, "nao_encontrado");
   if (s.visibilidade !== "publica") throw new ErroApi(409, "sessao_privada");
+  // RN-ID-07 (enxuto): uma conta não lota a sessão com pessoas inventadas.
+  const ativas = await db
+    .select({ id: entrada.id })
+    .from(entrada)
+    .where(
+      and(
+        eq(entrada.sessaoId, sessaoId),
+        eq(entrada.responsavelPacienteId, p.pacienteId),
+        notInArray(entrada.estado, [...FINAIS]),
+      ),
+    );
+  if (ativas.length >= MAX_POR_CONTA)
+    throw new ErroApi(
+      409,
+      "limite_por_conta",
+      undefined,
+      `Uma conta inscreve até ${MAX_POR_CONTA} pessoas por atendimento. Para mais, procure a recepção.`,
+    );
   let pessoa: { nome: string; nascimento: string; cpf: string | null; pacienteId: string | null };
   if (dados.paraQuem.tipo === "eu") {
     const [conta] = await database

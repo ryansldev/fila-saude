@@ -23,16 +23,45 @@ const FINAIS: EstadoEntrada[] = ["cancelada", "concluida", "encerrada_sem_atendi
 const ms = (d: Date | null) => (d ? d.getTime() : null);
 const data = (n: number | null) => (n === null ? null : new Date(n));
 
+const primeiroNome = (nome: string) =>
+  nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)[0] ?? "";
+
+/**
+ * Quem informa um CPF já cadastrado precisa conhecer a pessoa: mesma data de nascimento e, para
+ * "outra pessoa", mesmo primeiro nome. Senão, um CPF bastaria para ver o nome de alguém, ocupar a vaga
+ * dele ou herdar a conferência de documentos (revisão 2026-11-13). A resposta não diz qual dado diverge.
+ * Roda antes de qualquer outra checagem (inclusive "duplicada"), para não confirmar que o CPF está na fila.
+ */
+export async function pessoaPorCpf(db: BancoDoTenant, p: PessoaInformada) {
+  if (!p.cpf) return null;
+  const [existente] = await db.select().from(pessoaLocal).where(eq(pessoaLocal.cpf, p.cpf));
+  if (!existente) return null;
+  const outraConta = p.pacienteId && existente.pacienteId && existente.pacienteId !== p.pacienteId;
+  const nomeDiverge = !p.pacienteId && primeiroNome(existente.nome) !== primeiroNome(p.nome);
+  if (outraConta || existente.nascimento !== p.nascimento || nomeDiverge) {
+    throw new ErroApi(
+      409,
+      "pessoa_divergente",
+      undefined,
+      "Esse CPF já está cadastrado com outros dados. Confira o CPF, o nome e a data de nascimento, ou procure a recepção.",
+    );
+  }
+  return existente;
+}
+
 // RN-LE-02 / AD-035: com CPF, a mesma pessoa_local; o dono da conta fica ligado pelo `paciente_id`.
 export async function pessoaAtendida(db: BancoDoTenant, p: PessoaInformada): Promise<{ id: string }> {
-  if (p.cpf) {
-    const [existente] = await db.select().from(pessoaLocal).where(eq(pessoaLocal.cpf, p.cpf));
-    if (existente) {
-      if (p.pacienteId && !existente.pacienteId) {
-        await db.update(pessoaLocal).set({ pacienteId: p.pacienteId }).where(eq(pessoaLocal.id, existente.id));
-      }
-      return { id: existente.id };
+  const existente = await pessoaPorCpf(db, p);
+  if (existente) {
+    if (p.pacienteId && !existente.pacienteId) {
+      await db.update(pessoaLocal).set({ pacienteId: p.pacienteId }).where(eq(pessoaLocal.id, existente.id));
     }
+    return { id: existente.id };
   }
   const [nova] = await db
     .insert(pessoaLocal)

@@ -22,12 +22,28 @@ const ULTIMAS = 5;
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 // PD-47 / RN-TV-01: a TV se registra sozinha; o código só vale enquanto ninguém o usou e não venceu.
-export async function registrarTv(db: DbDoTenant): Promise<TvRegistro> {
+// Dois códigos pendentes iguais deixariam o admin parear a TV errada: sorteia de novo.
+export async function registrarTv(db: DbDoTenant, agora: number): Promise<TvRegistro> {
   const token = randomBytes(32).toString("base64url");
-  const codigo = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  await db.insert(tv).values({ codigo, tokenHash: hash(token) });
-  return { codigo, token };
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const codigo = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const [igual] = await db
+      .select({ id: tv.id })
+      .from(tv)
+      .where(and(eq(tv.codigo, codigo), ...pendente(agora)))
+      .limit(1);
+    if (igual) continue;
+    await db.insert(tv).values({ codigo, tokenHash: hash(token), criadaEm: new Date(agora) });
+    return { codigo, token };
+  }
+  throw new ErroApi(503, "tente_de_novo");
 }
+
+const pendente = (agora: number) => [
+  isNull(tv.unidadeId),
+  isNull(tv.revogadaEm),
+  gt(tv.criadaEm, new Date(agora - VALIDADE_DO_CODIGO_MS)),
+];
 
 async function tvDoToken(db: BancoDoTenant, token: string | null) {
   if (!token) throw new ErroApi(401, "tv_nao_pareada");
@@ -45,14 +61,7 @@ export async function parearTv(ctx: ContextoDaAcao, unidadeId: string, codigo: s
     const [linha] = await tx
       .update(tv)
       .set({ unidadeId, pareadaEm: new Date(ctx.agora) })
-      .where(
-        and(
-          eq(tv.codigo, codigo),
-          isNull(tv.unidadeId),
-          isNull(tv.revogadaEm),
-          gt(tv.criadaEm, new Date(ctx.agora - VALIDADE_DO_CODIGO_MS)),
-        ),
-      )
+      .where(and(eq(tv.codigo, codigo), ...pendente(ctx.agora)))
       .returning({ id: tv.id });
     if (!linha) throw new ErroApi(404, "codigo_invalido", undefined, "Código não encontrado ou vencido.");
     return linha;
@@ -93,6 +102,8 @@ export async function telaDaTv(db: DbDoTenant, slug: string, token: string | nul
     .set({ ultimoSinalEm: new Date(agora) })
     .where(and(eq(tv.id, t.id), or(isNull(tv.ultimoSinalEm), lt(tv.ultimoSinalEm, new Date(agora - SINAL_MS)))));
   if (!t.unidadeId) {
+    // O servidor decide a validade (o relógio da TV pode estar errado): vencido, a TV se registra de novo.
+    if (t.criadaEm.getTime() + VALIDADE_DO_CODIGO_MS <= agora) throw new ErroApi(401, "tv_nao_pareada");
     return {
       estado: "aguardando",
       codigo: t.codigo,

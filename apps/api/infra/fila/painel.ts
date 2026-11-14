@@ -10,7 +10,7 @@ import {
   temPrioridade,
 } from "@fila-saude/domain";
 import type { FilaDaSessao, HojeNaUnidade } from "@fila-saude/schemas/fila";
-import { and, asc, eq, gt, inArray, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { exigirUnidade, SESSAO } from "infra/config/comum";
 import { exigirSessao, paraSessao } from "infra/config/sessoes";
 import database from "infra/database";
@@ -148,6 +148,8 @@ export async function marcarPresencaNaFila(
       alvo: { tipo: "entrada", id: dados.entradaId },
       unidadeId: servico.unidadeId,
       motivo: dados.motivo ?? null,
+      // Recusar a validação tira a pessoa da fila: sempre com motivo.
+      exigeMotivo: dados.resultado === "nao_confere",
       dados: () => ({ resultado: dados.resultado }),
     },
     async (tx) => {
@@ -219,14 +221,21 @@ export async function hojeNaUnidade(ctx: ContextoDaAcao, unidadeId: string): Pro
     .where(
       and(
         eq(servico.unidadeId, unidadeId),
-        gt(sessao.fim, new Date(ctx.agora - 36 * 3600_000)),
-        lt(sessao.inicio, new Date(ctx.agora + 36 * 3600_000)),
+        // Sessão aberta de outro dia continua aqui até alguém encerrar (senão ficaria presa).
+        or(
+          eq(sessao.estado, "aberta"),
+          and(
+            gt(sessao.fim, new Date(ctx.agora - 36 * 3600_000)),
+            lt(sessao.inicio, new Date(ctx.agora + 36 * 3600_000)),
+          ),
+        ),
       ),
     )
     .orderBy(asc(sessao.inicio));
   const sessoes = [];
   for (const { s, servico: nome } of linhas) {
-    if (s.estado === "cancelada" || !mesmoDia(s.inicio.getTime(), ctx.agora, u.fuso)) continue;
+    if (s.estado === "cancelada") continue;
+    if (s.estado !== "aberta" && !mesmoDia(s.inicio.getTime(), ctx.agora, u.fuso)) continue;
     sessoes.push({ ...(await paraSessao(ctx.db, s)), servico: nome });
   }
   const estacoes = await ctx.db

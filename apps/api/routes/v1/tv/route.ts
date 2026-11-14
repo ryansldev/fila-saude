@@ -7,6 +7,6 @@ import { registrarTv } from "infra/tv/tv";
 export default async function (app: FastifyInstance) {
   app.post("/", { preHandler: [app.exigirTenant] }, async (req, reply) => {
     if (!req.tenant) throw new ErroApi(404, "municipio_desconhecido");
-    return reply.status(201).send(validar(tvRegistroSchema, await registrarTv(req.tenant.db)));
+    return reply.status(201).send(validar(tvRegistroSchema, await registrarTv(req.tenant.db, Date.now())));
   });
 }

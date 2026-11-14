@@ -12,7 +12,7 @@ import {
   toleranciaEsgotada,
 } from "@fila-saude/domain";
 import type { ComandoEstacao, OperacaoEstacao } from "@fila-saude/schemas/fila";
-import { and, asc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { exigirEstacao } from "infra/config/estacoes";
 import { servico } from "infra/database/municipal/schema/servico";
 import { sessao, sessaoEstacao } from "infra/database/municipal/schema/sessao";
@@ -40,7 +40,7 @@ async function sessaoAberta(db: BancoDoTenant, estacaoId: string) {
     .innerJoin(sessao, eq(sessaoEstacao.sessaoId, sessao.id))
     .innerJoin(servico, eq(sessao.servicoId, servico.id))
     .where(and(eq(sessaoEstacao.estacaoId, estacaoId), eq(sessao.estado, "aberta")))
-    .orderBy(asc(sessao.inicio))
+    .orderBy(desc(sessao.inicio))
     .limit(1);
   return linha ?? null;
 }

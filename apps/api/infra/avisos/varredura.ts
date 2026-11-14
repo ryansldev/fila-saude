@@ -18,35 +18,41 @@ const LOTE = 100;
 // RN-ETA-03 / RN-ORD-02: avisos que dependem do tempo; o domínio marca o "saia de casa" no dia
 // e a chave da outbox impede o "venha agora" repetido. Uma varredura por município de cada vez.
 async function gerarAvisosDoTempo(db: DbDoTenant, agora: number): Promise<void> {
-  await db.transaction(async (tx) => {
-    const trava = await tx.execute<{ ok: boolean }>(
-      sql`select pg_try_advisory_xact_lock(hashtext('fila-saude:varredura')) as ok`,
-    );
-    if (!trava.rows[0]?.ok) return;
-    const abertas = await tx.select({ id: sessao.id }).from(sessao).where(eq(sessao.estado, "aberta"));
-    for (const { id } of abertas) {
-      await naSessao(tx, id, async (c) => {
-        if (!c.dia || c.dia.estado !== "aberta") return { resultado: null };
-        const dia = c.dia;
-        const venha: Evento[] = dia.itens
-          .filter(
-            (i) => i.estado === "remoto" && estimar(dia, i.id, agora, { modoManual: false }).tipo === "venha_agora",
-          )
-          .map((i) => ({
-            tipo: "venha_agora",
-            itemId: i.id,
-            entradaId: i.entradaId,
-            sessaoId: dia.sessaoId,
-            dados: { etapa: i.etapa, em: agora },
-          }));
-        const saia = avisosSaiaDeCasa(dia, agora, { modoManual: false });
-        // Quem já é o próximo recebe só o "venha agora".
-        const eventos = [...venha, ...saia.eventos.filter((e) => !venha.some((v) => v.itemId === e.itemId))];
-        if (eventos.length === 0) return { resultado: null };
-        return { dia: saia.dia, eventos, resultado: null };
+  const abertas = await db.select({ id: sessao.id }).from(sessao).where(eq(sessao.estado, "aberta"));
+  // Uma transação por sessão: uma sessão com problema não derruba os avisos das outras nem
+  // segura a trava de todas até o fim.
+  for (const { id } of abertas) {
+    await db
+      .transaction(async (tx) => {
+        const trava = await tx.execute<{ ok: boolean }>(
+          sql`select pg_try_advisory_xact_lock(hashtext(${`fila-saude:varredura:${id}`})) as ok`,
+        );
+        if (!trava.rows[0]?.ok) return;
+        await naSessao(tx, id, async (c) => {
+          if (!c.dia || c.dia.estado !== "aberta") return { resultado: null };
+          const dia = c.dia;
+          const venha: Evento[] = dia.itens
+            .filter(
+              (i) => i.estado === "remoto" && estimar(dia, i.id, agora, { modoManual: false }).tipo === "venha_agora",
+            )
+            .map((i) => ({
+              tipo: "venha_agora",
+              itemId: i.id,
+              entradaId: i.entradaId,
+              sessaoId: dia.sessaoId,
+              dados: { etapa: i.etapa, em: agora },
+            }));
+          const saia = avisosSaiaDeCasa(dia, agora, { modoManual: false });
+          // Quem já é o próximo recebe só o "venha agora".
+          const eventos = [...venha, ...saia.eventos.filter((e) => !venha.some((v) => v.itemId === e.itemId))];
+          if (eventos.length === 0) return { resultado: null };
+          return { dia: saia.dia, eventos, resultado: null };
+        });
+      })
+      .catch(() => {
+        // Segue para a próxima sessão; o erro volta na próxima rodada se persistir.
       });
-    }
-  });
+  }
 }
 
 // T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "sem_dispositivo";

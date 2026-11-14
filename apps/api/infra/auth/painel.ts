@@ -29,7 +29,8 @@ function montar(slug: string, db: DbDoTenant) {
     account: { modelName: "contaPainel" },
     verification: { modelName: "verificacaoPainel" },
     emailAndPassword: { enabled: true, minPasswordLength: 8, disableSignUp: true },
-    disabledPaths: ["/is-username-available"],
+    // A equipe muda login e nome só pela tela de equipe (com guard e auditoria).
+    disabledPaths: ["/is-username-available", "/update-user"],
     advanced: { cookiePrefix: "fila-painel" },
     plugins: [username()],
   });

@@ -2,6 +2,7 @@ import type { Estacao, EstacaoEdicao, EstacaoEntrada } from "@fila-saude/schemas
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { estacao, estacaoServico } from "infra/database/municipal/schema/estacao";
 import { servico } from "infra/database/municipal/schema/servico";
+import { sessao, sessaoEstacao } from "infra/database/municipal/schema/sessao";
 import type { BancoDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
@@ -85,6 +86,20 @@ export async function arquivarEstacao(ctx: ContextoDaAcao, id: string): Promise<
     { acao: CONFIGURAR, alvo: { tipo: "estacao", id }, unidadeId: atual.unidadeId },
     async (tx) => {
       if (atual.aberta) throw new ErroApi(409, "estacao_ocupada", undefined, "A estação está aberta.");
+      // Sessão planejada ou aberta que usa a estação ficaria sem quem chama (ou sem poder encerrar).
+      const [emUso] = await tx
+        .select({ id: sessao.id })
+        .from(sessaoEstacao)
+        .innerJoin(sessao, eq(sessaoEstacao.sessaoId, sessao.id))
+        .where(and(eq(sessaoEstacao.estacaoId, id), inArray(sessao.estado, ["planejada", "aberta"])))
+        .limit(1);
+      if (emUso)
+        throw new ErroApi(
+          409,
+          "estacao_em_uso",
+          undefined,
+          "A estação está em uma sessão planejada ou aberta. Tire-a dessas sessões antes de remover.",
+        );
       await tx
         .update(estacao)
         .set({ arquivadaEm: new Date(ctx.agora) })

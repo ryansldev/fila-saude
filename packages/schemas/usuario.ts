@@ -38,9 +38,18 @@ export const atribuicoesSchema = z.object({
   funcoes: z.array(funcaoComEscopoSchema),
 });
 
+// O plugin username do better-auth só aceita esses caracteres no login: fora deles a conta nasceria
+// sem conseguir entrar.
+export const loginSchema = z
+  .string()
+  .trim()
+  .min(3)
+  .max(30)
+  .regex(/^[a-zA-Z0-9_.]+$/, "use só letras sem acento, números, ponto ou _");
+
 export const usuarioPainelEntradaSchema = atribuicoesSchema.extend({
-  login: z.string().min(3).max(30),
-  nome: z.string().trim().min(1),
+  login: loginSchema,
+  nome: z.string().trim().min(1).max(200),
   senha: z.string().min(8),
 });
 
