@@ -17,6 +17,7 @@ const base: MinhaEntrada = {
   estimativa: null,
   chamada: null,
   pendencias: [],
+  saiaDeCasa: false,
 };
 
 describe("minha fila: estado de cada entrada, como no design do app", () => {
@@ -26,6 +27,11 @@ describe("minha fila: estado de cada entrada, como no design do app", () => {
       posicao: 4,
       minutos: 12,
       presente: false,
+      sair: false,
+    });
+    // Já recebeu o push "hora de sair de casa": a tela diz o mesmo.
+    expect(sit({ ...base, saiaDeCasa: true, estimativa: { tipo: "posicao", posicao: 4, minutos: 12 } })).toMatchObject({
+      sair: true,
     });
     expect(
       sit({ ...base, itemEstado: "presente", estimativa: { tipo: "posicao", posicao: 2, minutos: 5 } }),

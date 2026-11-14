@@ -118,11 +118,15 @@ function Bloco({
       ) : (
         <View style={{ gap: 16 }}>
           <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />
-          <Faixa
-            tipo="info"
-            titulo="pode esperar em casa"
-            texto="avisamos a hora de sair. mantenha o celular por perto."
-          />
+          {sit.sair ? (
+            <Faixa tipo="aviso" grande titulo="hora de sair de casa" texto="ao chegar, leia o QR da TV." />
+          ) : (
+            <Faixa
+              tipo="info"
+              titulo="pode esperar em casa"
+              texto="avisamos a hora de sair. mantenha o celular por perto."
+            />
+          )}
           {naUnidade}
         </View>
       );

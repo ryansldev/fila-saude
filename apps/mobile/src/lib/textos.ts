@@ -6,7 +6,7 @@ export type Situacao =
   | { tipo: "vez"; senha: string; estacao: string | null }
   | { tipo: "recepcao" }
   | { tipo: "venha" }
-  | { tipo: "posicao"; posicao: number; minutos: number; presente: boolean }
+  | { tipo: "posicao"; posicao: number; minutos: number; presente: boolean; sair: boolean }
   /** Sessão ainda planejada e antes do horário. */
   | { tipo: "aguardando" }
   /** Fila aberta, mas sem previsão (nenhuma estação aberta, modo manual, fora da ordem): nunca "vai começar". */
@@ -45,7 +45,8 @@ export function situacaoDaEntrada(e: MinhaEntrada, agora: number): Situacao {
   const est = e.estimativa;
   if (est?.tipo === "venha_agora") return { tipo: "venha" };
   if (est?.tipo === "posicao") {
-    return { tipo: "posicao", posicao: est.posicao, minutos: est.minutos, presente: e.itemEstado === "presente" };
+    const presente = e.itemEstado === "presente";
+    return { tipo: "posicao", posicao: est.posicao, minutos: est.minutos, presente, sair: !presente && e.saiaDeCasa };
   }
   if (e.sessao?.estado === "planejada") return antesDoInicio ? { tipo: "aguardando" } : { tipo: "atrasada" };
   return { tipo: "sem_previsao", presente: e.itemEstado === "presente" };

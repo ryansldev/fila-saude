@@ -81,13 +81,17 @@ export function Mascote({ tamanho = 200 }: { tamanho?: number }) {
 }
 
 /** Topo das telas: logo, "fila saúde" e, quando há para onde voltar, "voltar". */
-export function Topo({ voltar = false }: { voltar?: boolean }) {
+export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?: (() => void) | undefined }) {
   return (
     <View style={e.topo}>
       <Logo />
       <Text style={e.marca}>fila saúde</Text>
       <View style={{ flex: 1 }} />
-      {voltar && router.canGoBack() ? <LinkBotao texto="voltar" onPress={() => router.back()} /> : null}
+      {aoVoltar ? (
+        <LinkBotao texto="voltar" onPress={aoVoltar} />
+      ) : voltar && router.canGoBack() ? (
+        <LinkBotao texto="voltar" onPress={() => router.back()} />
+      ) : null}
     </View>
   );
 }
@@ -98,16 +102,19 @@ export function Tela({
   voltar = true,
   rodape,
   fundo = COR.surface,
+  aoVoltar,
 }: {
   children: ReactNode;
   topo?: boolean;
   voltar?: boolean;
+  /** Fluxo de vários passos: "voltar" vai ao passo anterior em vez de sair (e perder o que foi digitado). */
+  aoVoltar?: () => void;
   rodape?: ReactNode;
   fundo?: string;
 }) {
   return (
     <SafeAreaView style={[e.tela, { backgroundColor: fundo }]} edges={["top", "bottom"]}>
-      {topo ? <Topo voltar={voltar} /> : null}
+      {topo ? <Topo voltar={voltar} aoVoltar={aoVoltar} /> : null}
       <ScrollView contentContainerStyle={e.scr} keyboardShouldPersistTaps="handled">
         {children}
       </ScrollView>

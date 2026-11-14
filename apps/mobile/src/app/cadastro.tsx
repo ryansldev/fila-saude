@@ -91,7 +91,7 @@ export default function Cadastro() {
     );
 
   return (
-    <Tela>
+    <Tela aoVoltar={() => setPasso(1)}>
       <Progresso>criar conta · 2 de 2</Progresso>
       <Titulo>crie sua senha</Titulo>
       <Campo

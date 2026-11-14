@@ -255,8 +255,10 @@ export default function Inscricao() {
     setR({ ...r, [tela]: nova.filter((x) => x !== "nenhum") });
   }
 
+  // Voltar vai à pergunta anterior (ou a "para quem é"), sem perder as respostas.
+  const indice = passo.indice;
   return (
-    <Tela>
+    <Tela aoVoltar={() => setPasso(indice > 0 ? { tipo: "pergunta", indice: indice - 1 } : { tipo: "quem" })}>
       <Progresso>
         pergunta {passo.indice + 1} de {telas.length}
       </Progresso>

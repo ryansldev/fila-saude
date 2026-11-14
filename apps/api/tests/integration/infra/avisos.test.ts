@@ -85,6 +85,9 @@ describe("avisos por push (T3.8, T2.4)", () => {
     await varrerMunicipio(db(), Date.now(), e.enviar);
     expect(await doPaciente("Carla")).toEqual(["venha_agora"]);
     expect(await doPaciente("Davi")).toEqual(["saia_de_casa"]);
+    // A tela do app concorda com o push: "hora de sair de casa".
+    const minhas = await app("GET", `/v1/municipios/${c.slug}/minhas`, contas.Davi?.cookie);
+    expect(minhas.corpo[0]).toMatchObject({ saiaDeCasa: true });
     expect(e.enviados.map((x) => x.para).sort()).toEqual(["ExponentPushToken[Ana]", "ExponentPushToken[Carla]"]);
     const porTipo = Object.fromEntries((await avisos()).map((a) => [`${a.tipo}:${a.pacienteId}`, a.estado]));
     expect(porTipo[`sua_vez:${contas.Bruno?.pacienteId}`]).toBe("sem_dispositivo");

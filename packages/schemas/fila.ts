@@ -149,6 +149,8 @@ export const minhaEntradaSchema = z.object({
   estimativa: estimativaSchema.nullable(),
   chamada: z.object({ estacao: z.string(), em: z.iso.datetime() }).nullable(),
   pendencias: z.array(z.string()),
+  /** RN-ETA-03: o "saia de casa" desta etapa já saiu; a tela diz o mesmo que o push. */
+  saiaDeCasa: z.boolean(),
 });
 export type MinhaEntrada = z.infer<typeof minhaEntradaSchema>;
 
