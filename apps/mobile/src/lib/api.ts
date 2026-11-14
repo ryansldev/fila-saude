@@ -17,6 +17,7 @@ export type Api = {
   get<T = unknown>(caminho: string): Promise<T>;
   post<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
   put<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
+  del<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
 };
 
 async function lerCorpo(r: Response): Promise<Record<string, unknown> | undefined> {
@@ -29,10 +30,10 @@ async function lerCorpo(r: Response): Promise<Record<string, unknown> | undefine
   }
 }
 
-async function pedir(
+async function pedirBruto(
   fetcher: typeof fetch,
   url: string,
-  metodo: "GET" | "POST" | "PUT",
+  metodo: "GET" | "POST" | "PUT" | "DELETE",
   token: string | null,
   corpo?: unknown,
 ): Promise<{ resposta: Response; dados: Record<string, unknown> | undefined }> {
@@ -59,13 +60,28 @@ async function pedir(
 }
 
 /** Cliente das rotas do município e do catálogo: o token da conta vai em Authorization (PD-34). */
-export function criarApi(base: string, token: () => Promise<string | null>, fetcher: typeof fetch = fetch): Api {
+export function criarApi(
+  base: string,
+  token: () => Promise<string | null>,
+  fetcher: typeof fetch = fetch,
+  aoExpirar?: () => void,
+): Api {
+  const pedir = async (url: string, metodo: "GET" | "POST" | "PUT" | "DELETE", corpo?: unknown) => {
+    try {
+      return await pedirBruto(fetcher, url, metodo, await token(), corpo);
+    } catch (err) {
+      // Token vencido ou revogado: o app volta ao login em vez de repetir 401 a cada consulta.
+      if (err instanceof ErroDaApi && err.status === 401) aoExpirar?.();
+      throw err;
+    }
+  };
   return {
-    get: async <T>(caminho: string) => (await pedir(fetcher, `${base}${caminho}`, "GET", await token())).dados as T,
+    get: async <T>(caminho: string) => (await pedir(`${base}${caminho}`, "GET")).dados as T,
     post: async <T>(caminho: string, corpo?: unknown) =>
-      (await pedir(fetcher, `${base}${caminho}`, "POST", await token(), corpo ?? {})).dados as T,
+      (await pedir(`${base}${caminho}`, "POST", corpo ?? {})).dados as T,
     put: async <T>(caminho: string, corpo?: unknown) =>
-      (await pedir(fetcher, `${base}${caminho}`, "PUT", await token(), corpo ?? {})).dados as T,
+      (await pedir(`${base}${caminho}`, "PUT", corpo ?? {})).dados as T,
+    del: async <T>(caminho: string, corpo?: unknown) => (await pedir(`${base}${caminho}`, "DELETE", corpo)).dados as T,
   };
 }
 
@@ -80,7 +96,7 @@ function tokenDe(r: Response): string {
 /** Login na central com CPF e senha (RN-ID-01); devolve o token. */
 export async function entrar(base: string, cpf: string, senha: string, fetcher: typeof fetch = fetch) {
   try {
-    const { resposta } = await pedir(fetcher, `${base}/v1/auth/sign-in/username`, "POST", null, {
+    const { resposta } = await pedirBruto(fetcher, `${base}/v1/auth/sign-in/username`, "POST", null, {
       username: soDigitos(cpf),
       password: senha,
     });
@@ -102,7 +118,7 @@ export type DadosDoCadastro = {
 
 /** Cadastro na central (RN-ID-01, PD-23); devolve o token da conta nova. */
 export async function cadastrar(base: string, dados: DadosDoCadastro, fetcher: typeof fetch = fetch) {
-  const { resposta } = await pedir(fetcher, `${base}/v1/auth/sign-up/email`, "POST", null, {
+  const { resposta } = await pedirBruto(fetcher, `${base}/v1/auth/sign-up/email`, "POST", null, {
     ...dados,
     cpf: soDigitos(dados.cpf),
   });

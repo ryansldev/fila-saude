@@ -21,6 +21,15 @@ export type ResultadoDoPush = "registrado" | "sem_permissao" | "sem_projeto" | "
  * O token da Expo exige o projectId do EAS (EXPO_PUBLIC_EAS_PROJECT_ID ou extra.eas.projectId):
  * sem ele o app segue só com a consulta da tela. Nunca lança.
  */
+let tokenRegistrado: string | null = null;
+
+/** Ao sair da conta: tira este aparelho da lista de avisos dela. Nunca lança. */
+export async function sairDoPush(api: Api): Promise<void> {
+  if (!tokenRegistrado) return;
+  await api.del("/v1/paciente/push", { token: tokenRegistrado }).catch(() => {});
+  tokenRegistrado = null;
+}
+
 export async function registrarPush(api: Api): Promise<ResultadoDoPush> {
   try {
     if (!Device.isDevice) return "simulador";
@@ -40,6 +49,7 @@ export async function registrarPush(api: Api): Promise<ResultadoDoPush> {
     if (!projectId) return "sem_projeto";
     const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
     await api.put("/v1/paciente/push", { token: data });
+    tokenRegistrado = data;
     return "registrado";
   } catch {
     return "erro";

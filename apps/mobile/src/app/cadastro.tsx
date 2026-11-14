@@ -3,12 +3,10 @@ import { useState } from "react";
 import { Botao, Campo, Espaco, Faixa, Pequeno, Progresso, Tela, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
+import { dataIso, erroDoCadastro } from "@/lib/validacao";
 
-/** "DD/MM/AAAA" → "AAAA-MM-DD" (ou vazio se incompleto). */
-const dataIso = (t: string) => {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t.trim());
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
-};
+const PASSO_1 = ["nome", "cpf", "nascimento", "telefone"] as const;
+const PASSO_2 = ["senha", "email"] as const;
 
 export default function Cadastro() {
   const s = useSessao();
@@ -16,16 +14,26 @@ export default function Cadastro() {
   const [v, setV] = useState({ nome: "", cpf: "", email: "", telefone: "", nascimento: "", senha: "" });
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Mostra os erros de um passo só depois de tentar avançar nele.
+  const [tentou, setTentou] = useState<{ 1: boolean; 2: boolean }>({ 1: false, 2: false });
   const mudar = (k: keyof typeof v) => (t: string) => setV({ ...v, [k]: t });
+  const erros = erroDoCadastro(v);
+  const doPasso = (p: 1 | 2) => (k: (typeof PASSO_1)[number] | (typeof PASSO_2)[number]) =>
+    tentou[p] ? erros[k] : undefined;
+  const passoOk = (campos: readonly string[]) => campos.every((k) => !(k in erros));
 
   async function enviar() {
+    setTentou({ ...tentou, 2: true });
+    if (!passoOk(PASSO_2) || enviando) return;
     setEnviando(true);
     try {
-      await s.cadastrar({ ...v, nascimento: dataIso(v.nascimento) });
+      await s.cadastrar({ ...v, email: v.email.trim(), nascimento: dataIso(v.nascimento) });
       router.replace("/");
     } catch (err) {
       setErro(mensagemDoErro(err));
-      setPasso(1);
+      // Volta ao passo 1 só quando o problema é de um campo dele (ex.: CPF já cadastrado).
+      const e = err as { erro?: string };
+      if (e.erro === "cpf_em_uso" || e.erro === "cpf_invalido") setPasso(1);
     } finally {
       setEnviando(false);
     }
@@ -36,9 +44,16 @@ export default function Cadastro() {
       <Tela>
         <Progresso>criar conta · 1 de 2</Progresso>
         <Titulo>seus dados</Titulo>
-        <Campo rotulo="nome completo" value={v.nome} onChangeText={mudar("nome")} autoComplete="name" />
+        <Campo
+          rotulo="nome completo"
+          value={v.nome}
+          onChangeText={mudar("nome")}
+          autoComplete="name"
+          erro={doPasso(1)("nome")}
+        />
         <Campo
           rotulo="CPF"
+          erro={doPasso(1)("cpf")}
           value={v.cpf}
           onChangeText={mudar("cpf")}
           keyboardType="number-pad"
@@ -47,6 +62,7 @@ export default function Cadastro() {
         <Pequeno>usamos o CPF para te identificar na unidade. só números.</Pequeno>
         <Campo
           rotulo="data de nascimento"
+          erro={doPasso(1)("nascimento")}
           placeholder="dd/mm/aaaa"
           value={v.nascimento}
           onChangeText={mudar("nascimento")}
@@ -54,6 +70,7 @@ export default function Cadastro() {
         />
         <Campo
           rotulo="celular"
+          erro={doPasso(1)("telefone")}
           value={v.telefone}
           onChangeText={mudar("telefone")}
           keyboardType="phone-pad"
@@ -63,10 +80,9 @@ export default function Cadastro() {
         <Espaco />
         <Botao
           texto="continuar"
-          desativado={
-            v.nome.trim().length < 3 || v.cpf.replace(/\D/g, "").length !== 11 || !dataIso(v.nascimento) || !v.telefone
-          }
           onPress={() => {
+            setTentou({ ...tentou, 1: true });
+            if (!passoOk(PASSO_1)) return;
             setErro(null);
             setPasso(2);
           }}
@@ -80,6 +96,7 @@ export default function Cadastro() {
       <Titulo>crie sua senha</Titulo>
       <Campo
         rotulo="senha"
+        erro={doPasso(2)("senha")}
         value={v.senha}
         onChangeText={mudar("senha")}
         secureTextEntry
@@ -87,20 +104,17 @@ export default function Cadastro() {
       />
       <Campo
         rotulo="e-mail"
+        erro={doPasso(2)("email")}
         value={v.email}
         onChangeText={mudar("email")}
         keyboardType="email-address"
         autoCapitalize="none"
         placeholder="seu@email.com"
       />
+      {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
       <Pequeno>o e-mail serve para recuperar a senha. se esquecer, a recepção da unidade também ajuda.</Pequeno>
       <Espaco />
-      <Botao
-        texto="criar conta"
-        onPress={enviar}
-        carregando={enviando}
-        desativado={v.senha.length < 8 || !v.email.includes("@")}
-      />
+      <Botao texto="criar conta" onPress={enviar} carregando={enviando} />
     </Tela>
   );
 }

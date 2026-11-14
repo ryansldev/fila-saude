@@ -1,7 +1,7 @@
 import { alternarOpcao } from "@fila-saude/domain";
 import type { InscricaoEntrada } from "@fila-saude/schemas/fila";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Text, View } from "react-native";
 import {
   Botao,
@@ -34,6 +34,7 @@ import {
 } from "@/lib/questionario";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
+import { dataIso, erroDaOutraPessoa } from "@/lib/validacao";
 
 type Passo =
   | { tipo: "quem" }
@@ -43,14 +44,15 @@ type Passo =
   | { tipo: "inscrito" }
   | { tipo: "reserva" };
 
-const dataIso = (t: string) => {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(t.trim());
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : "";
-};
-
 /** T3.3: "para quem é?" (AD-018), questionário v1 e a inscrição, como no design do app. */
 export default function Inscricao() {
-  const p = useLocalSearchParams<{ sessaoId: string; servico?: string; unidade?: string; inicio?: string }>();
+  const p = useLocalSearchParams<{
+    sessaoId: string;
+    servico?: string;
+    unidade?: string;
+    inicio?: string;
+    aberta?: string;
+  }>();
   const s = useSessao();
   const [passo, setPasso] = useState<Passo>({ tipo: "quem" });
   const [quem, setQuem] = useState<"eu" | "outra">("eu");
@@ -59,9 +61,13 @@ export default function Inscricao() {
   const [nenhum, setNenhum] = useState<Partial<Record<TelaDoQuestionario, boolean>>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  const [tentouQuem, setTentouQuem] = useState(false);
+  // Dois toques no mesmo instante não mandam duas inscrições.
+  const enviandoRef = useRef(false);
 
   const telas = telasDo(r);
-  const nascimento = quem === "eu" ? (s.conta?.nascimento ?? "1990-01-01") : dataIso(outra.nascimento);
+  // Sem a data da conta carregada, não dá para decidir emergência/apoio pela idade: espera.
+  const nascimento = quem === "eu" ? (s.conta?.nascimento ?? "") : dataIso(outra.nascimento);
   const resumo = (
     <Cartao>
       {p.inicio ? (
@@ -74,14 +80,20 @@ export default function Inscricao() {
   );
 
   async function enviar() {
-    if (!completas(r)) return;
+    if (!completas(r) || enviandoRef.current) return;
+    enviandoRef.current = true;
     setEnviando(true);
     setErro(null);
     const corpo: InscricaoEntrada = {
       paraQuem:
         quem === "eu"
           ? { tipo: "eu" }
-          : { tipo: "outra", nome: outra.nome.trim(), nascimento: dataIso(outra.nascimento), cpf: outra.cpf || null },
+          : {
+              tipo: "outra",
+              nome: outra.nome.trim(),
+              nascimento: dataIso(outra.nascimento),
+              cpf: outra.cpf.trim() ? outra.cpf : null,
+            },
       respostas: r,
     };
     try {
@@ -93,6 +105,7 @@ export default function Inscricao() {
     } catch (err) {
       setErro(mensagemDoErro(err));
     } finally {
+      enviandoRef.current = false;
       setEnviando(false);
     }
   }
@@ -115,7 +128,11 @@ export default function Inscricao() {
         <Mascote tamanho={140} />
         <Faixa tipo="ok" titulo="você está inscrito!" texto="a vaga é sua. não precisa confirmar." />
         {resumo}
-        <TextoSuave>no dia, avisamos quando a fila começar e a hora de sair de casa.</TextoSuave>
+        <TextoSuave>
+          {p.aberta === "1"
+            ? "a fila de hoje já começou: sua senha e a posição já estão em minha fila."
+            : "no dia, avisamos quando a fila começar e a hora de sair de casa."}
+        </TextoSuave>
         <Espaco />
         <Botao texto="ver minha fila" onPress={() => router.dismissTo("/inicio")} />
       </Tela>
@@ -174,7 +191,9 @@ export default function Inscricao() {
     );
 
   if (passo.tipo === "quem") {
-    const pronto = quem === "eu" || (outra.nome.trim().length >= 3 && Boolean(dataIso(outra.nascimento)));
+    const errosOutra = quem === "outra" ? erroDaOutraPessoa(outra) : {};
+    const mostrar = (k: keyof typeof errosOutra) => (tentouQuem ? errosOutra[k] : undefined);
+    const contaPronta = quem === "outra" || Boolean(s.conta?.nascimento);
     return (
       <Tela>
         <Titulo>para quem é o atendimento?</Titulo>
@@ -186,6 +205,7 @@ export default function Inscricao() {
               rotulo="nome de quem será atendido"
               value={outra.nome}
               onChangeText={(t) => setOutra({ ...outra, nome: t })}
+              erro={mostrar("nome")}
             />
             <Campo
               rotulo="data de nascimento"
@@ -193,18 +213,27 @@ export default function Inscricao() {
               keyboardType="number-pad"
               value={outra.nascimento}
               onChangeText={(t) => setOutra({ ...outra, nascimento: t })}
+              erro={mostrar("nascimento")}
             />
             <Campo
               rotulo="CPF (se tiver)"
               keyboardType="number-pad"
               value={outra.cpf}
               onChangeText={(t) => setOutra({ ...outra, cpf: t })}
+              erro={mostrar("cpf")}
             />
             <Pequeno>você recebe os avisos e leva a pessoa no dia.</Pequeno>
           </View>
         ) : null}
         <Espaco />
-        <Botao texto="continuar" onPress={avancar} desativado={!pronto} />
+        <Botao
+          texto="continuar"
+          desativado={!contaPronta}
+          onPress={() => {
+            setTentouQuem(true);
+            if (Object.keys(errosOutra).length === 0) avancar();
+          }}
+        />
       </Tela>
     );
   }

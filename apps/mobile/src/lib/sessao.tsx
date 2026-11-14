@@ -2,7 +2,7 @@ import * as SecureStore from "expo-secure-store";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { type Api, cadastrar, criarApi, type DadosDoCadastro, entrar } from "./api";
 import { API_URL } from "./config";
-import { registrarPush } from "./push";
+import { registrarPush, sairDoPush } from "./push";
 
 const CHAVE_TOKEN = "fila-saude.token";
 const CHAVE_MUNICIPIO = "fila-saude.municipio";
@@ -32,13 +32,35 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void (async () => {
-      setToken(await SecureStore.getItemAsync(CHAVE_TOKEN));
-      setMunicipio(await SecureStore.getItemAsync(CHAVE_MUNICIPIO));
-      setPronto(true);
+      // Keystore com problema em alguns Android: sem isso o app ficaria em branco para sempre.
+      try {
+        setToken(await SecureStore.getItemAsync(CHAVE_TOKEN));
+        setMunicipio(await SecureStore.getItemAsync(CHAVE_MUNICIPIO));
+      } catch {
+        setToken(null);
+      } finally {
+        setPronto(true);
+      }
     })();
   }, []);
 
-  const api = useMemo(() => criarApi(API_URL, async () => token), [token]);
+  const esquecerConta = useCallback(async () => {
+    await SecureStore.deleteItemAsync(CHAVE_TOKEN).catch(() => {});
+    setToken(null);
+    setConta(null);
+  }, []);
+
+  // 401 em qualquer rota: a sessão expirou ou foi revogada; volta ao login (o índice redireciona).
+  const api = useMemo(
+    () =>
+      criarApi(
+        API_URL,
+        async () => token,
+        fetch,
+        () => void esquecerConta(),
+      ),
+    [token, esquecerConta],
+  );
 
   useEffect(() => {
     if (!token) {
@@ -71,8 +93,10 @@ export function ProvedorDeSessao({ children }: { children: ReactNode }) {
       setMunicipio(slug);
     },
     sair: async () => {
-      await SecureStore.deleteItemAsync(CHAVE_TOKEN);
-      setToken(null);
+      // Este aparelho para de receber os avisos da conta e a sessão morre no servidor (aparelho compartilhado).
+      await sairDoPush(api);
+      await api.post("/v1/auth/sign-out").catch(() => {});
+      await esquecerConta();
     },
   };
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;

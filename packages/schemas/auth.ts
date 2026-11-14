@@ -13,9 +13,21 @@ export const telefoneSchema = z
   .transform((texto) => texto.replace(/\D/g, ""))
   .pipe(z.string().regex(/^\d{10,11}$/, "telefone_invalido"));
 
+const IDADE_MAXIMA = 130;
+
+// Data real (o regex ISO do zod não confere o fim do mês), não no futuro e no máximo 130 anos atrás.
 export const nascimentoSchema = z.iso
   .date("nascimento_invalido")
-  .refine((data) => data <= hojeEmSaoPaulo(), "nascimento_no_futuro");
+  .refine((data) => {
+    const [a = 0, m = 0, d = 0] = data.split("-").map(Number);
+    const dt = new Date(Date.UTC(a, m - 1, d));
+    return dt.getUTCFullYear() === a && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+  }, "nascimento_invalido")
+  .refine((data) => data <= hojeEmSaoPaulo(), "nascimento_no_futuro")
+  .refine(
+    (data) => Number(data.slice(0, 4)) >= Number(hojeEmSaoPaulo().slice(0, 4)) - IDADE_MAXIMA,
+    "nascimento_antigo",
+  );
 
 // RN-ID-01 / RN-ID-04 / PD-23: corpo do `POST /v1/auth/sign-up/email`. O CPF sai só com dígitos.
 export const cadastroPacienteSchema = z.object({

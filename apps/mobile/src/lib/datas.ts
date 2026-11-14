@@ -15,3 +15,11 @@ export function hora(iso: string, fuso = FUSO): string {
     .split(":");
   return m === "00" ? `${Number(h)}h` : `${Number(h)}h${m}`;
 }
+
+const diaNoFuso = (ms: number, fuso: string) =>
+  new Date(ms).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: fuso });
+
+/** O dia de `iso` é o mesmo de `agora` no fuso da unidade? */
+export function ehHoje(iso: string, agora: number, fuso = FUSO): boolean {
+  return diaNoFuso(Date.parse(iso), fuso) === diaNoFuso(agora, fuso);
+}

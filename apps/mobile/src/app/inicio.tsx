@@ -22,15 +22,23 @@ import {
   Titulo,
 } from "@/components/ui";
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
-import { diaCurto, hora } from "@/lib/datas";
+import { diaCurto, ehHoje, hora } from "@/lib/datas";
 import { useSessao } from "@/lib/sessao";
 import { avisoDoErro, mensagemDoErro, type Situacao, situacaoDaEntrada } from "@/lib/textos";
 
+// "hoje" só quando a sessão é hoje no fuso da unidade; senão, o dia.
+const quando = (en: MinhaEntrada) =>
+  en.sessao ? (ehHoje(en.sessao.inicio, Date.now()) ? " · hoje" : ` · ${diaCurto(en.sessao.inicio)}`) : "";
 const contexto = (en: MinhaEntrada, dono: string | undefined) =>
-  `${en.unidade} · ${en.servico.toLowerCase()}${en.sessao ? " · hoje" : ""}${dono && en.pessoa !== dono ? ` · para ${en.pessoa}` : ""}`;
+  `${en.unidade} · ${en.servico.toLowerCase()}${quando(en)}${dono && en.pessoa !== dono ? ` · para ${en.pessoa}` : ""}`;
+const faltam = (posicao: number, minutos: number) =>
+  minutos <= 0 || posicao <= 1 ? "você é o próximo" : `cerca de ${minutos} min para a sua vez`;
+
+// "é a sua vez" dispensado não volta ao trocar de aba (a tela remonta); vale enquanto o app está aberto.
+const VEZES_VISTAS = new Set<string>();
 
 /** "é a sua vez!": tela cheia verde, como no design. */
-function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: string; fechar: () => void }) {
+function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: string | null; fechar: () => void }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: COR.call }}>
       <View
@@ -44,7 +52,7 @@ function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: string; fe
           {senha}
         </Text>
         <Text style={{ fontFamily: FONTE.extra, fontSize: 28, lineHeight: 34, color: "#ffffff" }}>
-          {estacao.toLowerCase()}
+          {estacao ? estacao.toLowerCase() : "veja a sala na TV"}
         </Text>
         <View style={{ alignSelf: "stretch", marginTop: 24 }}>
           <Botao texto="estou indo" tipo="branco" corTexto={COR.successInk} onPress={fechar} />
@@ -63,7 +71,7 @@ function Bloco({
   en: MinhaEntrada;
   sit: Situacao;
   dono: string | undefined;
-  vouSair: () => void;
+  vouSair: (() => void) | null;
 }) {
   const ctx = contexto(en, dono);
   const naUnidade = <Botao texto="estou na unidade" onPress={() => router.push("/check-in")} />;
@@ -103,13 +111,13 @@ function Bloco({
       return sit.presente ? (
         <View style={{ gap: 16 }}>
           <Faixa tipo="ok" titulo="você está na unidade" texto="fique de olho na TV e no celular." />
-          <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={`cerca de ${sit.minutos} min para a sua vez`} />
-          <LinkBotao texto="vou sair um pouco" onPress={vouSair} />
+          <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />
+          {vouSair ? <LinkBotao texto="vou sair um pouco" onPress={vouSair} /> : <Pequeno>um momento…</Pequeno>}
           <Pequeno>você continua na fila, no mesmo lugar. ao voltar, leia o QR de novo.</Pequeno>
         </View>
       ) : (
         <View style={{ gap: 16 }}>
-          <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={`cerca de ${sit.minutos} min para a sua vez`} />
+          <CartaoPosicao contexto={ctx} posicao={sit.posicao} detalhe={faltam(sit.posicao, sit.minutos)} />
           <Faixa
             tipo="info"
             titulo="pode esperar em casa"
@@ -131,6 +139,50 @@ function Bloco({
           <TextoSuave>quando o atendimento começar, mostramos quanto falta.</TextoSuave>
           {en.senha ? naUnidade : null}
         </View>
+      );
+    case "sem_previsao":
+      return (
+        <View style={{ gap: 16 }}>
+          <Cartao>
+            <Pequeno>{ctx}</Pequeno>
+            {en.senha ? (
+              <Text style={{ fontFamily: FONTE.extra, fontSize: 40, color: COR.primary500 }}>{en.senha}</Text>
+            ) : null}
+            <Pequeno>a fila já começou. sem previsão de tempo agora.</Pequeno>
+          </Cartao>
+          {sit.presente ? (
+            <Faixa tipo="ok" titulo="você está na unidade" texto="fique de olho na TV e no celular." />
+          ) : (
+            <>
+              <TextoSuave>avisamos quando estiver perto da sua vez.</TextoSuave>
+              {en.senha ? naUnidade : null}
+            </>
+          )}
+        </View>
+      );
+    case "atrasada":
+      return (
+        <View style={{ gap: 16 }}>
+          <Cartao>
+            <Pequeno>{ctx}</Pequeno>
+            <Texto>a unidade ainda não abriu a fila.</Texto>
+          </Cartao>
+          <TextoSuave>quando abrir, você recebe sua senha e a posição aqui.</TextoSuave>
+        </View>
+      );
+    case "alocada":
+      return (
+        <Cartao>
+          <Pequeno>data marcada</Pequeno>
+          {en.sessao ? (
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
+              {diaCurto(en.sessao.inicio)} · {hora(en.sessao.inicio)}
+            </Text>
+          ) : null}
+          <Texto>
+            {en.unidade} · {en.servico.toLowerCase()}
+          </Texto>
+        </Cartao>
       );
     case "confirmada":
       return (
@@ -199,12 +251,15 @@ export default function MinhaFila() {
   const s = useSessao();
   const [entradas, setEntradas] = useState<MinhaEntrada[] | null>(null);
   const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
-  const [vistas, setVistas] = useState<string[]>([]);
+  const [vistas, setVistas] = useState<string[]>(() => [...VEZES_VISTAS]);
+  const [saindo, setSaindo] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       if (!s.municipio) return;
       let ativo = true;
+      // Trocou de município ou de conta: nada da lista anterior fica na tela.
+      setEntradas(null);
       const buscar = () =>
         s.api
           .get<MinhaEntrada[]>(`/v1/municipios/${s.municipio}/minhas`)
@@ -223,7 +278,8 @@ export default function MinhaFila() {
     }, [s.api, s.municipio]),
   );
 
-  const lista = (entradas ?? []).map((en) => ({ en, sit: situacaoDaEntrada(en) }));
+  const agora = Date.now();
+  const lista = (entradas ?? []).map((en) => ({ en, sit: situacaoDaEntrada(en, agora) }));
   const vez = lista.find(
     (x): x is { en: MinhaEntrada; sit: Extract<Situacao, { tipo: "vez" }> } =>
       x.sit.tipo === "vez" && !vistas.includes(`${x.en.entradaId}:${x.en.chamada?.em}`),
@@ -233,7 +289,11 @@ export default function MinhaFila() {
       <SuaVez
         senha={vez.sit.senha}
         estacao={vez.sit.estacao}
-        fechar={() => setVistas([...vistas, `${vez.en.entradaId}:${vez.en.chamada?.em}`])}
+        fechar={() => {
+          const chave = `${vez.en.entradaId}:${vez.en.chamada?.em}`;
+          VEZES_VISTAS.add(chave);
+          setVistas([...vistas, chave]);
+        }}
       />
     );
 
@@ -254,7 +314,7 @@ export default function MinhaFila() {
             tipo="ok"
             grande
             titulo="é a sua vez!"
-            texto={`vá para ${sit.estacao.toLowerCase()} com a senha ${sit.senha}`}
+            texto={`vá para ${sit.estacao ? sit.estacao.toLowerCase() : "a sala indicada na TV"} com a senha ${sit.senha}`}
           />
         ) : (
           <Bloco
@@ -262,11 +322,22 @@ export default function MinhaFila() {
             en={en}
             sit={sit}
             dono={s.conta?.nome}
-            vouSair={() =>
-              // RN-PRES-02: volta a remoto mantendo a posição; a consulta seguinte já mostra.
-              s.api
-                .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
-                .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
+            vouSair={
+              saindo === en.entradaId
+                ? null
+                : () => {
+                    // RN-PRES-02: volta a remoto mantendo a posição; um toque por vez.
+                    setSaindo(en.entradaId);
+                    s.api
+                      .post(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/vou-sair`)
+                      .then(() =>
+                        setEntradas((l) =>
+                          (l ?? []).map((x) => (x.entradaId === en.entradaId ? { ...x, itemEstado: "remoto" } : x)),
+                        ),
+                      )
+                      .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
+                      .finally(() => setSaindo(null));
+                  }
             }
           />
         ),

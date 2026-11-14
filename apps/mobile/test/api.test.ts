@@ -37,6 +37,23 @@ describe("cliente da API do app (PD-34, token)", () => {
     expect(pedidos[0]?.init.body).toBe('{"token":"ExponentPushToken[a]"}');
   });
 
+  it("401 avisa que a sessão expirou (o app desloga); del manda DELETE", async () => {
+    let expirou = 0;
+    const { pedidos, fetcher } = falso([json({ erro: "nao_autenticado" }, 401), json({ ok: true })]);
+    const api = criarApi(
+      "http://api",
+      async () => "tok",
+      fetcher,
+      () => {
+        expirou++;
+      },
+    );
+    await expect(api.get("/x")).rejects.toMatchObject({ status: 401 });
+    expect(expirou).toBe(1);
+    await api.del("/v1/paciente/push", { token: "t" });
+    expect(pedidos[1]?.init.method).toBe("DELETE");
+  });
+
   it("erro no formato da API vira ErroDaApi; sem rede, sem_conexao", async () => {
     const { fetcher } = falso([json({ erro: "duplicada" }, 409)]);
     const api = criarApi("http://api", async () => null, fetcher);

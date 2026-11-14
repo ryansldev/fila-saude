@@ -33,13 +33,16 @@ type Resultado = { pessoa: string; senha: string; resultado: "presente" | "pende
 const RECEPCAO = "passe na recepção para confirmar seus documentos. você ainda não entrou na fila da unidade.";
 
 /** RN-PRES-01 / RN-FILA-05: o que o app diz depois de ler o QR. */
-export function textoDoCheckIn(lista: Resultado[]): { ok: boolean; linhas: string[] } {
-  if (lista.length === 0) return { ok: false, linhas: ["você não tem senha aberta nesta unidade agora."] };
+export function textoDoCheckIn(lista: Resultado[]): {
+  tipo: "presente" | "recepcao" | "sem_senha";
+  linhas: string[];
+} {
+  if (lista.length === 0) return { tipo: "sem_senha", linhas: ["você não tem senha aberta nesta unidade agora."] };
   const linhas = lista.map((r) => {
     const quem = `${r.pessoa} (${r.senha})`;
     if (r.resultado === "pendencia") return `${quem}: ${RECEPCAO}`;
     if (r.resultado === "ja_na_unidade") return `${quem}: você já está na fila da unidade.`;
     return `${quem}: você está na unidade. fique de olho na TV e no celular.`;
   });
-  return { ok: lista.every((r) => r.resultado !== "pendencia"), linhas };
+  return { tipo: lista.some((r) => r.resultado === "pendencia") ? "recepcao" : "presente", linhas };
 }

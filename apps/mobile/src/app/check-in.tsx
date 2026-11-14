@@ -11,7 +11,7 @@ import { mensagemDoErro } from "@/lib/textos";
 type Estado =
   | { tipo: "lendo" }
   | { tipo: "enviando" }
-  | { tipo: "fim"; ok: boolean; linhas: string[] }
+  | { tipo: "fim"; resultado: "presente" | "recepcao" | "sem_senha"; linhas: string[] }
   | { tipo: "erro"; texto: string };
 
 const branco = { color: "#ffffff" };
@@ -24,6 +24,8 @@ export default function CheckInPeloQr() {
   const [estado, setEstado] = useState<Estado>({ tipo: "lendo" });
   const [naoLe, setNaoLe] = useState(false);
   const lido = useRef(false);
+  // O link do QR (câmera do celular) é usado uma vez; depois, "ler de novo" abre a câmera.
+  const linkUsado = useRef(false);
 
   const enviar = useCallback(
     async (qr: QrLido) => {
@@ -31,12 +33,14 @@ export default function CheckInPeloQr() {
       lido.current = true;
       setEstado({ tipo: "enviando" });
       try {
-        if (s.municipio !== qr.municipio) await s.escolherMunicipio(qr.municipio);
         const r = await s.api.post<CheckIn>(`/v1/municipios/${qr.municipio}/check-in`, {
           unidadeId: qr.unidadeId,
           tokens: qr.tokens,
         });
-        setEstado({ tipo: "fim", ...textoDoCheckIn(r) });
+        // Só troca de município depois de um check-in aceito.
+        if (s.municipio !== qr.municipio) await s.escolherMunicipio(qr.municipio);
+        const { tipo, linhas } = textoDoCheckIn(r);
+        setEstado({ tipo: "fim", resultado: tipo, linhas });
       } catch (err) {
         setEstado({ tipo: "erro", texto: mensagemDoErro(err) });
       }
@@ -45,13 +49,12 @@ export default function CheckInPeloQr() {
   );
 
   useEffect(() => {
-    if (!s.pronto) return;
-    if (!s.token) {
-      router.replace("/boas-vindas");
-      return;
-    }
+    if (!s.pronto || !s.token || linkUsado.current) return;
     const doLink = deParametros(params);
-    if (doLink) void enviar(doLink);
+    if (doLink) {
+      linkUsado.current = true;
+      void enviar(doLink);
+    }
   }, [s.pronto, s.token, params, enviar]);
 
   const deNovo = () => {
@@ -60,7 +63,34 @@ export default function CheckInPeloQr() {
   };
   const verFila = () => router.replace("/inicio");
 
-  if (estado.tipo === "fim" && estado.ok)
+  if (s.pronto && !s.token)
+    return (
+      <Tela voltar={false}>
+        <Faixa
+          tipo="aviso"
+          titulo="entre na sua conta"
+          texto="para confirmar a chegada, entre no app e leia o QR da TV de novo."
+          style={{ marginTop: 8 }}
+        />
+        <Espaco />
+        <Botao texto="entrar" onPress={() => router.replace("/entrar")} />
+        <LinkBotao texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
+      </Tela>
+    );
+
+  if (estado.tipo === "fim" && estado.resultado === "sem_senha")
+    return (
+      <Tela voltar={false}>
+        <Faixa tipo="info" titulo="nenhuma senha aqui agora" texto={estado.linhas.join(" ")} style={{ marginTop: 8 }} />
+        <TextoSuave>
+          confira se é a unidade certa e se o seu atendimento é hoje. na dúvida, fale com a recepção.
+        </TextoSuave>
+        <Espaco />
+        <Botao texto="ver minha fila" onPress={verFila} />
+      </Tela>
+    );
+
+  if (estado.tipo === "fim" && estado.resultado === "presente")
     return (
       <Tela voltar={false}>
         <Faixa
@@ -106,7 +136,7 @@ export default function CheckInPeloQr() {
       </Tela>
     );
 
-  const enviando = estado.tipo === "enviando" || Boolean(deParametros(params));
+  const enviando = estado.tipo === "enviando" || (!linkUsado.current && Boolean(deParametros(params)));
   return (
     <Tela fundo={COR.primary900} topo={false}>
       <Text style={{ fontFamily: FONTE.extra, fontSize: 28, lineHeight: 34, marginTop: 8, ...branco }}>

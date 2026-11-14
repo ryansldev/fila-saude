@@ -17,15 +17,19 @@ describe("check-in pelo QR no app (RN-PRES-01)", () => {
 
   it("RN-FILA-05: resultado em texto, com a orientação da recepção para quem tem pendência", () => {
     expect(textoDoCheckIn([{ pessoa: "Ana", senha: "V-001", resultado: "presente" }])).toEqual({
-      ok: true,
+      tipo: "presente",
       linhas: ["Ana (V-001): você está na unidade. fique de olho na TV e no celular."],
     });
     expect(textoDoCheckIn([{ pessoa: "Bia", senha: "V-002", resultado: "pendencia" }])).toEqual({
-      ok: false,
+      tipo: "recepcao",
       linhas: [
         "Bia (V-002): passe na recepção para confirmar seus documentos. você ainda não entrou na fila da unidade.",
       ],
     });
-    expect(textoDoCheckIn([])).toEqual({ ok: false, linhas: ["você não tem senha aberta nesta unidade agora."] });
+    // Sem senha aberta aqui não é "passe na recepção".
+    expect(textoDoCheckIn([])).toEqual({
+      tipo: "sem_senha",
+      linhas: ["você não tem senha aberta nesta unidade agora."],
+    });
   });
 });

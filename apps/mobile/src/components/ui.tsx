@@ -209,11 +209,18 @@ export function LinkBotao({
   );
 }
 
-export function Campo({ rotulo, ...props }: { rotulo: string } & TextInputProps) {
+export function Campo({ rotulo, erro, ...props }: { rotulo: string; erro?: string | undefined } & TextInputProps) {
   return (
     <View style={{ gap: 6 }}>
       <Text style={e.rotulo}>{rotulo}</Text>
-      <TextInput accessibilityLabel={rotulo} placeholderTextColor={COR.inkMuted} style={e.campo} {...props} />
+      <TextInput
+        accessibilityLabel={rotulo}
+        accessibilityHint={erro}
+        placeholderTextColor={COR.inkMuted}
+        style={[e.campo, erro ? { borderColor: COR.dangerInk } : null]}
+        {...props}
+      />
+      {erro ? <Text style={{ fontFamily: FONTE.regular, fontSize: 16, color: COR.dangerInk }}>{erro}</Text> : null}
     </View>
   );
 }

@@ -1,4 +1,6 @@
 import z from "zod";
+import { nascimentoSchema } from "./auth";
+import { cpfSchema } from "./cpf";
 import { sessaoSchema } from "./sessao";
 
 // Fatia 1 da v0.1: fila do dia (painel), operação da estação e as telas do app.
@@ -106,9 +108,10 @@ export const inscricaoEntradaSchema = z.object({
     z.object({ tipo: z.literal("eu") }),
     z.object({
       tipo: z.literal("outra"),
-      nome: z.string().trim().min(3),
-      nascimento: z.iso.date(),
-      cpf: z.string().nullable(),
+      nome: z.string().trim().min(3).max(200),
+      nascimento: nascimentoSchema,
+      // Opcional, mas quando vem é um CPF válido: senão a inscrição cai em outra pessoa (pessoa_local pelo CPF).
+      cpf: cpfSchema.nullable(),
     }),
   ]),
   respostas: respostasSchema,

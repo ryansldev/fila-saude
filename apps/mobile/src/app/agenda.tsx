@@ -59,7 +59,13 @@ export default function Agenda() {
                     onPress={() =>
                       router.push({
                         pathname: "/inscricao/[sessaoId]",
-                        params: { sessaoId: x.id, servico: x.servico.nome, unidade: u.nome, inicio: x.inicio },
+                        params: {
+                          sessaoId: x.id,
+                          servico: x.servico.nome,
+                          unidade: u.nome,
+                          inicio: x.inicio,
+                          aberta: x.estado === "aberta" ? "1" : "0",
+                        },
                       })
                     }
                   />
