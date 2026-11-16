@@ -1,5 +1,8 @@
 export {
   chamarProximo,
+  compareceu,
+  compareceuEm,
+  desfazerCompareceu,
   fecharEstacao,
   finalizar,
   naoCompareceu,
@@ -122,4 +125,4 @@ export type {
   OrdemMunicipio,
   Respostas,
 } from "./tipos.ts";
-export { ehUrgencia } from "./tipos.ts";
+export { ehUrgencia, TEMPO_ALVO_MIN } from "./tipos.ts";

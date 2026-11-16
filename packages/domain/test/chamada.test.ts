@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   chamarProximo,
+  compareceu,
+  compareceuEm,
+  desfazerCompareceu,
   fecharEstacao,
   finalizar,
   naoCompareceu,
@@ -9,7 +12,7 @@ import {
 } from "../src/chamada.ts";
 import { CONFIG_PADRAO, checkIn, type DiaSessao, type Estacao, elegiveis, vouSair } from "../src/fila.ts";
 import type { Resultado } from "../src/resultado.ts";
-import { comItem, congelar, diaCom, jaAvisado } from "./fixtures.ts";
+import { comItem, congelar, diaCom, jaAvisado, naSala } from "./fixtures.ts";
 
 const MIN = 60_000;
 const T = Date.UTC(2026, 10, 12, 10, 0);
@@ -31,7 +34,8 @@ const estacao = (dia: DiaSessao, id: string) => {
 };
 const ordem = (dia: DiaSessao, estacaoId = "e1"): string[] => elegiveis(dia, estacaoId).map((i) => i.id);
 const entrar = (dia: DiaSessao, id: string, agora = T) => aplicar(checkIn(dia, { itemId: id }, agora));
-const chamar = (dia: DiaSessao, estacaoId = "e1", agora = T) => aplicar(chamarProximo(dia, { estacaoId }, agora));
+const chamar = (dia: DiaSessao, estacaoId = "e1", agora = T) =>
+  aplicar(chamarProximo(naSala(dia, estacaoId), { estacaoId }, agora));
 const pular = (dia: DiaSessao, estacaoId = "e1", agora = T) => aplicar(naoCompareceu(dia, { estacaoId }, agora));
 const chamadoEm = (dia: DiaSessao, estacaoId = "e1") => estacao(dia, estacaoId).chamadoItemId;
 
@@ -254,7 +258,7 @@ describe("RN-CHAM-03 e AD-006: Não compareceu, tolerância", () => {
     expect(item(d, "ana")).toMatchObject({ etapa: "triagem", estado: "presente", pulos: 1 });
     d = chamar(d, "t1", T + 8 * MIN); // João
     d = chamar(d, "t1", T + 9 * MIN); // Ana
-    d = aplicar(finalizar(d, { estacaoId: "t1" }, T + 12 * MIN)); // Ana triada
+    d = aplicar(finalizar(naSala(d, "t1"), { estacaoId: "t1" }, T + 12 * MIN)); // Ana triada
     expect(item(d, "ana")).toMatchObject({ etapa: "atendimento", estado: "presente", pulos: 1 });
     d = chamar(d, "e1", T + 13 * MIN); // João (triado antes, na sala do consultório antes dela)
     d = chamar(d, "e1", T + 14 * MIN); // Ana no consultório
@@ -342,7 +346,7 @@ describe("RN-TRI: triagem", () => {
     expect(chamarProximo(d, { estacaoId: "e1" }, T)).toEqual({ ok: false, erro: "nenhum_elegivel" });
     d = chamar(d, "t1", T + MIN);
     expect(chamadoEm(d, "t1")).toBe("ana");
-    const r = chamarProximo(d, { estacaoId: "t1" }, T + 5 * MIN); // fecha a triagem da Ana e chama João
+    const r = chamarProximo(naSala(d, "t1"), { estacaoId: "t1" }, T + 5 * MIN); // fecha a triagem da Ana e chama João
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     d = congelar(r.estado);
@@ -355,7 +359,7 @@ describe("RN-TRI: triagem", () => {
     });
     expect(r.eventos[0]).toMatchObject({ tipo: "atendido", dados: { etapa: "triagem", proximaEtapa: "atendimento" } });
     expect(item(d, "joao").estado).toBe("chamado");
-    d = aplicar(finalizar(d, { estacaoId: "t1" }, T + 9 * MIN)); // João triado
+    d = aplicar(finalizar(naSala(d, "t1"), { estacaoId: "t1" }, T + 9 * MIN)); // João triado
     expect(item(d, "joao")).toMatchObject({ etapa: "atendimento", estado: "presente" });
     expect(ordem(d)).toEqual(["ana", "joao"]);
     d = chamar(d, "e1", T + 10 * MIN);
@@ -373,7 +377,7 @@ describe("RN-TRI: triagem", () => {
     x = entrar(x, "ana");
     x = entrar(x, "joao");
     x = chamar(x, "t1", T + MIN); // Ana
-    x = aplicar(finalizar(x, { estacaoId: "t1" }, T + 2 * MIN));
+    x = aplicar(finalizar(naSala(x, "t1"), { estacaoId: "t1" }, T + 2 * MIN));
     x = aplicar(vouSair(x, { itemId: "ana" }, T + 3 * MIN)); // Ana em casa, já no consultório
     x = chamar(x, "t1", T + 4 * MIN); // João chamado na triagem
     x = entrar(x, "ana", T + 5 * MIN);
@@ -386,7 +390,7 @@ describe("RN-TRI: triagem", () => {
     d = entrar(d, "ana"); // Ana atrás de João na triagem (janela)
     d = chamar(d, "t1", T + MIN); // João
     d = chamar(d, "t1", T + 2 * MIN); // João triado (entra no atendimento); Ana chamada na triagem
-    d = aplicar(finalizar(d, { estacaoId: "t1" }, T + 4 * MIN)); // Ana triada
+    d = aplicar(finalizar(naSala(d, "t1"), { estacaoId: "t1" }, T + 4 * MIN)); // Ana triada
     // Ana tinha o número 1, mas no atendimento chegou depois de João: número novo, sem travas.
     expect(item(d, "ana")).toMatchObject({ etapa: "atendimento", estado: "presente", numero: 5, travadoAtras: [] });
     expect(item(d, "joao").numero).toBe(4);
@@ -446,7 +450,7 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
   }
 
   it("RN-TRI-03/04: urgência confirmada na triagem é a 1ª do atendimento", () => {
-    const r = finalizar(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "urgente" }, T + 5 * MIN);
+    const r = finalizar(naSala(caioNaTriagem(), "t1"), { estacaoId: "t1", riscoConfirmado: "urgente" }, T + 5 * MIN);
     const d = aplicar(r);
     expect(item(d, "caio")).toMatchObject({ etapa: "atendimento", risco: "urgente", urgenciaConfirmada: true });
     expect(ordem(d)).toEqual(["caio", "ana", "joao"]);
@@ -464,7 +468,7 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
   it("AD-058: Manchester — laranja (muito urgente) confirmado passa à frente do amarelo confirmado", () => {
     let d = caioNaTriagem();
     d = comItem(d, "ana", { risco: "urgente", urgenciaConfirmada: true });
-    const r = finalizar(d, { estacaoId: "t1", riscoConfirmado: "muito_urgente" }, T + 5 * MIN);
+    const r = finalizar(naSala(d, "t1"), { estacaoId: "t1", riscoConfirmado: "muito_urgente" }, T + 5 * MIN);
     const depois = aplicar(r);
     expect(item(depois, "caio")).toMatchObject({ risco: "muito_urgente", urgenciaConfirmada: true });
     expect(ordem(depois)).toEqual(["caio", "ana", "joao"]);
@@ -474,7 +478,7 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     let d = caioNaTriagem();
     d = comItem(d, "caio", { risco: "atencao" });
     d = entrar(d, "duda", T + 2 * MIN);
-    d = aplicar(chamarProximo(d, { estacaoId: "t1", riscoConfirmado: "rotina" }, T + 5 * MIN));
+    d = aplicar(chamarProximo(naSala(d, "t1"), { estacaoId: "t1", riscoConfirmado: "rotina" }, T + 5 * MIN));
     expect(item(d, "caio")).toMatchObject({ etapa: "atendimento", risco: "rotina", urgenciaConfirmada: false });
     expect(ordem(d)).toEqual(["ana", "joao", "caio"]);
   });
@@ -482,7 +486,7 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
   it("AD-059: vermelho na triagem vai para o 1º lugar do atendimento, à frente até do laranja", () => {
     let d = caioNaTriagem();
     d = comItem(d, "ana", { risco: "muito_urgente", urgenciaConfirmada: true });
-    const r = finalizar(d, { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN);
+    const r = finalizar(naSala(d, "t1"), { estacaoId: "t1", riscoConfirmado: "emergencia" }, T + 5 * MIN);
     const depois = aplicar(r);
     expect(item(depois, "caio")).toMatchObject({ etapa: "atendimento", risco: "emergencia", urgenciaConfirmada: true });
     expect(ordem(depois)).toEqual(["caio", "ana", "joao"]);
@@ -491,7 +495,7 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
 
   it("AD-059: encaminhar à emergência é explícito: atendido na triagem, sai da fila desta unidade", () => {
     const r = finalizar(
-      caioNaTriagem(),
+      naSala(caioNaTriagem(), "t1"),
       { estacaoId: "t1", riscoConfirmado: "emergencia", encaminhar: true },
       T + 5 * MIN,
     );
@@ -500,11 +504,17 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     expect(ordem(d)).toEqual(["ana", "joao"]);
     expect(r.ok && r.eventos.map((e) => e.tipo)).toEqual(["atendido", "encaminhado_emergencia"]);
     const viaChamar = aplicar(
-      chamarProximo(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "emergencia", encaminhar: true }, T + 5 * MIN),
+      chamarProximo(
+        naSala(caioNaTriagem(), "t1"),
+        { estacaoId: "t1", riscoConfirmado: "emergencia", encaminhar: true },
+        T + 5 * MIN,
+      ),
     );
     expect(item(viaChamar, "caio").estado).toBe("atendido_na_etapa");
     // Encaminhar só com vermelho.
-    expect(finalizar(caioNaTriagem(), { estacaoId: "t1", riscoConfirmado: "urgente", encaminhar: true }, T)).toEqual({
+    expect(
+      finalizar(naSala(caioNaTriagem(), "t1"), { estacaoId: "t1", riscoConfirmado: "urgente", encaminhar: true }, T),
+    ).toEqual({
       ok: false,
       erro: "transicao_proibida",
     });
@@ -512,12 +522,16 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
 
   it("RN-TRI-03: só a triagem confirma; sem confirmação, nada muda", () => {
     const d = caioNaTriagem();
-    const noConsultorio = chamar(aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN)), "e1", T + 6 * MIN);
+    const noConsultorio = chamar(
+      aplicar(finalizar(naSala(d, "t1"), { estacaoId: "t1" }, T + 5 * MIN)),
+      "e1",
+      T + 6 * MIN,
+    );
     expect(finalizar(noConsultorio, { estacaoId: "e1", riscoConfirmado: "urgente" }, T + 7 * MIN)).toEqual({
       ok: false,
       erro: "transicao_proibida",
     });
-    expect(item(aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN)), "caio").risco).toBe("rotina");
+    expect(item(aplicar(finalizar(naSala(d, "t1"), { estacaoId: "t1" }, T + 5 * MIN)), "caio").risco).toBe("rotina");
   });
 });
 
@@ -537,7 +551,7 @@ describe("presenteDesde nas chamadas", () => {
     let d = diaComTriagem(["ana", "joao"]);
     d = entrar(d, "ana");
     d = chamar(d, "t1", T + MIN);
-    d = aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN));
+    d = aplicar(finalizar(naSala(d, "t1"), { estacaoId: "t1" }, T + 5 * MIN));
     expect(item(d, "ana")).toMatchObject({ etapa: "atendimento", estado: "presente", presenteDesde: T + 5 * MIN });
   });
 
@@ -549,5 +563,79 @@ describe("presenteDesde nas chamadas", () => {
     d = chamar(d, "e1", T + 4 * MIN);
     d = pular(d, "e1", T + 6 * MIN);
     expect(item(d, "ana")).toMatchObject({ estado: "remoto", presenteDesde: null });
+  });
+});
+
+describe("Compareceu: a pessoa entrou na sala", () => {
+  const veio = (dia: DiaSessao, estacaoId = "e1", agora = T) => aplicar(compareceu(dia, { estacaoId }, agora));
+  const ultima = (dia: DiaSessao) => dia.chamadas[dia.chamadas.length - 1];
+
+  it("grava a hora na última chamada; repetir não muda", () => {
+    let d = chamar(entrar(diaCom(["ana"]), "ana"));
+    expect(compareceuEm(d, "e1")).toBeNull();
+    const r = compareceu(d, { estacaoId: "e1" }, T + MIN);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.eventos.map((e) => e.tipo)).toEqual(["compareceu"]);
+    d = congelar(r.estado);
+    expect(ultima(d)?.compareceuEm).toBe(T + MIN);
+    expect(compareceuEm(d, "e1")).toBe(T + MIN);
+    const de_novo = compareceu(d, { estacaoId: "e1" }, T + 2 * MIN);
+    expect(de_novo.ok && de_novo.estado).toBe(d);
+    expect(de_novo.ok && de_novo.eventos).toEqual([]);
+  });
+
+  it("sem ninguém chamado, recusa; sessão fechada, recusa", () => {
+    const d = entrar(diaCom(["ana"]), "ana");
+    expect(compareceu(d, { estacaoId: "e1" }, T)).toEqual({ ok: false, erro: "transicao_proibida" });
+    expect(desfazerCompareceu(d, { estacaoId: "e1" }, T)).toEqual({ ok: false, erro: "transicao_proibida" });
+    const fechada = { ...chamar(d), estado: "encerrada" as const };
+    expect(compareceu(fechada, { estacaoId: "e1" }, T)).toEqual({ ok: false, erro: "sessao_fechada" });
+  });
+
+  it("desfazer volta à fase de chamado; sem Compareceu, recusa", () => {
+    let d = chamar(entrar(diaCom(["ana"]), "ana"));
+    expect(desfazerCompareceu(d, { estacaoId: "e1" }, T)).toEqual({ ok: false, erro: "transicao_proibida" });
+    d = aplicar(desfazerCompareceu(veio(d), { estacaoId: "e1" }, T + MIN));
+    expect(compareceuEm(d, "e1")).toBeNull();
+    expect(ultima(d)?.compareceuEm).toBeUndefined();
+  });
+
+  it("depois do Compareceu, rechamar e não compareceu recusam e a tolerância não vale", () => {
+    const d = veio(chamar(entrar(diaCom(["ana"]), "ana")));
+    expect(rechamar(d, { estacaoId: "e1" }, T)).toEqual({ ok: false, erro: "transicao_proibida" });
+    expect(naoCompareceu(d, { estacaoId: "e1" }, T)).toEqual({ ok: false, erro: "transicao_proibida" });
+    expect(toleranciaEsgotada(d, "e1", T + 60 * MIN)).toBe(false);
+  });
+
+  it("triagem: fechar o chamado sem Compareceu recusa; com Compareceu segue", () => {
+    let d = chamar(entrar(diaComTriagem(["ana", "joao"]), "ana"), "t1");
+    d = entrar(d, "joao");
+    expect(finalizar(d, { estacaoId: "t1", riscoConfirmado: "urgente" }, T)).toEqual({
+      ok: false,
+      erro: "sem_comparecimento",
+    });
+    expect(chamarProximo(d, { estacaoId: "t1", riscoConfirmado: "urgente" }, T)).toEqual({
+      ok: false,
+      erro: "sem_comparecimento",
+    });
+    d = aplicar(finalizar(veio(d, "t1"), { estacaoId: "t1", riscoConfirmado: "urgente" }, T + MIN));
+    expect(item(d, "ana").etapa).toBe("atendimento");
+  });
+
+  it("atendimento: fechar sem Compareceu marca o comparecimento sozinho", () => {
+    const d = chamar(entrar(diaCom(["ana"]), "ana"));
+    const r = finalizar(d, { estacaoId: "e1" }, T + 3 * MIN);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(ultima(r.estado)?.compareceuEm).toBe(T + 3 * MIN);
+  });
+
+  it("Review Focus 1: chamado de novo depois do 1º pulo começa sem Compareceu", () => {
+    let d = chamar(entrar(diaCom(["ana"]), "ana"));
+    d = pular(d);
+    d = chamar(d, "e1", T + MIN);
+    expect(chamadoEm(d)).toBe("ana");
+    expect(compareceuEm(d, "e1")).toBeNull();
   });
 });

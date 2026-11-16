@@ -1,3 +1,4 @@
+import { compareceu } from "../src/chamada.ts";
 import { CONFIG_PADRAO, type DiaSessao, type ItemFila } from "../src/fila.ts";
 import type { Entrada, SessaoVagas } from "../src/lista.ts";
 import type { Respostas } from "../src/tipos.ts";
@@ -147,4 +148,15 @@ export function jaAvisado(dia: DiaSessao, itemId: string, em = 0, prazoMin?: num
     config: prazoMin === undefined ? dia.config : { ...dia.config, prazoChegadaMin: prazoMin },
     venhaAgora: [...(dia.venhaAgora ?? []).filter((a) => a.itemId !== itemId), { itemId, etapa, em }],
   });
+}
+
+/**
+ * Triagem: a pessoa chamada entrou na sala ("Compareceu"), como a estação faz antes de classificar.
+ * Fora da triagem (ou sem ninguém chamado) devolve o dia igual.
+ */
+export function naSala(dia: DiaSessao, estacaoId: string): DiaSessao {
+  if (dia.estacoes.find((e) => e.id === estacaoId)?.etapa !== "triagem") return dia;
+  const em = dia.chamadas[dia.chamadas.length - 1]?.em ?? 0;
+  const r = compareceu(dia, { estacaoId }, em);
+  return r.ok ? r.estado : dia;
 }

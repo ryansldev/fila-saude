@@ -63,6 +63,8 @@ export type Chamada = {
   rechamadas?: number[];
   /** RN-ETA-05: chamada que terminou em "não compareceu" não é atendimento concluído. */
   naoCompareceu?: boolean;
+  /** Hora em que a pessoa entrou na sala ("Compareceu"); a tolerância deixa de valer. */
+  compareceuEm?: number;
 };
 
 export type DiaSessao = {

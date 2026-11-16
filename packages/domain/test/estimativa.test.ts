@@ -3,7 +3,7 @@ import { chamarProximo, finalizar, naoCompareceu } from "../src/chamada.ts";
 import { avisosSaiaDeCasa, avisosVenhaAgora, estimar, tempoMedio } from "../src/estimativa.ts";
 import { CONFIG_PADRAO, checkIn, type DiaSessao, type Estacao, vouSair } from "../src/fila.ts";
 import type { Resultado } from "../src/resultado.ts";
-import { comItem, congelar, diaCom, itemFila, jaAvisado } from "./fixtures.ts";
+import { comItem, congelar, diaCom, itemFila, jaAvisado, naSala } from "./fixtures.ts";
 
 const MIN = 60_000;
 const T = Date.UTC(2026, 10, 12, 10, 0);
@@ -15,7 +15,7 @@ function aplicar(r: Resultado<DiaSessao>): DiaSessao {
   return congelar(r.estado);
 }
 const entrar = (dia: DiaSessao, id: string) => aplicar(checkIn(dia, { itemId: id }, T));
-const chamar = (dia: DiaSessao, estacaoId = "e1") => aplicar(chamarProximo(dia, { estacaoId }, T));
+const chamar = (dia: DiaSessao, estacaoId = "e1") => aplicar(chamarProximo(naSala(dia, estacaoId), { estacaoId }, T));
 const estacao = (id: string, etapa: Estacao["etapa"], aberta = true): Estacao => ({
   id,
   etapa,
@@ -92,7 +92,7 @@ describe("RN-ETA-01/01b/04: posição e tempo", () => {
   it("RN-ETA-01c/AD-009 triage: a consulta conta quem já foi triado; remoto 1º na triagem vê venha agora com consulta", () => {
     let d = entrar(diaTriagem(), "ana");
     d = chamar(d, "tri");
-    d = aplicar(finalizar(d, { estacaoId: "tri" }, T)); // Ana triada, presente no consultório
+    d = aplicar(finalizar(naSala(d, "tri"), { estacaoId: "tri" }, T)); // Ana triada, presente no consultório
     expect(estimar(d, "joao", T, AUTO)).toEqual({ tipo: "venha_agora", consulta: { minutos: 15 } });
   });
 
@@ -170,7 +170,7 @@ describe("RN-ETA-03/AD-009: saia de casa", () => {
     d = entrar(entrar(d, "ana"), "joao");
     d = chamar(d, "tri"); // Ana na triagem
     d = chamar(d, "tri"); // João na triagem; Ana triada, presente no atendimento
-    d = aplicar(finalizar(d, { estacaoId: "tri" }, T)); // João triado
+    d = aplicar(finalizar(naSala(d, "tri"), { estacaoId: "tri" }, T)); // João triado
     d = aplicar(vouSair(d, { itemId: "joao" }, T)); // fila do consultório: vai para casa
     // 1 à frente (Ana) × 15 min > 10: nada.
     expect(avisosSaiaDeCasa(d, T, AUTO).eventos).toEqual([]);

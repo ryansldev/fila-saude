@@ -7,6 +7,15 @@ import type { Grupo } from "./prioridade.ts";
  */
 export type NivelRisco = "emergencia" | "muito_urgente" | "urgente" | "atencao" | "rotina";
 
+/** Tempo-alvo de espera por cor (Manchester, AD-058), em minutos. */
+export const TEMPO_ALVO_MIN: Record<NivelRisco, number> = {
+  emergencia: 0,
+  muito_urgente: 10,
+  urgente: 60,
+  atencao: 120,
+  rotina: 240,
+};
+
 /** Urgência confirmada (RN-ORD: sempre primeiro): vermelho, laranja ou amarelo dados pela triagem. */
 export const ehUrgencia = (nivel: NivelRisco | null): boolean =>
   nivel === "urgente" || nivel === "muito_urgente" || nivel === "emergencia";

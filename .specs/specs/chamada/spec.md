@@ -8,7 +8,7 @@ Quem é chamado e em que ordem está em [fila-do-dia](../fila-do-dia/spec.md#ord
 Cada consultório e sala de triagem é uma **estação**, ligada a uma etapa e a um ou mais serviços. O profissional faz login com o usuário dele e escolhe a estação.
 
 **RN-EST-02 · Mini-janela**
-A estação roda no navegador (Chrome ou Edge) e pode ser destacada numa **mini-janela flutuante** por cima do prontuário (Document Picture-in-Picture). Ela mostra a próxima senha, o contador da tolerância e os botões Finalizar, **Chamar próximo**, **Rechamar** e **Não compareceu**.
+A estação roda no navegador (Chrome ou Edge) e pode ser destacada numa **mini-janela flutuante** por cima do prontuário (Document Picture-in-Picture). Ela tem duas fases. Com a pessoa chamada, mostra a senha, o contador da tolerância e os botões **Rechamar**, **Não compareceu** e **Compareceu**. Depois do **Compareceu** (a pessoa entrou na sala), a tolerância para, Rechamar e Não compareceu saem, a triagem classifica o risco e ficam **Finalizar e chamar o próximo** e **só finalizar**; um **desfazer** volta à primeira fase.
 
 **RN-EST-03 · Vários serviços**
 QUANDO a estação atender mais de um serviço, "Chamar próximo" DEVE juntar os elegíveis desses serviços numa só ordem (RN-ORD). O profissional não escolhe o serviço.
@@ -26,7 +26,7 @@ Ao fim da tolerância a estação avisa, mas não pula sozinha. Uma estação co
 QUANDO o profissional clicar em **Chamar próximo**, O SISTEMA DEVE pegar o primeiro elegível da etapa e dos serviços daquela estação, mostrá-lo na TV e enviar push. A seleção é atômica: duas estações chamando ao mesmo tempo recebem pacientes diferentes (INV-04). Se a estação tinha um chamado aberto, ele é encerrado como finalizado antes. Sem ninguém elegível, o chamado anterior é encerrado do mesmo jeito e a estação fica livre com o aviso "ninguém aguardando no momento".
 
 **RN-CHAM-02 · Encerrar a chamada**
-Chamar o próximo encerra a chamada anterior como **atendido** (ou triado). **Rechamar** repete o anúncio sem reiniciar a tolerância. **Finalizar** encerra o atendimento atual sem chamar outro.
+Chamar o próximo encerra a chamada anterior como **atendido** (ou triado). **Rechamar** repete o anúncio sem reiniciar a tolerância. **Finalizar** encerra o atendimento atual sem chamar outro. Na triagem, encerrar exige o **Compareceu** (a classificação pede a pessoa na sala); no atendimento, encerrar sem ele marca o comparecimento na mesma hora.
 
 **RN-CHAM-03 · Não compareceu**
 Não há pulo automático: a tolerância (padrão 5 min) é só um contador que avisa "tolerância esgotada". QUANDO o profissional tocar **Não compareceu** (disponível a qualquer momento com alguém chamado), O SISTEMA DEVE:
@@ -101,6 +101,8 @@ Entrada na fila do dia (por etapa):
 | --- | --- | --- | --- | --- |
 | Presente | Estação chama o próximo | É o 1º de ordem(elegíveis) | Chamado | TV com som; push; inicia tolerância |
 | Chamado | Rechamar | — | (mesmo) | Novo anúncio; tolerância não reinicia |
+| Chamado | Compareceu | — | (mesmo) | Grava a entrada na sala; Rechamar e Não compareceu deixam de valer; a tolerância para |
+| Chamado | Desfazer compareceu | Compareceu marcado | (mesmo) | Volta a esperar a pessoa entrar |
 | Chamado | Estação chama o próximo ou toca Finalizar | — | Atendido na etapa | Há outra etapa: Presente nela, mesmo número. Senão: entrada Concluída |
 | Chamado | "Não compareceu" | Pulos no dia = 0 | Presente | Pulos = 1; aplica janela protegida |
 | Chamado | "Não compareceu" | Pulos no dia = 1 | Remoto | Pulos = 2; push |

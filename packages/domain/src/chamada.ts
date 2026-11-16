@@ -58,6 +58,60 @@ function chamadoNaEstacao(dia: DiaSessao, estacaoId: string): ChamadoNaEstacao {
   return { ok: true, estacao, item };
 }
 
+/** Índice da chamada em curso do item (a última dele). */
+const ultimaChamada = (dia: DiaSessao, itemId: string): number =>
+  dia.chamadas.findLastIndex((c) => c.itemId === itemId);
+
+const comChamada = (dia: DiaSessao, idx: number, parcial: { compareceuEm?: number }): DiaSessao => ({
+  ...dia,
+  chamadas: dia.chamadas.map((c, i) => {
+    if (i !== idx) return c;
+    const { compareceuEm: _, ...resto } = c;
+    return parcial.compareceuEm === undefined ? resto : { ...resto, compareceuEm: parcial.compareceuEm };
+  }),
+});
+
+/** Hora do "Compareceu" de quem está chamado na estação, ou `null`. */
+export function compareceuEm(dia: DiaSessao, estacaoId: string): number | null {
+  const achado = chamadoNaEstacao(dia, estacaoId);
+  if (!achado.ok) return null;
+  return dia.chamadas[ultimaChamada(dia, achado.item.id)]?.compareceuEm ?? null;
+}
+
+/** A pessoa chamada entrou na sala: grava a hora; repetir não muda nada. */
+export function compareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<DiaSessao> {
+  const achado = chamadoNaEstacao(dia, cmd.estacaoId);
+  if (!achado.ok) return falha(achado.erro);
+  if (compareceuEm(dia, cmd.estacaoId) !== null) return ok(dia);
+  return ok(comChamada(dia, ultimaChamada(dia, achado.item.id), { compareceuEm: agora }), [
+    { tipo: "compareceu", ...base(dia, achado.item, cmd.estacaoId), dados: { em: agora } },
+  ]);
+}
+
+/** Desfaz o "Compareceu" (clique errado): volta a esperar a pessoa entrar. */
+export function desfazerCompareceu(dia: DiaSessao, cmd: Cmd, _agora: number): Resultado<DiaSessao> {
+  const achado = chamadoNaEstacao(dia, cmd.estacaoId);
+  if (!achado.ok) return falha(achado.erro);
+  if (compareceuEm(dia, cmd.estacaoId) === null) return falha("transicao_proibida");
+  return ok(comChamada(dia, ultimaChamada(dia, achado.item.id), {}));
+}
+
+/**
+ * Fechar o chamado pede a pessoa na sala: na triagem, sem "Compareceu" recusa (a classificação
+ * exige a pessoa ali); no atendimento, marca o comparecimento na hora de fechar.
+ */
+function exigirComparecimento(
+  dia: DiaSessao,
+  estacao: Estacao,
+  item: ItemFila,
+  agora: number,
+): { ok: true; dia: DiaSessao } | { ok: false } {
+  const idx = ultimaChamada(dia, item.id);
+  if (dia.chamadas[idx]?.compareceuEm !== undefined) return { ok: true, dia };
+  if (estacao.etapa === "triagem") return { ok: false };
+  return { ok: true, dia: comChamada(dia, idx, { compareceuEm: agora }) };
+}
+
 /**
  * Risco confirmado na saída da triagem (RN-TRI-03): só na etapa de triagem. Encaminhar à
  * emergência só com vermelho (AD-059).
@@ -135,6 +189,9 @@ export function chamarProximo(dia: DiaSessao, cmd: CmdFechar, agora: number): Re
   let atual = dia;
   const eventos: Evento[] = [];
   if (anterior?.estado === "chamado") {
+    const presente = exigirComparecimento(atual, estacao, anterior, agora);
+    if (!presente.ok) return falha("sem_comparecimento");
+    atual = presente.dia;
     const fechado = encerrarChamado(atual, estacao, anterior, agora, cmd.riscoConfirmado, cmd.encaminhar);
     atual = fechado.dia;
     eventos.push(...fechado.eventos);
@@ -165,6 +222,7 @@ export function rechamar(dia: DiaSessao, cmd: Cmd, agora: number): Resultado<Dia
   const achado = chamadoNaEstacao(dia, cmd.estacaoId);
   if (!achado.ok) return falha(achado.erro);
   if (transicionar(TRANSICOES_ITEM, achado.item.estado, "Rechamar") !== "(mesmo)") return falha("transicao_proibida");
+  if (compareceuEm(dia, cmd.estacaoId) !== null) return falha("transicao_proibida");
   const ultima = dia.chamadas.findLastIndex((c) => c.itemId === achado.item.id);
   const chamadas = dia.chamadas.map((c, i) =>
     i === ultima ? { ...c, rechamadas: [...(c.rechamadas ?? []), agora] } : c,
@@ -180,7 +238,16 @@ export function finalizar(dia: DiaSessao, cmd: CmdFechar, agora: number): Result
   if (!achado.ok) return falha(achado.erro);
   const invalido = riscoInvalido(achado.item, cmd);
   if (invalido) return falha(invalido);
-  const fechado = encerrarChamado(dia, achado.estacao, achado.item, agora, cmd.riscoConfirmado, cmd.encaminhar);
+  const presente = exigirComparecimento(dia, achado.estacao, achado.item, agora);
+  if (!presente.ok) return falha("sem_comparecimento");
+  const fechado = encerrarChamado(
+    presente.dia,
+    achado.estacao,
+    achado.item,
+    agora,
+    cmd.riscoConfirmado,
+    cmd.encaminhar,
+  );
   return ok(fechado.dia, fechado.eventos);
 }
 
@@ -206,6 +273,7 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
   const achado = chamadoNaEstacao(dia, cmd.estacaoId);
   if (!achado.ok) return falha(achado.erro);
   const { item } = achado;
+  if (compareceuEm(dia, cmd.estacaoId) !== null) return falha("transicao_proibida");
   const para = destinoDoPulo(item.pulos);
   const pulos = item.pulos + 1;
   const livre = comEstacao(dia, cmd.estacaoId, { chamadoItemId: null });
@@ -259,6 +327,6 @@ export function toleranciaEsgotada(dia: DiaSessao, estacaoId: string, agora: num
   const achado = chamadoNaEstacao(dia, estacaoId);
   if (!achado.ok) return false;
   const ultima = dia.chamadas.findLast((c) => c.itemId === achado.item.id && c.etapa === achado.item.etapa);
-  if (!ultima) return false;
+  if (!ultima || ultima.compareceuEm !== undefined) return false;
   return agora - ultima.em >= dia.config.toleranciaMin * MIN;
 }
