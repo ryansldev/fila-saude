@@ -37,7 +37,9 @@
     "test:painel": "npm -w @fila-saude/painel run test",
     "dev:seed": "npm -w @fila-saude/api run dev:seed",
     "test:mobile": "npm -w @fila-saude/mobile run test",
-    "dev:mobile": "npm -w @fila-saude/mobile run start"
+    "dev:mobile": "npm -w @fila-saude/mobile run start",
+    "design:gen": "npm -w @fila-saude/design run gen",
+    "test:design": "npm -w @fila-saude/design run test"
   },
   "engines": {
     "node": "24.x"

@@ -1,0 +1,36 @@
+/* Gerado por packages/design (npm run design:gen). Não edite à mão. */
+:root {
+  --ds-acao: #1a73c8;
+  --ds-acao-pressionado: #185b9a;
+  --ds-acao-sombra: #145a9b;
+  --ds-linha: #e1e8ea;
+  --ds-perigo: #993029;
+  --ds-sucesso: #2f9e44;
+}
+.ds-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: var(--font-nunito), Nunito, system-ui, sans-serif; white-space: nowrap;
+  border-style: solid; border-width: 2px; cursor: pointer; user-select: none;
+  transition: transform 60ms, border-bottom-width 60ms, background-color 120ms;
+}
+.ds-btn:focus-visible { outline: 3px solid var(--ds-acao); outline-offset: 2px; }
+.ds-btn > span { overflow: hidden; text-overflow: ellipsis; }
+.ds-btn-principal { background: #1a73c8; border-color: #1a73c8; border-bottom-color: #145a9b; color: #ffffff; font-weight: 800; }
+.ds-btn-secundario { background: #ffffff; border-color: #e1e8ea; border-bottom-color: #e1e8ea; color: #1a73c8; font-weight: 800; }
+.ds-btn-sucesso { background: #2f9e44; border-color: #2f9e44; border-bottom-color: #237a34; color: #ffffff; font-weight: 800; }
+.ds-btn-perigo { background: #993029; border-color: #993029; border-bottom-color: #6e1f1a; color: #ffffff; font-weight: 800; }
+.ds-btn-perigoContorno { background: #ffffff; border-color: #e1e8ea; border-bottom-color: #e1e8ea; color: #993029; font-weight: 800; }
+.ds-btn-texto { background: transparent; border-color: transparent; border-bottom-color: transparent; color: #185b9a; font-weight: 700; }
+.ds-btn-texto { border-bottom-width: 2px !important; transform: none !important; }
+.ds-btn-texto { text-decoration: underline; text-underline-offset: 3px; }
+.ds-btn-textoPerigo { background: transparent; border-color: transparent; border-bottom-color: transparent; color: #993029; font-weight: 700; }
+.ds-btn-textoPerigo { border-bottom-width: 2px !important; transform: none !important; }
+.ds-btn-textoPerigo { text-decoration: underline; text-underline-offset: 3px; }
+.ds-btn-branco { background: #ffffff; border-color: #ffffff; border-bottom-color: #d9e2e4; color: #0c2e4e; font-weight: 800; }
+.ds-btn-padrao { min-height: 40px; border-radius: 10px; font-size: 15px; padding: 0 16px; border-bottom-width: 3px; }
+.ds-btn-padrao:active:not(:disabled) { border-bottom-width: 2px; transform: translateY(1px); }
+.ds-btn-compacto { min-height: 32px; border-radius: 8px; font-size: 13px; padding: 0 12px; border-bottom-width: 3px; }
+.ds-btn-compacto:active:not(:disabled) { border-bottom-width: 2px; transform: translateY(1px); }
+.ds-btn-icone { min-height: 32px; border-radius: 8px; font-size: 13px; padding: 0 0px; border-bottom-width: 2px; width: 32px; }
+.ds-btn-icone:active:not(:disabled) { border-bottom-width: 2px; transform: translateY(0px); }
+.ds-btn:disabled { opacity: 0.45; cursor: not-allowed; border-bottom-width: 2px; transform: none; }
