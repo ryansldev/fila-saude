@@ -3,6 +3,7 @@ import { Bell, DoorOpen, House, type LucideIcon, Megaphone } from "lucide-react-
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { Botao, COR, FONTE, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { telaDosAvisos } from "@/lib/avisos";
 import { useSessao } from "@/lib/sessao";
 
 const EXEMPLOS: { texto: string; Icone: LucideIcon; fundo: string; cor: string }[] = [
@@ -11,34 +12,42 @@ const EXEMPLOS: { texto: string; Icone: LucideIcon; fundo: string; cor: string }
   { texto: "é a sua vez!", Icone: Megaphone, fundo: COR.successBg, cor: COR.successInk },
 ];
 
-/** Tela 3 do design: por que os avisos importam, antes do pedido do celular (que quase não volta a aparecer). */
+/**
+ * Tela 3 do design: por que os avisos importam, antes do pedido do celular (que quase não volta a aparecer).
+ * Pelo sininho do topo, a mesma tela mostra como estão os avisos e volta para onde a pessoa estava.
+ */
 export default function Avisos() {
   const s = useSessao();
   const [ligando, setLigando] = useState(false);
-  const seguir = () => router.replace("/");
+  const peloSininho = router.canGoBack();
+  const seguir = () => (peloSininho ? router.back() : router.replace("/"));
+  const t = telaDosAvisos(s.avisos ?? { tipo: "perguntar" });
 
   return (
     <Tela
       topo={false}
       acoes={
         <>
-          <TextoSuave style={{ textAlign: "center", fontSize: 16, lineHeight: 22 }}>
-            na próxima tela, toque em “permitir”.
-          </TextoSuave>
+          {t.dica ? (
+            <TextoSuave style={{ textAlign: "center", fontSize: 16, lineHeight: 22 }}>{t.dica}</TextoSuave>
+          ) : null}
+          {t.botao ? (
+            <Botao
+              texto={t.botao}
+              carregando={ligando}
+              onPress={async () => {
+                setLigando(true);
+                await s.ligarAvisos();
+                setLigando(false);
+                seguir();
+              }}
+            />
+          ) : null}
           <Botao
-            texto="ligar os avisos"
-            carregando={ligando}
+            variante={t.botao ? "texto" : "principal"}
+            texto={t.botao ? "agora não" : "voltar"}
             onPress={async () => {
-              setLigando(true);
-              await s.ligarAvisos();
-              seguir();
-            }}
-          />
-          <Botao
-            variante="texto"
-            texto="agora não"
-            onPress={async () => {
-              await s.pularAvisos();
+              if (t.botao) await s.pularAvisos();
               seguir();
             }}
           />
@@ -81,10 +90,8 @@ export default function Avisos() {
         ))}
       </View>
       <View style={{ gap: 8 }}>
-        <Titulo style={{ fontSize: 30, lineHeight: 36 }}>a gente te avisa a hora de sair de casa</Titulo>
-        <TextoSuave style={{ fontSize: 20, lineHeight: 30 }}>
-          os avisos chegam mesmo com o app fechado. eles não mostram nada sobre a sua saúde.
-        </TextoSuave>
+        <Titulo style={{ fontSize: 30, lineHeight: 36 }}>{t.titulo}</Titulo>
+        <TextoSuave style={{ fontSize: 20, lineHeight: 30 }}>{t.texto}</TextoSuave>
       </View>
     </Tela>
   );

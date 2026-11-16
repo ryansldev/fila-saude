@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bilheteDo, linhaDo, ordenarDoDia } from "@/lib/hoje";
+import { bilheteDo, contagemDasAbas, linhaDo, ordenarDoDia } from "@/lib/hoje";
 import type { Situacao } from "@/lib/textos";
 
 const pos = (posicao: number, presente = false): Situacao => ({
@@ -71,5 +71,19 @@ describe("a aba hoje", () => {
     expect(linhaDo(pos(1))).toEqual({ quadro: "1º", frase: "você é o próximo" });
     expect(linhaDo({ tipo: "venha" })).toEqual({ quadro: null, frase: "venha agora" });
     expect(linhaDo({ tipo: "aguardando" })).toEqual({ quadro: null, frase: "a fila ainda não abriu" });
+  });
+});
+
+describe("o número nas abas de baixo", () => {
+  const de = (...grupos: ("hoje" | "proximos" | "sem_data" | "encerrados")[]) =>
+    grupos.map((grupo) => ({ resumo: { grupo } }));
+
+  it("'atendimentos' conta os de outros dias e os sem data; hoje e encerrados ficam de fora", () => {
+    expect(contagemDasAbas(de("hoje", "proximos", "sem_data", "encerrados", "proximos"))).toEqual({ atendimentos: 3 });
+  });
+
+  it("sem nada pendente, nenhuma aba tem número", () => {
+    expect(contagemDasAbas(de("hoje", "encerrados"))).toEqual({});
+    expect(contagemDasAbas([])).toEqual({});
   });
 });

@@ -27,7 +27,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react-native";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -120,23 +120,28 @@ export function BalaoDoLino({ texto }: { texto: string }) {
   );
 }
 
-/** O sininho do topo: com o ponto amarelo, os avisos estão desligados e tocar liga. */
+/** O sininho do topo: com o ponto amarelo, os avisos estão desligados. Tocar abre a tela dos avisos. */
 export function Sininho({ desligado, onPress }: { desligado: boolean; onPress: () => void }) {
   return (
     <AreaTocavel
-      rotulo={desligado ? "os avisos estão desligados. tocar para ligar" : "avisos ligados"}
+      rotulo={desligado ? "avisos desligados. tocar para ver" : "avisos ligados. tocar para ver"}
       onPress={onPress}
-      style={(pressed) => ({ padding: 6, borderRadius: 999, opacity: pressed ? 0.6 : 1 })}
+      style={(pressed) => ({
+        padding: 9,
+        marginRight: -9,
+        borderRadius: 999,
+        backgroundColor: pressed ? COR.surfaceMuted : "transparent",
+      })}
     >
-      <Bell size={26} color={COR.inkMuted} strokeWidth={2.3} />
+      <Bell size={22} color={COR.ink} strokeWidth={2} />
       {desligado ? (
         <View
           style={{
             position: "absolute",
-            top: 5,
-            right: 6,
-            width: 11,
-            height: 11,
+            top: 7,
+            right: 8,
+            width: 10,
+            height: 10,
             borderRadius: 999,
             backgroundColor: COR.amarelo,
             borderWidth: 2,
@@ -148,16 +153,14 @@ export function Sininho({ desligado, onPress }: { desligado: boolean; onPress: (
   );
 }
 
-/** Topo das telas: seta à esquerda quando dá para voltar; depois o logo e "fila saúde". */
-export function Topo({
-  voltar = false,
-  aoVoltar,
-  direita,
-}: {
-  voltar?: boolean;
-  aoVoltar?: (() => void) | undefined;
-  direita?: ReactNode;
-}) {
+const ContextoDoTopo = createContext<ReactNode>(null);
+
+/** O que fica à direita do topo em todas as telas (o sininho dos avisos): posto uma vez, na raiz do app. */
+export const DireitaDoTopo = ContextoDoTopo.Provider;
+
+/** Topo das telas: seta à esquerda quando dá para voltar; depois o logo e "fila saúde"; à direita, o sininho. */
+export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?: (() => void) | undefined }) {
+  const direita = useContext(ContextoDoTopo);
   const aoPressionar = aoVoltar ?? (voltar && router.canGoBack() ? () => router.back() : undefined);
   return (
     <View style={e.topo}>
@@ -250,7 +253,6 @@ export function Tela({
   fundo = COR.surface,
   aoVoltar,
   aoFechar,
-  direitaDoTopo,
 }: {
   children: ReactNode;
   topo?: boolean;
@@ -259,8 +261,6 @@ export function Tela({
   aoVoltar?: () => void;
   /** O X da barra de progresso, quando ele sai do fluxo em vez de voltar um passo. */
   aoFechar?: () => void;
-  /** Algo à direita da marca no topo (o sininho dos avisos na aba "hoje"). */
-  direitaDoTopo?: ReactNode;
   rodape?: ReactNode;
   /** Botões da tela, sempre fixos embaixo e alinhados (principal em cima, secundário embaixo). */
   acoes?: ReactNode;
@@ -291,7 +291,7 @@ export function Tela({
           aoFechar={aoFechar ?? aoVoltar ?? (router.canGoBack() ? () => router.back() : undefined)}
         />
       ) : topo ? (
-        <Topo voltar={voltar} aoVoltar={aoVoltar} direita={direitaDoTopo} />
+        <Topo voltar={voltar} aoVoltar={aoVoltar} />
       ) : null}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={e.scr} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">

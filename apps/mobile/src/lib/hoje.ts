@@ -76,3 +76,9 @@ export function linhaDo(sit: Situacao): { quadro: string | null; frase: string }
       return { quadro: null, frase: "a fila ainda não abriu" };
   }
 }
+
+/** O número nas abas de baixo: em "atendimentos", os de outros dias e os sem data (o de hoje já está em "hoje"). */
+export function contagemDasAbas(lista: { resumo: { grupo: string } }[]): { atendimentos?: number } {
+  const atendimentos = lista.filter((x) => x.resumo.grupo === "proximos" || x.resumo.grupo === "sem_data").length;
+  return atendimentos > 0 ? { atendimentos } : {};
+}

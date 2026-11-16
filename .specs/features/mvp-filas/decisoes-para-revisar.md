@@ -312,3 +312,6 @@ Design: [app-hoje.md](../design-system/app-hoje.md).
 | HO1 | Quem vira o bilhete | venha agora → mostre na recepção → na unidade → na fila em casa (menor posição) → sem previsão → para confirmar → aguardando a fila abrir | Na unidade antes de "venha agora" (a Ana, na unidade para o clínico geral, vê primeiro o "venha agora" dos curativos) | Baixo |
 | HO2 | Confirmar a data | "vou, confirmar" é o botão do bilhete; "não posso nesta data" fica no "⋯" | Os dois no bilhete | Baixo |
 | HO3 | Outros dias | Um número na aba "atendimentos" no lugar do cartão "mais 1 atendimento" | Manter o cartão | Baixo |
+| HO4 | O número da aba "atendimentos" nas outras abas | Aparece em todas as abas; "unidades" e "conta" buscam a lista uma vez ao abrir, sem repetir a cada 3 s (pode ficar velho enquanto a pessoa está nelas) | Repetir a consulta em todas as abas | Baixo |
+| HO5 | O sininho | No topo de todas as telas com conta; tocar abre a tela dos avisos, que mostra se estão ligados, oferece ligar ou leva aos ajustes do celular | Uma gaveta no lugar da tela; só nas abas | Baixo |
+| HO6 | Dr. Lino no "hoje" | Sem a caixa branca, direto no fundo cinza-claro (`#f4f7f8`), como o usuário pediu depois de ver a faixa branca | Faixa branca de ponta a ponta (testada e recusada) ou redesenhar o jaleco branco no SVG | Baixo |

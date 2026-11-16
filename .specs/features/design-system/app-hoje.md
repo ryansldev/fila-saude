@@ -17,8 +17,8 @@ Ao abrir o app, ver **o que fazer agora** e **a senha**, sem ler nada mais.
 ## O desenho
 
 - **Fundo cinza bem claro** (`#f4f7f8`) e cartões brancos com sombra suave.
-- **Topo:** a marca e, se os avisos estão desligados, **um sininho com um ponto amarelo**; tocar faz o que o botão "ligar os avisos" faz hoje. Sai a faixa grande.
-- **Cumprimento:** o Dr. Lino pequeno (sobre fundo branco), "boa tarde, Bruno!" e uma linha ("você tem 2 atendimentos hoje."). Sem balão.
+- **Topo:** a marca e **o sininho**, igual em todas as telas com conta (ponto amarelo quando os avisos estão desligados); tocar abre a tela dos avisos. Sai a faixa grande.
+- **Cumprimento:** o Dr. Lino pequeno, direto no fundo cinza-claro (sem caixa branca em volta), "boa tarde, Bruno!" e uma linha ("você tem 2 atendimentos hoje."). Sem balão.
 - **O bilhete** (o atendimento que mais pede ação agora): faixa azul em cima com o que fazer ("venha agora!", "mostre na recepção", "você está na unidade", "você está na fila") e o "⋯"; o serviço e a unidade; o **corte picotado**; "SUA SENHA" e a **senha enorme** no centro; o botão da situação:
   - em casa (na fila, "venha agora"): **cheguei: ler o QR** (`principal`);
   - alocada para confirmar: **vou, confirmar** (`principal`);

@@ -4,10 +4,10 @@ import { router, useFocusEffect } from "expo-router";
 import { Building2, Footprints, LocateFixed } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
+import { AbasDoPaciente } from "@/components/atendimento";
 import Mapa, { corDoPino } from "@/components/mapa";
 import type { PinoDoMapa } from "@/components/mapa.tipos";
 import {
-  Abas,
   Avatar,
   Botao,
   Carregando,
@@ -212,7 +212,7 @@ export default function Unidades() {
   const escolhida = lista.find((x) => x.unidade.id === selecionada);
 
   return (
-    <Tela voltar={false} rodape={<Abas atual="unidades" />}>
+    <Tela voltar={false} rodape={<AbasDoPaciente atual="unidades" />}>
       <Titulo>unidades perto de você</Titulo>
       {erro ? (
         <Faixa

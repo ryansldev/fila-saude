@@ -8,7 +8,8 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { Carregando } from "@/components/ui";
+import { SininhoDosAvisos } from "@/components/atendimento";
+import { Carregando, DireitaDoTopo } from "@/components/ui";
 import { ProvedorDeSessao } from "@/lib/sessao";
 
 export default function Raiz() {
@@ -17,8 +18,10 @@ export default function Raiz() {
   return (
     <SafeAreaProvider>
       <ProvedorDeSessao>
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#ffffff" } }} />
+        <DireitaDoTopo value={<SininhoDosAvisos />}>
+          <StatusBar style="dark" />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#ffffff" } }} />
+        </DireitaDoTopo>
       </ProvedorDeSessao>
     </SafeAreaProvider>
   );

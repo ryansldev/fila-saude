@@ -5,6 +5,8 @@ import { useCallback, useRef, useState } from "react";
 import { Alert, Text, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  type AbaDoApp,
+  Abas,
   AreaTocavel,
   Avatar,
   BlocoData,
@@ -19,6 +21,7 @@ import {
   Logo,
   Pequeno,
   Selo,
+  Sininho,
   TextoSuave,
   Titulo,
   Trilha,
@@ -26,7 +29,7 @@ import {
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
 import { nomeProprio } from "@/lib/conta";
 import { diaCurto, ehHoje, hora, partesDoDia } from "@/lib/datas";
-import { bilheteDo, linhaDo } from "@/lib/hoje";
+import { bilheteDo, contagemDasAbas, linhaDo } from "@/lib/hoje";
 import { podeRefazer } from "@/lib/inscricoes";
 import { useSessao } from "@/lib/sessao";
 import {
@@ -564,6 +567,40 @@ export function useMinhaFila() {
 }
 
 /** Faixa dos avisos desligados (o "saia de casa" só chega com eles ligados). */
+/**
+ * As abas de baixo do paciente, com o número em "atendimentos" em todas as telas. Quem já tem a lista
+ * (hoje, atendimentos) passa `lista`; as outras abas buscam uma vez ao entrar na tela, sem repetir.
+ */
+export function AbasDoPaciente({ atual, lista }: { atual: AbaDoApp; lista?: { resumo: { grupo: string } }[] }) {
+  const s = useSessao();
+  const [buscada, setBuscada] = useState<{ resumo: { grupo: string } }[] | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (lista || !s.municipio) return;
+      let ativo = true;
+      const agora = Date.now();
+      s.api
+        .get<MinhaEntrada[]>(`/v1/municipios/${s.municipio}/minhas`)
+        .then((l) => {
+          if (ativo) setBuscada(l.map((en) => ({ resumo: resumoDaEntrada(en, situacaoDaEntrada(en, agora), agora) })));
+        })
+        // Sem rede, a aba só fica sem o número; a tela segue normal.
+        .catch(() => undefined);
+      return () => {
+        ativo = false;
+      };
+    }, [lista, s.api, s.municipio]),
+  );
+  return <Abas atual={atual} contagem={contagemDasAbas(lista ?? buscada ?? [])} />;
+}
+
+/** O sininho do topo, em todas as telas com conta: abre a tela dos avisos, que mostra como eles estão. */
+export function SininhoDosAvisos() {
+  const s = useSessao();
+  if (!s.token || !s.avisos) return null;
+  return <Sininho desligado={s.avisos.tipo !== "ligados"} onPress={() => router.push("/avisos")} />;
+}
+
 export function FaixaDosAvisos() {
   const s = useSessao();
   if (!s.avisos || s.avisos.tipo === "ligados") return null;

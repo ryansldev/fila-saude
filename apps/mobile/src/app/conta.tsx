@@ -11,7 +11,8 @@ import {
 } from "lucide-react-native";
 import { type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import { Abas, AreaTocavel, Botao, COR, FONTE, Gaveta, Pequeno, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { AbasDoPaciente } from "@/components/atendimento";
+import { AreaTocavel, Botao, COR, FONTE, Gaveta, Pequeno, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { cpfEscondido, iniciais, type Municipio, nomeDoMunicipio, primeiroNome, textoDosAvisos } from "@/lib/conta";
 import { useSessao } from "@/lib/sessao";
 
@@ -48,7 +49,7 @@ export default function Conta() {
   }
 
   return (
-    <Tela voltar={false} rodape={<Abas atual="conta" />}>
+    <Tela voltar={false} rodape={<AbasDoPaciente atual="conta" />}>
       <View style={estilo.topo}>
         <View style={estilo.avatar} accessibilityElementsHidden importantForAccessibility="no">
           <Text style={estilo.iniciais}>{s.conta ? iniciais(s.conta.nome) : ""}</Text>

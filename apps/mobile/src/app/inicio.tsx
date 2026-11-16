@@ -3,6 +3,7 @@ import { MapPin } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import {
+  AbasDoPaciente,
   BilheteDoDia,
   FUNDO_DO_HOJE,
   LinhaDoDia,
@@ -10,7 +11,7 @@ import {
   SuaVez,
   useMinhaFila,
 } from "@/components/atendimento";
-import { Abas, Botao, Carregando, COR, Faixa, FONTE, Mascote, Pequeno, Sininho, Tela } from "@/components/ui";
+import { Botao, Carregando, COR, Faixa, FONTE, Mascote, Pequeno, Tela } from "@/components/ui";
 import { primeiroNome } from "@/lib/conta";
 import { cumprimentoDoDia, hora, partesDoDia } from "@/lib/datas";
 import { ordenarDoDia } from "@/lib/hoje";
@@ -35,7 +36,6 @@ export default function Hoje() {
   const proximo = f.lista
     .filter((x) => x.resumo.grupo === "proximos" && x.en.sessao)
     .sort((a, b) => (a.en.sessao?.inicio ?? "").localeCompare(b.en.sessao?.inicio ?? ""))[0];
-  const outros = f.lista.filter((x) => x.resumo.grupo === "proximos" || x.resumo.grupo === "sem_data").length;
   const nome = s.conta?.nome ? primeiroNome(s.conta.nome) : undefined;
   const resumo =
     deHoje.length === 0
@@ -43,20 +43,12 @@ export default function Hoje() {
       : deHoje.length === 1
         ? "você tem 1 atendimento hoje."
         : `você tem ${deHoje.length} atendimentos hoje.`;
-  const avisosDesligados = Boolean(s.avisos && s.avisos.tipo !== "ligados");
   const abrir = (entradaId: string) => () => router.push({ pathname: "/fila/[entradaId]", params: { entradaId } });
 
   return (
-    <Tela
-      voltar={false}
-      fundo={FUNDO_DO_HOJE}
-      direitaDoTopo={<Sininho desligado={avisosDesligados} onPress={() => void s.ligarAvisos()} />}
-      rodape={<Abas atual="hoje" contagem={{ atendimentos: outros }} />}
-    >
+    <Tela voltar={false} fundo={FUNDO_DO_HOJE} rodape={<AbasDoPaciente atual="hoje" lista={f.lista} />}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <View style={{ backgroundColor: COR.surface, borderRadius: 16 }}>
-          <Mascote tamanho={64} moldura={false} />
-        </View>
+        <Mascote tamanho={64} moldura={false} />
         <View style={{ flex: 1 }}>
           <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
             {cumprimentoDoDia(Date.now())}

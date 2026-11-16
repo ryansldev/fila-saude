@@ -1,19 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
-import { useMinhaFila } from "@/components/atendimento";
-import {
-  Abas,
-  Botao,
-  Carregando,
-  Cartao,
-  CartaoTocavel,
-  Faixa,
-  Segmentado,
-  Tela,
-  TextoSuave,
-  Titulo,
-} from "@/components/ui";
+import { AbasDoPaciente, useMinhaFila } from "@/components/atendimento";
+import { Botao, Carregando, Cartao, CartaoTocavel, Faixa, Segmentado, Tela, TextoSuave, Titulo } from "@/components/ui";
 
 type Aba = "proximos" | "historico";
 
@@ -32,7 +21,7 @@ export default function Atendimentos() {
   const itens = aba === "proximos" ? proximos : historico;
 
   return (
-    <Tela voltar={false} rodape={<Abas atual="atendimentos" />}>
+    <Tela voltar={false} rodape={<AbasDoPaciente atual="atendimentos" lista={f.lista} />}>
       <Titulo>meus atendimentos</Titulo>
       <Segmentado
         atual={aba}
