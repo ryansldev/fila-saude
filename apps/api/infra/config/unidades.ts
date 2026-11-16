@@ -1,6 +1,13 @@
-import { type ConfigParcial, configEfetiva, contarAtivas, validarConfig } from "@fila-saude/domain";
-import type { ConfigEfetivaSaida, Endereco, Unidade, UnidadeEdicao, UnidadeEntrada } from "@fila-saude/schemas/unidade";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { type ConfigParcial, configEfetiva, contarAtivas, mesmoDia, validarConfig } from "@fila-saude/domain";
+import type {
+  ConfigEfetivaSaida,
+  Endereco,
+  ResumoDeHoje,
+  Unidade,
+  UnidadeEdicao,
+  UnidadeEntrada,
+} from "@fila-saude/schemas/unidade";
+import { and, asc, eq, gt, inArray, isNull, lt } from "drizzle-orm";
 import { entrada } from "infra/database/municipal/schema/entrada";
 import { funcaoUsuario, vinculo } from "infra/database/municipal/schema/equipe";
 import { servico } from "infra/database/municipal/schema/servico";
@@ -145,4 +152,37 @@ export async function removerUnidade(ctx: ContextoDaAcao, id: string): Promise<v
         .where(eq(unidade.id, id));
     },
   );
+}
+
+// Troca de unidade no menu: para cada unidade que a pessoa vê, as sessões abertas agora e a próxima a abrir hoje.
+export async function resumoDeHoje(ctx: ContextoDaAcao): Promise<ResumoDeHoje[]> {
+  const unidades = await listarUnidades(ctx);
+  if (unidades.length === 0) return [];
+  const linhas = await ctx.db
+    .select({ unidadeId: servico.unidadeId, estado: sessao.estado, inicio: sessao.inicio })
+    .from(sessao)
+    .innerJoin(servico, eq(sessao.servicoId, servico.id))
+    .where(
+      and(
+        inArray(
+          servico.unidadeId,
+          unidades.map((u) => u.id),
+        ),
+        inArray(sessao.estado, ["planejada", "aberta"]),
+        gt(sessao.inicio, new Date(ctx.agora - 36 * 3600_000)),
+        lt(sessao.inicio, new Date(ctx.agora + 36 * 3600_000)),
+      ),
+    );
+  return unidades.map((u) => {
+    const daUnidade = linhas.filter((l) => l.unidadeId === u.id);
+    const planejadas = daUnidade
+      .filter((l) => l.estado === "planejada" && mesmoDia(l.inicio.getTime(), ctx.agora, u.fuso))
+      .map((l) => l.inicio.getTime())
+      .sort((a, b) => a - b);
+    return {
+      unidadeId: u.id,
+      abertas: daUnidade.filter((l) => l.estado === "aberta").length,
+      proximaAbertura: planejadas[0] === undefined ? null : new Date(planejadas[0]).toISOString(),
+    };
+  });
 }

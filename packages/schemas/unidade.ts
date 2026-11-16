@@ -79,3 +79,12 @@ export const configEfetivaSchema = z.object({
 export type UnidadeEdicao = z.infer<typeof unidadeEdicaoSchema>;
 export type Unidade = z.infer<typeof unidadeSchema>;
 export type ConfigEfetivaSaida = z.infer<typeof configEfetivaSchema>;
+
+/** O que acontece hoje em cada unidade, para a troca de unidade no menu do painel. */
+export const resumoDeHojeSchema = z.object({
+  unidadeId: z.uuid(),
+  abertas: z.number().int().min(0),
+  /** Início da primeira sessão de hoje ainda planejada; `null` sem nenhuma. */
+  proximaAbertura: z.iso.datetime().nullable(),
+});
+export type ResumoDeHoje = z.infer<typeof resumoDeHojeSchema>;
