@@ -8,19 +8,20 @@
 
 **Architecture:** o domínio já tem tudo (`criarEntrada`, `sugerir`, `alocar`, `confirmar`, `recusar`, `listaDeLigacao`, `pendentesNaAbertura`, `refazerQuestionario`); a abertura (`abrirSessao`) já libera as pendentes. Esta fatia liga isso à API, ao painel e ao app. Alocar, confirmar e recusar rodam dentro de `naSessao` (trava da sessão, PD-43) e travam também a linha da entrada (`for update`), para que dois agendadores — ou agendador e paciente — não mexam na mesma vaga nem na mesma entrada ao mesmo tempo. O segundo recebe 409 com a sugestão atualizada. A outbox passa a aceitar avisos sem fila do dia (o "confirme" sai na alocação, sem item).
 
-## Decisões desta fatia (provisórias, ver I1–I9)
+## Decisões desta fatia (provisórias, ver I1–I10)
 
 | ID | Decisão | Custa se errado |
 | --- | --- | --- |
 | I1 | O app mostra a lista de espera na página da unidade: "serviços com lista de espera" (ativos e no modo livre) | Baixo |
 | I2 | Serviço com requisição: o app explica "pede requisição; em breve pelo app" e a API recusa (`409 requisicao_em_breve`) até a T5.2 | Baixo |
 | I3 | Vínculo e pré-cadastro (RN-LE-01) não são exigidos, como na inscrição pública, até a fatia 5 | Médio no piloto, nenhum na v0.1 |
-| I4 | O alerta ao agendador é visual no painel: urgente sugerido não alocado fica no topo com selo "alerta", e o menu mostra a contagem. Sem push nem e-mail para a equipe | Baixo |
+| I4 | O alerta ao agendador é visual no painel: urgente sugerido não alocado fica no topo com selo "alerta", e a tela mostra a contagem por serviço. Sem push nem e-mail para a equipe | Baixo |
 | I5 | "Remover" na alocação é registrar a recusa em nome do paciente (volta à lista com a data original e não é sugerido de novo para essa sessão); "trocar" é remover e alocar outro | Baixo |
 | I6 | "Sem contato" (RN-CONF-02) só anota a tentativa (auditoria e "última tentativa" na lista de ligação); a alocação segue pendente | Baixo |
 | I7 | Conflito entre agendadores: trava da sessão e da entrada; o segundo recebe `409` com a sugestão e os alocados atualizados | Baixo |
 | I8 | Push "confirme": "confirme sua consulta" + serviço, unidade, dia e hora, sem sintoma; chave por entrada e sessão | Baixo |
 | I9 | Refazer o questionário pelo app só para quem está na lista (aguardando, alocada ou confirmada), não no dia: no dia vale o "meus sintomas pioraram" (H6) | Baixo |
+| I10 | Alerta de faltas pela pessoa atendida, sem a regra do titular (RN-ID-06) | Baixo |
 
 ## Tasks (TDD em todas: teste vermelho → código → verde → commit)
 

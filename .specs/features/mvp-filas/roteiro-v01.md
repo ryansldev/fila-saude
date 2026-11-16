@@ -85,3 +85,21 @@ Para o push chegar no celular é preciso um projeto EAS e um build de desenvolvi
 | 3 | Enfermeira | Painel → Estação | Chamar o Bruno | Com a tela da fila aberta, ela vira a tela verde "é a sua vez!" com a sala |
 
 **Conferido** pela prévia web (Chrome headless, com CORS desligado só para o teste): passo 1 e o toque no cartão de "hoje" levando à tela. Falta no celular.
+
+## Fatia 4 — Privada (lista de espera, alocação e confirmação)
+
+O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da **Odontologia**, com duas sessões privadas: amanhã às 13h e daqui a 3 dias às 13h. Na segunda, Bruno foi alocado há 30 h e não respondeu.
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Paciente | App → Unidades → UBS Centro | Rolar até "lista de espera" | Os serviços da unidade; Odontologia com o selo "na lista" para quem já está; tocar em outro serviço abre "para quem" e o questionário, e no fim "você está na lista de espera!" |
+| 2 | Recepção (agenda) | Painel → Agendamento | Escolher a unidade | Faixa "1 pessoa com urgência sugerida"; serviço Odontologia, sessão de amanhã com as vagas |
+| 3 | Recepção | Agendamento → Sugestão | Ler a sugestão | Carla no topo com "Alerta: urgente" e os motivos ("urgente sugerido · gestante · espera há N dias"), depois Ana (pessoa idosa) e José |
+| 4 | Recepção | Sugestão | "Alocar" Ana | Ana em "Alocados" com "Aguardando resposta" e o prazo; no app dela, "confirme até …" com "vou, confirmar" e "não posso nesta data" (e o push "confirme sua consulta", com o projeto EAS) |
+| 5 | Paciente (Ana) | App → cartão da Odontologia | "vou, confirmar" | Selo "inscrito"; no painel, "Confirmou" |
+| 6 | Recepção | Agendamento → Lista de ligação | Ver Bruno | Linha destacada "Sem resposta: ligar", com o telefone; "Sem contato" anota a tentativa e mantém pendente |
+| 7 | Paciente (Bruno) | App → cartão | "não posso nesta data" e confirmar | "você continua na lista"; no painel, a vaga fica livre e Bruno não é sugerido de novo para essa data |
+| 8 | Dois agendadores | Agendamento, mesma sessão com uma vaga | "Alocar" ao mesmo tempo | Um aloca; o outro vê "A sessão não tem mais vaga. A lista foi atualizada." e a lista nova |
+| 9 | Paciente | App → cartão de quem está na lista | "minha situação mudou: responder de novo" | O questionário sem "para quem"; urgente sobe a pessoa e acende o alerta do agendador |
+
+**Executado por HTTP** (2026-11-16, script contra `npm run dev` com o seed): passos 1–7 pelas mesmas rotas; o passo 8 é coberto pelo teste com dois escritores (`tests/integration/v1/painel/agendamento/agendamento.test.ts`). A página `/agendamento` responde no Next. **Falta** o clique no navegador e no celular.

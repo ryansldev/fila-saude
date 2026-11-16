@@ -21,6 +21,7 @@ import type { Db } from "infra/database";
 import { paciente } from "infra/database/central/schema/auth";
 import { type DbDoTenant, schemaMunicipal } from "infra/database/tenants";
 import env from "infra/env";
+import { alocarNaSessao } from "infra/fila/agendamento";
 import { entrarNaLista, type PessoaInformada } from "infra/fila/entradas";
 import { inscrever } from "infra/fila/inscricao";
 import { type ContextoDaAcao, contextoDoUsuario, executarAcao } from "infra/painel/acao";
@@ -57,11 +58,11 @@ export const CPFS_DE_EXEMPLO = PACIENTES.map((p) => p.cpf);
 const respostas = (grupos: readonly string[]): Respostas =>
   ({ alarmes: [], motivo: "acompanhamento", gravidade: null, condicoes: [], grupos }) as unknown as Respostas;
 
-// "Amanhã" = dia seguinte ao de `agora` no fuso da unidade.
-function amanha(agora: number, hora: string): { instante: number; local: string } {
+// "Amanhã" = dia seguinte ao de `agora` no fuso da unidade; `dias` à frente, para outras datas.
+function amanha(agora: number, hora: string, dias = 1): { instante: number; local: string } {
   const hoje = instanteParaLocal(agora, FUSO).slice(0, 10);
   const [a, m, d] = hoje.split("-").map(Number) as [number, number, number];
-  const dia = new Date(Date.UTC(a, m - 1, d + 1)).toISOString().slice(0, 10);
+  const dia = new Date(Date.UTC(a, m - 1, d + dias)).toISOString().slice(0, 10);
   const local = `${dia}T${hora}`;
   return { instante: localParaInstante(local, FUSO), local };
 }
@@ -315,8 +316,23 @@ export async function semearExemplo(deps: {
       estacoes: [consultorio2.id],
     });
 
+    // Fatia 4: outra sessão privada da Odontologia, em 3 dias, para a alocação pendente.
+    const depois = { ini: amanha(agora, "13:00", 3), fim: amanha(agora, "17:00", 3) };
+    const odontoDepois = await criarSessao(comoAdmin, ubs.id, {
+      servicoId: odonto.id,
+      inicio: new Date(depois.ini.instante).toISOString(),
+      fim: new Date(depois.fim.instante).toISOString(),
+      vagas: 4,
+      visibilidade: "privada",
+      dispensaPreCadastro: false,
+      profissional: "Dr. Paulo",
+      estacoes: [consultorio2.id],
+    });
+
     // Pacientes: cadastro na central e entrada na lista pelo caminho do app (sem auditoria).
+    // Fatia 4: Carla com problema novo forte na Odontologia (urgente sugerido: o alerta do agendador).
     const contas = new Map<string, string>();
+    let brunoNaOdonto = "";
     for (const p of PACIENTES) {
       const pacienteId = await cadastrarPaciente(central, p);
       contas.set(p.cpf, pacienteId);
@@ -325,10 +341,14 @@ export async function semearExemplo(deps: {
         servicoId: odonto.id,
         pessoa,
         responsavelPacienteId: pacienteId,
-        respostas: respostas(p.grupos),
+        respostas: {
+          ...respostas(p.grupos),
+          ...(p.cpf === PACIENTES[2].cpf ? { motivo: "novo", gravidade: "forte" } : {}),
+        } as Respostas,
         agora,
       });
       if (!r.ok) throw new Error(`entrada de ${p.nome}: ${r.erro}`);
+      if (p.cpf === PACIENTES[1].cpf) brunoNaOdonto = r.estado.id;
     }
 
     // Ana e Bruno se inscrevem na sessão de agora pelo caminho do app (sem auditoria).
@@ -376,6 +396,9 @@ export async function semearExemplo(deps: {
       },
     );
 
+    // Fatia 4: a recepção (que agenda) alocou Bruno há 30 h e ele não respondeu: destacado na lista de ligação.
+    await alocarNaSessao(await contextoDoUsuario(db, idDe("recepcao"), agora - 30 * 3600_000), odontoDepois.id, brunoNaOdonto);
+
     return {
       painel: `${origemDoPainel(slug)}/login`,
       usuarios,
@@ -385,6 +408,7 @@ export async function semearExemplo(deps: {
         { servico: `${clinico.nome} (com triagem)`, visibilidade: "publica", inicioLocal: deAgora.local },
         { servico: clinico.nome, visibilidade: "publica", inicioLocal: manha.ini.local },
         { servico: odonto.nome, visibilidade: "privada", inicioLocal: tarde.ini.local },
+        { servico: odonto.nome, visibilidade: "privada", inicioLocal: depois.ini.local },
       ],
     };
   } finally {

@@ -40,8 +40,8 @@ async function contagens() {
 }
 
 describe("dev:seed", () => {
-  it("exemplo: unidade, três serviços (um com triagem), quatro estações e quatro sessões", async () => {
-    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 4, entradas: 9 });
+  it("exemplo: unidade, três serviços (um com triagem), quatro estações e cinco sessões", async () => {
+    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 5, entradas: 9 });
     const servicos = await db().select().from(servico);
     expect(servicos.filter((s) => s.exigeTriagem)).toHaveLength(1);
   });
@@ -49,7 +49,9 @@ describe("dev:seed", () => {
   it("exemplo: amanhã é no fuso da unidade", async () => {
     const sessoes = await db().select().from(sessao);
     const publica = sessoes.find((s) => s.visibilidade === "publica");
-    const privada = sessoes.find((s) => s.visibilidade === "privada");
+    const privada = sessoes
+      .filter((s) => s.visibilidade === "privada")
+      .sort((a, b) => a.inicio.getTime() - b.inicio.getTime())[0];
     expect(publica?.inicio.toISOString()).toBe("2026-11-12T11:00:00.000Z");
     expect(privada?.inicio.toISOString()).toBe("2026-11-12T16:00:00.000Z");
     expect(resumo.sessoes.map((s) => s.inicioLocal).sort()).toEqual([
@@ -57,6 +59,7 @@ describe("dev:seed", () => {
       "2026-11-11T23:00",
       "2026-11-12T08:00",
       "2026-11-12T13:00",
+      "2026-11-14T13:00",
     ]);
   });
 
@@ -86,6 +89,25 @@ describe("dev:seed", () => {
       .from(entrada)
       .where(eq(entrada.sessaoId, agora?.id as string));
     expect(inscritas.map((e) => e.classificacao.nivel).sort()).toEqual(["atencao", "rotina", "urgente"]);
+  });
+
+  it("fatia 4: Carla com urgência sugerida na Odontologia; outra privada em 3 dias com Bruno alocado há 30 h", async () => {
+    const [odonto] = await db().select().from(servico).where(eq(servico.prefixo, "O"));
+    const daOdonto = await db()
+      .select()
+      .from(entrada)
+      .where(eq(entrada.servicoId, odonto?.id as string));
+    const urgentes = daOdonto.filter((e) => e.classificacao.nivel === "urgente");
+    expect(urgentes).toHaveLength(1);
+    const alocadas = daOdonto.filter((e) => e.estado === "alocada");
+    expect(alocadas).toHaveLength(1);
+    expect(alocadas[0]?.alocadaEm?.getTime()).toBe(AGORA - 30 * 3600_000);
+    const [s] = await db()
+      .select()
+      .from(sessao)
+      .where(eq(sessao.id, alocadas[0]?.sessaoId as string));
+    expect(s).toMatchObject({ visibilidade: "privada", ocupadas: 1 });
+    expect(s?.inicio.toISOString()).toBe("2026-11-14T16:00:00.000Z");
   });
 
   it("exemplo: cada pessoa da equipe loga no painel com os seus papéis", async () => {
@@ -121,7 +143,7 @@ describe("dev:seed", () => {
       .select()
       .from(entrada)
       .where(eq(entrada.servicoId, odonto?.id as string));
-    expect(entradas.filter((e) => e.estado === "aguardando")).toHaveLength(4);
+    expect(entradas.filter((e) => e.estado === "aguardando")).toHaveLength(3);
   });
 
   it("PD-40 / RN-PERF-04: auditoria atribuída a quem fez (SMS → gerente → equipe); nenhuma linha para as entradas dos pacientes", async () => {
@@ -145,14 +167,15 @@ describe("dev:seed", () => {
       "sessao",
       "sessao",
       "sessao",
+      "sessao",
       "usuario",
       "usuario",
       "usuario",
       "usuario",
       "usuario",
     ]);
-    expect(por("recepcao")).toEqual(["entrada"]);
-    expect(linhas).toHaveLength(23); // + 3 unidades vizinhas (tela 5) e a sessão de agora da triagem
+    expect(por("recepcao")).toEqual(["entrada", "entrada"]);
+    expect(linhas).toHaveLength(25); // + 3 unidades vizinhas (tela 5), a triagem e a fatia 4
   });
 
   it("PD-40: rodar de novo apaga e recria — mesmas contagens, ids novos, sessão antiga inválida", async () => {
@@ -163,7 +186,7 @@ describe("dev:seed", () => {
     resumo = await semearExemplo(deps());
     const [depois] = await db().select().from(unidade);
     expect(depois?.id).not.toBe(antes?.id);
-    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 4, entradas: 9 });
+    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 5, entradas: 9 });
     expect((await orchestrator.pedirPainel(slug, "GET", "/v1/painel/eu", { cookie })).status).toBe(401);
     const novo = await orchestrator.loginPainel(slug, "gestor", "exemplo123");
     expect((await orchestrator.pedirPainel(slug, "GET", "/v1/painel/eu", { cookie: novo })).status).toBe(200);
@@ -178,7 +201,7 @@ describe("dev:seed", () => {
     resumo = await semearExemplo(deps());
     const [linha] = await database.select().from(municipio).where(eq(municipio.slug, slug));
     expect(linha?.status).toBe("ativo");
-    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 4, entradas: 9 });
+    expect(await contagens()).toEqual({ unidades: 4, servicos: 3, estacoes: 4, sessoes: 5, entradas: 9 });
     const r = await database.execute<{ n: number }>(sql`select count(*)::int as n from paciente where email_verified`);
     expect(r.rows[0]?.n).toBeGreaterThanOrEqual(3);
   }, 60_000);
