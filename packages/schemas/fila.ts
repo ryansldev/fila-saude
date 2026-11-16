@@ -63,6 +63,10 @@ export const chamadoSchema = z.object({
   pulos: z.number().int().min(0),
   chamadoEm: z.iso.datetime(),
   toleranciaEsgotada: z.boolean(),
+  /** Hora do "Compareceu" (a pessoa entrou na sala); `null` enquanto esperam ela entrar. */
+  compareceuEm: z.iso.datetime().nullable(),
+  /** Grupos de prioridade declarados (ex.: "idoso"), em qualquer etapa. */
+  prioridade: z.array(z.string()),
   triagem: fichaDaTriagemSchema.optional(),
 });
 
@@ -83,12 +87,25 @@ export const operacaoEstacaoSchema = z.object({
   remotos: z.number().int().min(0),
   toleranciaMin: z.number().int().min(0),
   aviso: z.enum(["ninguem_aguardando"]).nullable(),
+  /** Até 3 presentes, na ordem em que esta estação vai chamar; só o primeiro nome. */
+  proximos: z.array(z.object({ senha: z.string(), nome: z.string(), presenteDesde: z.iso.datetime() })),
+  /** Até 3 a caminho (remotos da etapa), na ordem da fila; só o primeiro nome. */
+  aCaminho: z.array(z.object({ senha: z.string(), nome: z.string() })),
+  /** Quem espera há mais tempo na unidade e o tempo-alvo dele (min); `null` sem ninguém. */
+  maisAntigo: z.object({ presenteDesde: z.iso.datetime(), tempoAlvoMin: z.number().int().min(0) }).nullable(),
   /** Hora do servidor: o cronômetro conta por ela (o relógio do computador pode estar errado). */
   agora: z.iso.datetime(),
 });
 export type OperacaoEstacao = z.infer<typeof operacaoEstacaoSchema>;
 
-export const comandoEstacaoSchema = z.enum(["chamar", "rechamar", "finalizar", "nao-compareceu"]);
+export const comandoEstacaoSchema = z.enum([
+  "chamar",
+  "rechamar",
+  "finalizar",
+  "nao-compareceu",
+  "compareceu",
+  "desfazer-compareceu",
+]);
 export type ComandoEstacao = z.infer<typeof comandoEstacaoSchema>;
 
 // ---- App do paciente ----

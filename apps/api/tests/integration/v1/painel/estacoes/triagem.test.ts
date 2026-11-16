@@ -50,8 +50,13 @@ async function doApp(metodo: string, caminho: string, cookie: string, corpo?: un
   return r.json();
 }
 
-const cmd = (estacaoId: string, comando: string, corpo: unknown = {}) =>
+const post = (estacaoId: string, comando: string, corpo: unknown = {}) =>
   c.pedir("POST", `/v1/painel/estacoes/${estacaoId}/${comando}`, c.enfermeiro, corpo);
+// Na triagem, fechar o chamado pede a pessoa na sala ("Compareceu"), como a estação faz.
+const cmd = async (estacaoId: string, comando: string, corpo: unknown = {}) => {
+  if (estacaoId === t1 && (comando === "chamar" || comando === "finalizar")) await post(t1, "compareceu");
+  return post(estacaoId, comando, corpo);
+};
 const riscoGravado = async (nome: string) => {
   const [e] = await orchestrator
     .bancoDoMunicipio(c.slug)

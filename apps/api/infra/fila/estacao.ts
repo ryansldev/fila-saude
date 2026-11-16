@@ -1,16 +1,21 @@
 import {
   type Acao,
   chamarProximo,
+  compareceu,
+  compareceuEm,
   type DiaSessao,
+  desfazerCompareceu,
   desfechoDaEntrada,
   type Entrada,
   type Evento,
   elegiveis,
   finalizar,
+  type ItemFila,
   type NivelRisco,
   naoCompareceu,
   type Resultado,
   rechamar,
+  TEMPO_ALVO_MIN,
   toleranciaEsgotada,
 } from "@fila-saude/domain";
 import type { ComandoEstacao, OperacaoEstacao } from "@fila-saude/schemas/fila";
@@ -24,7 +29,20 @@ import { ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
 import { permitido, type Ressalvas } from "infra/painel/guard";
 import { lerDia, naSessao } from "./dia";
+import { primeiroNome } from "./nomes";
 import { nomesDasEntradas } from "./painel";
+
+const NA_FILA = 3;
+/** Sem cor confirmada (ainda não triado), o tempo-alvo da pílula "o mais antigo". */
+const ALVO_SEM_COR_MIN = 30;
+
+const tempoAlvo = (i: ItemFila): number =>
+  i.urgenciaConfirmada || i.atendidoEmEtapas.includes("triagem") ? TEMPO_ALVO_MIN[i.risco] : ALVO_SEM_COR_MIN;
+
+async function prioridadeDa(db: BancoDoTenant, entradaId: string): Promise<string[]> {
+  const [e] = await db.select({ p: entrada.prioridade }).from(entrada).where(eq(entrada.id, entradaId));
+  return e?.p.grupos ?? [];
+}
 
 export const OPERAR: Acao = "operar_chamadas";
 
@@ -68,7 +86,21 @@ async function montar(
 ): Promise<OperacaoEstacao> {
   const est = dia?.estacoes.find((x) => x.id === e.id);
   const item = est?.chamadoItemId ? dia?.itens.find((i) => i.id === est.chamadoItemId) : undefined;
-  const nomes = await nomesDasEntradas(db, item ? [item.entradaId] : []);
+  const fila = dia && est ? elegiveis(dia, e.id) : [];
+  const remotos = dia ? dia.itens.filter((i) => i.estado === "remoto" && i.etapa === e.etapa) : [];
+  const aCaminho = [...remotos].sort((a, b) => a.numero - b.numero).slice(0, NA_FILA);
+  const proximos = fila.slice(0, NA_FILA);
+  const nomes = await nomesDasEntradas(db, [
+    ...(item ? [item.entradaId] : []),
+    ...proximos.map((i) => i.entradaId),
+    ...aCaminho.map((i) => i.entradaId),
+  ]);
+  const curto = (i: ItemFila) => primeiroNome(nomes.get(i.entradaId) ?? "");
+  const desde = (i: ItemFila) => new Date(i.presenteDesde ?? agora).toISOString();
+  const antigo = fila
+    .filter((i) => i.presenteDesde != null)
+    .reduce<ItemFila | null>((m, i) => (m === null || (i.presenteDesde ?? 0) < (m.presenteDesde ?? 0) ? i : m), null);
+  const veio = dia && item ? compareceuEm(dia, e.id) : null;
   const ultima = item && dia?.chamadas.findLast((ch) => ch.itemId === item.id && ch.etapa === item.etapa);
   return {
     estacao: { id: e.id, nome: e.nome, etapa: e.etapa },
@@ -83,11 +115,16 @@ async function montar(
             pulos: item.pulos,
             chamadoEm: new Date(ultima ? ultima.em : agora).toISOString(),
             toleranciaEsgotada: toleranciaEsgotada(dia, e.id, agora),
+            compareceuEm: veio === null ? null : new Date(veio).toISOString(),
+            prioridade: await prioridadeDa(db, item.entradaId),
             ...(e.etapa === "triagem" ? { triagem: await fichaDaTriagem(db, item.entradaId) } : {}),
           }
         : null,
-    aguardando: dia && est ? elegiveis(dia, e.id).length : 0,
-    remotos: dia ? dia.itens.filter((i) => i.estado === "remoto" && i.etapa === e.etapa).length : 0,
+    aguardando: fila.length,
+    remotos: remotos.length,
+    proximos: proximos.map((i) => ({ senha: i.senha, nome: curto(i), presenteDesde: desde(i) })),
+    aCaminho: aCaminho.map((i) => ({ senha: i.senha, nome: curto(i) })),
+    maisAntigo: antigo ? { presenteDesde: desde(antigo), tempoAlvoMin: tempoAlvo(antigo) } : null,
     toleranciaMin: dia?.config.toleranciaMin ?? 0,
     aviso,
     agora: new Date(agora).toISOString(),
@@ -134,6 +171,8 @@ const COMANDOS: Record<
   rechamar,
   finalizar,
   "nao-compareceu": naoCompareceu,
+  compareceu,
+  "desfazer-compareceu": desfazerCompareceu,
 };
 
 // T3.7 / RN-CHAM: o comando trava a sessão (INV-04) e passa pelo guard e pela auditoria.
@@ -173,6 +212,9 @@ export async function comandoNaEstacao(
         if (!r.ok) {
           if (r.erro === "nenhum_elegivel" && comando === "chamar") {
             return { resultado: await montar(tx, e, s, c.dia, ctx.agora, "ninguem_aguardando") };
+          }
+          if (r.erro === "sem_comparecimento") {
+            throw new ErroApi(409, r.erro, undefined, "Marque Compareceu antes de classificar.");
           }
           throw new ErroApi(409, r.erro);
         }
