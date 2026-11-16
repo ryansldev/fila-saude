@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** a TV na grade de hoje, com fundo branco e azul só na chamada. **Spec:** [tv.md](tv.md). **Tech Stack:** Next 16 + Tailwind, Vitest + Testing Library.
+**Goal:** a TV na grade de hoje, com fundo branco e azul só na chamada. **Spec:** [tv.md](../../../features/design-system/tv.md). **Tech Stack:** Next 16 + Tailwind, Vitest + Testing Library.
 
 ## Global Constraints
 

@@ -1,6 +1,6 @@
 # Fatia 1 da v0.1 — Pública básica
 
-> Modo rápido (2026-11-12): execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](decisoes-para-revisar.md#fatia-1-da-v01-2026-11-12).
+> Modo rápido (2026-11-12): execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](../../../features/mvp-filas/decisoes-para-revisar.md#fatia-1-da-v01-2026-11-12).
 
 **Goal:** paciente se cadastra no app, vê a agenda, responde o questionário e se inscreve numa sessão pública; o painel abre a sessão; o app mostra posição e tempo (consulta a cada ~3 s); a estação chama, rechama, finaliza e marca "não compareceu"; o app mostra "sua vez"; o painel encerra a sessão.
 

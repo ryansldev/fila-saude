@@ -8,23 +8,23 @@
 
 **Tech Stack:** TypeScript (strict, ESM, Node 24); domínio: Vitest 4, `rrule` 2.8; API: Fastify 5, Drizzle + `pg`, better-auth, `expo-server-sdk`, `@fastify/cors`; painel: Next 16.2, React 19.2, Tailwind 4, shadcn (como `apps/web`), Vitest + jsdom + Testing Library; Biome.
 
-**Spec:** backlog T2.1–T2.6 em [`tasks.md`](tasks.md); arquitetura em [`plan.md`](plan.md) (PD-04, PD-09, PD-10, PD-11, PD-13 e as PD-14..PD-23 do [plano 1B](plano-fase-1b-fundacao-api.md)); regras em [`specs/modelo`](../../specs/modelo/spec.md) (configurações, entidades), [`specs/permissoes`](../../specs/permissoes/spec.md), [`specs/marcacao`](../../specs/marcacao/spec.md) (RN-ENC-05, RN-ENC-07, RN-PUB-03), [`specs/fila-do-dia`](../../specs/fila-do-dia/spec.md#sessão) (sessão), [`specs/chamada`](../../specs/chamada/spec.md) (RN-EST-01, RN-TRI-01/02), [`specs/tv-e-avisos`](../../specs/tv-e-avisos/spec.md) (RN-TV-01/02, RN-NOT-01); decisões AD-011, AD-014, AD-016, AD-038; designs [painel da recepção](design-painel-recepcao.md) e [estação e TV](design-estacao-tv.md) (estados da TV).
+**Spec:** backlog T2.1–T2.6 em [`tasks.md`](../../../features/mvp-filas/tasks.md); arquitetura em [`plan.md`](../../../features/mvp-filas/plan.md) (PD-04, PD-09, PD-10, PD-11, PD-13 e as PD-14..PD-23 do [plano 1B](plano-fase-1b-fundacao-api.md)); regras em [`specs/modelo`](../../../specs/modelo/spec.md) (configurações, entidades), [`specs/permissoes`](../../../specs/permissoes/spec.md), [`specs/marcacao`](../../../specs/marcacao/spec.md) (RN-ENC-05, RN-ENC-07, RN-PUB-03), [`specs/fila-do-dia`](../../../specs/fila-do-dia/spec.md#sessão) (sessão), [`specs/chamada`](../../../specs/chamada/spec.md) (RN-EST-01, RN-TRI-01/02), [`specs/tv-e-avisos`](../../../specs/tv-e-avisos/spec.md) (RN-TV-01/02, RN-NOT-01); decisões AD-011, AD-014, AD-016, AD-038; designs [painel da recepção](../../../features/mvp-filas/design-painel-recepcao.md) e [estação e TV](../../../features/mvp-filas/design-estacao-tv.md) (estados da TV).
 
 **Fora deste plano:** abertura e encerramento de sessão, fila, chamada, SSE e o resto da TV (fase 3); fluxo completo de cancelamento com remanejamento (T8.1: aqui só se cancela ocorrência sem pacientes); catálogo público no central (T3.2); recibos do Expo e avisos de fila (T3.8); telas da recepção, agendador e estação (fases 3, 5 e 7).
 
 ## Global Constraints
 
-- **TDD sempre** (constituição, processo 1; [tasks.md](tasks.md#tasks-mvp-filas-ubspoliclínicas)): todo task segue teste → rodar e ver FAIL pelo motivo certo → implementar → rodar e ver PASS → commit. Nenhum código de produção sem teste vermelho antes.
+- **TDD sempre** (constituição, processo 1; [tasks.md](../../../features/mvp-filas/tasks.md#tasks-mvp-filas-ubspoliclínicas)): todo task segue teste → rodar e ver FAIL pelo motivo certo → implementar → rodar e ver PASS → commit. Nenhum código de produção sem teste vermelho antes.
 - **Domínio:** as mesmas regras da 1A (sem `Date.now()`, rede ou banco em `src/`; `agora: number`; ações não alteram o que recebem; IDs das regras no nome dos testes). `rrule` é a única dependência de runtime do pacote (PD-10); tudo o que é fuso passa por `tempo.ts`.
 - **API:** ciclo pelo teste de integração da rota (padrão da 1B: servidor real, `fetch`, `<slug>.localhost:3333`, bancos por arquivo, `fileParallelism: false`, PD-19). Worker e outbox testados no processo do Vitest contra o Postgres real, com relógio injetado; concorrência com dois escritores reais (L-003). Toda rota mutável do painel usa `acaoDoPainel` com `config.acao` (o teste de rotas da 1B Task 18 pega o esquecimento).
-- **Painel:** a lógica (funções puras, hooks e estado das telas) é testada com Vitest e, onde houver estado, Testing Library; layout puro não é testado (regra da [tasks.md](tasks.md)). O cliente da API é injetado; nada de servidor real nos testes do painel.
+- **Painel:** a lógica (funções puras, hooks e estado das telas) é testada com Vitest e, onde houver estado, Testing Library; layout puro não é testado (regra da [tasks.md](../../../features/mvp-filas/tasks.md)). O cliente da API é injetado; nada de servidor real nos testes do painel.
 - Limites numéricos dos dois lados (L-004): vagas 0/1, janela de 90 dias (dentro e fora), código da TV vencido e válido, tentativas da outbox 7/8, K 0/1.
 - Ações do painel citam a ação da matriz pela constante da 1A Task 12 (`Acao`); onde este plano diz "ação de configurar", vale a constante da linha "Configurar serviços, sessões, estações; parear e revogar TV" da matriz; "ação de gestão", a da linha "Criar unidades, regras do município e usuários do painel"; "ação de sessão", a da linha "Abrir, cancelar, encerrar sessão; mudar visibilidade".
 - `npx biome check` limpo nos pacotes tocados e `npm run specs:check` sem erros ao fim de cada task.
 
 ## Decisões desta fase
 
-Registradas como PD-24..PD-31 na tabela do [plan.md](plan.md#1-decisões-de-arquitetura); aqui com o detalhe.
+Registradas como PD-24..PD-31 na tabela do [plan.md](../../../features/mvp-filas/plan.md#1-decisões-de-arquitetura); aqui com o detalhe.
 
 | ID | Decisão | Por quê | Custa se errado |
 | --- | --- | --- | --- |
@@ -161,7 +161,7 @@ apps/painel/                                  Next 16 (igual a apps/web) + vites
 - Produces:
   - `type ModoServico = "livre" | "requisicao" | "regulado"`.
   - `podeMudarExigeTriagem(sessoesDoServico: { estado: EstadoSessao }[]): boolean` (falso com alguma `aberta`).
-  - `mudarModoServico(de: ModoServico, para: ModoServico, entradas: { id: string; estado: EstadoEntrada; vagaSegura: boolean; sessaoAbriu: boolean }[]): Resultado<{ mudancas: { id: string; para: EstadoEntrada; push: boolean }[] }>` — para `regulado` com entradas ativas (não finais e não arquivadas) → `falha("servico_regulado")` (a API mostra a contagem com `contarAtivas(entradas): number`, também exportada); arquivadas viram `cancelada` com push; `requisicao` → `livre`: `aguardando_encaminhamento` vira `aguardando`, ou `confirmada` com push se tinha vaga segura e a sessão não abriu (linhas da tabela de [marcacao](../../specs/marcacao/spec.md#transições), via `transicionar`); `livre` → `requisicao`: nada muda (AD-038).
+  - `mudarModoServico(de: ModoServico, para: ModoServico, entradas: { id: string; estado: EstadoEntrada; vagaSegura: boolean; sessaoAbriu: boolean }[]): Resultado<{ mudancas: { id: string; para: EstadoEntrada; push: boolean }[] }>` — para `regulado` com entradas ativas (não finais e não arquivadas) → `falha("servico_regulado")` (a API mostra a contagem com `contarAtivas(entradas): number`, também exportada); arquivadas viram `cancelada` com push; `requisicao` → `livre`: `aguardando_encaminhamento` vira `aguardando`, ou `confirmada` com push se tinha vaga segura e a sessão não abriu (linhas da tabela de [marcacao](../../../specs/marcacao/spec.md#transições), via `transicionar`); `livre` → `requisicao`: nada muda (AD-038).
   - `type ConfigSessao = { vagas: number | null; visibilidade: "publica" | "privada"; dispensaPreCadastro: boolean; profissional: string | null; estacoes: string[] }`.
   - `validarSessao(servico: { modo: ModoServico; estacoesDoServico: string[] }, c: ConfigSessao): { ok: true } | { ok: false; erro: "servico_regulado" | "entrada_invalida"; campos?: Record<string, string> }` — vagas inteiro ≥ 1 ou nulo; pública em serviço regulado → `servico_regulado`; dispensa só em pública (AD-016); estações só as que atendem o serviço.
   - `mudarVisibilidade(c: ConfigSessao, para: "publica" | "privada", modo: ModoServico): Resultado<ConfigSessao>` — para privada desliga a dispensa (RN-PUB-03); para pública em regulado → `falha("servico_regulado")`.
@@ -420,7 +420,7 @@ apps/painel/                                  Next 16 (igual a apps/web) + vites
 - [ ] **Step 1: Testes** `"rrule ida e volta: terças e quintas até 30/06"`; `"prévia mostra as 5 próximas, sem a data excluída"`; `"privada esconde e desliga a dispensa"`; `"serviço regulado não oferece pública"`; `"editar sessão de série pergunta só esta ou esta e as seguintes"`; `"resposta da divisão mostra quantas sessões com pacientes foram mantidas"`.
 - [ ] **Step 2:** FAIL. **Step 3:** implementar. **Step 4:** PASS; biome. **Step 5:** Commit `feat(painel): sessions and recurring series screens`.
 
-### Task 30: Página `/tv` e pareamento no painel (T2.6; RN-TV-01, RN-TV-02, PD-29; estados do [design da TV](design-estacao-tv.md))
+### Task 30: Página `/tv` e pareamento no painel (T2.6; RN-TV-01, RN-TV-02, PD-29; estados do [design da TV](../../../features/mvp-filas/design-estacao-tv.md))
 
 **Files:** Create `apps/painel/lib/tv.ts`, `app/tv/page.tsx`, `app/(painel)/painel/tvs/page.tsx`, `test/tv.test.ts`, `test/parear-tv.test.tsx`
 
@@ -451,5 +451,5 @@ Ordem sugerida com três frentes: **frente A** (API) 9 → 26 em sequência; **f
 ## Verificação ao fim da fase
 
 - `npm run test:domain`, `npm -w @fila-saude/schemas run test`, `npm -w @fila-saude/api run test`, `npm run test:painel` verdes; `npm run specs:check` sem erros.
-- Critérios da [tasks.md](tasks.md): T2.1 (Tasks 8, 9), T2.2 (10–12), T2.3 (17–19, 24), T2.4 (13, 14), T2.5 (1–3, 20–24), T2.6 (25, 26, 30).
+- Critérios da [tasks.md](../../../features/mvp-filas/tasks.md): T2.1 (Tasks 8, 9), T2.2 (10–12), T2.3 (17–19, 24), T2.4 (13, 14), T2.5 (1–3, 20–24), T2.6 (25, 26, 30).
 - Manual: `npm run dev`; em `pref-a.localhost:3000` o gestor cria unidade e admin; o admin cria serviço, estação e uma série semanal; abre `pref-a.localhost:3000/tv` em outra aba, pareia e revoga.

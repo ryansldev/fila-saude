@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** o cadastro em 7 telas (6 perguntas e "confira") com o Dr. Lino compacto, e o mesmo Dr. Lino no "entrar". **Spec:** [app-cadastro.md](app-cadastro.md).
+**Goal:** o cadastro em 7 telas (6 perguntas e "confira") com o Dr. Lino compacto, e o mesmo Dr. Lino no "entrar". **Spec:** [app-cadastro.md](../../../features/design-system/app-cadastro.md).
 
 ## Global Constraints
 

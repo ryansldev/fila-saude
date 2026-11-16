@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** a tela "entrar" com o Dr. Lino grande, o olho no campo da senha, "esqueci a senha" na gaveta e o que falta dito no campo. **Spec:** [app-entrar.md](app-entrar.md).
+**Goal:** a tela "entrar" com o Dr. Lino grande, o olho no campo da senha, "esqueci a senha" na gaveta e o que falta dito no campo. **Spec:** [app-entrar.md](../../../features/design-system/app-entrar.md).
 
 ## Global Constraints
 

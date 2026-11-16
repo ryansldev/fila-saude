@@ -1,6 +1,6 @@
 # Fatia 3 da v0.1 — Triagem
 
-> Modo rápido, como as fatias 1 e 2: execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](decisoes-para-revisar.md#fatia-3-da-v01-2026-11-14).
+> Modo rápido, como as fatias 1 e 2: execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](../../../features/mvp-filas/decisoes-para-revisar.md#fatia-3-da-v01-2026-11-14).
 
 **Goal:** num serviço que exige triagem, a estação de triagem chama primeiro; o enfermeiro vê o risco sugerido pelo app e a prioridade declarada, classifica pelas cores do Acolhimento com Classificação de Risco (AD-056) e o paciente entra na fila do atendimento com a mesma senha e um número novo (RN-TRI-04). Vermelho encaminha à emergência e tira da fila. O app mostra a triagem feita e a nova posição; quem está presente e piorou vê "meus sintomas pioraram" (RN-PIORA-01).
 

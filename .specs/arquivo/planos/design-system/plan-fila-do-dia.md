@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, domínio puro (Vitest), Fastify + Drizzle (API), Next 16 + Tailwind (painel).
 
-**Spec:** [fila-do-dia.md](fila-do-dia.md) (e o design system em [design.md](design.md))
+**Spec:** [fila-do-dia.md](../../../features/design-system/fila-do-dia.md) (e o design system em [design.md](../../../features/design-system/design.md))
 
 ## Global Constraints
 

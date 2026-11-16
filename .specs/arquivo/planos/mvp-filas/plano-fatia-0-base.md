@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript (strict, ESM, Node 24); API: Fastify 5 + `@fastify/autoload`, Drizzle + `pg`, better-auth 1.6 (plugin `username`), `@fastify/cors`; painel: Next 16.2, React 19.2, Tailwind 4, Vitest + jsdom + Testing Library; Zod 4 (`packages/schemas`); Vitest 4 contra servidor real e Postgres de teste na porta 5433; Biome.
 
-**Spec:** fatia 0 da [trilha da v0.1](tasks.md#trilha-da-v01-2026-11-11), [PD-32 e PD-33](plan.md#1-decisões-de-arquitetura); Tasks 15–18 do [plano 1B](plano-fase-1b-fundacao-api.md) (atualizadas ao código atual); do [plano 2](plano-fase-2-configuracao.md), a Task 9 e, enxutas, as Tasks 10, 12, 16, 17, 18, 21 (rotas) e 27, 28, 29 (telas); regras em [`specs/modelo`](../../specs/modelo/spec.md) (entidades, configurações, INV-01, INV-02, INV-11, INV-12), [`specs/permissoes`](../../specs/permissoes/spec.md) (RN-PERF-01, RN-PERF-03 e a matriz), [`specs/identidade`](../../specs/identidade/spec.md) (RN-ID-01, RN-ID-05), [`specs/marcacao`](../../specs/marcacao/spec.md) (RN-ENC-07, RN-PUB-03), [`specs/chamada`](../../specs/chamada/spec.md) (RN-TRI-01, RN-TRI-02, RN-EST-01); decisões provisórias em [decisoes-para-revisar](decisoes-para-revisar.md) (P1: ressalvas da matriz). Ledgers: `.superpowers/sdd/plano-fase-1a-dominio/{progress,final-fix-report}.md`, `.superpowers/sdd/plano-fase-1b-fundacao-api/progress.md` e `.superpowers/sdd/plano-fase-2-configuracao/progress.md`.
+**Spec:** fatia 0 da [trilha da v0.1](../../../features/mvp-filas/tasks.md#trilha-da-v01-2026-11-11), [PD-32 e PD-33](../../../features/mvp-filas/plan.md#1-decisões-de-arquitetura); Tasks 15–18 do [plano 1B](plano-fase-1b-fundacao-api.md) (atualizadas ao código atual); do [plano 2](plano-fase-2-configuracao.md), a Task 9 e, enxutas, as Tasks 10, 12, 16, 17, 18, 21 (rotas) e 27, 28, 29 (telas); regras em [`specs/modelo`](../../../specs/modelo/spec.md) (entidades, configurações, INV-01, INV-02, INV-11, INV-12), [`specs/permissoes`](../../../specs/permissoes/spec.md) (RN-PERF-01, RN-PERF-03 e a matriz), [`specs/identidade`](../../../specs/identidade/spec.md) (RN-ID-01, RN-ID-05), [`specs/marcacao`](../../../specs/marcacao/spec.md) (RN-ENC-07, RN-PUB-03), [`specs/chamada`](../../../specs/chamada/spec.md) (RN-TRI-01, RN-TRI-02, RN-EST-01); decisões provisórias em [decisoes-para-revisar](../../../features/mvp-filas/decisoes-para-revisar.md) (P1: ressalvas da matriz). Ledgers: `.superpowers/sdd/plano-fase-1a-dominio/{progress,final-fix-report}.md`, `.superpowers/sdd/plano-fase-1b-fundacao-api/progress.md` e `.superpowers/sdd/plano-fase-2-configuracao/progress.md`.
 
 **Fora deste plano (adiado na v0.1, sem descarte):**
 - Séries de sessões (RFC 5545), "esta e as seguintes" e a materialização de 90 dias (fase 2 Tasks 20, 22, 23 e 29 na parte de séries). O domínio de `recorrencia` já feito fica sem uso até lá.
@@ -20,7 +20,7 @@
 
 ## Global Constraints
 
-- **TDD sempre** ([tasks.md](tasks.md#tasks-mvp-filas-ubspoliclínicas)): teste → rodar e ver FAIL pelo motivo certo (não por import ou digitação) → implementar → rodar e ver PASS → commit. Refatoração sem comportamento novo (Task 1) roda com a suíte verde antes e depois.
+- **TDD sempre** ([tasks.md](../../../features/mvp-filas/tasks.md#tasks-mvp-filas-ubspoliclínicas)): teste → rodar e ver FAIL pelo motivo certo (não por import ou digitação) → implementar → rodar e ver PASS → commit. Refatoração sem comportamento novo (Task 1) roda com a suíte verde antes e depois.
 - **Nada artificial:** é a v0.1 do sistema real. O seed não grava configuração direto nas tabelas nem contorna validação ou auditoria; usa as funções de serviço das rotas (PD-40, PD-41).
 - **API:** ciclo pelo teste de integração da rota (`apps/api/tests/integration`, servidor real em `:3333`, `fetch` de verdade, `<slug>.localhost:3333` para o tenant, bancos por arquivo com `orchestrator.criarMunicipio()` derrubados no `afterAll`, PD-19). Infra sem rota (tabelas, repositório, seed) é testada no processo do Vitest contra o Postgres de teste; nada de mock de banco.
 - **Rotas de configuração:** a rota valida a entrada com o schema de `packages/schemas` (`validar`), chama a função de serviço e valida a saída; toda rota mutável declara `config: { acao }` (o teste de rotas da Task 9 pega o esquecimento); leitura usa `exigir`. Regras de domínio vêm de `packages/domain` (`validarConfig`, `configEfetiva`, `validarSessao`, `mudarVisibilidade`, `podeMudarExigeTriagem`, `contarAtivas`), nunca reescritas na API.
@@ -36,7 +36,7 @@
 
 ## Decisões desta fatia
 
-Provisórias e reversíveis, registradas com uma linha cada no [plan.md](plan.md#1-decisões-de-arquitetura).
+Provisórias e reversíveis, registradas com uma linha cada no [plan.md](../../../features/mvp-filas/plan.md#1-decisões-de-arquitetura).
 
 | ID | Decisão | Por quê | Custa se errado |
 | --- | --- | --- | --- |
@@ -380,5 +380,5 @@ As Tasks 2 e 10 mexem no `package-lock.json`; o segundo merge resolve com `npm i
 ## Verificação ao fim da fatia
 
 - `npm run test:domain`, `npm -w @fila-saude/schemas run test`, `npm run test:painel`, `npm -w @fila-saude/api run test` verdes; `npx biome check .` limpo; `npm run specs:check` com 0 erros.
-- Critério da [trilha da v0.1](tasks.md#trilha-da-v01-2026-11-11) para a fatia 0: o Step 5 da Task 20 executado à mão uma vez.
+- Critério da [trilha da v0.1](../../../features/mvp-filas/tasks.md#trilha-da-v01-2026-11-11) para a fatia 0: o Step 5 da Task 20 executado à mão uma vez.
 - Ledger: abertos para a fatia 1 — fila do dia sobre `sessao` e `entrada`; abertura e encerramento da sessão por botão (ação de sessão); `chamado_item_id` da estação quando existir o item da fila; trocar o guard da PD-34 pelo JWT quando a 1B Task 14 voltar.

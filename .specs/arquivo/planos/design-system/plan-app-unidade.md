@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
 
-**Goal:** a página da unidade com o cabeçalho em cartão, a faixa de dias (com mês e ano), o calendário do mês numa gaveta, os atendimentos do dia com botões do kit e a lista de espera compacta. **Spec:** [app-unidade.md](app-unidade.md). **Tech Stack:** Expo/React Native, Vitest (só funções puras).
+**Goal:** a página da unidade com o cabeçalho em cartão, a faixa de dias (com mês e ano), o calendário do mês numa gaveta, os atendimentos do dia com botões do kit e a lista de espera compacta. **Spec:** [app-unidade.md](../../../features/design-system/app-unidade.md). **Tech Stack:** Expo/React Native, Vitest (só funções puras).
 
 ## Global Constraints
 

@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, Fastify + Drizzle, Next 16 + Tailwind, zod, Vitest.
 
-**Spec:** [estacao.md](estacao.md)
+**Spec:** [estacao.md](../../../features/design-system/estacao.md)
 
 ## Global Constraints
 

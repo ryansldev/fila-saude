@@ -8,13 +8,13 @@
 
 **Tech Stack:** TypeScript (strict, ESM, Node 24), Fastify 5 + `@fastify/autoload`, Drizzle ORM + `pg`, drizzle-kit, better-auth (plugins `username`, `emailOTP`, `jwt`), `jose` (JWKS remoto), `lru-cache`, Zod 4 (`packages/schemas`), Vitest 4 contra servidor real (`concurrently`) e Postgres de teste na porta 5433, Biome.
 
-**Spec:** arquitetura em [`plan.md`](plan.md) (PD-03, PD-04, PD-05, PD-12, PD-13; §4 e §5), backlog T1.7–T1.9 em [`tasks.md`](tasks.md), regras em [`specs/identidade`](../../specs/identidade/spec.md) (RN-ID-01/02/04/05), [`specs/permissoes`](../../specs/permissoes/spec.md) (RN-PERF-01..03 e matriz), [`specs/modelo`](../../specs/modelo/spec.md) (INV-11, INV-12), [`specs/nao-funcionais`](../../specs/nao-funcionais/spec.md) (RNF-DADOS-01/02, RNF-SEG-03/04), decisões AD-017, AD-019, AD-035 em [`decisions.md`](../../decisions.md), discovery de [identidade](discovery-identidade.md). Consome o domínio da 1A: `pode`, `Perfil`, `Acao`, `MATRIZ` (Task 12 da 1A).
+**Spec:** arquitetura em [`plan.md`](../../../features/mvp-filas/plan.md) (PD-03, PD-04, PD-05, PD-12, PD-13; §4 e §5), backlog T1.7–T1.9 em [`tasks.md`](../../../features/mvp-filas/tasks.md), regras em [`specs/identidade`](../../../specs/identidade/spec.md) (RN-ID-01/02/04/05), [`specs/permissoes`](../../../specs/permissoes/spec.md) (RN-PERF-01..03 e matriz), [`specs/modelo`](../../../specs/modelo/spec.md) (INV-11, INV-12), [`specs/nao-funcionais`](../../../specs/nao-funcionais/spec.md) (RNF-DADOS-01/02, RNF-SEG-03/04), decisões AD-017, AD-019, AD-035 em [`decisions.md`](../../../decisions.md), discovery de [identidade](../../../features/mvp-filas/discovery-identidade.md). Consome o domínio da 1A: `pode`, `Perfil`, `Acao`, `MATRIZ` (Task 12 da 1A).
 
 **Fora deste plano:** telas do painel, CRUD de configuração, worker e TV (fase 2, [plano 2](plano-fase-2-configuracao.md)); plugin Expo e app (T3.1); bloqueio de conta usurpada e redefinição de acesso pela recepção (T7.3); gov.br (depois do piloto); e-mail transacional de produção e infra (fase 4).
 
 ## Global Constraints
 
-- **TDD sempre** (constituição, processo 1; [tasks.md](tasks.md#tasks-mvp-filas-ubspoliclínicas)): cada passo de código vem depois de um teste rodado e visto falhando pelo motivo certo (não por import ou digitação). Todo task segue teste → rodar e ver FAIL → implementar → rodar e ver PASS → commit.
+- **TDD sempre** (constituição, processo 1; [tasks.md](../../../features/mvp-filas/tasks.md#tasks-mvp-filas-ubspoliclínicas)): cada passo de código vem depois de um teste rodado e visto falhando pelo motivo certo (não por import ou digitação). Todo task segue teste → rodar e ver FAIL → implementar → rodar e ver PASS → commit.
 - Na API o ciclo é pelo **teste de integração da rota** (`apps/api/tests/integration`, servidor real em `:3333` via `concurrently`, `fetch` de verdade). Infra sem rota (runner de migrations, LRU, `tenant:create`) é testada no processo do Vitest contra o Postgres de teste real; nada de mock de banco. Concorrência, quando houver, com dois escritores reais (L-003).
 - Limites numéricos testados dos dois lados (L-004): tamanho do slug, tentativas de login, tamanho de senha, expiração do JWT.
 - Um teste por arquivo de rota/método, no padrão `tests/integration/v1/<caminho>/<metodo>.test.ts`; os de infra em `tests/integration/infra/<modulo>.test.ts`. Nome do teste cita o ID da regra quando houver (ex.: `"RN-ID-02: CPF já usado é recusado"`).
@@ -26,7 +26,7 @@
 
 ## Decisões desta fase
 
-Registradas como PD-14..PD-23 na tabela do [plan.md](plan.md#1-decisões-de-arquitetura); aqui com o detalhe.
+Registradas como PD-14..PD-23 na tabela do [plan.md](../../../features/mvp-filas/plan.md#1-decisões-de-arquitetura); aqui com o detalhe.
 
 | ID | Decisão | Por quê | Custa se errado |
 | --- | --- | --- | --- |
@@ -358,5 +358,5 @@ Dependências externas: a Task 17 precisa da Task 12 da 1A (`pode`, `MATRIZ`) in
 ## Verificação ao fim da fase
 
 - `npm -w @fila-saude/api run test`, `npm -w @fila-saude/schemas run test`, `npm run test:domain` verdes.
-- Critérios da [tasks.md](tasks.md): T1.7 (Tasks 3 e 8), T1.8 (Tasks 10, 13), T1.9 (Tasks 15, 17, 18).
+- Critérios da [tasks.md](../../../features/mvp-filas/tasks.md): T1.7 (Tasks 3 e 8), T1.8 (Tasks 10, 13), T1.9 (Tasks 15, 17, 18).
 - Manual: `npm run tenant:create -- --slug pref-a …` em dev, `curl http://pref-a.localhost:3333/v1/painel/eu` com o cookie do login.

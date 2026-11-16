@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, Next 16 + Tailwind, Fastify + Drizzle, Vitest; `qrcode` (matriz), `sharp` + `zxing-wasm` (só nos testes).
 
-**Spec:** [qr-e-unidade.md](qr-e-unidade.md)
+**Spec:** [qr-e-unidade.md](../../../features/design-system/qr-e-unidade.md)
 
 ## Global Constraints
 

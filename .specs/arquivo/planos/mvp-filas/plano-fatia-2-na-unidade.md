@@ -1,6 +1,6 @@
 # Fatia 2 da v0.1 — Na unidade
 
-> Modo rápido, como a fatia 1: execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](decisoes-para-revisar.md#fatia-2-da-v01-2026-11-13).
+> Modo rápido, como a fatia 1: execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](../../../features/mvp-filas/decisoes-para-revisar.md#fatia-2-da-v01-2026-11-13).
 
 **Goal:** a TV da sala de espera é pareada pelo admin e mostra a chamada atual com som, as últimas chamadas, os contadores por serviço e o QR de entrada; o paciente toca "Vou sair" no app; o paciente recebe push de "saia de casa", "venha agora", "sua vez" e "você foi pulado".
 

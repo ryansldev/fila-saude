@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript, React Native/Expo (app), Next + Tailwind v4 + shadcn/base-ui (painel), Fastify + Drizzle (API), Vitest.
 
-**Spec:** [design.md](design.md)
+**Spec:** [design.md](../../../features/design-system/design.md)
 
 ## Global Constraints
 

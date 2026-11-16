@@ -79,7 +79,7 @@ Pendências conhecidas do domínio (corrigir junto com a rota que as usa):
 
 ## Fase 1B e fase 2 (arquitetura)
 
-Os planos detalhados ([1B](plano-fase-1b-fundacao-api.md), [fase 2](plano-fase-2-configuracao.md)) registraram as decisões PD-14 a PD-31 em `plan.md`, cada uma com o motivo e o custo se estiver errada. Todas são **provisórias**. As que mais merecem o seu olhar:
+Os planos detalhados ([1B](../../arquivo/planos/mvp-filas/plano-fase-1b-fundacao-api.md), [fase 2](../../arquivo/planos/mvp-filas/plano-fase-2-configuracao.md)) registraram as decisões PD-14 a PD-31 em `plan.md`, cada uma com o motivo e o custo se estiver errada. Todas são **provisórias**. As que mais merecem o seu olhar:
 
 | PD | Resumo | Por que olhar |
 | --- | --- | --- |
@@ -126,7 +126,7 @@ Decididos por você: ocupação + função de gestão; quem cria quem (RN-PERF-0
 
 ## Fatia 1 da v0.1 (2026-11-12)
 
-Execução rápida, como a fatia 0. Q3 e Q5 aprovadas em 2026-11-12 (AD-055; RN-ID-05). Plano: [plano-fatia-1-publica](plano-fatia-1-publica.md) (PD-43 a PD-46).
+Execução rápida, como a fatia 0. Q3 e Q5 aprovadas em 2026-11-12 (AD-055; RN-ID-05). Plano: [plano-fatia-1-publica](../../arquivo/planos/mvp-filas/plano-fatia-1-publica.md) (PD-43 a PD-46).
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
@@ -146,7 +146,7 @@ Execução rápida, como a fatia 0. Q3 e Q5 aprovadas em 2026-11-12 (AD-055; RN-
 
 ## Fatia 2 da v0.1 (2026-11-13)
 
-Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](plano-fatia-2-na-unidade.md) (PD-47 a PD-50). **G6 precisa de você** (conta na Expo).
+Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](../../arquivo/planos/mvp-filas/plano-fatia-2-na-unidade.md) (PD-47 a PD-50). **G6 precisa de você** (conta na Expo).
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
@@ -193,7 +193,7 @@ Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, p
 
 ## Fatia 3 da v0.1 (2026-11-14)
 
-Execução rápida, como as fatias anteriores. Plano: [plano-fatia-3-triagem](plano-fatia-3-triagem.md). Antes da triagem, terminei o **AD-057** (prazo de chegada depois do "venha agora"), que o commit `e285362` deixou pela metade: o domínio estava com 17 testes falhando e sem `avisosVenhaAgora`.
+Execução rápida, como as fatias anteriores. Plano: [plano-fatia-3-triagem](../../arquivo/planos/mvp-filas/plano-fatia-3-triagem.md). Antes da triagem, terminei o **AD-057** (prazo de chegada depois do "venha agora"), que o commit `e285362` deixou pela metade: o domínio estava com 17 testes falhando e sem `avisosVenhaAgora`.
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
@@ -210,7 +210,7 @@ H1 e H2 respondidas (AD-058, AD-059). RV7 continua aberta.
 
 ## Fatia 4 da v0.1 (2026-11-16)
 
-Execução rápida. Plano: [plano-fatia-4-privada](plano-fatia-4-privada.md). Lista de espera pelo app, alocação pelo agendador e confirmação.
+Execução rápida. Plano: [plano-fatia-4-privada](../../arquivo/planos/mvp-filas/plano-fatia-4-privada.md). Lista de espera pelo app, alocação pelo agendador e confirmação.
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
@@ -227,7 +227,7 @@ Execução rápida. Plano: [plano-fatia-4-privada](plano-fatia-4-privada.md). Li
 
 ## Design system (2026-11-16)
 
-Design: [design-system/design.md](../design-system/design.md); plano: [design-system/plan.md](../design-system/plan.md). Pacote `@fila-saude/design` (tokens), um `Botao` no app e um `Button` no painel com as mesmas variações, travas que falham com botão fora do kit, Agendamento no caminho A.
+Design: [design-system/design.md](../design-system/design.md); plano: [design-system/plan.md](../../arquivo/planos/design-system/plan.md). Pacote `@fila-saude/design` (tokens), um `Botao` no app e um `Button` no painel com as mesmas variações, travas que falham com botão fora do kit, Agendamento no caminho A.
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |

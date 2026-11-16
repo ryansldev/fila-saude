@@ -1,6 +1,6 @@
 # Fatia 4 da v0.1 — Privada (lista de espera, alocação e confirmação)
 
-> Modo rápido, como as fatias 1 a 3: execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](decisoes-para-revisar.md#fatia-4-da-v01-2026-11-16).
+> Modo rápido, como as fatias 1 a 3: execução direta na sessão principal, TDD com um arquivo de teste por recurso e só os casos principais, sem revisão por task. Atalhos em [decisoes-para-revisar](../../../features/mvp-filas/decisoes-para-revisar.md#fatia-4-da-v01-2026-11-16).
 
 **Goal:** o paciente entra pelo app na lista de espera de um serviço da unidade (para si ou para outra pessoa, com o questionário). O agendador abre uma sessão privada no painel, vê a sugestão com os motivos e aloca. O paciente recebe "confirme sua consulta" e confirma ou recusa no app; o agendador também registra a resposta depois de ligar. Quem não responde aparece na lista de ligação, destacado depois de 24 h. Recusa libera a vaga; a sessão que abre libera as pendentes; quem confirmou entra na fila do dia como já acontece.
 
