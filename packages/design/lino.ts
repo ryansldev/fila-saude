@@ -1,5 +1,8 @@
-// Mascote do Fila Saúde (prototype/assets/mascote.svg). O jaleco é transparente: sempre sobre fundo branco.
-export const MASCOTE_SVG = `<svg
+/**
+ * O Dr. Lino, mascote do Fila Saúde (prototype/assets/mascote.svg), para o app e o painel.
+ * O jaleco é transparente: sempre sobre fundo branco.
+ */
+export const LINO_SVG = `<svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 300 463"
       fill="none"

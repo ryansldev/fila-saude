@@ -1,5 +1,13 @@
 import { BottomSheet, BottomSheetView } from "@expo/ui/community/bottom-sheet";
-import { COR, estiloDoBotao, FONTE, OPACIDADE_DESATIVADO, type TamanhoApp, type Variante } from "@fila-saude/design";
+import {
+  COR,
+  estiloDoBotao,
+  FONTE,
+  LINO_SVG,
+  OPACIDADE_DESATIVADO,
+  type TamanhoApp,
+  type Variante,
+} from "@fila-saude/design";
 import { router } from "expo-router";
 import {
   CalendarDays,
@@ -34,7 +42,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path, SvgXml } from "react-native-svg";
-import { MASCOTE_SVG } from "./mascote-svg";
 
 // Tokens do design system "Fila Saúde" (artifact do app do paciente).
 export { COR, FONTE };
@@ -71,9 +78,7 @@ export function Logo({
  * `moldura`: o cantinho branco ao redor; desliga quando o fundo da tela já é branco (fala do Dr.).
  */
 export function Mascote({ tamanho = 200, moldura = true }: { tamanho?: number; moldura?: boolean }) {
-  const desenho = (
-    <SvgXml xml={MASCOTE_SVG} width={tamanho} height={tamanho} accessibilityLabel="mascote do fila saúde" />
-  );
+  const desenho = <SvgXml xml={LINO_SVG} width={tamanho} height={tamanho} accessibilityLabel="mascote do fila saúde" />;
   if (!moldura) return desenho;
   return (
     <View style={{ alignSelf: "center", backgroundColor: COR.surface, padding: 8, borderRadius: 16 }}>{desenho}</View>
