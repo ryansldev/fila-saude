@@ -93,13 +93,13 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | # | Quem | Onde | O que fazer | O que se vê |
 | --- | --- | --- | --- | --- |
 | 1 | Paciente | App → Unidades → UBS Centro | Rolar até "lista de espera" | Os serviços da unidade; Odontologia com o selo "na lista" para quem já está; tocar em outro serviço abre "para quem" e o questionário, e no fim "você está na lista de espera!" |
-| 2 | Recepção (agenda) | Painel → Agendamento | Escolher a unidade | Faixa "1 pessoa com urgência sugerida"; serviço Odontologia, sessão de amanhã com as vagas |
-| 3 | Recepção | Agendamento → Sugestão | Ler a sugestão | Carla no topo com "Alerta: urgente" e os motivos ("urgente sugerido · gestante · espera há N dias"), depois Ana (pessoa idosa) e José |
-| 4 | Recepção | Sugestão | "Alocar" Ana | Ana em "Alocados" com "Aguardando resposta" e o prazo; no app dela, "confirme até …" com "vou, confirmar" e "não posso nesta data" (e o push "confirme sua consulta", com o projeto EAS) |
+| 2 | Recepção (agenda) | Painel → Agendamento | Abrir a tela | Menu "Agendamento" com o contador "1"; no topo, os serviços (Odontologia com "1 alerta"), a faixa "1 pessoa para ligar · Bruno Lima sem resposta há 30 h" e, à esquerda, as duas sessões privadas com as barrinhas de vagas |
+| 3 | Recepção | Agendamento → Sugestão | Ler a sugestão | Carla no topo, em amarelo, com o selo "Urgente (app)" e "Problema novo forte · gestante · espera há N dias"; só ela com o "Alocar" principal; depois Ana (pessoa idosa) e José ("sem app") |
+| 4 | Recepção | Sugestão | "Alocar" Ana | Ana nas vagas da sessão com "Aguardando resposta", o prazo e as respostas; a barrinha fica amarela e o contador do menu sobe; no app dela, "confirme até …" com "vou, confirmar" e "não posso nesta data" (e o push "confirme sua consulta", com o projeto EAS) |
 | 5 | Paciente (Ana) | App → cartão da Odontologia | "vou, confirmar" | Selo "inscrito"; no painel, "Confirmou" |
-| 6 | Recepção | Agendamento → Lista de ligação | Ver Bruno | Linha destacada "Sem resposta: ligar", com o telefone; "Sem contato" anota a tentativa e mantém pendente |
+| 6 | Recepção | Faixa do topo → "Ver lista de ligação" | Ver Bruno no painel lateral | Linha destacada "Sem resposta: ligar", com o telefone; "Sem contato" anota a tentativa e mantém pendente |
 | 7 | Paciente (Bruno) | App → cartão | "não posso nesta data" e confirmar | "você continua na lista"; no painel, a vaga fica livre e Bruno não é sugerido de novo para essa data |
 | 8 | Dois agendadores | Agendamento, mesma sessão com uma vaga | "Alocar" ao mesmo tempo | Um aloca; o outro vê "A sessão não tem mais vaga. A lista foi atualizada." e a lista nova |
 | 9 | Paciente | App → cartão de quem está na lista | "minha situação mudou: responder de novo" | O questionário sem "para quem"; urgente sobe a pessoa e acende o alerta do agendador |
 
-**Executado por HTTP** (2026-11-16, script contra `npm run dev` com o seed): passos 1–7 pelas mesmas rotas; o passo 8 é coberto pelo teste com dois escritores (`tests/integration/v1/painel/agendamento/agendamento.test.ts`). A página `/agendamento` responde no Next. **Falta** o clique no navegador e no celular.
+**Tela de Agendamento refeita no design system (2026-11-16, caminho A).** **Executado por HTTP** (2026-11-16, de novo depois do design system, script contra `npm run dev` com o seed): passos 1–7 pelas mesmas rotas; o passo 8 é coberto pelo teste com dois escritores (`tests/integration/v1/painel/agendamento/agendamento.test.ts`). A página `/agendamento` responde no Next. **Falta** o clique no navegador e no celular.

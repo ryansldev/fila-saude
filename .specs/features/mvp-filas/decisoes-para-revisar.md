@@ -224,3 +224,19 @@ Execução rápida. Plano: [plano-fatia-4-privada](plano-fatia-4-privada.md). Li
 | I8 | Texto do push "confirme" | "confirme sua consulta" + serviço, unidade, dia e hora; sem sintoma | — | Baixo |
 | I9 | Refazer o questionário pelo app | Só na lista (aguardando, alocada, confirmada); no dia vale "meus sintomas pioraram" | Também remoto no dia | Baixo |
 | I10 | Alerta de faltas (RN-FALTA-03, RN-AL-03) | Conta as faltas da mesma pessoa atendida nos encerramentos da janela (padrão 2 em 90 dias), sem a regra do titular (RN-ID-06: responsável x pessoa conferida) | Aplicar `titularDaFalta` e guardar as faltas numa tabela própria | Baixo na v0.1; revisar antes do piloto |
+
+## Design system (2026-11-16)
+
+Design: [design-system/design.md](../design-system/design.md); plano: [design-system/plan.md](../design-system/plan.md). Pacote `@fila-saude/design` (tokens), um `Botao` no app e um `Button` no painel com as mesmas variações, travas que falham com botão fora do kit, Agendamento no caminho A.
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| DS1 | Azul do painel | O azul do app (`#1a73c8`) em todo o painel: o de antes tinha contraste 3,76 com texto branco (abaixo do AA) | Manter o azul claro só fora dos botões | Baixo: o painel ficou um pouco mais escuro |
+| DS2 | Botão desativado | 45% de opacidade e sem relevo nos dois | Fundo cinza no painel, como antes | Baixo |
+| DS3 | Contador do menu | Pessoas para ligar da unidade escolhida, a cada 60 s | Somar os alertas de urgência | Baixo |
+| DS4 | Variação `textoPerigo` | Acrescentada ao design: links vermelhos de baixo peso ("não vou poder ir", "meus sintomas pioraram", lixeira) | Usar `perigoContorno` | Baixo |
+| DS5 | Toques que não são botão no app | `AreaTocavel` e `Segmentado` no kit (a linha da conta e o cartão de município mantêm a aparência) | Um `ItemDeLista` único | Baixo |
+| DS6 | Botões de texto no app | Quebram em até 2 linhas; os de relevo, 1 linha com reticências | Cortar todos em 1 linha | Baixo |
+| DS7 | Diálogo de confirmação perigosa | Botão `perigo` cheio (única ação decisiva do modal) | `perigoContorno` | Baixo |
+| DS8 | Ruído na sugestão | Sem selo para rotina sugerida e sem "Sem sinais de risco" nos motivos | Selo em toda linha | Baixo |
+
