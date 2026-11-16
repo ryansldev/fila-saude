@@ -116,3 +116,54 @@ export function erroDaVerificacao(err: unknown): ErroDaVerificacao {
   if (saida) return { tipo: "faixa", titulo: saida.titulo, texto: mensagemDoErro(err), saida: saida.saida };
   return { tipo: "faixa", titulo: "não deu para conferir", texto: mensagemDoErro(err), saida: null };
 }
+
+/** A mesma tela serve à inscrição numa sessão, à entrada na lista de espera e a refazer o questionário. */
+export type ModoDaInscricao = "sessao" | "lista" | "refazer";
+
+export const modoDaInscricao = (sessaoId: string | undefined): ModoDaInscricao =>
+  sessaoId === "lista" ? "lista" : sessaoId === "refazer" ? "refazer" : "sessao";
+
+/** Para onde a tela manda as respostas; só a sessão confere antes, no passo "para quem". */
+export function envioDaInscricao(
+  modo: ModoDaInscricao,
+  municipio: string,
+  ids: { sessaoId?: string | undefined; servicoId?: string | undefined; entradaId?: string | undefined },
+): { enviar: string; verificar: string | null } {
+  const m = `/v1/municipios/${municipio}`;
+  if (modo === "lista") return { enviar: `${m}/servicos/${ids.servicoId}/entradas`, verificar: null };
+  if (modo === "refazer") return { enviar: `${m}/entradas/${ids.entradaId}/questionario`, verificar: null };
+  return {
+    enviar: `${m}/sessoes/${ids.sessaoId}/inscricoes`,
+    verificar: `${m}/sessoes/${ids.sessaoId}/inscricoes/verificar`,
+  };
+}
+
+export type ServicoComLista = {
+  id: string;
+  nome: string;
+  /** entrar: abre "para quem"; na_lista: o dono já está; requisicao (I2) e regulado (RN-ENC-05): só explicam. */
+  tipo: "entrar" | "na_lista" | "requisicao" | "regulado";
+};
+
+/** I1: os serviços da unidade na página dela, com o que dá para fazer em cada um. */
+export function servicosComLista(
+  servicos: { id: string; nome: string; modo: "livre" | "requisicao" | "regulado" }[],
+  minhas: MinhaEntrada[] | null,
+): ServicoComLista[] {
+  return servicos.map((s) => ({
+    id: s.id,
+    nome: s.nome,
+    tipo:
+      s.modo === "regulado"
+        ? "regulado"
+        : s.modo === "requisicao"
+          ? "requisicao"
+          : paraMimNoServico(minhas, s.id)
+            ? "na_lista"
+            : "entrar",
+  }));
+}
+
+/** I9: refazer o questionário pelo app só enquanto está na lista; no dia vale "meus sintomas pioraram". */
+export const podeRefazer = (e: Pick<MinhaEntrada, "estado">): boolean =>
+  ["aguardando", "alocada", "confirmada"].includes(e.estado);

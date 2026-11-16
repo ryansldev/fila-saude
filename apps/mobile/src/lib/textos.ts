@@ -1,6 +1,6 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { ErroDaApi } from "./api";
-import { ehHoje, hora } from "./datas";
+import { diaCurto, ehHoje, hora } from "./datas";
 
 /** Estado de uma entrada na tela "minha fila", na mesma divisão das telas do design do app. */
 export type Situacao =
@@ -188,7 +188,9 @@ export function proximoPasso(e: MinhaEntrada, sit: Situacao, agora: number): str
     case "reserva":
       return "se alguém desistir, a vaga é sua. avisamos aqui.";
     case "alocada":
-      return "a unidade marcou este horário para você.";
+      return e.prazoConfirmacao
+        ? `confirme até ${diaCurto(e.prazoConfirmacao)}, às ${hora(e.prazoConfirmacao)}.`
+        : "a unidade marcou este horário para você.";
     case "confirmada":
     case "aguardando": {
       if (!e.sessao) return "avisamos quando a fila abrir.";

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui";
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
 import { diaCurto, ehHoje, hora, partesDoDia } from "@/lib/datas";
+import { podeRefazer } from "@/lib/inscricoes";
 import { useSessao } from "@/lib/sessao";
 import {
   avisoDoCancelamento,
@@ -197,6 +198,8 @@ export function CartaoDoAtendimento({
   sit,
   vouSair,
   aoCancelar,
+  responder = null,
+  refazer = null,
   aoAbrir,
   variante = "destaque",
 }: {
@@ -204,6 +207,10 @@ export function CartaoDoAtendimento({
   sit: Situacao;
   vouSair: (() => void) | null;
   aoCancelar: (() => void) | null;
+  /** RN-CONF-01: alocada, à espera da resposta; `null` enquanto envia ou fora disso. */
+  responder?: ((r: "confirmar" | "recusar") => void) | null;
+  /** RN-RISCO-03 / I9: refazer o questionário enquanto está na lista. */
+  refazer?: (() => void) | null;
   /** Abre a tela da fila deste atendimento (senha grande e progresso). */
   aoAbrir?: () => void;
   /** "destaque": o de hoje, como o acompanhamento de um pedido; "lista": compacto, com o dia à esquerda. */
@@ -247,7 +254,24 @@ export function CartaoDoAtendimento({
             <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="secundario" />
           </View>
         ) : null}
-        {aoCancelar ? <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} /> : null}
+        {sit.tipo === "alocada" ? (
+          responder ? (
+            <>
+              <Botao texto="vou, confirmar" onPress={() => responder("confirmar")} />
+              <Botao texto="não posso nesta data" tipo="secundario" onPress={() => responder("recusar")} />
+            </>
+          ) : (
+            <Carregando />
+          )
+        ) : null}
+        {refazer ? <LinkBotao texto="minha situação mudou: responder de novo" onPress={refazer} /> : null}
+        {aoCancelar ? (
+          <LinkBotao
+            texto={sit.tipo === "alocada" || sit.tipo === "lista" ? "sair da lista de espera" : "não vou poder ir"}
+            cor={COR.dangerInk}
+            onPress={aoCancelar}
+          />
+        ) : null}
       </View>
     </Cartao>
   );
@@ -368,6 +392,7 @@ export function useMinhaFila() {
   const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
   const [vistas, setVistas] = useState<string[]>(() => [...VEZES_VISTAS]);
   const [saindo, setSaindo] = useState<string | null>(null);
+  const [respondendo, setRespondendo] = useState<string | null>(null);
   const [cancelar, setCancelar] = useState<{ en: MinhaEntrada; sit: Situacao; ctx: string } | null>(null);
   const [cancelada, setCancelada] = useState<string | null>(null);
   const [tentando, setTentando] = useState(false);
@@ -412,7 +437,57 @@ export function useMinhaFila() {
   );
 
   /** "não vou poder ir" e "vou sair" de uma entrada, iguais no cartão e na tela da fila. */
+  /** RN-CONF-01/04: confirmar ou recusar a data que a unidade marcou. */
+  const enviarResposta = (en: MinhaEntrada, r: "confirmar" | "recusar") => {
+    setRespondendo(en.entradaId);
+    s.api
+      .post<{ estado: string }>(`/v1/municipios/${s.municipio}/entradas/${en.entradaId}/${r}`)
+      .then((res) => {
+        setEntradas((l) =>
+          (l ?? []).map((x) =>
+            x.entradaId === en.entradaId
+              ? { ...x, estado: res.estado, prazoConfirmacao: null, ...(r === "recusar" ? { sessao: null } : {}) }
+              : x,
+          ),
+        );
+        if (r === "recusar")
+          Alert.alert("tudo certo", "a vaga fica para outra pessoa. você continua na lista de espera.");
+        void buscarAgora.current?.();
+      })
+      .catch((err) => Alert.alert("não deu certo", mensagemDoErro(err)))
+      .finally(() => setRespondendo(null));
+  };
+
   const acoesDe = (en: MinhaEntrada, sit: Situacao) => ({
+    responder:
+      sit.tipo !== "alocada" || respondendo === en.entradaId
+        ? null
+        : (r: "confirmar" | "recusar") =>
+            r === "confirmar"
+              ? enviarResposta(en, r)
+              : Alert.alert(
+                  "não pode nesta data?",
+                  "a vaga fica para outra pessoa. você continua na lista, com a mesma data de entrada.",
+                  [
+                    { text: "voltar", style: "cancel" },
+                    { text: "não posso", style: "destructive", onPress: () => enviarResposta(en, "recusar") },
+                  ],
+                ),
+    refazer: podeRefazer(en)
+      ? () =>
+          router.push({
+            pathname: "/inscricao/[sessaoId]",
+            params: {
+              sessaoId: "refazer",
+              entradaId: en.entradaId,
+              servicoId: en.servicoId,
+              servico: en.servico,
+              unidade: en.unidade,
+              nascimento: en.nascimento,
+              paraMim: en.paraMim ? "1" : "0",
+            },
+          })
+      : null,
     // RN-CANC-01: a API diz quando o "não vou poder ir" vale.
     aoCancelar: en.podeCancelar
       ? () => {

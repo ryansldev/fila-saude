@@ -1,6 +1,6 @@
-import type { MinhaEntrada, SessaoDaAgenda, UnidadePublica } from "@fila-saude/schemas/fila";
+import type { MinhaEntrada, ServicoDaUnidade, SessaoDaAgenda, UnidadePublica } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { Building2, MapPin } from "lucide-react-native";
+import { Building2, ClipboardList, MapPin } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
 import {
@@ -22,7 +22,7 @@ import {
   type Tom,
 } from "@/components/ui";
 import { hora, partesDoDia } from "@/lib/datas";
-import { inscricaoNaAgenda } from "@/lib/inscricoes";
+import { inscricaoNaAgenda, type ServicoComLista, servicosComLista } from "@/lib/inscricoes";
 import { useSessao } from "@/lib/sessao";
 import { avisoDoErro } from "@/lib/textos";
 import { enderecoEmLinha, linkComoChegar, nomeDoTipo } from "@/lib/unidades";
@@ -90,12 +90,45 @@ function CartaoDaSessao({ x, unidade, minhas }: { x: SessaoDaAgenda; unidade: st
   );
 }
 
+const TEXTO_DO_SERVICO: Record<ServicoComLista["tipo"], { acao: string; detalhe: string }> = {
+  entrar: { acao: "entrar na lista", detalhe: "a unidade marca a data e avisa no app." },
+  na_lista: { acao: "ver minha fila", detalhe: "você já está na lista. toque para outra pessoa." },
+  requisicao: { acao: "como marcar", detalhe: "pede a requisição do médico. leve o papel à recepção." },
+  regulado: { acao: "como marcar", detalhe: "marcado pela regulação. procure a sua UBS." },
+};
+
+/** T5.1 / I1: um serviço com lista de espera; regulado e requisição só explicam. */
+function CartaoDoServico({ x, unidade }: { x: ServicoComLista; unidade: string }) {
+  const t = TEXTO_DO_SERVICO[x.tipo];
+  const entra = x.tipo === "entrar" || x.tipo === "na_lista";
+  return (
+    <LinhaTocavel
+      acao={x.tipo === "na_lista" ? "para outra pessoa" : t.acao}
+      esquerda={<Avatar Icone={ClipboardList} tom={entra ? (x.tipo === "na_lista" ? "verde" : "azul") : "cinza"} />}
+      onPress={() => {
+        if (!entra) return;
+        router.push({
+          pathname: "/inscricao/[sessaoId]",
+          params: { sessaoId: "lista", servicoId: x.id, servico: x.nome, unidade },
+        });
+      }}
+    >
+      <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
+        {x.nome.toLowerCase()}
+      </Text>
+      <Pequeno>{t.detalhe}</Pequeno>
+      {x.tipo === "na_lista" ? <Selo texto="na lista" tom="verde" /> : null}
+    </LinhaTocavel>
+  );
+}
+
 /** Uma unidade: endereço, "como chegar" e os próximos atendimentos abertos para inscrição. */
 export default function Unidade() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const s = useSessao();
   const [unidade, setUnidade] = useState<UnidadePublica | "nao_achou" | null>(null);
   const [sessoes, setSessoes] = useState<SessaoDaAgenda[] | null>(null);
+  const [servicosDaUnidade, setServicosDaUnidade] = useState<ServicoDaUnidade[] | null>(null);
   // AD-032: as inscrições da conta, para não oferecer de novo um serviço em que a pessoa já está.
   const [minhas, setMinhas] = useState<MinhaEntrada[] | null>(null);
   const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
@@ -107,8 +140,10 @@ export default function Unidade() {
         s.api.get<UnidadePublica[]>(`/v1/municipios/${s.municipio}/unidades`),
         s.api.get<SessaoDaAgenda[]>(`/v1/municipios/${s.municipio}/agenda`),
         s.api.get<MinhaEntrada[]>(`/v1/municipios/${s.municipio}/minhas`),
+        s.api.get<ServicoDaUnidade[]>(`/v1/municipios/${s.municipio}/unidades/${id}/servicos`),
       ])
-        .then(([us, ag, m]) => {
+        .then(([us, ag, m, sv]) => {
+          setServicosDaUnidade(sv);
           setUnidade(us.find((u) => u.id === id) ?? "nao_achou");
           setSessoes(ag.filter((x) => x.unidade.id === id).sort((a, b) => a.inicio.localeCompare(b.inicio)));
           setMinhas(m);
@@ -197,6 +232,17 @@ export default function Unidade() {
             .map((x) => (
               <CartaoDaSessao key={x.id} x={x} unidade={unidade.nome} minhas={minhas} />
             ))}
+          {servicosDaUnidade && servicosDaUnidade.length > 0 ? (
+            <>
+              <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink, marginTop: 8 }}>
+                lista de espera
+              </Text>
+              <TextoSuave>entre na lista e a unidade marca a data. quem tem mais urgência é chamado antes.</TextoSuave>
+              {servicosComLista(servicosDaUnidade, minhas).map((x) => (
+                <CartaoDoServico key={x.id} x={x} unidade={unidade.nome} />
+              ))}
+            </>
+          ) : null}
         </>
       ) : null}
     </Tela>

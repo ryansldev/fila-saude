@@ -25,7 +25,14 @@ import {
 } from "@/components/ui";
 import { ErroDaApi } from "@/lib/api";
 import { diaCurto } from "@/lib/datas";
-import { type ErroDaVerificacao, erroDaVerificacao, outraPessoaJaInscrita, paraMimNoServico } from "@/lib/inscricoes";
+import {
+  type ErroDaVerificacao,
+  envioDaInscricao,
+  erroDaVerificacao,
+  modoDaInscricao,
+  outraPessoaJaInscrita,
+  paraMimNoServico,
+} from "@/lib/inscricoes";
 import {
   completas,
   desfechoDoQuestionario,
@@ -48,7 +55,11 @@ type Passo =
   | { tipo: "inscrito" }
   | { tipo: "reserva" }
   /** Serviço com requisição: inscrito, mas o pedido médico ainda precisa chegar à unidade. */
-  | { tipo: "pedido" };
+  | { tipo: "pedido" }
+  /** T5.1: entrou na lista de espera do serviço (modo "lista"). */
+  | { tipo: "lista" }
+  /** RN-RISCO-03: respostas novas salvas (modo "refazer"). */
+  | { tipo: "refeito"; nivel: string };
 
 type DadosDaSessao = { servicoId?: string; servico?: string; unidade?: string; inicio?: string; aberta?: boolean };
 
@@ -65,10 +76,17 @@ export default function Inscricao() {
     unidade?: string;
     inicio?: string;
     aberta?: string;
+    /** Modo "refazer": a entrada, a data de nascimento de quem é atendido e se é a própria conta. */
+    entradaId?: string;
+    nascimento?: string;
+    paraMim?: string;
   }>();
   const s = useSessao();
-  const [passo, setPasso] = useState<Passo>({ tipo: "quem" });
-  const [quem, setQuem] = useState<"eu" | "outra" | null>("eu");
+  // "lista" e "refazer" no lugar do id da sessão: a mesma tela entra na lista ou refaz o questionário.
+  const modo = modoDaInscricao(p.sessaoId);
+  const envio = envioDaInscricao(modo, s.municipio ?? "", p);
+  const [passo, setPasso] = useState<Passo>(modo === "refazer" ? { tipo: "pergunta", indice: 0 } : { tipo: "quem" });
+  const [quem, setQuem] = useState<"eu" | "outra" | null>(modo === "refazer" && p.paraMim !== "1" ? "outra" : "eu");
   const [outra, setOutra] = useState({ nome: "", nascimento: "", cpf: "" });
   const [r, setR] = useState<RespostasDoApp>(RESPOSTAS_VAZIAS);
   const [nenhum, setNenhum] = useState<Partial<Record<TelaDoQuestionario, boolean>>>({});
@@ -82,7 +100,7 @@ export default function Inscricao() {
   const enviandoRef = useRef(false);
 
   // Pelo link (deep link) a tela chega só com o id da sessão: o resto vem da agenda.
-  const temTudo = Boolean(p.servicoId && p.servico && p.unidade && p.inicio);
+  const temTudo = Boolean(p.servicoId && p.servico && p.unidade && (modo !== "sessao" || p.inicio));
   const [daAgenda, setDaAgenda] = useState<SessaoDaAgenda | null | "fora">(null);
   // AD-032: as inscrições da conta, para não oferecer de novo o que a pessoa já tem.
   const [minhas, setMinhas] = useState<MinhaEntrada[] | null>(null);
@@ -127,7 +145,8 @@ export default function Inscricao() {
 
   const telas = telasDo(r);
   // Sem a data da conta carregada, não dá para decidir emergência/apoio pela idade: espera.
-  const nascimento = quem === "eu" ? (s.conta?.nascimento ?? "") : dataIso(outra.nascimento);
+  const nascimento =
+    modo === "refazer" ? (p.nascimento ?? "") : quem === "eu" ? (s.conta?.nascimento ?? "") : dataIso(outra.nascimento);
   const resumo = (
     <Cartao>
       {sessao.inicio ? (
@@ -154,12 +173,12 @@ export default function Inscricao() {
     enviandoRef.current = true;
     setEnviando(true);
     setErro(null);
-    const corpo: InscricaoEntrada = { paraQuem: paraQuem(quem), respostas: r };
+    const corpo: InscricaoEntrada | { respostas: RespostasDoApp } =
+      modo === "refazer" ? { respostas: r } : { paraQuem: paraQuem(quem), respostas: r };
     try {
-      const res = await s.api.post<{ estado: string }>(
-        `/v1/municipios/${s.municipio}/sessoes/${p.sessaoId}/inscricoes`,
-        corpo,
-      );
+      const res = await s.api.post<{ estado?: string; classificacao: { nivel: string } }>(envio.enviar, corpo);
+      if (modo === "refazer") return setPasso({ tipo: "refeito", nivel: res.classificacao.nivel });
+      if (modo === "lista") return setPasso({ tipo: "lista" });
       setPasso({
         tipo:
           res.estado === "na_reserva" ? "reserva" : res.estado === "aguardando_encaminhamento" ? "pedido" : "inscrito",
@@ -178,9 +197,8 @@ export default function Inscricao() {
     setVerificando(true);
     setErroQuem(null);
     try {
-      await s.api.post(`/v1/municipios/${s.municipio}/sessoes/${p.sessaoId}/inscricoes/verificar`, {
-        paraQuem: paraQuem(q),
-      });
+      // A lista de espera não tem o "/verificar": as recusas vêm no envio, no fim do questionário.
+      if (envio.verificar) await s.api.post(envio.verificar, { paraQuem: paraQuem(q) });
       setQuem(q);
       setPasso({ tipo: "pergunta", indice: 0 });
     } catch (err) {
@@ -201,8 +219,9 @@ export default function Inscricao() {
     void enviar();
   }
 
-  // "para quem é" + uma pergunta por tela; o resultado enche a barra.
-  const total = 1 + telas.length;
+  // "para quem é" + uma pergunta por tela; o resultado enche a barra. Refazer não pergunta "para quem".
+  const antes = modo === "refazer" ? 0 : 1;
+  const total = antes + telas.length;
 
   // Pelo link (deep link), a tela pode abrir sem conta ou sem município escolhido.
   if (s.pronto && !s.token)
@@ -226,6 +245,47 @@ export default function Inscricao() {
     );
   if (s.pronto && !s.municipio) return <Redirect href="/municipio" />;
   if (!s.pronto) return <Carregando cheia />;
+
+  if (passo.tipo === "lista")
+    return (
+      <Tela
+        progresso={{ atual: total, total }}
+        aoVoltar={irParaMinhaFila}
+        acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
+      >
+        <Mascote tamanho={140} />
+        <Faixa
+          tipo="ok"
+          titulo={
+            quem === "outra" ? `${primeiroNome(outra.nome)} está na lista de espera!` : "você está na lista de espera!"
+          }
+          texto="a unidade marca a data e avisa aqui. aí é só confirmar."
+        />
+        {resumo}
+        <TextoSuave>
+          quem tem mais urgência ou prioridade pela lei é chamado antes. a data de entrada conta para o desempate.
+        </TextoSuave>
+      </Tela>
+    );
+
+  if (passo.tipo === "refeito")
+    return (
+      <Tela
+        progresso={{ atual: total, total }}
+        aoVoltar={irParaMinhaFila}
+        acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
+      >
+        <Faixa
+          tipo="ok"
+          titulo="respostas atualizadas"
+          texto="a unidade já vê as respostas novas."
+          style={{ marginTop: 8 }}
+        />
+        {passo.nivel === "urgente" ? (
+          <TextoSuave>pela sua resposta, a equipe vai olhar o seu caso com prioridade.</TextoSuave>
+        ) : null}
+      </Tela>
+    );
 
   if (passo.tipo === "inscrito")
     return (
@@ -529,9 +589,10 @@ export default function Inscricao() {
   const indice = passo.indice;
   return (
     <Tela
-      progresso={{ atual: indice + 2, total }}
+      progresso={{ atual: indice + 1 + antes, total }}
       aoVoltar={() => {
         setErro(null);
+        if (indice === 0 && modo === "refazer") return router.canGoBack() ? router.back() : irParaMinhaFila();
         setPasso(indice > 0 ? { tipo: "pergunta", indice: indice - 1 } : { tipo: "quem" });
       }}
       acoes={
@@ -539,7 +600,15 @@ export default function Inscricao() {
           <Botao texto="ver minha fila" onPress={irParaMinhaFila} />
         ) : (
           <Botao
-            texto={ultima ? "concluir inscrição" : "continuar"}
+            texto={
+              !ultima
+                ? "continuar"
+                : modo === "lista"
+                  ? "entrar na lista"
+                  : modo === "refazer"
+                    ? "salvar respostas"
+                    : "concluir inscrição"
+            }
             onPress={avancar}
             desativado={!respondida}
             carregando={enviando}

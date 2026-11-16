@@ -29,6 +29,7 @@ const base: MinhaEntrada = {
   chamada: null,
   pendencias: [],
   saiaDeCasa: false,
+  prazoConfirmacao: null,
   servicoId: CURATIVOS,
   paraMim: true,
   nascimento: "1990-05-05",
