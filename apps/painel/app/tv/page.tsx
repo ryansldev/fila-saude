@@ -3,6 +3,7 @@
 import type { TvEstado, TvRegistro } from "@fila-saude/schemas/tv";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
+import { PainelDaTv } from "@/components/tv/painel-da-tv";
 import { Button } from "@/components/ui/button";
 import { qrEstilizado } from "@/lib/qr";
 import { urlDaApi } from "@/lib/tenant";
@@ -56,6 +57,12 @@ export default function Tv() {
   const [falhas, setFalhas] = useState(0);
   const [iniciado, setIniciado] = useState(false);
   const [anuncios, setAnuncios] = useState<Anuncios>(ANUNCIOS_VAZIOS);
+  // A hora do topo, pelo relógio da TV.
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setAgora(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, []);
   const audio = useRef<AudioContext | null>(null);
   const pareada = estado?.estado === "pareada" ? estado : null;
   const svg = useSvgDoQr(pareada?.qr?.conteudo ?? null);
@@ -123,29 +130,31 @@ export default function Tv() {
   const offline = falhas >= OFFLINE_LONGO || (semConexao && estado?.estado !== "pareada");
 
   return (
-    <main className="flex min-h-screen flex-col bg-primary-900 font-[family-name:var(--font-nunito)] text-white">
+    <main className="flex min-h-screen flex-col bg-white font-[family-name:var(--font-nunito)] text-[#0c2e4e]">
       {offline ? (
         <Centro>
           <p className="text-5xl font-extrabold">reconectando…</p>
-          <p className="text-2xl opacity-80">a fila volta a aparecer quando a internet voltar.</p>
+          <p className="text-2xl text-slate-500">a fila volta a aparecer quando a internet voltar.</p>
         </Centro>
       ) : !estado ? (
         <Centro>
-          <Logo className="size-24 text-white" />
+          <Logo className="size-24 text-primary" />
         </Centro>
       ) : estado.estado === "aguardando" ? (
         <Centro>
-          <Logo className="size-20 text-white" />
+          <Logo className="size-20 text-primary" />
           <p className="text-3xl">para ligar esta TV, digite no painel da unidade o código</p>
-          <p className="font-mono text-[10rem] leading-none font-extrabold tracking-[0.2em]">{estado.codigo}</p>
-          <p className="text-xl opacity-70">unidades › TVs › parear TV</p>
+          <p className="rounded-3xl bg-[#eef5fa] px-16 py-8 font-mono text-[10rem] leading-none font-extrabold tracking-[0.2em] text-[#0c2e4e]">
+            {estado.codigo}
+          </p>
+          <p className="text-xl text-slate-500">no painel: TVs › parear TV</p>
         </Centro>
       ) : !iniciado ? (
         <Centro>
-          <Logo className="size-20 text-white" />
+          <Logo className="size-20 text-primary" />
           <p className="text-4xl font-bold">{estado.unidade.nome}</p>
           <Button
-            variante="branco"
+            variante="principal"
             className="h-24 rounded-2xl px-12 text-4xl"
             onClick={() => {
               // RN-TV-04: o navegador só libera o som depois de um toque.
@@ -155,19 +164,20 @@ export default function Tv() {
           >
             iniciar painel
           </Button>
-          <p className="text-xl opacity-70">toque uma vez para ligar o som das chamadas.</p>
+          <p className="text-xl text-slate-500">toque uma vez para ligar o som das chamadas.</p>
         </Centro>
       ) : (
         <>
-          <Painel
+          <PainelDaTv
+            agora={agora}
             estado={estado}
             atual={anuncios.atual?.chamada ?? null}
             ultimas={ultimasAnunciadas(anuncios, estado.chamadas).slice(0, 4)}
             svg={semConexao ? null : svg}
           />
           {semConexao ? (
-            <p className="fixed right-6 bottom-4 rounded-full bg-white/20 px-4 py-2 text-xl">
-              sem conexão · reconectando…
+            <p className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-amber-100 px-5 py-2 text-xl font-bold text-amber-900">
+              sem conexão, reconectando…
             </p>
           ) : null}
         </>
@@ -178,73 +188,4 @@ export default function Tv() {
 
 function Centro({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-1 flex-col items-center justify-center gap-8 p-12 text-center">{children}</div>;
-}
-
-function Painel({
-  estado,
-  atual,
-  ultimas,
-  svg,
-}: {
-  estado: Extract<TvEstado, { estado: "pareada" }>;
-  atual: { id: string; senha: string; destino: string } | null;
-  ultimas: { id: string; senha: string; destino: string }[];
-  svg: string | null;
-}) {
-  return (
-    <div className="grid flex-1 grid-cols-[2fr_1fr] grid-rows-[3fr_2fr] gap-6 p-8">
-      <section
-        className={`flex flex-col items-center justify-center rounded-3xl p-8 ${atual ? "bg-white text-primary-900" : "bg-white/10"}`}
-        aria-live="assertive"
-      >
-        <p className="text-3xl font-bold tracking-widest uppercase opacity-70">chamando agora</p>
-        {atual ? (
-          <>
-            <p className="text-[12rem] leading-none font-extrabold tracking-wider">{atual.senha}</p>
-            <p className="text-6xl font-bold lowercase">→ {atual.destino}</p>
-          </>
-        ) : (
-          <p className="mt-6 text-5xl font-bold opacity-80">
-            {estado.atendimentoIniciado ? "aguarde a sua senha" : "atendimento ainda não começou"}
-          </p>
-        )}
-      </section>
-      <section className="row-span-1 rounded-3xl bg-white/10 p-8">
-        <p className="mb-6 text-2xl font-bold tracking-widest uppercase opacity-70">últimas chamadas</p>
-        <ul className="flex flex-col gap-5">
-          {ultimas.map((c) => (
-            <li key={c.id} className="flex items-baseline justify-between gap-4 text-4xl font-bold">
-              <span className="tracking-wider">{c.senha}</span>
-              <span className="text-3xl lowercase opacity-80">{c.destino}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section className="overflow-hidden rounded-3xl bg-white/10 p-8">
-        <ul className="flex flex-col gap-4">
-          {estado.servicos.map((s) => (
-            <li key={s.nome} className="flex items-baseline gap-6 text-4xl">
-              <span className="min-w-64 font-extrabold lowercase">{s.nome}</span>
-              <span>{s.aguardando} aguardando</span>
-              {s.aCaminho > 0 ? <span className="opacity-70">+{s.aCaminho} a caminho</span> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section className="flex flex-col items-center justify-center gap-4 rounded-3xl bg-white p-6 text-primary-900">
-        {svg ? (
-          <>
-            <div
-              className="w-64 max-w-full rounded-2xl bg-white p-3 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
-              // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG gerado localmente (qrEstilizado).
-              dangerouslySetInnerHTML={{ __html: svg }}
-            />
-            <p className="text-3xl font-extrabold">chegou? leia o QR</p>
-          </>
-        ) : (
-          <p className="text-2xl font-bold">o QR aparece quando o atendimento abrir</p>
-        )}
-      </section>
-    </div>
-  );
 }

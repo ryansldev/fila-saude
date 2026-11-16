@@ -145,3 +145,16 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 5 | Médico | Estação de atendimento | Chamar e "Finalizar e chamar o próximo" sem Compareceu | Fecha normalmente (o comparecimento é marcado sozinho) |
 
 **Conferido** por teste (domínio, API com triagem e fila à vista, tela nas duas fases) e por prints no Chrome. **Falta** o clique no navegador.
+
+## TV branca e azul (design system, 2026-11-16)
+
+[Design](../design-system/tv.md).
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Gestor | Navegador da TV → `/tv` | Abrir | Fundo branco, o coração azul e o código de 6 dígitos num quadro azul-claro |
+| 2 | Gerente | Painel → TVs | Parear com o código | A TV mostra a unidade e o botão azul "iniciar painel" |
+| 3 | Gerente | TV | Tocar em "iniciar painel" | Topo com a marca, a unidade e a hora; "aguarde a sua senha"; serviços com "aguardando" e "a caminho" com ícone; o QR |
+| 4 | Enfermeira | Estação | Chamar o próximo | Na TV, o cartão da chamada fica azul com a senha enorme e "→ triagem 1" por alguns segundos; a senha entra em "últimas chamadas" |
+
+**Conferido** por teste de componente e por prints a 1920×1080. **Falta** ver numa TV de verdade, de longe.

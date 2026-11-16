@@ -264,3 +264,12 @@ Design: [estacao.md](../design-system/estacao.md).
 | ES3 | "O mais antigo" | Fica vermelha depois do tempo-alvo da cor confirmada (urgência confirmada ou passou pela triagem); sem cor confirmada, 30 min | Usar a cor sugerida pelo app | Baixo: serviço sem triagem nunca usa a cor do app |
 | ES4 | Chips da fila | Só senha e primeiro nome, até 3 de cada grupo e "+N" | Nome completo | Baixo |
 | ES5 | Troca de estação | Cartão de uma linha e painel lateral "Em qual estação você está?", como a unidade | Menu suspenso | Baixo |
+
+## TV branca e azul (2026-11-16)
+
+Design: [tv.md](../design-system/tv.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| TV1 | Topo da TV | Só o nome da unidade, sem o endereço (a TV não o recebe) | Trazer o endereço na API da TV | Baixo |
+| TV2 | Hora | Pelo relógio da TV, atualizada a cada 10 s | Hora do servidor | Baixo: TV com relógio errado mostra a hora errada |
