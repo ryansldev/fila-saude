@@ -55,7 +55,7 @@
 - No topo, a marca "fila saúde" e a unidade (nome e endereço curto).
 - **Três colunas**, com respiro largo nas margens: o QR (~30% da largura) na moldura, com a barrinha de troca; o **Dr. Lino grande, mais ou menos da altura do QR**, acenando; e o texto.
 - O texto, numa coluna alinhada ao balão: o balão "chegou? que bom! leia o código com a câmera do celular.", os 3 passos curtos ("abra a câmera do celular", "aponte para o código ao lado", "pronto! fique de olho na TV"), os serviços abertos como etiquetas e "sem celular ou não deu certo? fale com a recepção.".
-- **Texto grande para ser lido de longe** (fala ~2,15% da largura da tela, passos ~1,75%, aviso ~1,45%), com a mesma distância entre os blocos.
+- **Texto grande para ser lido de longe** (fala ~1,7% da largura da tela, passos ~1,36%, aviso ~1,13%; medidas do protótipo a 1920 px, corrigidas em 2026-11-16), com a mesma distância entre os blocos.
 - Sem sessão aberta: o Dr. Lino diz "a fila abre às HH:MM." no lugar do código (ou "hoje não tem atendimento por aqui.").
 - Textos em minúsculas, como no app.
 
