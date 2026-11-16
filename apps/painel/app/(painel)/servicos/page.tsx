@@ -16,7 +16,6 @@ import {
   Texto,
 } from "@/components/formulario";
 import { AcoesDaLinha, CabecalhoDaPagina } from "@/components/pagina";
-import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
@@ -194,12 +193,7 @@ function PainelDoServico({
 
 export default function Servicos() {
   const api = useApi();
-  const {
-    unidades,
-    atual,
-    escolher,
-    erro: erroDasUnidades,
-  } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
+  const { atual } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const { itens, erro, recarregar } = useLista<Servico>(atual ? `/v1/painel/unidades/${atual}/servicos` : null);
   const [editando, setEditando] = useState<Servico | null>(null);
   const [criando, setCriando] = useState(false);
@@ -219,7 +213,6 @@ export default function Servicos() {
           ) : null
         }
       />
-      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       <Aviso texto={erro} />
       <Aviso texto={ok} tipo="ok" />
       {atual ? (

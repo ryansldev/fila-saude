@@ -9,9 +9,11 @@ import { ConteudoProtegido } from "@/components/conteudo-protegido";
 import { ProvedorDeDialogos } from "@/components/dialogos";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { UnidadeNoMenu } from "@/components/ui/unidade-no-menu";
 import { useApi } from "@/lib/api-context";
-import { type GrupoDoMenu, ICONES_DO_MENU, menuDoPainel } from "@/lib/navegacao";
+import { type GrupoDoMenu, ICONES_DO_MENU, menuDoPainel, perfisNaUnidade } from "@/lib/navegacao";
 import { sair, useEu } from "@/lib/sessao";
+import { ProvedorDaUnidade, useUnidadeDoPainel } from "@/lib/unidade-atual";
 
 const GRUPOS: { id: GrupoDoMenu; titulo: string }[] = [
   { id: "atendimento", titulo: "Atendimento" },
@@ -19,10 +21,20 @@ const GRUPOS: { id: GrupoDoMenu; titulo: string }[] = [
 ];
 
 export default function LayoutDoPainel({ children }: { children: ReactNode }) {
+  return (
+    <ProvedorDaUnidade>
+      <Moldura>{children}</Moldura>
+    </ProvedorDaUnidade>
+  );
+}
+
+/** Menu e conteúdo pela unidade escolhida no topo do menu (o que a pessoa pode fazer nela). */
+function Moldura({ children }: { children: ReactNode }) {
   const router = useRouter();
   const api = useApi();
   const caminho = usePathname();
   const eu = useEu();
+  const { atual: unidadeId } = useUnidadeDoPainel();
 
   useEffect(() => {
     if (eu.estado === "anonimo") router.replace("/login");
@@ -31,7 +43,8 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
   if (eu.estado === "erro") return <p className="p-8 text-gray-700">Não foi possível carregar. Tente de novo.</p>;
   if (eu.estado !== "autenticado") return <p className="p-8 text-gray-500">Carregando...</p>;
 
-  const menu = menuDoPainel(eu.eu.perfis);
+  const perfis = perfisNaUnidade(eu.eu.perfis, unidadeId);
+  const menu = menuDoPainel(perfis);
   const grupos = GRUPOS.map((g) => ({ ...g, itens: menu.filter((i) => i.grupo === g.id) })).filter(
     (g) => g.itens.length > 0,
   );
@@ -52,6 +65,7 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
           <Logo className="size-9 text-primary" />
           <span className="text-lg font-extrabold tracking-tight text-slate-900">fila saúde</span>
         </div>
+        <UnidadeNoMenu />
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-3">
           {grupos.map((g) => (
             <div key={g.id} className="flex flex-col gap-1">
@@ -100,7 +114,7 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
       </nav>
       <main className="min-w-0 flex-1 px-10 py-8">
         <ProvedorDeDialogos>
-          <ConteudoProtegido caminho={caminho} perfis={eu.eu.perfis}>
+          <ConteudoProtegido caminho={caminho} perfis={perfis}>
             {children}
           </ConteudoProtegido>
         </ProvedorDeDialogos>

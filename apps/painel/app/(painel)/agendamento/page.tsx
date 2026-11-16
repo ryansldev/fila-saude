@@ -10,7 +10,6 @@ import { VagasDaSessao } from "@/components/agendamento/vagas-da-sessao";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, PainelLateral, Selecao } from "@/components/formulario";
 import { CabecalhoDaPagina } from "@/components/pagina";
-import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { ItemDeLista } from "@/components/ui/item-de-lista";
 import { Segmentado } from "@/components/ui/segmentado";
@@ -31,13 +30,7 @@ const MAX_NO_SEGMENTADO = 4;
 export default function Agendamento() {
   const api = useApi();
   const confirmar = useConfirmar();
-  const {
-    unidades,
-    atual,
-    escolher,
-    erro: erroDasUnidades,
-    unidade,
-  } = useUnidadeAtual(["alocar_confirmar_recusar_pelo_paciente"]);
+  const { atual, unidade } = useUnidadeAtual(["alocar_confirmar_recusar_pelo_paciente"]);
   const fuso = unidade?.fuso ?? "America/Sao_Paulo";
   const lista = useConsulta<ListaDeEsperaDoServico[]>(
     atual ? `/v1/painel/unidades/${atual}/lista-espera` : null,
@@ -148,9 +141,6 @@ export default function Agendamento() {
           ) : null
         }
       />
-      {unidades.length > 1 ? (
-        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
-      ) : null}
       <Aviso texto={aviso?.texto ?? lista.erro ?? alocacao.erro ?? ligacao.erro} tipo={aviso?.tipo ?? "erro"} />
 
       {pendencias ? (

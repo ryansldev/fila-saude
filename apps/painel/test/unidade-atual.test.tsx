@@ -73,10 +73,10 @@ describe("unidade atual", () => {
     expect(await screen.findByText(`atual:${U1.id}`)).toBeDefined();
   });
 
-  it("unidade atual: várias pedem escolha e a escolha fica guardada", async () => {
+  it("unidade atual: com várias, começa na primeira (troca no menu) e a escolha fica guardada", async () => {
     montar([U1, U2]);
     expect(await screen.findByText("total:2")).toBeDefined();
-    expect(screen.getByText("atual:nenhuma")).toBeDefined();
+    expect(await screen.findByText(`atual:${U1.id}`)).toBeDefined();
     fireEvent.click(screen.getByText("escolher"));
     expect(await screen.findByText(`atual:${U2.id}`)).toBeDefined();
     cleanup();

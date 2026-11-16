@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, PainelLateral, Secao, Tabela, Texto } from "@/components/formulario";
 import { AcoesDaLinha, CabecalhoDaPagina } from "@/components/pagina";
-import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
@@ -37,13 +36,7 @@ function Situacao({ online }: { online: boolean }) {
 export default function Tvs() {
   const api = useApi();
   const confirmar = useConfirmar();
-  const {
-    unidades,
-    atual,
-    escolher,
-    unidade,
-    erro: erroDasUnidades,
-  } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
+  const { atual, unidade } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const tvs = useConsulta<TvDaUnidade[]>(atual ? `/v1/painel/unidades/${atual}/tvs` : null, 15_000);
   const [pareando, setPareando] = useState(false);
   const [codigo, setCodigo] = useState("");
@@ -110,7 +103,6 @@ export default function Tvs() {
           ) : null
         }
       />
-      <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
       {aviso ? <Aviso texto={aviso.texto} tipo={aviso.tipo} /> : null}
       <Aviso texto={tvs.erro} />
       {atual && tvs.dado ? (

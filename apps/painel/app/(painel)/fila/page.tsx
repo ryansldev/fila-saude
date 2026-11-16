@@ -8,7 +8,6 @@ import { GrupoDaFila } from "@/components/fila/grupo-da-fila";
 import { LinhaDaFila } from "@/components/fila/linha-da-fila";
 import { Aviso } from "@/components/formulario";
 import { CabecalhoDaPagina, EstadoDaSessao } from "@/components/pagina";
-import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Busca } from "@/components/ui/busca";
 import { Button } from "@/components/ui/button";
 import { Filtros } from "@/components/ui/filtros";
@@ -39,13 +38,11 @@ export default function FilaDoDia() {
   const confirmar = useConfirmar();
   const perguntar = usePerguntar();
   const eu = useEu();
-  const {
-    unidades,
-    atual,
-    escolher,
-    unidade,
-    erro: erroDasUnidades,
-  } = useUnidadeAtual(["abrir_cancelar_encerrar_sessao", "conferir_e_marcar_presenca", "operar_chamadas"]);
+  const { atual, unidade } = useUnidadeAtual([
+    "abrir_cancelar_encerrar_sessao",
+    "conferir_e_marcar_presenca",
+    "operar_chamadas",
+  ]);
   const fuso = unidade?.fuso ?? "America/Sao_Paulo";
   const fila = useConsulta<FilaDeHoje>(atual ? `/v1/painel/unidades/${atual}/fila-de-hoje` : null, 3_000);
   const [filtro, setFiltro] = useState<string>("todas");
@@ -123,9 +120,6 @@ export default function FilaDoDia() {
           <Busca rotulo="Buscar na fila" placeholder="Buscar nome, senha ou CPF" valor={termo} aoMudar={setTermo} />
         }
       />
-      {unidades.length > 1 ? (
-        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
-      ) : null}
       <Aviso texto={aviso ?? fila.erro} />
 
       {fila.dado && sessoes.length === 0 ? <p className="text-slate-600">Nenhuma sessão hoje nesta unidade.</p> : null}

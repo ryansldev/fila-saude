@@ -240,3 +240,15 @@ Design: [design-system/design.md](../design-system/design.md); plano: [design-sy
 | DS7 | Diálogo de confirmação perigosa | Botão `perigo` cheio (única ação decisiva do modal) | `perigoContorno` | Baixo |
 | DS8 | Ruído na sugestão | Sem selo para rotina sugerida e sem "Sem sinais de risco" nos motivos | Selo em toda linha | Baixo |
 
+## QR de entrada e unidade no menu (2026-11-16)
+
+Design: [qr-e-unidade.md](../design-system/qr-e-unidade.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| QU1 | QR da TV | A TV também usa o QR novo (pontos pretos, coração azul) | Manter o QR quadrado na TV | Baixo |
+| QU2 | Tela do paciente | Aberta pela equipe, numa aba nova (`/qr-paciente`), com a sessão dela; fora do menu, como a TV | Pareamento próprio, como a TV | Baixo |
+| QU3 | Menu por unidade | O menu mostra só o que a pessoa pode fazer na unidade escolhida | Menu com tudo, páginas recusam | Baixo |
+| QU4 | Unidade inicial | A guardada, se ainda vale; senão, a primeira (antes, com várias, a página pedia a escolha) | Pedir a escolha | Baixo |
+| QU5 | Resumo de hoje | Rota leve `/unidades/hoje`, calculada das sessões (vale para a gestão SMS, que não tem ação da fila) | Junto da lista de unidades | Baixo |
+

@@ -84,3 +84,9 @@ export function podeAcessar(caminho: string, perfis: PerfilDoUsuario[]): boolean
   const lista = perfis.map((p) => p.perfil);
   return item.acoes.some((a) => pode(lista, a));
 }
+
+/** Os perfis que valem na unidade escolhida: os dela e os do município (unidade nula); sem unidade, todos. */
+export function perfisNaUnidade<P extends PerfilDoUsuario>(perfis: P[], unidadeId: string | null): P[] {
+  if (unidadeId === null) return perfis;
+  return perfis.filter((p) => p.unidadeId === null || p.unidadeId === unidadeId);
+}

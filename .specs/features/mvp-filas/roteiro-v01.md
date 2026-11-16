@@ -117,3 +117,17 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 5 | Recepção | Linha "a caminho" | "Marcar presença" | A pessoa passa a "Na unidade" com "esperando a triagem · agora" |
 
 **Conferido** por teste (domínio, rota `fila-de-hoje`, funções da busca e da linha, `Filtros` e `Busca`) e por prints no Chrome (1440 e 1024 px, estado antes de abrir, cenário com as duas sessões abertas, busca). **Falta** o clique no navegador.
+
+## QR de entrada e unidade no menu (design system, 2026-11-16)
+
+[Design](../design-system/qr-e-unidade.md).
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Recepção | Painel → QR de entrada | Abrir a tela com uma sessão aberta | O QR (pontos pretos, coração azul) com a barrinha de troca, as sessões abertas e o Dr. Lino explicando a quem atende, em 4 passos, como o QR funciona |
+| 2 | Recepção | QR de entrada | "Abrir para o paciente (tela cheia)" | Abre `/qr-paciente` numa aba nova: QR grande, o Dr. Lino falando com o paciente e os 3 passos; arraste a aba para o monitor do balcão |
+| 3 | Paciente | Monitor do balcão | Ler o QR com o celular | A pessoa passa a "na unidade" na Fila do dia |
+| 4 | Gestor | Menu → cartão da unidade | Tocar no cartão | "Em qual unidade você está?": as 4 unidades com endereço, CEP, tipo, CNES e o que acontece hoje; escolher troca o painel inteiro |
+| 5 | Recepção | Menu | Olhar o topo do menu | Só o cartão "UBS Centro" (uma unidade, sem troca); as páginas não têm mais seletor de unidade |
+
+**Conferido** por teste (QR lido por leitor automático a 600 e 160 px, resumo de hoje na API, escolha da unidade e menu por unidade) e por prints no Chrome; o QR real (107 caracteres) foi lido nos prints. **Falta** o clique no navegador e ler com um celular de verdade.

@@ -18,7 +18,6 @@ import {
   Texto,
 } from "@/components/formulario";
 import { AcoesDaLinha, CabecalhoDaPagina, EstadoDaSessao } from "@/components/pagina";
-import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
@@ -476,13 +475,7 @@ function PainelEditarSessao({
 export default function Sessoes() {
   const api = useApi();
   const confirmar = useConfirmar();
-  const {
-    unidades,
-    atual,
-    escolher,
-    unidade,
-    erro: erroDasUnidades,
-  } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
+  const { atual, unidade } = useUnidadeAtual(["configurar_servicos_sessoes_estacoes_tv"]);
   const fuso = unidade?.fuso ?? "America/Sao_Paulo";
   const [dia, setDia] = useState(() => hojeNoFuso("America/Sao_Paulo"));
   // O dia padrão segue o fuso da unidade (Acre e Amazonas viram o dia antes de Brasília).
@@ -550,7 +543,6 @@ export default function Sessoes() {
         }
       />
       <div className="flex flex-wrap items-end gap-4">
-        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         <Campo rotulo="Dia" className="w-full sm:w-52">
           <Texto type="date" valor={dia} aoMudar={(novo) => diaValido(novo) && setDia(novo)} />
         </Campo>

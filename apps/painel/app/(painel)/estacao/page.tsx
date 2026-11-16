@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Selecao } from "@/components/formulario";
 import { CabecalhoDaPagina } from "@/components/pagina";
-import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
 import { BotaoDeEscolha } from "@/components/ui/botao-de-escolha";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
@@ -30,7 +29,7 @@ function lerEstacao(): string | null {
 export default function Estacao() {
   const api = useApi();
   const confirmar = useConfirmar();
-  const { unidades, atual, escolher, erro: erroDasUnidades } = useUnidadeAtual(["operar_chamadas"]);
+  const { atual } = useUnidadeAtual(["operar_chamadas"]);
   const eu = useEu();
   const hoje = useConsulta<HojeNaUnidade>(atual ? `/v1/painel/unidades/${atual}/hoje` : null, 60_000);
   const [estacaoId, setEstacaoId] = useState<string | null>(null);
@@ -115,7 +114,6 @@ export default function Estacao() {
     <div className="flex w-full flex-col gap-6">
       <CabecalhoDaPagina titulo="Estação" descricao="Chame o próximo paciente e acompanhe quem está na sua sala." />
       <div className="flex flex-wrap items-end gap-4">
-        <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         {estacoes.length > 0 ? (
           <Campo rotulo="Estação" className="w-full sm:w-72">
             <Selecao
