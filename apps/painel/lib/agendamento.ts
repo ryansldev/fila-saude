@@ -1,3 +1,5 @@
+import { vespera } from "@fila-saude/domain";
+
 /** Data e hora no fuso da unidade: "qua., 18/11 às 08:00". */
 export function quandoNoFuso(iso: string, fuso: string): string {
   const partes = new Intl.DateTimeFormat("pt-BR", {
@@ -51,3 +53,53 @@ export const CLASSES_DO_TOM: Record<Tom, string> = {
   alerta: "bg-amber-100 text-amber-900",
   ok: "bg-emerald-100 text-emerald-800",
 };
+
+export type Barra = "confirmada" | "pendente" | "livre";
+
+/** As barrinhas de vagas da sessão; sem limite de vagas não há o que desenhar (`null`). */
+export function barrasDeVagas(s: { vagas: number | null; confirmadas: number; pendentes: number }): Barra[] | null {
+  if (s.vagas === null) return null;
+  const confirmadas = Math.min(s.confirmadas, s.vagas);
+  const pendentes = Math.min(s.pendentes, s.vagas - confirmadas);
+  return [
+    ...Array<Barra>(confirmadas).fill("confirmada"),
+    ...Array<Barra>(pendentes).fill("pendente"),
+    ...Array<Barra>(s.vagas - confirmadas - pendentes).fill("livre"),
+  ];
+}
+
+/**
+ * RN-RISCO-01: um selo só por pessoa; "(app)" quando é o sugerido, sem ele quando a triagem confirmou.
+ * Rotina sugerida não leva selo: só o risco que muda a ordem chama atenção.
+ */
+export function seloDoRisco(r: { nivel: string; confirmado: boolean }): {
+  rotulo: string;
+  tom: "alerta" | "neutro" | "perigo";
+} | null {
+  if (r.nivel === "rotina" && !r.confirmado) return null;
+  const nome = NIVEIS[r.nivel] ?? r.nivel;
+  const tom =
+    r.nivel === "emergencia" ? "perigo" : r.nivel === "urgente" || r.nivel === "muito_urgente" ? "alerta" : "neutro";
+  return { rotulo: r.confirmado ? nome : `${nome} (app)`, tom };
+}
+
+/** A linha "por quê" da sugestão: a regra do questionário (menos a de rotina) e os demais motivos. */
+export const linhaDeMotivos = (risco: { nivel: string; regra: string }, motivos: string[]): string =>
+  [...(risco.nivel === "rotina" ? [] : [risco.regra]), ...motivos].join(" · ");
+
+/** RN-CONF-03: a faixa do topo: quantas pessoas para ligar e quem espera resposta há mais tempo. */
+export function resumoDasPendencias(
+  itens: { nome: string; alocadaEm: string }[],
+  agora: number,
+): { total: number; texto: string } | null {
+  if (itens.length === 0) return null;
+  const maisAntigo = itens.reduce((a, b) => (Date.parse(b.alocadaEm) < Date.parse(a.alocadaEm) ? b : a));
+  const horas = Math.max(0, Math.floor((agora - Date.parse(maisAntigo.alocadaEm)) / 3_600_000));
+  const quantas = itens.length === 1 ? "1 pessoa para ligar" : `${itens.length} pessoas para ligar`;
+  return { total: itens.length, texto: `${quantas} · ${maisAntigo.nome} sem resposta há ${horas} h` };
+}
+
+/** RN-AL-05: até quando dá para alocar (a véspera da sessão, no fuso da unidade): "seg., 16/11". */
+export function alocarAte(inicio: string, fuso: string): string {
+  return quandoNoFuso(new Date(vespera(Date.parse(inicio), fuso)).toISOString(), fuso).split(" às ")[0] ?? "";
+}

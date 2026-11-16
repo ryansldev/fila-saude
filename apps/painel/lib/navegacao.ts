@@ -1,4 +1,18 @@
 import { type Acao, type Perfil, pode } from "@fila-saude/domain";
+import {
+  Building2Icon,
+  CalendarCheckIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  DoorOpenIcon,
+  type LucideIcon,
+  MegaphoneIcon,
+  QrCodeIcon,
+  StethoscopeIcon,
+  TvIcon,
+  UsersIcon,
+  UsersRoundIcon,
+} from "lucide-react";
 
 /** Seções da barra lateral: o dia a dia na unidade e a configuração. */
 export type GrupoDoMenu = "atendimento" | "configuracao";
@@ -28,6 +42,21 @@ export const ITENS_DO_MENU: Candidato[] = [
   { rotulo: "Estação", href: "/estacao", grupo: "atendimento", acoes: [OPERAR] },
   { rotulo: "Agendamento", href: "/agendamento", grupo: "atendimento", acoes: [AGENDAR] },
 ];
+
+/** O ícone de cada item do menu (e do "Em breve"); todo item tem um. */
+export const ICONES_DO_MENU: Record<string, LucideIcon> = {
+  "/fila": UsersRoundIcon,
+  "/estacao": MegaphoneIcon,
+  "/agendamento": CalendarCheckIcon,
+  "/qr": QrCodeIcon,
+  "/unidades": Building2Icon,
+  "/equipe": UsersIcon,
+  "/servicos": StethoscopeIcon,
+  "/estacoes": DoorOpenIcon,
+  "/sessoes": CalendarDaysIcon,
+  "/tvs": TvIcon,
+  "/em-breve": ClockIcon,
+};
 
 const EM_BREVE: ItemDeMenu = { rotulo: "Em breve", href: "/em-breve", grupo: "atendimento" };
 

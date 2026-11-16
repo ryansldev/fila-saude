@@ -1,48 +1,22 @@
 "use client";
 
-import {
-  Building2Icon,
-  CalendarDaysIcon,
-  CircleIcon,
-  ClockIcon,
-  DoorOpenIcon,
-  LogOutIcon,
-  type LucideIcon,
-  MegaphoneIcon,
-  QrCodeIcon,
-  StethoscopeIcon,
-  TvIcon,
-  UsersIcon,
-  UsersRoundIcon,
-} from "lucide-react";
+import { CircleIcon, LogOutIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect } from "react";
+import { ContadorDoMenu } from "@/components/agendamento/contador-do-menu";
 import { ConteudoProtegido } from "@/components/conteudo-protegido";
 import { ProvedorDeDialogos } from "@/components/dialogos";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
-import { type GrupoDoMenu, menuDoPainel } from "@/lib/navegacao";
+import { type GrupoDoMenu, ICONES_DO_MENU, menuDoPainel } from "@/lib/navegacao";
 import { sair, useEu } from "@/lib/sessao";
 
 const GRUPOS: { id: GrupoDoMenu; titulo: string }[] = [
   { id: "atendimento", titulo: "Atendimento" },
   { id: "configuracao", titulo: "Configuração" },
 ];
-
-const ICONES: Record<string, LucideIcon> = {
-  "/fila": UsersRoundIcon,
-  "/estacao": MegaphoneIcon,
-  "/qr": QrCodeIcon,
-  "/unidades": Building2Icon,
-  "/equipe": UsersIcon,
-  "/servicos": StethoscopeIcon,
-  "/estacoes": DoorOpenIcon,
-  "/sessoes": CalendarDaysIcon,
-  "/tvs": TvIcon,
-  "/em-breve": ClockIcon,
-};
 
 export default function LayoutDoPainel({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -83,7 +57,7 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
             <div key={g.id} className="flex flex-col gap-1">
               <p className="px-3 pb-1 text-xs font-semibold text-slate-400">{g.titulo}</p>
               {g.itens.map((item) => {
-                const Icone = ICONES[item.href] ?? CircleIcon;
+                const Icone = ICONES_DO_MENU[item.href] ?? CircleIcon;
                 const atual = ativo(item.href);
                 return (
                   <Link
@@ -98,6 +72,7 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
                   >
                     <Icone className="size-5 shrink-0" strokeWidth={atual ? 2.4 : 2} />
                     {item.rotulo}
+                    {item.href === "/agendamento" ? <ContadorDoMenu ativo={atual} /> : null}
                   </Link>
                 );
               })}
