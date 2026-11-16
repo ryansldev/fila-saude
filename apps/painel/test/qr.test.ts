@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
-import { qrEstilizado } from "@/lib/qr";
+import { falaSemSessao, qrEstilizado } from "@/lib/qr";
 
 const require = createRequire(import.meta.url);
 const sharp = require("sharp");
@@ -38,4 +38,11 @@ describe("QR de entrada estilizado (design system)", () => {
         expect(await ler(qrEstilizado(conteudo), px), `${conteudo.length} @ ${px}px`).toBe(conteudo);
     }
   }, 30_000);
+});
+
+describe("tela do paciente sem sessão aberta", () => {
+  it("o Dr. Lino diz quando a fila abre, ou que hoje não tem", () => {
+    expect(falaSemSessao("2026-11-16T16:00:00.000Z", "America/Sao_Paulo")).toBe("a fila abre às 13:00.");
+    expect(falaSemSessao(null, "America/Sao_Paulo")).toBe("hoje não tem atendimento por aqui.");
+  });
 });

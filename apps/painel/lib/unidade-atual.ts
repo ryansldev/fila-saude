@@ -7,7 +7,15 @@ import { useApi } from "@/lib/api-context";
 import { mensagemDoErro } from "@/lib/formularios/erros";
 import { useEu } from "@/lib/sessao";
 
-export type UnidadeResumo = { id: string; nome: string; fuso: string };
+/** A unidade como a lista do painel devolve (o que a troca de unidade e a tela do paciente mostram). */
+export type UnidadeResumo = {
+  id: string;
+  nome: string;
+  fuso: string;
+  tipo?: "ubs" | "policlinica" | "upa";
+  cnes?: string | null;
+  endereco?: { logradouro: string; numero: string; bairro: string; cep: string; complemento?: string | null };
+};
 
 const CHAVE = "fila-painel:unidade-atual";
 

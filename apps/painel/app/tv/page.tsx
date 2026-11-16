@@ -1,10 +1,10 @@
 "use client";
 
 import type { TvEstado, TvRegistro } from "@fila-saude/schemas/tv";
-import QRCode from "qrcode";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { qrEstilizado } from "@/lib/qr";
 import { urlDaApi } from "@/lib/tenant";
 import { ANUNCIOS_VAZIOS, type Anuncios, avancarAnuncios, receberChamadas, ultimasAnunciadas } from "@/lib/tv";
 
@@ -45,17 +45,9 @@ function tocarAviso(ctx: AudioContext | null) {
   tom(660, 0.5);
 }
 
+/** O QR de entrada do design system (pontos pretos, coração azul), o mesmo do painel e do monitor. */
 function useSvgDoQr(conteudo: string | null) {
-  const [svg, setSvg] = useState<string | null>(null);
-  useEffect(() => {
-    if (!conteudo) return setSvg(null);
-    let ativo = true;
-    QRCode.toString(conteudo, { type: "svg", margin: 1, errorCorrectionLevel: "M" }).then((s) => ativo && setSvg(s));
-    return () => {
-      ativo = false;
-    };
-  }, [conteudo]);
-  return svg;
+  return useMemo(() => (conteudo ? qrEstilizado(conteudo) : null), [conteudo]);
 }
 
 /** T3.5: TV da sala de espera. Pareamento (RN-TV-01), só senhas (RN-TV-05), fila de anúncios (RN-TV-07). */
@@ -242,8 +234,11 @@ function Painel({
       <section className="flex flex-col items-center justify-center gap-4 rounded-3xl bg-white p-6 text-primary-900">
         {svg ? (
           <>
-            {/* biome-ignore lint/security/noDangerouslySetInnerHtml: SVG gerado localmente pela biblioteca do QR. */}
-            <div className="w-64 max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />
+            <div
+              className="w-64 max-w-full rounded-2xl bg-white p-3 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full"
+              // biome-ignore lint/security/noDangerouslySetInnerHtml: SVG gerado localmente (qrEstilizado).
+              dangerouslySetInnerHTML={{ __html: svg }}
+            />
             <p className="text-3xl font-extrabold">chegou? leia o QR</p>
           </>
         ) : (

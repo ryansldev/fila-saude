@@ -1,3 +1,4 @@
+import { instanteParaLocal } from "@fila-saude/domain";
 import QRCode from "qrcode";
 
 const PRETO = "#111313";
@@ -45,4 +46,10 @@ export function qrEstilizado(conteudo: string): string {
     "</svg>",
   );
   return partes.join("");
+}
+
+/** O que o Dr. Lino diz na tela do paciente quando não há sessão aberta (em minúsculas, como no app). */
+export function falaSemSessao(proximaAbertura: string | null, fuso: string): string {
+  if (!proximaAbertura) return "hoje não tem atendimento por aqui.";
+  return `a fila abre às ${instanteParaLocal(Date.parse(proximaAbertura), fuso).slice(11, 16)}.`;
 }
