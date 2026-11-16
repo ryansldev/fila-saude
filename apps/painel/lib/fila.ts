@@ -1,4 +1,4 @@
-import { type Acao, condicoes, type Perfil, pode } from "@fila-saude/domain";
+import { type Acao, condicoes, instanteParaLocal, type Perfil, pode } from "@fila-saude/domain";
 import type { PerfilDoUsuario } from "@/lib/navegacao";
 
 const naUnidade = (perfis: PerfilDoUsuario[], unidadeId: string) =>
@@ -115,4 +115,81 @@ export function contadoresDaFila(itens: ItemComEstado[]) {
     chamados: itens.filter((i) => i.estado === "chamado").length,
     atendidos: itens.filter((i) => i.estado === "atendido_na_etapa").length,
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Fila do dia, caminho C (design system): a unidade inteira, com busca e pílulas por serviço.
+
+const semAcento = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+const soLetrasENumeros = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, "");
+const PARECE_SENHA = /^[a-z]{1,3}-?\d+$/i;
+
+/**
+ * Busca do balcão, na hora e sem ir à API: nome (sem acento nem maiúscula), senha (com ou sem hífen)
+ * e CPF — com os 11 dígitos do documento, compara os 6 do meio, que é o que o CPF mascarado mostra.
+ */
+export function buscarNaFila<T extends { nome: string; senha: string; documento: { cpf: string | null } }>(
+  itens: T[],
+  termo: string,
+): T[] {
+  const t = termo.trim();
+  if (!t) return itens;
+  const digitos = t.replace(/\D/g, "");
+  if (digitos.length === 11) {
+    const meio = digitos.slice(3, 9);
+    return itens.filter((i) => (i.documento.cpf ?? "").replace(/\D/g, "") === meio);
+  }
+  if (PARECE_SENHA.test(t)) {
+    const senha = soLetrasENumeros(t);
+    return itens.filter((i) => soLetrasENumeros(i.senha).includes(senha));
+  }
+  const nome = semAcento(t);
+  return itens.filter((i) => semAcento(i.nome).includes(nome));
+}
+
+/** Minutos inteiros desde `iso` (para baixo; nunca negativo, se o relógio do servidor estiver adiantado). */
+export function minutosDesde(iso: string, agora: number): number {
+  return Math.max(0, Math.floor((agora - Date.parse(iso)) / 60_000));
+}
+
+export type ContextoDaLinha = { texto: string; tempo: string | null; tom: "neutro" | "alerta" | "chamado" };
+
+/**
+ * O que a linha diz da pessoa, em partes separadas (sem "Info · Info · Info"): a situação, há quanto
+ * tempo (quando se sabe) e o tom. O serviço a linha mostra à parte.
+ */
+export function contextoDaLinha(
+  i: { estado: string; etapa: string; pendencias: string[]; desde: string | null; estacao: string | null },
+  agora: number,
+): ContextoDaLinha {
+  const tempo = i.desde ? `há ${minutosDesde(i.desde, agora)} min` : null;
+  if (i.estado === "chamado")
+    return { texto: i.estacao ? `chamado para ${i.estacao}` : "chamado", tempo, tom: "chamado" };
+  if (i.estado === "presente")
+    return { texto: i.etapa === "triagem" ? "esperando a triagem" : "esperando o atendimento", tempo, tom: "neutro" };
+  if (i.estado === "remoto" && i.pendencias.length > 0)
+    return { texto: `conferir ${i.pendencias.map((p) => PENDENCIAS[p] ?? p).join(", ")}`, tempo: null, tom: "alerta" };
+  if (i.estado === "remoto") return { texto: "em casa", tempo: null, tom: "neutro" };
+  return { texto: rotuloDoEstado(i.estado).toLowerCase(), tempo: null, tom: "neutro" };
+}
+
+/** A pílula de uma sessão de hoje: o serviço e, ao lado, quantos na fila ou quando abre. */
+export function pilulaDaSessao(
+  s: { servico: string; estado: string; inicio: string; contagens: { naFila: number } },
+  fuso: string,
+): { rotulo: string; detalhe: string; desativada: boolean } {
+  const detalhe =
+    s.estado === "planejada"
+      ? `abre às ${instanteParaLocal(Date.parse(s.inicio), fuso).slice(11, 16)}`
+      : s.estado === "encerrada"
+        ? "encerrada"
+        : s.estado === "cancelada"
+          ? "cancelada"
+          : String(s.contagens.naFila);
+  return { rotulo: s.servico, detalhe, desativada: s.estado === "cancelada" };
+}
+
+/** O filtro guardado no navegador só vale se a sessão ainda está entre as de hoje; senão, "todas". */
+export function filtroValido(guardado: string | null, sessoes: { id: string }[]): string {
+  return guardado && sessoes.some((s) => s.id === guardado) ? guardado : "todas";
 }
