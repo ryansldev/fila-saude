@@ -283,3 +283,12 @@ Design: [app-unidade.md](../design-system/app-unidade.md).
 | AU1 | Filtros por serviço | Saíram ("todos", "curativos", …): com a faixa de dias, a lista de um dia já é curta | Manter os filtros junto da faixa | Baixo |
 | AU2 | Botão do calendário | Aparece sempre que a faixa tem mais de um dia | Só quando a faixa não cabe na tela | Baixo |
 | AU3 | Lista de espera | Uma seção abaixo dos atendimentos, um cartão por serviço com o botão embaixo do nome | O cartão "não achou o dia?" levando a outra tela | Baixo |
+
+## App: entrar (2026-11-16)
+
+Design: [app-entrar.md](../design-system/app-entrar.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| EN1 | Olho da senha | Dentro do campo, no `CampoSenha` do kit: vale para o app inteiro (cadastro também) | Só na tela "entrar" | Baixo |
+| EN2 | "ver as unidades perto de mim" | Abre a lista de unidades do município (não pede login) | Abrir a unidade em que a pessoa se inscreveu por último | Baixo |

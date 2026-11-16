@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dataIso, erroDaOutraPessoa, erroDoCadastro } from "@/lib/validacao";
+import { dataIso, erroDaOutraPessoa, erroDoCadastro, faltaNoLogin } from "@/lib/validacao";
 
 const ok = {
   nome: "Ana Souza",
@@ -41,5 +41,15 @@ describe("validação dos formulários do app (revisão 2026-11-13)", () => {
     expect(erroDaOutraPessoa(outra, "52998224725").cpf).toBe('esse é o seu CPF. para você, escolha "para mim".');
     expect(erroDaOutraPessoa(outra, "11144477735")).toEqual({});
     expect(erroDaOutraPessoa(outra, undefined)).toEqual({});
+  });
+});
+
+describe("entrar: o que falta em cada campo", () => {
+  it("diz no campo o que falta, em vez de apagar o botão", () => {
+    expect(faltaNoLogin("", "")).toEqual({ cpf: "digite o CPF.", senha: "digite a senha." });
+    expect(faltaNoLogin("  ", "x")).toEqual({ cpf: "digite o CPF." });
+    expect(faltaNoLogin("111.111.111-11", "x")).toEqual({ cpf: "CPF inválido. confira os números." });
+    expect(faltaNoLogin("529.982.247-25", "")).toEqual({ senha: "digite a senha." });
+    expect(faltaNoLogin("529.982.247-25", "x")).toEqual({});
   });
 });

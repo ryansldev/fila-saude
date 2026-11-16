@@ -17,6 +17,8 @@ import {
   CircleAlert,
   CircleCheck,
   CircleUserRound,
+  Eye,
+  EyeOff,
   House,
   Info,
   type LucideIcon,
@@ -464,43 +466,78 @@ export function Segmentado<T extends string>({
   );
 }
 
-export function Campo({ rotulo, erro, ...props }: { rotulo: string; erro?: string | undefined } & TextInputProps) {
+export function Campo({
+  rotulo,
+  erro,
+  direita,
+  ...props
+}: { rotulo: string; erro?: string | undefined; direita?: ReactNode } & TextInputProps) {
   const [foco, setFoco] = useState(false);
   return (
     <View style={{ gap: 8 }}>
       <Text style={e.rotulo}>{rotulo}</Text>
-      <TextInput
-        accessibilityLabel={rotulo}
-        accessibilityHint={erro}
-        placeholderTextColor="#9aa3a5"
-        style={[
-          e.campo,
-          foco && { borderColor: COR.action, backgroundColor: COR.surface },
-          erro ? { borderColor: COR.dangerInk, backgroundColor: COR.dangerBg } : null,
-        ]}
-        {...props}
-        onFocus={(ev) => {
-          setFoco(true);
-          props.onFocus?.(ev);
-        }}
-        onBlur={(ev) => {
-          setFoco(false);
-          props.onBlur?.(ev);
-        }}
-      />
-      {erro ? <Text style={{ fontFamily: FONTE.regular, fontSize: 16, color: COR.dangerInk }}>{erro}</Text> : null}
+      <View style={{ justifyContent: "center" }}>
+        <TextInput
+          accessibilityLabel={rotulo}
+          accessibilityHint={erro}
+          placeholderTextColor="#9aa3a5"
+          style={[
+            e.campo,
+            direita ? { paddingRight: 56 } : null,
+            foco && { borderColor: COR.action, backgroundColor: COR.surface },
+            erro ? { borderColor: COR.dangerInk, backgroundColor: COR.dangerBg } : null,
+          ]}
+          {...props}
+          onFocus={(ev) => {
+            setFoco(true);
+            props.onFocus?.(ev);
+          }}
+          onBlur={(ev) => {
+            setFoco(false);
+            props.onBlur?.(ev);
+          }}
+        />
+        {direita ? <View style={{ position: "absolute", right: 6 }}>{direita}</View> : null}
+      </View>
+      {erro ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <CircleAlert size={18} color={COR.dangerInk} strokeWidth={2.4} />
+          <Text style={{ flex: 1, fontFamily: FONTE.bold, fontSize: 16, color: COR.dangerInk }}>{erro}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
-/** Senha com "mostrar": digitar no celular sem ver o que digitou trava muita gente. */
+/** Senha com o olho dentro do campo: digitar no celular sem ver o que digitou trava muita gente. */
 export function CampoSenha({ rotulo, erro, ...props }: { rotulo: string; erro?: string | undefined } & TextInputProps) {
   const [ver, setVer] = useState(false);
+  const Olho = ver ? EyeOff : Eye;
   return (
-    <View style={{ gap: 6 }}>
-      <Campo rotulo={rotulo} erro={erro} secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false} {...props} />
-      <Botao variante="texto" texto={ver ? "esconder senha" : "mostrar senha"} onPress={() => setVer(!ver)} />
-    </View>
+    <Campo
+      rotulo={rotulo}
+      erro={erro}
+      secureTextEntry={!ver}
+      autoCapitalize="none"
+      autoCorrect={false}
+      direita={
+        <AreaTocavel
+          rotulo={ver ? "esconder a senha" : "mostrar a senha"}
+          onPress={() => setVer(!ver)}
+          style={(pressed) => ({
+            width: 44,
+            height: 44,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 12,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Olho size={24} color={COR.action} strokeWidth={2.4} />
+        </AreaTocavel>
+      }
+      {...props}
+    />
   );
 }
 

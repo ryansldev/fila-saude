@@ -78,3 +78,12 @@ export function erroDaOutraPessoa(
     ["cpf", cpf],
   ]);
 }
+
+/** Entrar: o que falta em cada campo, dito no próprio campo (o botão fica sempre aceso). */
+export function faltaNoLogin(cpf: string, senha: string): { cpf?: string; senha?: string } {
+  const r: { cpf?: string; senha?: string } = {};
+  if (!cpf.replace(/\D/g, "")) r.cpf = "digite o CPF.";
+  else if (!cpfValido(cpf)) r.cpf = "CPF inválido. confira os números.";
+  if (!senha) r.senha = "digite a senha.";
+  return r;
+}

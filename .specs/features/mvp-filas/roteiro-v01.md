@@ -171,3 +171,16 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 4 | Paciente | Lista de espera | Olhar | Um cartão por serviço com "entrar na lista" ou "na lista" e "outra pessoa" |
 
 **Conferido** por teste (dias, mês e ano, grade do mês) e por prints na prévia web. **Falta** no celular de verdade (gaveta nativa, rolagem da faixa trocando o mês).
+
+## App: entrar (design system, 2026-11-16)
+
+[Design](../design-system/app-entrar.md).
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Paciente | Boas-vindas → "já tenho conta" | Abrir | O Dr. Lino grande, "que bom te ver de novo!", CPF e senha com o olho no campo, "esqueci a senha", "entrar" aceso e "ainda não tenho conta" |
+| 2 | Paciente | Entrar | Tocar "entrar" vazio | Os dois campos em vermelho: "digite o CPF." e "digite a senha." |
+| 3 | Paciente | Entrar | Tocar o olho | A senha aparece; tocar de novo esconde |
+| 4 | Paciente | Entrar | "esqueci a senha" | A gaveta com o Dr. Lino ("sem problema!"), "leve um documento com foto" e "ver as unidades perto de mim" |
+
+**Conferido** por teste (o que falta em cada campo) e por prints na prévia web. **Falta** no celular de verdade (teclado aberto, gaveta nativa).
