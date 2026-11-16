@@ -88,6 +88,37 @@ export function Mascote({ tamanho = 200, moldura = true }: { tamanho?: number; m
   );
 }
 
+/**
+ * O Dr. Lino pequeno com a fala num balão suave (azul bem claro, sem borda, pontinha para ele): as
+ * perguntas do cadastro e o "entrar". Ocupa pouco, para o teclado não cobrir o campo.
+ */
+export function BalaoDoLino({ texto }: { texto: string }) {
+  return (
+    <View
+      accessibilityRole="summary"
+      accessibilityLabel={`dr. lino: ${texto}`}
+      style={{ flexDirection: "row", alignItems: "flex-end", gap: 4 }}
+    >
+      <View style={{ backgroundColor: COR.surface }}>
+        <Mascote tamanho={96} moldura={false} />
+      </View>
+      <View style={{ flex: 1, marginBottom: 18 }}>
+        <View
+          style={{
+            backgroundColor: "#eef5fa",
+            borderRadius: 20,
+            borderBottomLeftRadius: 6,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+          }}
+        >
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 18, lineHeight: 25, color: COR.primary900 }}>{texto}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 /** Topo das telas: seta à esquerda quando dá para voltar; depois o logo e "fila saúde". */
 export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?: (() => void) | undefined }) {
   const aoPressionar = aoVoltar ?? (voltar && router.canGoBack() ? () => router.back() : undefined);
@@ -180,12 +211,15 @@ export function Tela({
   progresso,
   fundo = COR.surface,
   aoVoltar,
+  aoFechar,
 }: {
   children: ReactNode;
   topo?: boolean;
   voltar?: boolean;
   /** Fluxo de vários passos: "voltar" vai ao passo anterior em vez de sair (e perder o que foi digitado). */
   aoVoltar?: () => void;
+  /** O X da barra de progresso, quando ele sai do fluxo em vez de voltar um passo. */
+  aoFechar?: () => void;
   rodape?: ReactNode;
   /** Botões da tela, sempre fixos embaixo e alinhados (principal em cima, secundário embaixo). */
   acoes?: ReactNode;
@@ -213,7 +247,7 @@ export function Tela({
         <BarraDeProgresso
           atual={progresso.atual}
           total={progresso.total}
-          aoFechar={aoVoltar ?? (router.canGoBack() ? () => router.back() : undefined)}
+          aoFechar={aoFechar ?? aoVoltar ?? (router.canGoBack() ? () => router.back() : undefined)}
         />
       ) : topo ? (
         <Topo voltar={voltar} aoVoltar={aoVoltar} />
@@ -470,8 +504,9 @@ export function Campo({
   rotulo,
   erro,
   direita,
+  dica,
   ...props
-}: { rotulo: string; erro?: string | undefined; direita?: ReactNode } & TextInputProps) {
+}: { rotulo: string; erro?: string | undefined; direita?: ReactNode; dica?: string | undefined } & TextInputProps) {
   const [foco, setFoco] = useState(false);
   return (
     <View style={{ gap: 8 }}>
@@ -499,6 +534,9 @@ export function Campo({
         />
         {direita ? <View style={{ position: "absolute", right: 6 }}>{direita}</View> : null}
       </View>
+      {dica && !erro ? (
+        <Text style={{ fontFamily: FONTE.semi, fontSize: 15, lineHeight: 21, color: COR.inkMuted }}>{dica}</Text>
+      ) : null}
       {erro ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <CircleAlert size={18} color={COR.dangerInk} strokeWidth={2.4} />

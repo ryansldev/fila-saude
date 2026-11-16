@@ -292,3 +292,13 @@ Design: [app-entrar.md](../design-system/app-entrar.md).
 | --- | --- | --- | --- | --- |
 | EN1 | Olho da senha | Dentro do campo, no `CampoSenha` do kit: vale para o app inteiro (cadastro também) | Só na tela "entrar" | Baixo |
 | EN2 | "ver as unidades perto de mim" | Abre a lista de unidades do município (não pede login) | Abrir a unidade em que a pessoa se inscreveu por último | Baixo |
+
+## App: criar conta, uma pergunta por tela (2026-11-16)
+
+Design: [app-cadastro.md](../design-system/app-cadastro.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| CA1 | E-mail | Continua obrigatório (a API pede), com o texto "para avisos da sua conta" no lugar de "serve para recuperar a senha" | Opcional ou fora do cadastro (muda a API) | Baixo: quem não tem e-mail não cria conta pelo app |
+| CA2 | CPF já com conta | Volta à tela do CPF com o erro e "entrar com este CPF" (abre o "entrar" com o CPF preenchido) | Só o erro | Baixo |
+| CA3 | "confira" | Tela com o resumo e "corrigir" por linha antes de criar a conta | Criar direto da tela do e-mail | Baixo: um toque a mais |

@@ -10,6 +10,7 @@ export type DadosDoCadastro = Record<CampoDoCadastro, string>;
 /** O erro do campo desta tela (o "confira" não tem campo). */
 export function erroDoPasso(p: PassoDoCadastro, v: DadosDoCadastro): string | undefined {
   if (p === "confira") return undefined;
+  if (p === "cpf" && !v.cpf.replace(/\D/g, "")) return "digite o CPF.";
   return erroDoCadastro(v)[p];
 }
 

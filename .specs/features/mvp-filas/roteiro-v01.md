@@ -184,3 +184,18 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 4 | Paciente | Entrar | "esqueci a senha" | A gaveta com o Dr. Lino ("sem problema!"), "leve um documento com foto" e "ver as unidades perto de mim" |
 
 **Conferido** por teste (o que falta em cada campo) e por prints na prévia web. **Falta** no celular de verdade (teclado aberto, gaveta nativa).
+
+## App: criar conta, uma pergunta por tela (design system, 2026-11-16)
+
+[Design](../design-system/app-cadastro.md).
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Paciente novo | Boas-vindas → começar → criar conta | Abrir | "oi! vamos criar a sua conta. qual é o seu nome completo?" com o Dr. Lino pequeno; X na barra; "já tenho conta" |
+| 2 | Paciente novo | CPF | "continuar" vazio | "digite o CPF." embaixo do campo; com um CPF errado, "CPF inválido…" |
+| 3 | Paciente novo | Senha | Digitar | "pelo menos 8 caracteres" fica verde com ✓ ao chegar em 8 |
+| 4 | Paciente novo | Confira | "corrigir" no celular, mudar e "continuar" | Volta ao confira com o celular novo; "criar conta" entra no app |
+| 5 | Paciente | Criar conta com o CPF da Ana | Criar | Volta à tela do CPF com o erro e "entrar com este CPF" (o "entrar" abre com o CPF preenchido) |
+| 6 | Paciente | Entrar | Abrir | O Dr. Lino pequeno com o balão "que bom te ver de novo!…" |
+
+**Conferido** por teste (ordem das telas, erros, regra da senha, corrigir, erro do servidor) e por prints na prévia web. **Falta** no celular de verdade (teclado de cada campo, voltar do Android).

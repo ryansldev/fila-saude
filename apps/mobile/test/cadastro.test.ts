@@ -29,6 +29,7 @@ describe("cadastro, uma pergunta por tela", () => {
     expect(erroDoPasso("cpf", v)).toMatch(/CPF/);
     expect(erroDoPasso("senha", v)).toBe("a senha precisa de pelo menos 8 caracteres.");
     expect(erroDoPasso("confira", ok)).toBeUndefined();
+    expect(erroDoPasso("cpf", { ...ok, cpf: "" })).toBe("digite o CPF.");
   });
 
   it("continuar avança; depois de corrigir, volta ao confira", () => {

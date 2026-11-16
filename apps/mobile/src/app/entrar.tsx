@@ -1,9 +1,10 @@
 import { mascararCpf } from "@fila-saude/schemas/mascaras";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { IdCard, KeyRound } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import {
+  BalaoDoLino,
   Botao,
   Campo,
   CampoSenha,
@@ -12,10 +13,8 @@ import {
   FalaDoDr,
   FONTE,
   Gaveta,
-  Mascote,
   Tela,
   TextoSuave,
-  Titulo,
 } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
@@ -24,7 +23,9 @@ import { faltaNoLogin } from "@/lib/validacao";
 /** Entrar: o Dr. Lino recebe quem volta; o que falta é dito no próprio campo. */
 export default function Entrar() {
   const s = useSessao();
-  const [cpf, setCpf] = useState("");
+  // Vindo do cadastro com "entrar com este CPF", o CPF já vem preenchido.
+  const params = useLocalSearchParams<{ cpf?: string }>();
+  const [cpf, setCpf] = useState(params.cpf ? mascararCpf(params.cpf) : "");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [tentou, setTentou] = useState(false);
@@ -82,11 +83,7 @@ export default function Entrar() {
         </Gaveta>
       }
     >
-      <View style={{ alignItems: "center", gap: 8 }}>
-        <Mascote tamanho={170} />
-        <Titulo style={{ textAlign: "center" }}>que bom te ver de novo!</Titulo>
-        <TextoSuave style={{ textAlign: "center" }}>entre com o seu CPF e a senha.</TextoSuave>
-      </View>
+      <BalaoDoLino texto="que bom te ver de novo! entre com o seu CPF e a senha." />
       <Campo
         rotulo="CPF"
         value={cpf}
