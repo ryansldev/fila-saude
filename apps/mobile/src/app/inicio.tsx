@@ -1,52 +1,70 @@
 import { router } from "expo-router";
-import { CalendarDays, MapPin } from "lucide-react-native";
+import { MapPin } from "lucide-react-native";
+import { useState } from "react";
 import { Text, View } from "react-native";
-import { Destaque, FaixaDosAvisos, SuaVez, useMinhaFila } from "@/components/atendimento";
 import {
-  Abas,
-  Avatar,
-  BlocoData,
-  Carregando,
-  COR,
-  Faixa,
-  FalaDoDr,
-  FONTE,
-  LinhaTocavel,
-  Pequeno,
-  Selo,
-  Tela,
-} from "@/components/ui";
+  BilheteDoDia,
+  FUNDO_DO_HOJE,
+  LinhaDoDia,
+  OpcoesDoBilhete,
+  SuaVez,
+  useMinhaFila,
+} from "@/components/atendimento";
+import { Abas, Botao, Carregando, COR, Faixa, FONTE, Mascote, Pequeno, Sininho, Tela } from "@/components/ui";
 import { primeiroNome } from "@/lib/conta";
 import { cumprimentoDoDia, hora, partesDoDia } from "@/lib/datas";
+import { ordenarDoDia } from "@/lib/hoje";
 import { useSessao } from "@/lib/sessao";
 
 /**
- * Hoje (aba principal): só o que está marcado para a pessoa hoje, um cartão por atendimento.
- * O resto (outros dias, lista de espera, reserva, histórico) fica em "atendimentos".
+ * Hoje (aba principal, design de 2026-11-16): o atendimento que mais pede ação vira o bilhete, com a
+ * senha enorme; os outros do dia, uma linha cada. O resto (outros dias, lista de espera) fica em
+ * "atendimentos", com o número na aba.
  */
 export default function Hoje() {
   const s = useSessao();
   const f = useMinhaFila();
+  const [opcoes, setOpcoes] = useState<{
+    en: (typeof f.lista)[number]["en"];
+    sit: (typeof f.lista)[number]["sit"];
+  } | null>(null);
   if (f.vez) return <SuaVez senha={f.vez.senha} estacao={f.vez.estacao} fechar={f.vez.dispensar} />;
 
-  const deHoje = f.lista.filter((x) => x.resumo.grupo === "hoje");
+  const deHoje = ordenarDoDia(f.lista.filter((x) => x.resumo.grupo === "hoje"));
+  const [bilhete, ...tambem] = deHoje;
   const proximo = f.lista
     .filter((x) => x.resumo.grupo === "proximos" && x.en.sessao)
     .sort((a, b) => (a.en.sessao?.inicio ?? "").localeCompare(b.en.sessao?.inicio ?? ""))[0];
   const outros = f.lista.filter((x) => x.resumo.grupo === "proximos" || x.resumo.grupo === "sem_data").length;
   const nome = s.conta?.nome ? primeiroNome(s.conta.nome) : undefined;
-  const fala =
+  const resumo =
     deHoje.length === 0
-      ? proximo
-        ? "hoje está livre. o seu próximo atendimento está logo abaixo."
-        : "hoje está livre. as unidades perto de você ficam mais embaixo."
+      ? "hoje está livre."
       : deHoje.length === 1
-        ? "você tem 1 atendimento hoje. eu te aviso a hora de sair de casa."
-        : `você tem ${deHoje.length} atendimentos hoje. eu te aviso a hora de sair de casa.`;
+        ? "você tem 1 atendimento hoje."
+        : `você tem ${deHoje.length} atendimentos hoje.`;
+  const avisosDesligados = Boolean(s.avisos && s.avisos.tipo !== "ligados");
+  const abrir = (entradaId: string) => () => router.push({ pathname: "/fila/[entradaId]", params: { entradaId } });
 
   return (
-    <Tela voltar={false} rodape={<Abas atual="hoje" />}>
-      <FalaDoDr cumprimento={cumprimentoDoDia(Date.now())} nome={nome} texto={fala} />
+    <Tela
+      voltar={false}
+      fundo={FUNDO_DO_HOJE}
+      direitaDoTopo={<Sininho desligado={avisosDesligados} onPress={() => void s.ligarAvisos()} />}
+      rodape={<Abas atual="hoje" contagem={{ atendimentos: outros }} />}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View style={{ backgroundColor: COR.surface, borderRadius: 16 }}>
+          <Mascote tamanho={64} moldura={false} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
+            {cumprimentoDoDia(Date.now())}
+            {nome ? `, ${nome}` : ""}!
+          </Text>
+          <Pequeno style={{ fontSize: 16 }}>{resumo}</Pequeno>
+        </View>
+      </View>
       {f.erro ? (
         <Faixa
           tipo="perigo"
@@ -55,54 +73,51 @@ export default function Hoje() {
           acao={{ texto: "tentar de novo", onPress: () => void f.tentarDeNovo(), carregando: f.tentando }}
         />
       ) : null}
-      <FaixaDosAvisos />
       {f.cancelada ? <Faixa tipo="ok" titulo="pronto, inscrição cancelada" texto={f.cancelada} /> : null}
       {f.entradas === null && !f.erro ? <Carregando texto="buscando o seu dia…" /> : null}
-      {f.cartoes(deHoje)}
-      {deHoje.length === 0 && proximo?.en.sessao ? (
+      {bilhete ? (
+        <BilheteDoDia
+          en={bilhete.en}
+          sit={bilhete.sit}
+          responder={f.acoesDe(bilhete.en, bilhete.sit).responder}
+          aoAbrir={abrir(bilhete.en.entradaId)}
+          aoMais={() => setOpcoes({ en: bilhete.en, sit: bilhete.sit })}
+        />
+      ) : null}
+      {tambem.length > 0 ? (
         <View style={{ gap: 10 }}>
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 18, color: COR.inkMuted, marginBottom: -4 }}>
-            próximo atendimento
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 14, letterSpacing: 1, color: COR.inkMuted }}>
+            TAMBÉM HOJE
           </Text>
-          <LinhaTocavel
-            acao="ver meus atendimentos"
-            onPress={() => router.replace("/atendimentos")}
-            esquerda={<BlocoData {...partesDoDia(proximo.en.sessao.inicio, Date.now())} tom={proximo.resumo.tom} />}
-          >
-            <Destaque>{proximo.en.servico.toLowerCase()}</Destaque>
-            <Pequeno>
-              {hora(proximo.en.sessao.inicio)} às {hora(proximo.en.sessao.fim)} · {proximo.en.unidade}
-            </Pequeno>
-            <Selo texto={proximo.resumo.selo} tom={proximo.resumo.tom} />
-          </LinhaTocavel>
+          {tambem.map((x) => (
+            <LinhaDoDia key={x.en.entradaId} en={x.en} sit={x.sit} aoAbrir={abrir(x.en.entradaId)} />
+          ))}
         </View>
       ) : null}
-      {deHoje.length > 0 && outros > 0 ? (
-        <LinhaTocavel
-          acao="ver meus atendimentos"
-          onPress={() => router.replace("/atendimentos")}
-          esquerda={<Avatar Icone={CalendarDays} />}
-        >
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 19, lineHeight: 25, color: COR.ink }}>
-            {outros === 1 ? "mais 1 atendimento" : `mais ${outros} atendimentos`}
-          </Text>
-          <Pequeno>em outros dias ou na lista de espera</Pequeno>
-        </LinhaTocavel>
+      {f.entradas !== null && deHoje.length === 0 ? (
+        proximo?.en.sessao ? (
+          <View style={{ gap: 10 }}>
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 14, letterSpacing: 1, color: COR.inkMuted }}>
+              PRÓXIMO ATENDIMENTO
+            </Text>
+            <LinhaDoDia en={proximo.en} sit={proximo.sit} aoAbrir={abrir(proximo.en.entradaId)} />
+            <Pequeno>
+              {(() => {
+                const p = partesDoDia(proximo.en.sessao.inicio, Date.now());
+                return `${p.topo === "amanhã" ? "amanhã" : `${p.topo}, ${p.dia} de ${p.mes}`}, às ${hora(proximo.en.sessao.inicio)}`;
+              })()}
+            </Pequeno>
+          </View>
+        ) : (
+          <Botao
+            texto="ver as unidades"
+            variante="secundario"
+            icone={MapPin}
+            onPress={() => router.replace("/unidades")}
+          />
+        )
       ) : null}
-      {/* Sempre visível: a aba "unidades" existe, mas quem está em "hoje" precisa de um caminho óbvio. */}
-      <View style={{ gap: 10, marginTop: deHoje.length === 0 && !proximo ? 4 : 8 }}>
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 18, color: COR.inkMuted }}>unidades perto de você</Text>
-        <LinhaTocavel
-          acao="ver as unidades"
-          onPress={() => router.replace("/unidades")}
-          esquerda={<Avatar Icone={MapPin} tom="verde" />}
-        >
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 19, lineHeight: 25, color: COR.ink }}>
-            ver agenda e se inscrever
-          </Text>
-          <Pequeno>mapa e lista das unidades do seu município</Pequeno>
-        </LinhaTocavel>
-      </View>
+      <OpcoesDoBilhete alvo={opcoes} fechar={() => setOpcoes(null)} acoes={f.acoesDe} />
       {f.gaveta}
     </Tela>
   );

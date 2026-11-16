@@ -199,3 +199,16 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 6 | Paciente | Entrar | Abrir | O Dr. Lino pequeno com o balão "que bom te ver de novo!…" |
 
 **Conferido** por teste (ordem das telas, erros, regra da senha, corrigir, erro do servidor) e por prints na prévia web. **Falta** no celular de verdade (teclado de cada campo, voltar do Android).
+
+## App: a aba "hoje" (design system, 2026-11-16)
+
+[Design](../design-system/app-hoje.md). Antes: `npm run dev:seed` e o cenário da fila (sessão de hoje aberta, uma pessoa chamada).
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Bruno | App → hoje | Abrir | "boa tarde, Bruno!"; o bilhete "venha agora!" do clínico geral com a senha enorme e "cheguei: ler o QR"; em "também hoje", curativos com "2º" |
+| 2 | Bruno | Bilhete | Tocar no "⋯" | A gaveta com "ver o caminho do dia" e só as ações que valem |
+| 3 | Bruno | Topo | Com os avisos desligados | O sininho com ponto amarelo; tocar liga os avisos |
+| 4 | Ana | App → hoje | Abrir | O bilhete dos curativos ("venha agora!") e o clínico geral em "1º, você é o próximo" |
+
+**Conferido** por teste (ordem, bilhete, linha, nomes) e por prints na prévia web. **Falta** no celular de verdade.

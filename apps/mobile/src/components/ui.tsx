@@ -10,6 +10,7 @@ import {
 } from "@fila-saude/design";
 import { router } from "expo-router";
 import {
+  Bell,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -119,8 +120,44 @@ export function BalaoDoLino({ texto }: { texto: string }) {
   );
 }
 
+/** O sininho do topo: com o ponto amarelo, os avisos estão desligados e tocar liga. */
+export function Sininho({ desligado, onPress }: { desligado: boolean; onPress: () => void }) {
+  return (
+    <AreaTocavel
+      rotulo={desligado ? "os avisos estão desligados. tocar para ligar" : "avisos ligados"}
+      onPress={onPress}
+      style={(pressed) => ({ padding: 6, borderRadius: 999, opacity: pressed ? 0.6 : 1 })}
+    >
+      <Bell size={26} color={COR.inkMuted} strokeWidth={2.3} />
+      {desligado ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 5,
+            right: 6,
+            width: 11,
+            height: 11,
+            borderRadius: 999,
+            backgroundColor: COR.amarelo,
+            borderWidth: 2,
+            borderColor: COR.surface,
+          }}
+        />
+      ) : null}
+    </AreaTocavel>
+  );
+}
+
 /** Topo das telas: seta à esquerda quando dá para voltar; depois o logo e "fila saúde". */
-export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?: (() => void) | undefined }) {
+export function Topo({
+  voltar = false,
+  aoVoltar,
+  direita,
+}: {
+  voltar?: boolean;
+  aoVoltar?: (() => void) | undefined;
+  direita?: ReactNode;
+}) {
   const aoPressionar = aoVoltar ?? (voltar && router.canGoBack() ? () => router.back() : undefined);
   return (
     <View style={e.topo}>
@@ -138,6 +175,7 @@ export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?
       <Logo />
       <Text style={e.marca}>fila saúde</Text>
       <View style={{ flex: 1 }} />
+      {direita}
     </View>
   );
 }
@@ -212,6 +250,7 @@ export function Tela({
   fundo = COR.surface,
   aoVoltar,
   aoFechar,
+  direitaDoTopo,
 }: {
   children: ReactNode;
   topo?: boolean;
@@ -220,6 +259,8 @@ export function Tela({
   aoVoltar?: () => void;
   /** O X da barra de progresso, quando ele sai do fluxo em vez de voltar um passo. */
   aoFechar?: () => void;
+  /** Algo à direita da marca no topo (o sininho dos avisos na aba "hoje"). */
+  direitaDoTopo?: ReactNode;
   rodape?: ReactNode;
   /** Botões da tela, sempre fixos embaixo e alinhados (principal em cima, secundário embaixo). */
   acoes?: ReactNode;
@@ -250,7 +291,7 @@ export function Tela({
           aoFechar={aoFechar ?? aoVoltar ?? (router.canGoBack() ? () => router.back() : undefined)}
         />
       ) : topo ? (
-        <Topo voltar={voltar} aoVoltar={aoVoltar} />
+        <Topo voltar={voltar} aoVoltar={aoVoltar} direita={direitaDoTopo} />
       ) : null}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={e.scr} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
@@ -702,14 +743,6 @@ export function CartaoPosicao({ contexto, posicao, detalhe }: { contexto: string
   );
 }
 
-export function Chip({ texto }: { texto: string }) {
-  return (
-    <View style={e.chip}>
-      <Text style={{ fontFamily: FONTE.bold, fontSize: 15, color: COR.ink }}>{texto}</Text>
-    </View>
-  );
-}
-
 /** Abas de baixo: minha fila e unidades. */
 export type AbaDoApp = "hoje" | "atendimentos" | "unidades" | "conta";
 
@@ -726,7 +759,7 @@ const ABAS: {
 ];
 
 /** Abas de baixo, como em apps de governo e no Duolingo: ícone grande, rótulo curto, a atual em destaque. */
-export function Abas({ atual }: { atual: AbaDoApp }) {
+export function Abas({ atual, contagem = {} }: { atual: AbaDoApp; contagem?: Partial<Record<AbaDoApp, number>> }) {
   return (
     <View style={e.abas} accessibilityRole="tablist">
       {ABAS.map(({ id, rotulo, destino, Icone }) => {
@@ -736,13 +769,31 @@ export function Abas({ atual }: { atual: AbaDoApp }) {
           <Pressable
             key={id}
             accessibilityRole="tab"
-            accessibilityLabel={rotulo}
+            accessibilityLabel={contagem[id] ? `${rotulo}, ${contagem[id]}` : rotulo}
             accessibilityState={{ selected: ativa }}
             onPress={() => !ativa && router.replace(destino)}
             style={e.tab}
           >
             <View style={[e.pilulaTab, ativa && { backgroundColor: COR.primary50 }]}>
               <Icone size={26} color={cor} strokeWidth={ativa ? 2.75 : 2.25} />
+              {contagem[id] ? (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: 4,
+                    minWidth: 20,
+                    paddingHorizontal: 5,
+                    borderRadius: 999,
+                    backgroundColor: COR.action,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text style={{ fontFamily: FONTE.extra, fontSize: 12, lineHeight: 18, color: "#ffffff" }}>
+                    {contagem[id]}
+                  </Text>
+                </View>
+              ) : null}
             </View>
             <Text style={[e.textoTab, { color: cor }, ativa && { fontFamily: FONTE.extra }]}>{rotulo}</Text>
           </Pressable>

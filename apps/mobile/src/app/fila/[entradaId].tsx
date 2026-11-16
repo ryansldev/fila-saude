@@ -122,7 +122,7 @@ export default function TelaDaFila() {
       {presente && piorou ? (
         <View style={{ gap: 10 }}>
           <Faixa tipo="perigo" titulo="seus sintomas pioraram?" texto={ORIENTACAO_PIOROU} />
-          <BotaoLigar texto="ligar 192 · SAMU" numero="192" variante="secundario" />
+          <BotaoLigar texto="ligar para o SAMU (192)" numero="192" variante="secundario" />
         </View>
       ) : null}
       {aoCancelar ? <Botao variante="textoPerigo" texto="não vou poder ir" onPress={aoCancelar} /> : null}

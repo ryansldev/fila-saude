@@ -1,6 +1,6 @@
 import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect } from "expo-router";
-import { ChevronRight, Hourglass } from "lucide-react-native";
+import { ChevronRight, Ellipsis, Hourglass, QrCode } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
 import { Alert, Text, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,6 +26,7 @@ import {
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
 import { nomeProprio } from "@/lib/conta";
 import { diaCurto, ehHoje, hora, partesDoDia } from "@/lib/datas";
+import { bilheteDo, linhaDo } from "@/lib/hoje";
 import { podeRefazer } from "@/lib/inscricoes";
 import { useSessao } from "@/lib/sessao";
 import {
@@ -151,10 +152,6 @@ function NaFila({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
   }
 }
 
-export const Destaque = ({ children }: { children: React.ReactNode }) => (
-  <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>{children}</Text>
-);
-
 /** Senha e posição, o maior texto do cartão. */
 export function Posicao({ senha, posicao, detalhe }: { senha: string | null; posicao?: number; detalhe: string }) {
   return (
@@ -250,7 +247,7 @@ export function CartaoDoAtendimento({
         {presente && piorou ? (
           <View style={{ gap: 10 }}>
             <Faixa tipo="perigo" titulo="seus sintomas pioraram?" texto={ORIENTACAO_PIOROU} />
-            <BotaoLigar texto="ligar 192 · SAMU" numero="192" variante="secundario" />
+            <BotaoLigar texto="ligar para o SAMU (192)" numero="192" variante="secundario" />
           </View>
         ) : null}
         {sit.tipo === "alocada" ? (
@@ -578,5 +575,242 @@ export function FaixaDosAvisos() {
       texto="sem eles, você só sabe a hora de sair com o app aberto."
       acao={{ texto: semPedido ? "abrir os ajustes" : "ligar os avisos", onPress: () => void s.ligarAvisos() }}
     />
+  );
+}
+
+// --- Aba "hoje" (design de 2026-11-16): o bilhete, as linhas e as ações raras numa gaveta ---
+
+const FUNDO_DO_HOJE = "#f4f7f8";
+const SOMBRA: ViewStyle = {
+  shadowColor: "#0c2e4e",
+  shadowOpacity: 0.08,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 6 },
+  elevation: 2,
+};
+
+export { FUNDO_DO_HOJE };
+
+/** O bilhete do atendimento que mais pede ação agora: a faixa, o que é, o picote, a senha enorme e o botão. */
+export function BilheteDoDia({
+  en,
+  sit,
+  responder,
+  aoAbrir,
+  aoMais,
+}: {
+  en: MinhaEntrada;
+  sit: Situacao;
+  responder: ((r: "confirmar" | "recusar") => void) | null;
+  aoAbrir: () => void;
+  aoMais: () => void;
+}) {
+  const b = bilheteDo(en, sit);
+  return (
+    <View style={[{ backgroundColor: COR.surface, borderRadius: 22, overflow: "hidden" }, SOMBRA]}>
+      <View
+        style={{
+          backgroundColor: COR.action,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingLeft: 18,
+          paddingRight: 8,
+          paddingVertical: 6,
+        }}
+      >
+        <Text style={{ flex: 1, fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, color: "#ffffff" }}>
+          {b.faixa}
+        </Text>
+        <AreaTocavel
+          rotulo="mais opções"
+          onPress={aoMais}
+          style={(pressed) => ({ padding: 10, borderRadius: 999, opacity: pressed ? 0.6 : 1 })}
+        >
+          <Ellipsis size={24} color="#cfe2f6" strokeWidth={2.6} />
+        </AreaTocavel>
+      </View>
+      <Tocavel aoAbrir={aoAbrir} en={en} style={{ paddingHorizontal: 18, paddingTop: 14, paddingBottom: 16, gap: 2 }}>
+        <Text style={{ fontFamily: FONTE.extra, fontSize: 21, lineHeight: 27, color: COR.ink }}>
+          {en.servico.toLowerCase()}
+        </Text>
+        <TextoSuave style={{ fontSize: 16, lineHeight: 22 }}>
+          {en.unidade}
+          {en.paraMim ? "" : `, para ${nomeProprio(en.pessoa)}`}
+        </TextoSuave>
+      </Tocavel>
+      <Picote />
+      <View style={{ alignItems: "center", gap: 10, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 18 }}>
+        {b.senha ? (
+          <>
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 13, letterSpacing: 1.2, color: COR.inkMuted }}>
+              SUA SENHA
+            </Text>
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 56, lineHeight: 62, color: COR.primary900 }}>
+              {b.senha}
+            </Text>
+          </>
+        ) : (
+          <TextoSuave style={{ textAlign: "center" }}>
+            {b.botao === "confirmar"
+              ? `${en.sessao ? janelaCurta(en.sessao.inicio, en.sessao.fim) : ""}`
+              : "a senha sai quando a fila abrir."}
+          </TextoSuave>
+        )}
+        {b.botao === "qr" ? (
+          <View style={{ alignSelf: "stretch" }}>
+            <Botao texto="cheguei: ler o QR" icone={QrCode} onPress={() => router.push("/check-in")} />
+          </View>
+        ) : null}
+        {b.botao === "confirmar" ? (
+          <View style={{ alignSelf: "stretch" }}>
+            {responder ? <Botao texto="vou, confirmar" onPress={() => responder("confirmar")} /> : <Carregando />}
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+const janelaCurta = (inicio: string, fim: string) =>
+  `${ehHoje(inicio, Date.now()) ? "hoje" : diaCurto(inicio)}, das ${hora(inicio)} às ${hora(fim)}`;
+
+/** O corte do bilhete: linha tracejada com dois meios-círculos na cor do fundo. */
+function Picote() {
+  const furo: ViewStyle = {
+    position: "absolute",
+    top: -12,
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    backgroundColor: FUNDO_DO_HOJE,
+  };
+  return (
+    <View style={{ height: 0 }}>
+      <View style={{ marginHorizontal: 18, borderTopWidth: 2, borderStyle: "dashed", borderColor: COR.linha }} />
+      <View style={[furo, { left: -12 }]} />
+      <View style={[furo, { right: -12 }]} />
+    </View>
+  );
+}
+
+/** Um atendimento de "também hoje": o quadro com a posição, o serviço e uma frase curta. */
+export function LinhaDoDia({ en, sit, aoAbrir }: { en: MinhaEntrada; sit: Situacao; aoAbrir: () => void }) {
+  const l = linhaDo(sit);
+  return (
+    <AreaTocavel
+      rotulo={`${en.servico.toLowerCase()}, ${l.frase}`}
+      onPress={aoAbrir}
+      style={(pressed) => ({
+        ...SOMBRA,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        padding: 14,
+        borderRadius: 18,
+        backgroundColor: pressed ? COR.primary50 : COR.surface,
+      })}
+    >
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: 14,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: COR.primary50,
+        }}
+      >
+        {l.quadro ? (
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 19, color: COR.actionPressed }}>{l.quadro}</Text>
+        ) : (
+          <Hourglass size={22} color={COR.action} strokeWidth={2.4} />
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontFamily: FONTE.extra, fontSize: 17, lineHeight: 23, color: COR.ink }}>
+          {en.servico.toLowerCase()}
+        </Text>
+        <Pequeno>{l.frase}</Pequeno>
+      </View>
+      <ChevronRight size={22} color="#9aa3a5" strokeWidth={2.5} />
+    </AreaTocavel>
+  );
+}
+
+/** "mais opções" do bilhete: só as ações que valem na situação. */
+export function OpcoesDoBilhete({
+  alvo,
+  fechar,
+  acoes,
+}: {
+  alvo: { en: MinhaEntrada; sit: Situacao } | null;
+  fechar: () => void;
+  acoes: (
+    en: MinhaEntrada,
+    sit: Situacao,
+  ) => {
+    responder: ((r: "confirmar" | "recusar") => void) | null;
+    refazer: (() => void) | null;
+    aoCancelar: (() => void) | null;
+    vouSair: (() => void) | null;
+  };
+}) {
+  const [piorou, setPiorou] = useState(false);
+  const a = alvo ? acoes(alvo.en, alvo.sit) : null;
+  const presente =
+    alvo && (alvo.sit.tipo === "posicao" || alvo.sit.tipo === "sem_previsao") ? alvo.sit.presente : false;
+  const fazer = (f: (() => void) | null | undefined) => () => {
+    fechar();
+    f?.();
+  };
+  return (
+    <Gaveta
+      aberta={alvo !== null}
+      fechar={() => {
+        setPiorou(false);
+        fechar();
+      }}
+    >
+      {alvo && a ? (
+        <>
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
+            {alvo.en.servico.toLowerCase()}
+          </Text>
+          <Botao
+            texto="ver o caminho do dia"
+            variante="secundario"
+            onPress={fazer(() =>
+              router.push({ pathname: "/fila/[entradaId]", params: { entradaId: alvo.en.entradaId } }),
+            )}
+          />
+          {presente && a.vouSair ? (
+            <Botao texto="vou sair um pouco" variante="secundario" onPress={fazer(a.vouSair)} />
+          ) : null}
+          {alvo.sit.tipo === "alocada" && a.responder ? (
+            <Botao texto="não posso nesta data" variante="secundario" onPress={fazer(() => a.responder?.("recusar"))} />
+          ) : null}
+          {a.refazer ? (
+            <Botao variante="texto" texto="minha situação mudou: responder de novo" onPress={fazer(a.refazer)} />
+          ) : null}
+          {presente && !piorou ? (
+            <Botao variante="textoPerigo" texto="meus sintomas pioraram" onPress={() => setPiorou(true)} />
+          ) : null}
+          {presente && piorou ? (
+            <View style={{ gap: 10 }}>
+              <Faixa tipo="perigo" titulo="seus sintomas pioraram?" texto={ORIENTACAO_PIOROU} />
+              <BotaoLigar texto="ligar para o SAMU (192)" numero="192" variante="secundario" />
+            </View>
+          ) : null}
+          {a.aoCancelar ? (
+            <Botao
+              variante="textoPerigo"
+              texto={alvo.sit.tipo === "alocada" ? "sair da lista de espera" : "não vou poder ir"}
+              onPress={fazer(a.aoCancelar)}
+            />
+          ) : null}
+        </>
+      ) : null}
+    </Gaveta>
   );
 }

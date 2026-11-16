@@ -302,3 +302,13 @@ Design: [app-cadastro.md](../design-system/app-cadastro.md).
 | CA1 | E-mail | Continua obrigatório (a API pede), com o texto "para avisos da sua conta" no lugar de "serve para recuperar a senha" | Opcional ou fora do cadastro (muda a API) | Baixo: quem não tem e-mail não cria conta pelo app |
 | CA2 | CPF já com conta | Volta à tela do CPF com o erro e "entrar com este CPF" (abre o "entrar" com o CPF preenchido) | Só o erro | Baixo |
 | CA3 | "confira" | Tela com o resumo e "corrigir" por linha antes de criar a conta | Criar direto da tela do e-mail | Baixo: um toque a mais |
+
+## App: a aba "hoje" como bilhete (2026-11-16)
+
+Design: [app-hoje.md](../design-system/app-hoje.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| HO1 | Quem vira o bilhete | venha agora → mostre na recepção → na unidade → na fila em casa (menor posição) → sem previsão → para confirmar → aguardando a fila abrir | Na unidade antes de "venha agora" (a Ana, na unidade para o clínico geral, vê primeiro o "venha agora" dos curativos) | Baixo |
+| HO2 | Confirmar a data | "vou, confirmar" é o botão do bilhete; "não posso nesta data" fica no "⋯" | Os dois no bilhete | Baixo |
+| HO3 | Outros dias | Um número na aba "atendimentos" no lugar do cartão "mais 1 atendimento" | Manter o cartão | Baixo |
