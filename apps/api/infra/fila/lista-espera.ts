@@ -7,6 +7,7 @@ import { servico } from "infra/database/municipal/schema/servico";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import type { BancoDoTenant, DbDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
+import { responderAlocacao } from "./agendamento";
 import { MAX_POR_CONTA, pessoaDoPedido } from "./app";
 import { configDaUnidade } from "./dia";
 import { atualizarEntrada, entradasAtivasDoServico, entrarNaLista, lerEntrada, pessoaPorCpf } from "./entradas";
@@ -132,4 +133,22 @@ export async function refazerQuestionarioDoPaciente(
     const c = r.estado.entrada.classificacao;
     return { classificacao: { nivel: c.nivel, apoio: c.apoio } };
   });
+}
+
+/** RN-CONF-01/04: a conta responsável confirma ou recusa a alocação pelo app. */
+export async function responderDoPaciente(
+  db: DbDoTenant,
+  pacienteId: string,
+  entradaId: string,
+  resposta: "confirmou" | "recusou",
+  agora: number,
+) {
+  const [linha] = await db
+    .select({ sessaoId: entrada.sessaoId })
+    .from(entrada)
+    .where(and(eq(entrada.id, entradaId), eq(entrada.responsavelPacienteId, pacienteId)));
+  if (!linha) throw new ErroApi(404, "nao_encontrado");
+  const { sessaoId } = linha;
+  if (!sessaoId) throw new ErroApi(409, "transicao_proibida");
+  return db.transaction((tx) => responderAlocacao(tx, sessaoId, entradaId, resposta, agora));
 }

@@ -14,8 +14,8 @@ import { sessao } from "infra/database/municipal/schema/sessao";
 import { unidade } from "infra/database/municipal/schema/unidade";
 import type { DbDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
-import { lerDia, naSessao, paraServico } from "./dia";
-import { atualizarEntrada, lerEntrada, type PessoaInformada } from "./entradas";
+import { configDaUnidade, lerDia, naSessao, paraServico } from "./dia";
+import { atualizarEntrada, type PessoaInformada, travarEntrada } from "./entradas";
 import { inscrever } from "./inscricao";
 
 const FINAIS = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"] as const;
@@ -238,6 +238,12 @@ export async function minhas(db: DbDoTenant, pacienteId: string, agora: number):
       triado: Boolean(item?.atendidoEmEtapas.includes("triagem")),
       // AD-059: só quem a triagem encaminhou fica "atendido" na triagem; vermelho atendido aqui segue.
       encaminhado: item?.etapa === "triagem" && item.estado === "atendido_na_etapa",
+      prazoConfirmacao:
+        e.estado === "alocada" && s && e.alocadaEm
+          ? new Date(
+              Math.min(e.alocadaEm.getTime() + configDaUnidade(u).prazoConfirmacaoHoras * 3600_000, s.inicio.getTime()),
+            ).toISOString()
+          : null,
       saiaDeCasa:
         item?.estado === "remoto" &&
         Boolean(dia?.avisosSaiaDeCasa.some((a) => a.itemId === item.id && a.etapa === item.etapa)),
@@ -275,8 +281,10 @@ export async function cancelarDoPaciente(db: DbDoTenant, pacienteId: string, ent
   if (!linha.sessaoId) {
     // Na lista de espera, sem sessão: só cancela.
     return db.transaction(async (tx) => {
-      const e = await lerEntrada(tx, entradaId);
-      if (!e) throw new ErroApi(404, "nao_encontrado");
+      // Trava a entrada: o agendador pode estar alocando esta mesma entrada agora.
+      const e = await travarEntrada(tx, entradaId);
+      if (e.sessaoId)
+        throw new ErroApi(409, "transicao_proibida", undefined, "A lista mudou. Atualize e tente de novo.");
       const r = cancelarEntrada(e, null, null, { servico: paraServico(await exigirServico(tx, e.servicoId)) }, agora);
       if (!r.ok) throw new ErroApi(409, r.erro);
       await atualizarEntrada(tx, r.estado.entrada);

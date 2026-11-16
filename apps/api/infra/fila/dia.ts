@@ -151,7 +151,10 @@ export async function naSessao<T>(
     for (const e of m.entradas ?? []) {
       if (antes.get(e.id) !== JSON.stringify(e)) await atualizarEntrada(tx, e);
     }
-    if (m.eventos) await gravarAvisos(tx, u.nome, m.dia ?? dia, m.entradas ?? entradas, m.eventos);
+    if (m.eventos) {
+      const local = { unidade: u.nome, servico: srv.nome, inicio: s.inicio, fuso: u.fuso };
+      await gravarAvisos(tx, local, m.dia ?? dia, m.entradas ?? entradas, m.eventos);
+    }
     const mudancas: Partial<typeof sessao.$inferInsert> = {};
     if (m.sessao && m.sessao.ocupadas !== s.ocupadas) mudancas.ocupadas = m.sessao.ocupadas;
     if (m.dia && m.dia.estado !== "planejada") {

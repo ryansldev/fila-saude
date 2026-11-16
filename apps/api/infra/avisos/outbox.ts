@@ -57,15 +57,42 @@ export function textoDoAviso(ev: Evento, ctx: Contexto): Texto | null {
   }
 }
 
+/** Onde e quando é a sessão do evento, para os avisos que não têm item na fila (o "confirme"). */
+export type LocalDoAviso = { unidade: string; servico: string; inicio: Date; fuso: string };
+
+const quando = (inicio: Date, fuso: string) => {
+  const f = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: fuso,
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).formatToParts(inicio);
+  const p = (t: string) => f.find((x) => x.type === t)?.value ?? "";
+  return `${p("weekday")}, ${p("day")}/${p("month")} às ${p("hour")}:${p("minute")}`;
+};
+
+/** RN-CONF-01 / I8: o "confirme" da alocação; uma chave por alocação (o prazo muda a cada uma). */
+export function textoDaAlocacao(ev: Evento, local: LocalDoAviso): Texto | null {
+  if (ev.tipo !== "alocada") return null;
+  return {
+    tipo: "confirme",
+    chave: `confirme:${ev.entradaId}:${ev.sessaoId}:${ev.dados?.prazo}`,
+    titulo: "confirme sua consulta",
+    corpo: `${local.servico} na ${local.unidade}, ${quando(local.inicio, local.fuso)}. abra o app para confirmar.`,
+  };
+}
+
 // PD-49: grava os avisos dos eventos na transação da fila; quem não tem conta (balcão) não recebe push.
 export async function gravarAvisos(
   tx: TxDoTenant,
-  unidade: string,
+  local: LocalDoAviso,
   dia: DiaSessao | null,
   entradas: Entrada[],
   eventos: Evento[],
 ): Promise<void> {
-  if (!dia || eventos.length === 0) return;
+  if (eventos.length === 0) return;
   const ids = [...new Set(eventos.map((e) => e.estacaoId).filter((x): x is string => Boolean(x)))];
   const nomes = new Map(
     ids.length === 0
@@ -77,9 +104,19 @@ export async function gravarAvisos(
   const linhas: (typeof aviso.$inferInsert)[] = [];
   for (const ev of eventos) {
     const entrada = entradas.find((e) => e.id === ev.entradaId);
-    const item = dia.itens.find((i) => i.id === ev.itemId);
-    if (!entrada?.responsavelId || !item) continue;
-    const t = textoDoAviso(ev, { unidade: unidade, senha: item.senha, estacao: (id) => nomes.get(id ?? "") ?? "" });
+    if (!entrada?.responsavelId) continue;
+    const alocacao = textoDaAlocacao(ev, local);
+    if (alocacao) {
+      linhas.push({ ...alocacao, pacienteId: entrada.responsavelId, entradaId: entrada.id });
+      continue;
+    }
+    const item = dia?.itens.find((i) => i.id === ev.itemId);
+    if (!item) continue;
+    const t = textoDoAviso(ev, {
+      unidade: local.unidade,
+      senha: item.senha,
+      estacao: (id) => nomes.get(id ?? "") ?? "",
+    });
     if (t) linhas.push({ ...t, pacienteId: entrada.responsavelId, entradaId: entrada.id });
   }
   if (linhas.length > 0) await tx.insert(aviso).values(linhas).onConflictDoNothing({ target: aviso.chave });
