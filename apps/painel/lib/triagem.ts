@@ -8,8 +8,8 @@ export type CorDaTriagem = {
   descricao: string;
   /** Tempo-alvo para o primeiro atendimento médico, no Manchester padrão. */
   tempoAlvo: string;
-  /** Classes do botão: fundo e texto com contraste (laranja e amarelo com texto escuro). */
-  classes: string;
+  /** Cartão claro: borda e bolinha da cor; marcado, pinta inteiro (laranja e amarelo com texto escuro). */
+  tom: { borda: string; bolinha: string; cheio: string };
 };
 
 /**
@@ -23,7 +23,7 @@ export const CORES_DA_TRIAGEM: CorDaTriagem[] = [
     rotulo: "Vermelho",
     descricao: "Emergência",
     tempoAlvo: "imediato",
-    classes: "bg-red-600 text-white hover:bg-red-700",
+    tom: { borda: "border-red-300", bolinha: "bg-red-600", cheio: "border-red-700 bg-red-600 text-white" },
   },
   {
     nivel: "muito_urgente",
@@ -31,7 +31,11 @@ export const CORES_DA_TRIAGEM: CorDaTriagem[] = [
     rotulo: "Laranja",
     descricao: "Muito urgente",
     tempoAlvo: "até 10 min",
-    classes: "bg-orange-500 text-gray-950 hover:bg-orange-600",
+    tom: {
+      borda: "border-orange-300",
+      bolinha: "bg-orange-500",
+      cheio: "border-orange-600 bg-orange-500 text-gray-950",
+    },
   },
   {
     nivel: "urgente",
@@ -39,7 +43,7 @@ export const CORES_DA_TRIAGEM: CorDaTriagem[] = [
     rotulo: "Amarelo",
     descricao: "Urgente",
     tempoAlvo: "até 60 min",
-    classes: "bg-amber-400 text-gray-950 hover:bg-amber-500",
+    tom: { borda: "border-amber-300", bolinha: "bg-amber-400", cheio: "border-amber-500 bg-amber-400 text-gray-950" },
   },
   {
     nivel: "atencao",
@@ -47,7 +51,7 @@ export const CORES_DA_TRIAGEM: CorDaTriagem[] = [
     rotulo: "Verde",
     descricao: "Pouco urgente",
     tempoAlvo: "até 120 min",
-    classes: "bg-green-600 text-white hover:bg-green-700",
+    tom: { borda: "border-green-300", bolinha: "bg-green-600", cheio: "border-green-700 bg-green-600 text-white" },
   },
   {
     nivel: "rotina",
@@ -55,7 +59,7 @@ export const CORES_DA_TRIAGEM: CorDaTriagem[] = [
     rotulo: "Azul",
     descricao: "Não urgente",
     tempoAlvo: "até 240 min",
-    classes: "bg-blue-600 text-white hover:bg-blue-700",
+    tom: { borda: "border-blue-300", bolinha: "bg-blue-600", cheio: "border-blue-700 bg-blue-600 text-white" },
   },
 ];
 

@@ -131,3 +131,17 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 5 | Recepção | Menu | Olhar o topo do menu | Só o cartão "UBS Centro" (uma unidade, sem troca); as páginas não têm mais seletor de unidade |
 
 **Conferido** por teste (QR lido por leitor automático a 600 e 160 px, resumo de hoje na API, escolha da unidade e menu por unidade) e por prints no Chrome; o QR real (107 caracteres) foi lido nos prints. **Falta** o clique no navegador e ler com um celular de verdade.
+
+## Estação refeita (design system, 2026-11-16)
+
+[Design](../design-system/estacao.md). Antes: `npm run dev:seed`, abrir a sessão de hoje e marcar a presença de dois pacientes na Fila do dia.
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Enfermeira | Painel → Estação | Abrir a tela | No topo, o serviço e o cartão "Triagem 1"; a fila com "aguardando na unidade" (senha, primeiro nome, há quanto tempo) e "a caminho"; "Estação livre" com **Chamar o próximo** |
+| 2 | Enfermeira | Estação | Chamar o próximo | A faixa "chamado, esperando entrar" com Rechamar, Não compareceu e **Compareceu**; a classificação fica fechada |
+| 3 | Enfermeira | Estação | Compareceu | "na sua sala há 00:05", "desfazer" e a classificação; o selo "app sugeriu" na cor sugerida |
+| 4 | Enfermeira | Estação | Marcar uma cor e "Finalizar e chamar o próximo" | A pessoa vai ao atendimento e a próxima é chamada |
+| 5 | Médico | Estação de atendimento | Chamar e "Finalizar e chamar o próximo" sem Compareceu | Fecha normalmente (o comparecimento é marcado sozinho) |
+
+**Conferido** por teste (domínio, API com triagem e fila à vista, tela nas duas fases) e por prints no Chrome. **Falta** o clique no navegador.

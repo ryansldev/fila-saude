@@ -252,3 +252,15 @@ Design: [qr-e-unidade.md](../design-system/qr-e-unidade.md).
 | QU4 | Unidade inicial | A guardada, se ainda vale; senão, a primeira (antes, com várias, a página pedia a escolha) | Pedir a escolha | Baixo |
 | QU5 | Resumo de hoje | Rota leve `/unidades/hoje`, calculada das sessões (vale para a gestão SMS, que não tem ação da fila) | Junto da lista de unidades | Baixo |
 
+
+## Estação: chamado, compareceu e a fila à vista (2026-11-16)
+
+Design: [estacao.md](../design-system/estacao.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| ES1 | "Compareceu" | Uma marcação na chamada (`compareceuEm`), sem estado novo na fila | Estado "na sala" na máquina de estados | Baixo: um relatório de tempo de sala lê a marcação |
+| ES2 | Fechar sem Compareceu | Triagem recusa (`sem_comparecimento`); consultório marca sozinho na hora de fechar (aprovado na conversa) | Recusar nos dois | Baixo |
+| ES3 | "O mais antigo" | Fica vermelha depois do tempo-alvo da cor confirmada (urgência confirmada ou passou pela triagem); sem cor confirmada, 30 min | Usar a cor sugerida pelo app | Baixo: serviço sem triagem nunca usa a cor do app |
+| ES4 | Chips da fila | Só senha e primeiro nome, até 3 de cada grupo e "+N" | Nome completo | Baixo |
+| ES5 | Troca de estação | Cartão de uma linha e painel lateral "Em qual estação você está?", como a unidade | Menu suspenso | Baixo |
