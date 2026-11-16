@@ -43,7 +43,8 @@ describe("menuDoPainel", () => {
   it("fatia 1: recepção vê a fila; quem atende vê a fila e a estação; sem item, 'Em breve'; sem perfis, vazio", () => {
     expect(rotulos([{ perfil: "recepcao", unidadeId: "u1" }])).toEqual(["Fila do dia", "QR de entrada"]);
     expect(rotulos([{ perfil: "atendimento", unidadeId: "u1" }])).toEqual(["Fila do dia", "Estação"]);
-    expect(rotulos([{ perfil: "agendar", unidadeId: "u1" }])).toEqual(["Em breve"]);
+    expect(rotulos([{ perfil: "agendar", unidadeId: "u1" }])).toEqual(["Agendamento"]);
+    expect(rotulos([{ perfil: "regulacao_sms", unidadeId: null }])).toEqual(["Em breve"]);
     expect(rotulos([])).toEqual([]);
   });
 

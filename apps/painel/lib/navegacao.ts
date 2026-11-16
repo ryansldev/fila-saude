@@ -14,6 +14,7 @@ const CONFIGURAR: Acao = "configurar_servicos_sessoes_estacoes_tv";
 const SESSAO: Acao = "abrir_cancelar_encerrar_sessao";
 const PRESENCA: Acao = "conferir_e_marcar_presenca";
 const OPERAR: Acao = "operar_chamadas";
+const AGENDAR: Acao = "alocar_confirmar_recusar_pelo_paciente";
 
 export const ITENS_DO_MENU: Candidato[] = [
   { rotulo: "Unidades", href: "/unidades", grupo: "configuracao", acoes: [UNIDADES] },
@@ -25,6 +26,7 @@ export const ITENS_DO_MENU: Candidato[] = [
   { rotulo: "Fila do dia", href: "/fila", grupo: "atendimento", acoes: [SESSAO, PRESENCA, OPERAR] },
   { rotulo: "QR de entrada", href: "/qr", grupo: "atendimento", acoes: [PRESENCA, SESSAO] },
   { rotulo: "Estação", href: "/estacao", grupo: "atendimento", acoes: [OPERAR] },
+  { rotulo: "Agendamento", href: "/agendamento", grupo: "atendimento", acoes: [AGENDAR] },
 ];
 
 const EM_BREVE: ItemDeMenu = { rotulo: "Em breve", href: "/em-breve", grupo: "atendimento" };
