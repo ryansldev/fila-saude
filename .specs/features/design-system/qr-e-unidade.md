@@ -12,7 +12,7 @@
 
 1. **Tela da equipe** no QR de entrada: o QR (pequeno, para conferir), as sessões abertas e o **Dr. Lino explicando, no tom de quem atende**, como o QR funciona e o que fazer quando não dá certo.
 2. **Tela do paciente** em tela cheia ("Abrir para o paciente"), sem o menu: QR grande à esquerda, o **Dr. Lino falando com o paciente** à direita e os 3 passos (layout A do protótipo).
-3. **QR mais suave** em todo lugar que mostra o código de entrada (equipe, paciente, TV): **pontos redondos em azul, com o coração da marca no centro** (estilo B), em moldura branca com sombra leve e uma barrinha fina de troca.
+3. **QR mais suave** em todo lugar que mostra o código de entrada (equipe, paciente, TV): **pontos redondos pretos, cantos arredondados e só o coração da marca, no centro, em azul**, em moldura branca com sombra leve e uma barrinha fina de troca.
 4. **Unidade no topo do menu**, para o painel inteiro: cartão de **uma linha** (ícone, nome cortado com "…", bolinha verde se há sessão aberta, seta). Ao tocar, abre um painel lateral "Em qual unidade você está?" com cartões que mostram **todas as informações relevantes**: nome inteiro, endereço completo com CEP, bairro, tipo, CNES e o que acontece hoje.
 
 ## Não objetivos
@@ -31,7 +31,7 @@
 
 - **Tela do QR:** primeiro tratei a tela do painel como tela do paciente (três layouts de monitor). Você corrigiu: o painel é da equipe. Ficam **as duas**: a da equipe e a do paciente, com o Dr. Lino em cada uma, no tom de quem vê.
 - **Layout do paciente:** (A) QR à esquerda e o Dr. Lino à direita; (B) o Dr. Lino grande à esquerda; (C) tudo no centro. **A.**
-- **Estilo do QR:** (A) azul-escuro com cantos arredondados e coração; **(B) pontos redondos azuis com coração**; (C) como A sem coração. **B**, escolha sua. Os três foram lidos por um leitor automático a 600 e 160 px.
+- **Estilo do QR:** (A) azul-escuro com cantos arredondados e coração; **(B) pontos redondos com coração**; (C) como A sem coração. **B**, escolha sua, com o ajuste: os pontos são **pretos** e só o coração é azul. Todos foram lidos por um leitor automático a 600 e 160 px.
 - **Cartão da unidade:** (A) uma linha; (B) duas linhas com o bairro; (C) rótulo e o nome em até 2 linhas. **A**, com todas as informações no painel de troca.
 - **Unidade global** (um caminho só): um contexto no layout do painel, que o cartão do menu troca e as páginas leem. Manter o seletor em cada página foi descartado (é o problema de hoje).
 
@@ -42,7 +42,7 @@
 - Cabeçalho "QR de entrada" e a frase "Quem já se inscreveu entra na fila de hoje lendo este código ao chegar."; à direita, o botão `principal` **"Abrir para o paciente (tela cheia)"** com ícone de monitor.
 - As sessões abertas como pílulas (bolinha verde e o nome do serviço).
 - À esquerda, o QR (~220 px) com a barrinha de troca e "troca sozinho a cada 30 s".
-- À direita, o Dr. Lino (fundo branco) com o balão "Oi! Eu explico como o QR funciona na sua unidade." e quatro passos:
+- À direita, o Dr. Lino (fundo branco) com o balão "Oi! Eu explico como o QR funciona na sua unidade." e quatro passos. **Balão suave, de mensagem**: fundo azul bem claro (`#eef5fa`), sem borda nem relevo, cantos bem arredondados e uma pontinha virada para o Dr. Lino (vale para as duas telas):
   1. **Deixe o código à vista de quem chega**: na TV da sala de espera ou num monitor virado para o balcão ("Abrir para o paciente").
   2. **A pessoa lê com o celular** e passa de "a caminho" para "na unidade" na Fila do dia. Não precisa fazer nada.
   3. **O código troca a cada 30 s**: assim ninguém entra na fila de casa com uma foto dele.
@@ -53,14 +53,15 @@
 
 - Fundo branco, tela cheia, sem menu; exige a sessão da equipe (é aberta por ela).
 - No topo, a marca "fila saúde" e a unidade (nome e endereço curto).
-- À esquerda (~42% da largura), o QR grande na moldura, com a barrinha de troca.
-- À direita, o Dr. Lino com o balão "chegou? que bom! leia o código com a câmera do celular.", os 3 passos (abra a câmera do celular ou o app; aponte para o código; pronto, você está na fila: fique de olho na TV), os serviços abertos como etiquetas e "sem celular ou não deu certo? fale com a recepção.".
+- **Três colunas**, com respiro largo nas margens: o QR (~30% da largura) na moldura, com a barrinha de troca; o **Dr. Lino grande, mais ou menos da altura do QR**, acenando; e o texto.
+- O texto, numa coluna alinhada ao balão: o balão "chegou? que bom! leia o código com a câmera do celular.", os 3 passos curtos ("abra a câmera do celular", "aponte para o código ao lado", "pronto! fique de olho na TV"), os serviços abertos como etiquetas e "sem celular ou não deu certo? fale com a recepção.".
+- **Texto grande para ser lido de longe** (fala ~2,15% da largura da tela, passos ~1,75%, aviso ~1,45%), com a mesma distância entre os blocos.
 - Sem sessão aberta: o Dr. Lino diz "a fila abre às HH:MM." no lugar do código (ou "hoje não tem atendimento por aqui.").
 - Textos em minúsculas, como no app.
 
 ### O QR (componente do kit)
 
-- Desenhado a partir da matriz do `qrcode` (`QRCode.create`, correção **H**, por causa do coração): módulos como pontos redondos azuis (`#185b9a`), os três quadrados de canto arredondados, o coração da marca num quadrado branco no centro.
+- Desenhado a partir da matriz do `qrcode` (`QRCode.create`, correção **H**, por causa do coração): módulos como pontos redondos pretos (`#111313`), os três quadrados de canto arredondados e pretos, o coração da marca (azul `#1a73c8`) num quadrado branco no centro.
 - Usado nas três telas (equipe, paciente, TV).
 - **Teste**: o SVG gerado é rasterizado e lido por um leitor de QR (`zxing-wasm`) a 600 e 160 px, e o texto lido é o conteúdo original.
 
