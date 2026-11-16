@@ -15,14 +15,14 @@ import { unidade } from "infra/database/municipal/schema/unidade";
 import type { DbDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
 import { lerDia, naSessao, paraServico } from "./dia";
-import { atualizarEntrada, lerEntrada } from "./entradas";
+import { atualizarEntrada, lerEntrada, type PessoaInformada } from "./entradas";
 import { inscrever } from "./inscricao";
 
 const FINAIS = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"] as const;
 const DIAS_DA_AGENDA = 14;
 // Estados em que o paciente ainda pode desistir (cancelarEntrada no domínio).
 const CANCELAVEIS = ["aguardando", "aguardando_encaminhamento", "alocada", "confirmada", "na_reserva", "na_fila"];
-const MAX_POR_CONTA = 5;
+export const MAX_POR_CONTA = 5;
 
 export async function municipiosAtivos() {
   return database
@@ -110,6 +110,39 @@ export async function unidadesDoMunicipio(db: DbDoTenant, agora: number): Promis
   }));
 }
 
+/**
+ * AD-018: "para mim" usa os dados da conta; "outra pessoa" usa os informados, e o CPF de quem
+ * tem conta não entra como "outra pessoa" (a própria conta usa "para mim"; quem tem conta entra pela dela).
+ */
+export async function pessoaDoPedido(
+  p: PacienteAutenticado,
+  paraQuem: InscricaoEntrada["paraQuem"],
+): Promise<PessoaInformada> {
+  if (paraQuem.tipo === "eu") {
+    const [conta] = await database
+      .select({ nome: paciente.name, nascimento: paciente.nascimento, cpf: paciente.cpf })
+      .from(paciente)
+      .where(eq(paciente.id, p.pacienteId));
+    if (!conta) throw new ErroApi(401, "nao_autenticado");
+    return { ...conta, pacienteId: p.pacienteId };
+  }
+  const { nome, nascimento, cpf } = paraQuem;
+  const digitos = cpf ? cpf.replace(/\D/g, "") : null;
+  if (digitos) {
+    const [dono] = await database.select({ id: paciente.id }).from(paciente).where(eq(paciente.cpf, digitos));
+    if (dono?.id === p.pacienteId)
+      throw new ErroApi(409, "cpf_da_conta", undefined, 'Esse é o seu CPF. Para se inscrever, escolha "para mim".');
+    if (dono)
+      throw new ErroApi(
+        409,
+        "pessoa_tem_conta",
+        undefined,
+        "Essa pessoa já tem conta no Fila Saúde. Ela se inscreve pela própria conta.",
+      );
+  }
+  return { nome, nascimento, cpf: digitos, pacienteId: null };
+}
+
 // T3.3 / AD-018: "para mim" usa os dados da conta; "outra pessoa" fica com a conta como responsável.
 export async function inscreverPaciente(
   db: DbDoTenant,
@@ -139,33 +172,7 @@ export async function inscreverPaciente(
       undefined,
       `Uma conta inscreve até ${MAX_POR_CONTA} pessoas por atendimento. Para mais, procure a recepção.`,
     );
-  let pessoa: { nome: string; nascimento: string; cpf: string | null; pacienteId: string | null };
-  if (dados.paraQuem.tipo === "eu") {
-    const [conta] = await database
-      .select({ nome: paciente.name, nascimento: paciente.nascimento, cpf: paciente.cpf })
-      .from(paciente)
-      .where(eq(paciente.id, p.pacienteId));
-    if (!conta) throw new ErroApi(401, "nao_autenticado");
-    pessoa = { ...conta, pacienteId: p.pacienteId };
-  } else {
-    const { nome, nascimento, cpf } = dados.paraQuem;
-    const digitos = cpf ? cpf.replace(/\D/g, "") : null;
-    if (digitos) {
-      // O CPF de quem tem conta no app não entra como "outra pessoa": a própria conta usa "para mim"
-      // e quem tem conta se inscreve por ela (vê, cancela e recebe os avisos).
-      const [dono] = await database.select({ id: paciente.id }).from(paciente).where(eq(paciente.cpf, digitos));
-      if (dono?.id === p.pacienteId)
-        throw new ErroApi(409, "cpf_da_conta", undefined, 'Esse é o seu CPF. Para se inscrever, escolha "para mim".');
-      if (dono)
-        throw new ErroApi(
-          409,
-          "pessoa_tem_conta",
-          undefined,
-          "Essa pessoa já tem conta no Fila Saúde. Ela se inscreve pela própria conta.",
-        );
-    }
-    pessoa = { nome, nascimento, cpf: digitos, pacienteId: null };
-  }
+  const pessoa = await pessoaDoPedido(p, dados.paraQuem);
   const e = await inscrever(db, sessaoId, {
     pessoa,
     responsavelPacienteId: p.pacienteId,

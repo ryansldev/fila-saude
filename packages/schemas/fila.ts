@@ -210,6 +210,20 @@ export const inscricaoSchema = z.object({
   classificacao: z.object({ nivel: z.string(), apoio: z.boolean() }),
 });
 
+/** T5.1 / I1: serviço da unidade para o app, com o modo de marcação (RN-ENC-05); sem dado de paciente. */
+export const servicoDaUnidadeSchema = z.object({
+  id: z.uuid(),
+  nome: z.string(),
+  modo: z.enum(["livre", "requisicao", "regulado"]),
+});
+export type ServicoDaUnidade = z.infer<typeof servicoDaUnidadeSchema>;
+
+/** RN-RISCO-03: refazer o questionário de quem está na lista. */
+export const questionarioEntradaSchema = z.object({ respostas: respostasSchema });
+export const questionarioRefeitoSchema = z.object({
+  classificacao: z.object({ nivel: z.string(), apoio: z.boolean() }),
+});
+
 /** RN-FILA-05: resultado da conferência da recepção ao marcar presença. */
 export const presencaEntradaSchema = z.object({
   entradaId: z.uuid(),
