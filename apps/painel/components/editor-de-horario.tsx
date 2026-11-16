@@ -62,9 +62,8 @@ export function EditorDeHorario({
                       />
                       <Button
                         type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                        variante="texto"
+                        tamanho="icone"
                         aria-label={`Remover intervalo ${i + 1} de ${nome}`}
                         title="Remover intervalo"
                         onClick={() => remover(chave, i)}
@@ -79,8 +78,8 @@ export function EditorDeHorario({
             </div>
             <Button
               type="button"
-              variant="secondary"
-              size="sm"
+              variante="secundario"
+              tamanho="compacto"
               className="self-start"
               aria-label={`Adicionar intervalo em ${nome}`}
               onClick={() => mudar(adicionarIntervalo(valor, chave))}

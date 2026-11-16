@@ -403,12 +403,12 @@ export function PainelLateral({
           {aoEnviar || perigo ? (
             <SheetFooter className="flex-row items-center border-t border-slate-100 px-6 py-4">
               {perigo ? (
-                <Button type="button" variant="ghost" className="text-destructive" onClick={perigo.aoClicar}>
+                <Button type="button" variante="textoPerigo" onClick={perigo.aoClicar}>
                   {perigo.rotulo}
                 </Button>
               ) : null}
               <div className="flex-1" />
-              <Button type="button" variant="ghost" onClick={aoFechar}>
+              <Button type="button" variante="texto" onClick={aoFechar}>
                 Cancelar
               </Button>
               {aoEnviar ? (
@@ -438,20 +438,9 @@ export function BotaoAdicionarLinha({
   disabled?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={aoClicar}
-      disabled={disabled}
-      className={cn(
-        "flex h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 text-sm font-semibold text-slate-600 transition-colors",
-        "hover:border-primary/60 hover:bg-primary-50/50 hover:text-primary-600",
-        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:bg-transparent disabled:hover:text-slate-600",
-      )}
-    >
-      <PlusIcon className="size-4" strokeWidth={2.5} />
+    <Button variante="secundario" icone={PlusIcon} onClick={aoClicar} disabled={disabled} className="w-full">
       {rotulo}
-    </button>
+    </Button>
   );
 }
 
@@ -468,15 +457,15 @@ export function Senha({
   return (
     <div className="relative">
       <Texto type={ver ? "text" : "password"} valor={valor} aoMudar={aoMudar} className="pr-12" {...props} />
-      <button
-        type="button"
+      <Button
+        variante="texto"
+        tamanho="icone"
+        icone={ver ? EyeOffIcon : EyeIcon}
         onClick={() => setVer(!ver)}
         aria-label={ver ? "Esconder senha" : "Mostrar senha"}
         title={ver ? "Esconder senha" : "Mostrar senha"}
-        className="absolute inset-y-0 right-1 flex w-10 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-primary"
-      >
-        {ver ? <EyeOffIcon className="size-5" /> : <EyeIcon className="size-5" />}
-      </button>
+        className="absolute inset-y-1 right-1"
+      />
     </div>
   );
 }

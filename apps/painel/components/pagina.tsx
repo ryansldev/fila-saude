@@ -45,7 +45,7 @@ export function EstadoDaSessao({ estado }: { estado: string }) {
 }
 
 /**
- * Ações de cada linha de tabela: ícones neutros, lixeira à esquerda e engrenagem na ponta direita.
+ * Ações de cada linha de tabela: lixeira em vermelho à esquerda e engrenagem na ponta direita.
  * `rotulo` vira o nome acessível ("Editar UBS Centro") e a dica ao passar o mouse.
  */
 export function AcoesDaLinha({
@@ -55,32 +55,27 @@ export function AcoesDaLinha({
   editar?: { rotulo: string; aoClicar: () => void };
   excluir?: { rotulo: string; aoClicar: () => void };
 }) {
-  const classe = "text-slate-400 hover:bg-slate-100 hover:text-slate-900";
   return (
     <div className="flex justify-end gap-1">
       {excluir ? (
         <Button
-          variant="ghost"
-          size="icon-sm"
-          className={classe}
+          variante="textoPerigo"
+          tamanho="icone"
+          icone={Trash2Icon}
           aria-label={excluir.rotulo}
           title={excluir.rotulo}
           onClick={excluir.aoClicar}
-        >
-          <Trash2Icon />
-        </Button>
+        />
       ) : null}
       {editar ? (
         <Button
-          variant="ghost"
-          size="icon-sm"
-          className={classe}
+          variante="texto"
+          tamanho="icone"
+          icone={SettingsIcon}
           aria-label={editar.rotulo}
           title={editar.rotulo}
           onClick={editar.aoClicar}
-        >
-          <SettingsIcon />
-        </Button>
+        />
       ) : null}
     </div>
   );

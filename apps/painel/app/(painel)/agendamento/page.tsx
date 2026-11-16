@@ -126,10 +126,10 @@ export default function Agendamento() {
       <div className="flex flex-wrap items-end gap-4">
         <SeletorDeUnidade unidades={unidades} atual={atual} escolher={escolher} erro={erroDasUnidades} />
         <div className="flex gap-2" role="tablist">
-          <Button variant={aba === "alocar" ? "default" : "outline"} onClick={() => setAba("alocar")}>
+          <Button variante={aba === "alocar" ? "principal" : "secundario"} onClick={() => setAba("alocar")}>
             Alocar
           </Button>
-          <Button variant={aba === "ligacao" ? "default" : "outline"} onClick={() => setAba("ligacao")}>
+          <Button variante={aba === "ligacao" ? "principal" : "secundario"} onClick={() => setAba("ligacao")}>
             Lista de ligação
           </Button>
         </div>
@@ -160,24 +160,24 @@ export default function Agendamento() {
                 <TableCell>
                   <div className="flex flex-wrap justify-end gap-2">
                     <Button
-                      size="sm"
-                      variant="success"
+                      tamanho="compacto"
+                      variante="sucesso"
                       disabled={enviando}
                       onClick={() => responder(i.entradaId, i.nome, "confirmou")}
                     >
                       Confirmou
                     </Button>
                     <Button
-                      size="sm"
-                      variant="outline"
+                      tamanho="compacto"
+                      variante="secundario"
                       disabled={enviando}
                       onClick={() => responder(i.entradaId, i.nome, "sem_contato")}
                     >
                       Sem contato
                     </Button>
                     <Button
-                      size="sm"
-                      variant="destructive"
+                      tamanho="compacto"
+                      variante="perigoContorno"
                       disabled={enviando}
                       onClick={() => responder(i.entradaId, i.nome, "recusou")}
                     >
@@ -262,24 +262,24 @@ export default function Agendamento() {
                             {a.estado === "alocada" ? (
                               <div className="flex flex-wrap justify-end gap-2">
                                 <Button
-                                  size="sm"
-                                  variant="success"
+                                  tamanho="compacto"
+                                  variante="sucesso"
                                   disabled={enviando}
                                   onClick={() => responder(a.entradaId, a.nome, "confirmou")}
                                 >
                                   Confirmou
                                 </Button>
                                 <Button
-                                  size="sm"
-                                  variant="outline"
+                                  tamanho="compacto"
+                                  variante="secundario"
                                   disabled={enviando}
                                   onClick={() => responder(a.entradaId, a.nome, "sem_contato")}
                                 >
                                   Sem contato
                                 </Button>
                                 <Button
-                                  size="sm"
-                                  variant="destructive"
+                                  tamanho="compacto"
+                                  variante="perigoContorno"
                                   disabled={enviando}
                                   onClick={() => responder(a.entradaId, a.nome, "recusou")}
                                 >
@@ -324,7 +324,7 @@ export default function Agendamento() {
                         <TableCell>
                           <div className="flex justify-end">
                             <Button
-                              size="sm"
+                              tamanho="compacto"
                               disabled={enviando || !d.sessao.podeAlocar}
                               onClick={() => alocar(x.entradaId, x.nome)}
                             >

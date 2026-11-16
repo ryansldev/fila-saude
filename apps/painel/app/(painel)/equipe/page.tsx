@@ -49,9 +49,9 @@ function BotaoRemover({ rotulo, aoClicar }: { rotulo: string; aoClicar: () => vo
   return (
     <Button
       type="button"
-      variant="ghost"
-      size="icon-sm"
-      className="mb-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+      variante="texto"
+      tamanho="icone"
+      className="mb-0.5"
       aria-label={rotulo}
       title={rotulo}
       onClick={aoClicar}

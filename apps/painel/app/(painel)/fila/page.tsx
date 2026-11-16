@@ -131,7 +131,7 @@ export default function FilaDoDia() {
             ) : null}
             {pode.encerrar ? (
               <Button
-                variant="outline"
+                variante="secundario"
                 onClick={() =>
                   agir(
                     `/v1/painel/sessoes/${sessaoId}/encerrar`,
@@ -315,10 +315,10 @@ function FilaPorSituacao({
               <>
                 <span className="text-sm text-slate-600">{textoDoDocumento(i.documento)}</span>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="ghost" className="text-destructive" onClick={() => aoRecusar(i.entradaId)}>
+                  <Button tamanho="compacto" variante="textoPerigo" onClick={() => aoRecusar(i.entradaId)}>
                     Não confere
                   </Button>
-                  <Button size="sm" onClick={() => aoMarcar(i.entradaId)}>
+                  <Button tamanho="compacto" onClick={() => aoMarcar(i.entradaId)}>
                     Confere, marcar presença
                   </Button>
                 </div>
@@ -344,7 +344,7 @@ function FilaPorSituacao({
           <>
             <Pessoa i={i} extra={podePresenca ? textoDoDocumento(i.documento) : undefined} />
             {podePresenca ? (
-              <Button size="sm" variant="secondary" onClick={() => aoMarcar(i.entradaId)}>
+              <Button tamanho="compacto" variante="secundario" onClick={() => aoMarcar(i.entradaId)}>
                 Marcar presença
               </Button>
             ) : null}

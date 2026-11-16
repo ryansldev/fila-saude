@@ -6,6 +6,7 @@ import { useConfirmar } from "@/components/dialogos";
 import { Aviso, Campo, Selecao } from "@/components/formulario";
 import { CabecalhoDaPagina } from "@/components/pagina";
 import { SeletorDeUnidade } from "@/components/seletor-de-unidade";
+import { BotaoDeEscolha } from "@/components/ui/botao-de-escolha";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/api-context";
 import { cronometro, estacoesQueOpera } from "@/lib/fila";
@@ -178,14 +179,12 @@ export default function Estacao() {
                   <legend className="mb-2 font-medium text-gray-900">Classificação de risco</legend>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
                     {CORES_DA_TRIAGEM.map((c) => (
-                      <button
+                      <BotaoDeEscolha
                         key={c.nivel}
-                        type="button"
-                        aria-pressed={cor === c.nivel}
+                        selecionado={cor === c.nivel}
+                        algumSelecionado={cor !== null}
                         onClick={() => setCor(c.nivel)}
-                        className={`flex min-h-20 flex-col items-start justify-center rounded-xl px-4 py-3 text-left transition ${c.classes} ${
-                          cor === c.nivel ? "ring-4 ring-gray-900 ring-offset-2" : cor ? "opacity-60" : ""
-                        }`}
+                        className={c.classes}
                       >
                         <span className="font-bold text-lg">{c.rotulo}</span>
                         <span className="text-sm">
@@ -196,7 +195,7 @@ export default function Estacao() {
                             sugerido pelo app
                           </span>
                         ) : null}
-                      </button>
+                      </BotaoDeEscolha>
                     ))}
                   </div>
                 </fieldset>
@@ -217,27 +216,22 @@ export default function Estacao() {
               </p>
             ) : null}
             <div className="flex flex-wrap gap-3">
-              <Button size="lg" disabled={enviando || falta} onClick={() => comando("chamar")}>
+              <Button disabled={enviando || falta} onClick={() => comando("chamar")}>
                 Chamar próximo
               </Button>
               {chamado ? (
                 <>
-                  <Button size="lg" variant="outline" disabled={enviando} onClick={() => comando("rechamar")}>
+                  <Button variante="secundario" disabled={enviando} onClick={() => comando("rechamar")}>
                     Rechamar
                   </Button>
-                  <Button size="lg" variant="success" disabled={enviando || falta} onClick={() => comando("finalizar")}>
+                  <Button variante="sucesso" disabled={enviando || falta} onClick={() => comando("finalizar")}>
                     Finalizar
                   </Button>
-                  <Button size="lg" variant="destructive" disabled={enviando} onClick={() => comando("nao-compareceu")}>
+                  <Button variante="perigoContorno" disabled={enviando} onClick={() => comando("nao-compareceu")}>
                     Não compareceu
                   </Button>
                   {triagem && podeEncaminhar(cor) ? (
-                    <Button
-                      size="lg"
-                      variant="destructive"
-                      disabled={enviando}
-                      onClick={() => comando("finalizar", true)}
-                    >
+                    <Button variante="perigo" disabled={enviando} onClick={() => comando("finalizar", true)}>
                       Encaminhar à emergência
                     </Button>
                   ) : null}

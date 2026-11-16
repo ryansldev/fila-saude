@@ -85,7 +85,7 @@ export function ProvedorDeDialogos({ children }: { children: ReactNode }) {
           <AlertDialogFooter>
             <AlertDialogCancel>Voltar</AlertDialogCancel>
             <AlertDialogAction
-              variant={pedido?.tipo === "confirmar" && pedido.perigo ? "destructive" : "default"}
+              variante={pedido?.tipo === "confirmar" && pedido.perigo ? "perigo" : "principal"}
               onClick={() => {
                 if (vazio) return setTentou(true);
                 fechar(true);

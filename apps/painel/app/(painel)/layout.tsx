@@ -113,11 +113,10 @@ export default function LayoutDoPainel({ children }: { children: ReactNode }) {
             <p className="truncate text-xs text-slate-500">{eu.eu.login}</p>
           </div>
           <Button
-            variant="ghost"
-            size="icon-sm"
+            variante="texto"
+            tamanho="icone"
             aria-label="Sair"
             title="Sair"
-            className="text-slate-500 hover:text-slate-900"
             onClick={() => void sair(api, (href) => router.replace(href))}
           >
             <LogOutIcon />

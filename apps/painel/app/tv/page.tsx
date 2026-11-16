@@ -4,6 +4,7 @@ import type { TvEstado, TvRegistro } from "@fila-saude/schemas/tv";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
+import { Button } from "@/components/ui/button";
 import { urlDaApi } from "@/lib/tenant";
 import { ANUNCIOS_VAZIOS, type Anuncios, avancarAnuncios, receberChamadas, ultimasAnunciadas } from "@/lib/tv";
 
@@ -151,9 +152,9 @@ export default function Tv() {
         <Centro>
           <Logo className="size-20 text-white" />
           <p className="text-4xl font-bold">{estado.unidade.nome}</p>
-          <button
-            type="button"
-            className="rounded-2xl bg-white px-12 py-6 text-4xl font-extrabold text-primary-900"
+          <Button
+            variante="branco"
+            className="h-24 rounded-2xl px-12 text-4xl"
             onClick={() => {
               // RN-TV-04: o navegador só libera o som depois de um toque.
               audio.current = new AudioContext();
@@ -161,7 +162,7 @@ export default function Tv() {
             }}
           >
             iniciar painel
-          </button>
+          </Button>
           <p className="text-xl opacity-70">toque uma vez para ligar o som das chamadas.</p>
         </Centro>
       ) : (
