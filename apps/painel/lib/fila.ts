@@ -162,7 +162,8 @@ export function contextoDaLinha(
   i: { estado: string; etapa: string; pendencias: string[]; desde: string | null; estacao: string | null },
   agora: number,
 ): ContextoDaLinha {
-  const tempo = i.desde ? `há ${minutosDesde(i.desde, agora)} min` : null;
+  const minutos = i.desde ? minutosDesde(i.desde, agora) : null;
+  const tempo = minutos === null ? null : minutos === 0 ? "agora" : `há ${minutos} min`;
   if (i.estado === "chamado")
     return { texto: i.estacao ? `chamado para ${i.estacao}` : "chamado", tempo, tom: "chamado" };
   if (i.estado === "presente")
@@ -192,4 +193,23 @@ export function pilulaDaSessao(
 /** O filtro guardado no navegador só vale se a sessão ainda está entre as de hoje; senão, "todas". */
 export function filtroValido(guardado: string | null, sessoes: { id: string }[]): string {
   return guardado && sessoes.some((s) => s.id === guardado) ? guardado : "todas";
+}
+
+/**
+ * O que a Fila do dia diz quando não há ninguém nela: antes de abrir, quando abre e quantos já se
+ * inscreveram (e, para quem abre a sessão, como abrir); aberta, que ainda não chegou ninguém.
+ */
+export function filaVazia(
+  sessoes: { estado: string; ocupadas: number; inicio: string }[],
+  fuso: string,
+  podeAbrir: boolean,
+): string {
+  const planejadas = sessoes.filter((s) => s.estado === "planejada");
+  if (planejadas.length === 0 || planejadas.length < sessoes.filter((s) => s.estado !== "cancelada").length)
+    return "Ninguém na fila ainda. Quem se inscrever pelo app aparece aqui.";
+  const primeira = [...planejadas].sort((a, b) => a.inicio.localeCompare(b.inicio))[0] as (typeof planejadas)[number];
+  const hora = instanteParaLocal(Date.parse(primeira.inicio), fuso).slice(11, 16);
+  const inscritos = planejadas.reduce((n, s) => n + s.ocupadas, 0);
+  const comoAbrir = podeAbrir ? " Escolha o serviço acima para abrir a sessão." : "";
+  return `A fila abre às ${hora}. Inscritos até agora: ${inscritos}.${comoAbrir}`;
 }

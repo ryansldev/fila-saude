@@ -8,6 +8,7 @@ import {
   contextoDaLinha,
   cronometro,
   estacoesQueOpera,
+  filaVazia,
   filtroValido,
   minutosDesde,
   ordenarFila,
@@ -228,5 +229,25 @@ describe("pílulas de serviço da Fila do dia", () => {
     expect(filtroValido("x", [{ id: "a" }])).toBe("todas");
     expect(filtroValido(null, [{ id: "a" }])).toBe("todas");
     expect(filtroValido("a", [{ id: "a" }])).toBe("a");
+  });
+});
+
+describe("Fila do dia: tempo curto e fila vazia", () => {
+  it("menos de 1 minuto é 'agora', não 'há 0 min'", () => {
+    const i = { estado: "presente", etapa: "triagem", pendencias: [], estacao: null };
+    expect(contextoDaLinha({ ...i, desde: new Date(AGORA - 20_000).toISOString() }, AGORA).tempo).toBe("agora");
+  });
+
+  it("antes de abrir, diz quando abre e quantos já se inscreveram; para o gerente, como abrir", () => {
+    const s = (estado: string, ocupadas: number, inicio = "2026-11-16T12:00:00.000Z") => ({ estado, ocupadas, inicio });
+    expect(
+      filaVazia([s("planejada", 2), s("planejada", 3, "2026-11-16T13:00:00.000Z")], "America/Sao_Paulo", false),
+    ).toBe("A fila abre às 09:00. Inscritos até agora: 5.");
+    expect(filaVazia([s("planejada", 2)], "America/Sao_Paulo", true)).toBe(
+      "A fila abre às 09:00. Inscritos até agora: 2. Escolha o serviço acima para abrir a sessão.",
+    );
+    expect(filaVazia([s("aberta", 0)], "America/Sao_Paulo", true)).toBe(
+      "Ninguém na fila ainda. Quem se inscrever pelo app aparece aqui.",
+    );
   });
 });

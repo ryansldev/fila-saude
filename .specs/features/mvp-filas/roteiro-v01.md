@@ -103,3 +103,17 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 9 | Paciente | App → cartão de quem está na lista | "minha situação mudou: responder de novo" | O questionário sem "para quem"; urgente sobe a pessoa e acende o alerta do agendador |
 
 **Tela de Agendamento refeita no design system (2026-11-16, caminho A).** **Executado por HTTP** (2026-11-16, de novo depois do design system, script contra `npm run dev` com o seed): passos 1–7 pelas mesmas rotas; o passo 8 é coberto pelo teste com dois escritores (`tests/integration/v1/painel/agendamento/agendamento.test.ts`). A página `/agendamento` responde no Next. **Falta** o clique no navegador e no celular.
+
+## Fila do dia refeita (design system, 2026-11-16)
+
+[Design](../design-system/fila-do-dia.md): a unidade inteira numa fila só, com busca e pílulas por serviço.
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Gerente | Painel → Fila do dia | Abrir a tela antes das sessões | Pílulas "Curativos · abre às HH:MM" e "Clínico geral · abre às HH:MM"; "A fila abre às HH:MM. Inscritos até agora: 5. Escolha o serviço acima para abrir a sessão." |
+| 2 | Gerente | Pílula "Clínico geral" | "Abrir sessão" na faixa da sessão (e o mesmo em Curativos) | A faixa só aparece com um serviço escolhido; em "Todas", a recepção não vê abrir nem encerrar |
+| 3 | Recepção | Fila do dia, em "Todas" | Olhar a fila | As pessoas das duas sessões juntas, em grupos com ícone e contagem (chamado agora, na unidade, a caminho); cada linha com o serviço, a situação e há quanto tempo |
+| 4 | Recepção | Busca | Digitar "c002", depois o CPF inteiro de alguém | Fica só a pessoa da senha C-002; com o CPF, a pessoa (os 6 dígitos do meio batem com o mascarado) |
+| 5 | Recepção | Linha "a caminho" | "Marcar presença" | A pessoa passa a "Na unidade" com "esperando a triagem · agora" |
+
+**Conferido** por teste (domínio, rota `fila-de-hoje`, funções da busca e da linha, `Filtros` e `Busca`) e por prints no Chrome (1440 e 1024 px, estado antes de abrir, cenário com as duas sessões abertas, busca). **Falta** o clique no navegador.
