@@ -63,14 +63,14 @@ export default function QrDoPaciente() {
         </div>
         <div className="grid grid-cols-[27%_1fr] items-center gap-x-[4%]">
           <DrLino />
-          <div className="flex flex-col gap-[1.7vw]">
-            <Balao className="text-[1.7vw] leading-tight">{fala}</Balao>
+          <div className="flex flex-col gap-[1.5vw]">
+            <Balao className="text-[1.5vw] leading-tight">{fala}</Balao>
             {valido ? (
               <>
-                <ol className="flex flex-col gap-[1.25vw]">
+                <ol className="flex flex-col gap-[1.1vw]">
                   {PASSOS.map((p, i) => (
-                    <li key={p} className="flex items-center gap-[0.8vw] text-[1.36vw] font-bold text-[#1f2d36]">
-                      <span className="flex size-[2.04vw] shrink-0 items-center justify-center rounded-full border-b-[3px] border-[var(--ds-acao-sombra)] bg-[var(--ds-acao)] text-[0.85em] font-black text-white">
+                    <li key={p} className="flex items-center gap-[0.7vw] text-[1.2vw] font-bold text-[#1f2d36]">
+                      <span className="flex size-[1.8vw] shrink-0 items-center justify-center rounded-full border-b-[3px] border-[var(--ds-acao-sombra)] bg-[var(--ds-acao)] text-[0.85em] font-black text-white">
                         {i + 1}
                       </span>
                       {p}
@@ -81,7 +81,7 @@ export default function QrDoPaciente() {
                   {qr.dado?.sessoes.map((s) => (
                     <span
                       key={s.id}
-                      className="rounded-full bg-[#eaf5f9] px-[1vw] py-[0.2vw] text-[1.08vw] font-extrabold text-[#185b9a]"
+                      className="rounded-full bg-[#eaf5f9] px-[1vw] py-[0.2vw] text-[0.95vw] font-extrabold text-[#185b9a]"
                     >
                       {s.servico.toLowerCase()}
                     </span>
@@ -89,7 +89,7 @@ export default function QrDoPaciente() {
                 </div>
               </>
             ) : null}
-            <p className="rounded-[1vw] bg-[#fffae8] px-[1.6vw] py-[1vw] text-[1.13vw] font-bold text-[#66520a]">
+            <p className="rounded-[1vw] bg-[#fffae8] px-[1.4vw] py-[0.9vw] text-[1vw] font-bold text-[#66520a]">
               sem celular ou não deu certo? fale com a recepção.
             </p>
           </div>

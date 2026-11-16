@@ -16,7 +16,7 @@
 - Botões do kit; nenhum `<button>` fora de `apps/painel/components/ui/`; nada de "Info · Info · Info".
 - Dr. Lino sempre sobre fundo branco. Balão suave: fundo `#eef5fa`, sem borda, pontinha para o Dr. Lino.
 - QR: correção H, pontos pretos `#111313`, coração azul `#1a73c8` no centro; deve ser lido a 600 e 160 px.
-- Tela do paciente em minúsculas, texto grande (fala ~1,7vw, passos ~1,36vw, aviso ~1,13vw).
+- Tela do paciente em minúsculas, texto grande (fala ~1,5vw, passos ~1,2vw, aviso ~1vw).
 - Testes da API pedem o Docker Desktop no ar.
 
 ## Review Focus
