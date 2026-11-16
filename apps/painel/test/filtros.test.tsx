@@ -15,8 +15,10 @@ describe("Filtros (pílulas de escolha do design system)", () => {
   it("a escolhida fica marcada; tocar outra avisa com o id; desativada não", () => {
     const mudar = vi.fn();
     render(<Filtros rotulo="Serviço" opcoes={opcoes} atual="todas" mudar={mudar} />);
-    expect(screen.getByRole("radio", { name: /Todas/ }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByRole("radio", { name: /Clínico geral/ }).getAttribute("aria-checked")).toBe("false");
+    // Rádios nativos: teclado (setas) e leitor de tela vêm de graça.
+    expect((screen.getByRole("radio", { name: /Todas/ }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("radio", { name: /Clínico geral/ }) as HTMLInputElement).checked).toBe(false);
+    expect((screen.getByRole("radio", { name: /Odontologia/ }) as HTMLInputElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("radio", { name: /Clínico geral/ }));
     expect(mudar).toHaveBeenCalledWith("s1");
     fireEvent.click(screen.getByRole("radio", { name: /Odontologia/ }));
