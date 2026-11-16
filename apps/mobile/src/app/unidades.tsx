@@ -5,7 +5,7 @@ import { Building2, Footprints, LocateFixed } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
 import { AbasDoPaciente } from "@/components/atendimento";
-import Mapa, { corDoPino } from "@/components/mapa";
+import Mapa from "@/components/mapa";
 import type { PinoDoMapa } from "@/components/mapa.tipos";
 import {
   Avatar,
@@ -23,6 +23,7 @@ import {
   TextoSuave,
   Titulo,
 } from "@/components/ui";
+import { aparenciaDoPino } from "@/lib/mapa";
 import { useSessao } from "@/lib/sessao";
 import { avisoDoErro } from "@/lib/textos";
 import {
@@ -159,7 +160,7 @@ function LinhaDaUnidade({ item, destaque = false }: { item: UnidadeNaLista; dest
 function Legenda() {
   const item = (aberto: boolean, texto: string) => (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <View style={{ width: 12, height: 12, borderRadius: 999, backgroundColor: corDoPino(aberto) }} />
+      <View style={{ width: 12, height: 12, borderRadius: 999, backgroundColor: aparenciaDoPino(aberto, false).cor }} />
       <Pequeno>{texto}</Pequeno>
     </View>
   );

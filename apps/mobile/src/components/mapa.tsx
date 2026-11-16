@@ -1,11 +1,8 @@
-import { MapPin } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { PinoDaUnidade } from "@/components/pino";
 import { COR, FONTE } from "@/components/ui";
 import { ALTURA_DO_MAPA, type PropsDoMapa } from "./mapa.tipos";
-
-/** Cor do pino: verde com atendimento aberto, azul sem (o texto da lista também diz). */
-export const corDoPino = (aberto: boolean) => (aberto ? COR.verde : COR.action);
 
 // Folga nas bordas: em cima cabe a ponta do pino; embaixo, o aviso de "mapa simplificado".
 const FOLGA = { x: 0.12, cima: 0.2, baixo: 0.24 };
@@ -97,7 +94,6 @@ export default function Mapa({
       {largura > 0
         ? pinos.map((p) => {
             const sel = p.id === selecionado;
-            const tam = sel ? 44 : 36;
             return (
               <Pressable
                 key={p.id}
@@ -109,12 +105,11 @@ export default function Mapa({
                 style={{
                   position: "absolute",
                   ...posicao(p.lat, p.lng),
-                  marginLeft: -tam / 2,
-                  marginTop: -tam,
+                  transform: [{ translateX: "-50%" }, { translateY: "-100%" }],
                   zIndex: sel ? 2 : 1,
                 }}
               >
-                <MapPin size={tam} color="#ffffff" fill={sel ? COR.amarelo : corDoPino(p.aberto)} strokeWidth={2} />
+                <PinoDaUnidade nome={p.nome} aberto={p.aberto} escolhido={sel} />
               </Pressable>
             );
           })

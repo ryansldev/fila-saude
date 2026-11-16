@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { View } from "react-native";
 import MapView, { type LatLng, Marker, type Region } from "react-native-maps";
+import { PinoDaUnidade } from "@/components/pino";
 import { COR } from "@/components/ui";
+import { ESTILO_DO_MAPA } from "@/lib/mapa";
 import { ALTURA_DO_MAPA, type PropsDoMapa } from "./mapa.tipos";
-
-/** Cor do pino: verde com atendimento aberto, azul sem (o texto da lista e do balão também diz). */
-export const corDoPino = (aberto: boolean) => (aberto ? COR.verde : COR.action);
 
 // Região que mostra todos os pontos, com folga nas bordas.
 function regiaoDe(pontos: LatLng[]): Region {
@@ -37,6 +36,14 @@ export default function Mapa({
     return p;
   }, [pinos, aqui]);
   const inicial = useMemo(() => regiaoDe(pontos), [pontos]);
+  // Android: o pino é uma imagem tirada da View; redesenha só logo depois de mudar a escolha, depois congela.
+  const [desenhando, setDesenhando] = useState(true);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: redesenha a cada troca de escolha ou de pinos
+  useEffect(() => {
+    setDesenhando(true);
+    const id = setTimeout(() => setDesenhando(false), 500);
+    return () => clearTimeout(id);
+  }, [selecionado, pinos]);
 
   // Chegou a localização (ou a lista): enquadra a pessoa e as unidades.
   useEffect(() => {
@@ -62,6 +69,7 @@ export default function Mapa({
         ref={ref}
         style={{ flex: 1 }}
         initialRegion={inicial}
+        customMapStyle={ESTILO_DO_MAPA}
         showsUserLocation={aqui !== null}
         showsMyLocationButton={false}
         toolbarEnabled={false}
@@ -77,12 +85,14 @@ export default function Mapa({
             key={`${p.id}-${p.id === selecionado ? "s" : "n"}`}
             identifier={p.id}
             coordinate={{ latitude: p.lat, longitude: p.lng }}
-            title={p.nome}
-            description={p.aberto ? "tem atendimento aberto" : "sem atendimento aberto agora"}
-            pinColor={p.id === selecionado ? COR.amarelo : corDoPino(p.aberto)}
+            anchor={{ x: 0.5, y: 1 }}
+            tracksViewChanges={desenhando}
+            accessibilityLabel={`${p.nome}, ${p.aberto ? "tem atendimento aberto" : "sem atendimento aberto agora"}`}
             zIndex={p.id === selecionado ? 2 : 1}
             onPress={() => aoTocarPino(p.id)}
-          />
+          >
+            <PinoDaUnidade nome={p.nome} aberto={p.aberto} escolhido={p.id === selecionado} />
+          </Marker>
         ))}
       </MapView>
     </View>
