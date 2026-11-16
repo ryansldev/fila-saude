@@ -42,6 +42,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path, SvgXml } from "react-native-svg";
+import { diaPorExtenso } from "@/lib/dias";
 
 // Tokens do design system "Fila Saúde" (artifact do app do paciente).
 export { COR, FONTE };
@@ -816,49 +817,292 @@ export function LinhaTocavel({
   );
 }
 
-/** Filtro em pílulas que rolam para o lado (as categorias do iFood). Uma escolhida por vez. */
-export function Chips<T extends string>({
-  opcoes,
+/** Pílula com ícone (vagas, inscrito, horário): a cor nunca é o único sinal, o texto vem junto. */
+export function Pilula({ texto, tom = "cinza", Icone }: { texto: string; tom?: Tom; Icone?: LucideIcon }) {
+  const t = TOM[tom];
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 5,
+        alignSelf: "flex-start",
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 999,
+        backgroundColor: t.fundo,
+      }}
+    >
+      {Icone ? <Icone size={15} color={t.texto} strokeWidth={2.5} /> : null}
+      <Text style={{ fontFamily: FONTE.extra, fontSize: 14, lineHeight: 18, color: t.texto }}>{texto}</Text>
+    </View>
+  );
+}
+
+const LARGURA_DO_DIA = 64;
+const VAO_DOS_DIAS = 8;
+
+/**
+ * A faixa de dias da unidade: só os dias com atendimento, todos do mesmo tamanho, que rolam para o lado.
+ * Embaixo do título, o mês e o ano do primeiro dia visível; no fim, o botão do calendário (com mais de
+ * um dia).
+ */
+export function FaixaDeDias({
+  dias,
   atual,
   mudar,
+  aoAbrirCalendario,
 }: {
-  opcoes: { id: T; rotulo: string }[];
-  atual: T;
-  mudar: (id: T) => void;
+  dias: { chave: string; topo: string; dia: string; mesAno: string }[];
+  atual: string | null;
+  mudar: (chave: string) => void;
+  aoAbrirCalendario: () => void;
+}) {
+  const [primeiro, setPrimeiro] = useState(0);
+  const mesAno = dias[Math.min(primeiro, dias.length - 1)]?.mesAno ?? "";
+  return (
+    <View style={{ gap: 10 }}>
+      <Text style={{ fontFamily: FONTE.extra, fontSize: 16, lineHeight: 20, color: COR.action, marginTop: -8 }}>
+        {mesAno}
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ marginHorizontal: -16, flexGrow: 0 }}
+        contentContainerStyle={{ gap: VAO_DOS_DIAS, paddingHorizontal: 16 }}
+        scrollEventThrottle={64}
+        onScroll={(ev) =>
+          setPrimeiro(Math.max(0, Math.round(ev.nativeEvent.contentOffset.x / (LARGURA_DO_DIA + VAO_DOS_DIAS))))
+        }
+      >
+        {dias.map((d) => {
+          const escolhido = d.chave === atual;
+          return (
+            <AreaTocavel
+              key={d.chave}
+              rotulo={`${d.topo}, ${d.dia}`}
+              selecionado={escolhido}
+              onPress={() => mudar(d.chave)}
+              style={(pressed) => ({
+                width: LARGURA_DO_DIA,
+                paddingVertical: 8,
+                alignItems: "center",
+                borderRadius: 16,
+                borderWidth: 2,
+                borderBottomWidth: escolhido || pressed ? 2 : 4,
+                marginTop: !escolhido && pressed ? 2 : 0,
+                borderColor: escolhido ? COR.action : COR.linha,
+                borderBottomColor: escolhido ? COR.acaoSombra : COR.linha,
+                backgroundColor: escolhido ? COR.action : COR.surface,
+              })}
+            >
+              <Text
+                style={{
+                  fontFamily: FONTE.extra,
+                  fontSize: 13,
+                  lineHeight: 17,
+                  color: escolhido ? "#cfe2f6" : COR.inkMuted,
+                }}
+              >
+                {d.topo}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: FONTE.extra,
+                  fontSize: 24,
+                  lineHeight: 30,
+                  color: escolhido ? "#ffffff" : COR.ink,
+                }}
+              >
+                {d.dia}
+              </Text>
+            </AreaTocavel>
+          );
+        })}
+        {dias.length > 1 ? (
+          <AreaTocavel
+            rotulo="abrir o calendário"
+            onPress={aoAbrirCalendario}
+            style={(pressed) => ({
+              width: LARGURA_DO_DIA,
+              paddingVertical: 8,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 4,
+              borderRadius: 16,
+              borderWidth: 2,
+              borderBottomWidth: pressed ? 2 : 4,
+              marginTop: pressed ? 2 : 0,
+              borderColor: "#cfe2f6",
+              backgroundColor: COR.surface,
+            })}
+          >
+            <CalendarDays size={22} color={COR.action} strokeWidth={2.4} />
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 11, lineHeight: 14, color: COR.action }}>calendário</Text>
+          </AreaTocavel>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
+
+const SEMANA_CURTA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+
+/** Seta do calendário: um quadrado com contorno, como o botão secundário. */
+function SetaDoMes({
+  rotulo,
+  Icone,
+  onPress,
+  desativado,
+}: {
+  rotulo: string;
+  Icone: LucideIcon;
+  onPress: () => void;
+  desativado: boolean;
 }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={{ marginHorizontal: -16, flexGrow: 0 }}
-      contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}
-    >
-      {opcoes.map((o) => {
-        const ativa = o.id === atual;
-        return (
-          <Pressable
-            key={o.id}
-            accessibilityRole="radio"
-            accessibilityState={{ checked: ativa }}
-            onPress={() => mudar(o.id)}
-            style={{
-              minHeight: 44,
-              paddingHorizontal: 18,
-              justifyContent: "center",
-              borderRadius: 999,
-              borderWidth: 2,
-              borderBottomWidth: ativa ? 2 : 4,
-              borderColor: ativa ? COR.action : COR.linha,
-              backgroundColor: ativa ? COR.action : COR.surface,
-            }}
-          >
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 16, color: ativa ? "#ffffff" : COR.ink }}>
-              {o.rotulo}
-            </Text>
-          </Pressable>
-        );
+    <AreaTocavel
+      rotulo={rotulo}
+      onPress={onPress}
+      desativado={desativado}
+      style={(pressed) => ({
+        width: 44,
+        height: 44,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 14,
+        borderWidth: 2,
+        borderBottomWidth: pressed ? 2 : 4,
+        borderColor: COR.linha,
+        backgroundColor: COR.surface,
+        opacity: desativado ? OPACIDADE_DESATIVADO : 1,
       })}
-    </ScrollView>
+    >
+      <Icone size={22} color={COR.action} strokeWidth={2.6} />
+    </AreaTocavel>
+  );
+}
+
+/**
+ * O mês numa gaveta: os dias com atendimento azuis e tocáveis, os outros apagados, hoje com contorno
+ * tracejado; o botão confirma o dia escolhido.
+ */
+export function CalendarioDoMes({
+  aberta,
+  fechar,
+  meses,
+  atual,
+  aoEscolher,
+}: {
+  aberta: boolean;
+  fechar: () => void;
+  /** Os meses com atendimento, em ordem: `titulo` ("novembro de 2026") e a grade de `gradeDoMes`. */
+  meses: {
+    titulo: string;
+    semanas: ({ chave: string; dia: number; tem: boolean; hoje: boolean } | null)[][];
+  }[];
+  atual: string | null;
+  aoEscolher: (chave: string) => void;
+}) {
+  const [escolha, setEscolha] = useState(atual);
+  const [indice, setIndice] = useState(0);
+  useEffect(() => {
+    if (!aberta) return;
+    setEscolha(atual);
+    const i = meses.findIndex((m) => m.semanas.flat().some((c) => c?.chave === atual));
+    setIndice(Math.max(0, i));
+  }, [aberta, atual, meses]);
+  const mes = meses[indice];
+  return (
+    <Gaveta aberta={aberta} fechar={fechar}>
+      {mes ? (
+        <>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>{mes.titulo}</Text>
+            <View style={{ flexDirection: "row", gap: 8 }}>
+              <SetaDoMes
+                rotulo="mês anterior"
+                Icone={ChevronLeft}
+                desativado={indice === 0}
+                onPress={() => setIndice(indice - 1)}
+              />
+              <SetaDoMes
+                rotulo="próximo mês"
+                Icone={ChevronRight}
+                desativado={indice >= meses.length - 1}
+                onPress={() => setIndice(indice + 1)}
+              />
+            </View>
+          </View>
+          <View style={{ gap: 4 }}>
+            <View style={{ flexDirection: "row" }}>
+              {SEMANA_CURTA.map((d) => (
+                <Text
+                  key={d}
+                  style={{ flex: 1, textAlign: "center", fontFamily: FONTE.extra, fontSize: 13, color: "#8a9496" }}
+                >
+                  {d.charAt(0)}
+                </Text>
+              ))}
+            </View>
+            {mes.semanas.map((semana, s) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: a semana é a posição na grade do mês.
+              <View key={s} style={{ flexDirection: "row", gap: 4 }}>
+                {semana.map((c, i) => {
+                  // biome-ignore lint/suspicious/noArrayIndexKey: dia vazio antes ou depois do mês.
+                  if (!c) return <View key={`v${i}`} style={{ flex: 1, height: 44 }} />;
+                  const marcado = c.chave === escolha;
+                  const caixa: ViewStyle = {
+                    flex: 1,
+                    height: 44,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 12,
+                    ...(c.hoje ? { borderWidth: 2, borderStyle: "dashed", borderColor: "#9cc4ea" } : {}),
+                  };
+                  const numero = (cor: string) => (
+                    <Text style={{ fontFamily: FONTE.extra, fontSize: 16, color: cor }}>{c.dia}</Text>
+                  );
+                  if (!c.tem)
+                    return (
+                      <View key={c.chave} style={caixa}>
+                        {numero("#b9c2c4")}
+                      </View>
+                    );
+                  return (
+                    <AreaTocavel
+                      key={c.chave}
+                      rotulo={`dia ${c.dia}, tem atendimento`}
+                      selecionado={marcado}
+                      onPress={() => setEscolha(c.chave)}
+                      style={{
+                        ...caixa,
+                        borderWidth: 2,
+                        borderStyle: "solid",
+                        borderBottomWidth: 3,
+                        borderColor: marcado ? COR.acaoSombra : "#cfe2f6",
+                        backgroundColor: marcado ? COR.action : COR.primary50,
+                      }}
+                    >
+                      {numero(marcado ? "#ffffff" : COR.ink)}
+                    </AreaTocavel>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+          <Botao
+            texto={escolha ? `ver ${diaPorExtenso(escolha)}` : "escolha um dia"}
+            desativado={!escolha}
+            onPress={() => {
+              if (!escolha) return;
+              aoEscolher(escolha);
+              fechar();
+            }}
+          />
+        </>
+      ) : null}
+    </Gaveta>
   );
 }
 

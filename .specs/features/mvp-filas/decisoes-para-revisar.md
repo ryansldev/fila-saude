@@ -273,3 +273,13 @@ Design: [tv.md](../design-system/tv.md).
 | --- | --- | --- | --- | --- |
 | TV1 | Topo da TV | Só o nome da unidade, sem o endereço (a TV não o recebe) | Trazer o endereço na API da TV | Baixo |
 | TV2 | Hora | Pelo relógio da TV, atualizada a cada 10 s | Hora do servidor | Baixo: TV com relógio errado mostra a hora errada |
+
+## App: página da unidade com a faixa de dias (2026-11-16)
+
+Design: [app-unidade.md](../design-system/app-unidade.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| AU1 | Filtros por serviço | Saíram ("todos", "curativos", …): com a faixa de dias, a lista de um dia já é curta | Manter os filtros junto da faixa | Baixo |
+| AU2 | Botão do calendário | Aparece sempre que a faixa tem mais de um dia | Só quando a faixa não cabe na tela | Baixo |
+| AU3 | Lista de espera | Uma seção abaixo dos atendimentos, um cartão por serviço com o botão embaixo do nome | O cartão "não achou o dia?" levando a outra tela | Baixo |

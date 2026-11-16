@@ -158,3 +158,16 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 4 | Enfermeira | Estação | Chamar o próximo | Na TV, o cartão da chamada fica azul com a senha enorme e "→ triagem 1" por alguns segundos; a senha entra em "últimas chamadas" |
 
 **Conferido** por teste de componente e por prints a 1920×1080. **Falta** ver numa TV de verdade, de longe.
+
+## App: página da unidade com a faixa de dias (design system, 2026-11-16)
+
+[Design](../design-system/app-unidade.md). Reinicie `npm run dev:mobile` antes (o Metro antigo não vê o pacote de design).
+
+| # | Quem | Onde | O que fazer | O que se vê |
+| --- | --- | --- | --- | --- |
+| 1 | Paciente | App → Agenda → UBS Centro | Abrir | Cartão da unidade (tipo como etiqueta, endereço em duas linhas, "como chegar"); "escolha o dia" com "novembro de 2026" em azul; a faixa com "hoje 16" e "amanhã 17" e o botão "calendário" no fim |
+| 2 | Paciente | Faixa | Tocar em "amanhã 17" | Só os atendimentos de amanhã, cada um com horário e profissional com ícone, a pílula de vagas e "quero ir" |
+| 3 | Paciente | Faixa | Tocar em "calendário" | O mês sobe por baixo: dias com atendimento azuis, o resto apagado; "ver terça, 17 de novembro" escolhe o dia |
+| 4 | Paciente | Lista de espera | Olhar | Um cartão por serviço com "entrar na lista" ou "na lista" e "outra pessoa" |
+
+**Conferido** por teste (dias, mês e ano, grade do mês) e por prints na prévia web. **Falta** no celular de verdade (gaveta nativa, rolagem da faixa trocando o mês).

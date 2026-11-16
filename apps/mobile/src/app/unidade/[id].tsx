@@ -1,37 +1,38 @@
 import type { MinhaEntrada, ServicoDaUnidade, SessaoDaAgenda, UnidadePublica } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { Building2, ClipboardList, MapPin } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { Building2, Check, ClipboardList, Clock, MapPin, Navigation, Stethoscope, Ticket } from "lucide-react-native";
+import { useCallback, useMemo, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
 import {
   Avatar,
-  BlocoData,
   Botao,
+  CalendarioDoMes,
   Carregando,
-  Chips,
+  Cartao,
   COR,
   Faixa,
+  FaixaDeDias,
   FONTE,
-  LinhaTocavel,
   Pequeno,
-  Selo,
+  Pilula,
   Tela,
   Texto,
   TextoSuave,
   Titulo,
   type Tom,
 } from "@/components/ui";
-import { hora, partesDoDia } from "@/lib/datas";
+import { hora } from "@/lib/datas";
+import { chaveDoDia, diasComAtendimento, diaValido, gradeDoMes, mesAno } from "@/lib/dias";
 import { inscricaoNaAgenda, type ServicoComLista, servicosComLista } from "@/lib/inscricoes";
 import { useSessao } from "@/lib/sessao";
 import { avisoDoErro } from "@/lib/textos";
-import { enderecoEmLinha, linkComoChegar, nomeDoTipo } from "@/lib/unidades";
+import { linkComoChegar, nomeDoTipo } from "@/lib/unidades";
 
 const vagas = (x: SessaoDaAgenda): { texto: string; tom: Tom } =>
   x.vagasRestantes === null
     ? { texto: "vagas livres", tom: "verde" }
     : x.vagasRestantes === 0
-      ? { texto: "sem vagas · entra na reserva", tom: "amarelo" }
+      ? { texto: "sem vagas: entra na reserva", tom: "amarelo" }
       : { texto: x.vagasRestantes === 1 ? "1 vaga" : `${x.vagasRestantes} vagas`, tom: "verde" };
 
 async function abrirComoChegar(u: UnidadePublica) {
@@ -44,81 +45,108 @@ async function abrirComoChegar(u: UnidadePublica) {
   }
 }
 
-/** Uma sessão da unidade, com o selo de quem já está inscrito (AD-032), como era na agenda. */
+/** Uma sessão do dia escolhido: o serviço, a situação, o horário e o profissional, e o botão. */
 function CartaoDaSessao({ x, unidade, minhas }: { x: SessaoDaAgenda; unidade: string; minhas: MinhaEntrada[] | null }) {
   const situacao = inscricaoNaAgenda(x, minhas);
   const inscrito = situacao.tipo === "inscrito";
   // Dono já no serviço: ainda dá para inscrever outra pessoa (o "para mim" fica desligado
-  // na próxima tela). Só sem nada a fazer o cartão leva à minha fila.
+  // na próxima tela). Só sem nada a fazer o botão leva à minha fila.
   const soVer = inscrito && !situacao.podeOutra;
   const v = vagas(x);
+  const inscrever = () =>
+    router.push({
+      pathname: "/inscricao/[sessaoId]",
+      params: {
+        sessaoId: x.id,
+        servicoId: x.servico.id,
+        servico: x.servico.nome,
+        unidade,
+        inicio: x.inicio,
+        aberta: x.estado === "aberta" ? "1" : "0",
+      },
+    });
   return (
-    <LinhaTocavel
-      acao={soVer ? "ver minha fila" : inscrito ? "inscrever outra pessoa" : "quero ir"}
-      esquerda={<BlocoData {...partesDoDia(x.inicio, Date.now())} tom={inscrito ? "verde" : "azul"} />}
-      onPress={() =>
-        soVer
-          ? router.replace("/inicio")
-          : router.push({
-              pathname: "/inscricao/[sessaoId]",
-              params: {
-                sessaoId: x.id,
-                servicoId: x.servico.id,
-                servico: x.servico.nome,
-                unidade,
-                inicio: x.inicio,
-                aberta: x.estado === "aberta" ? "1" : "0",
-              },
-            })
-      }
-    >
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
-        {x.servico.nome.toLowerCase()}
-      </Text>
-      <Pequeno>
-        {hora(x.inicio)} às {hora(x.fim)}
-        {x.profissional ? ` · ${x.profissional}` : ""}
-        {x.estado === "aberta" ? " · fila andando" : ""}
-      </Pequeno>
-      {inscrito ? <Selo texto={situacao.selo} tom="verde" /> : <Selo texto={v.texto} tom={v.tom} />}
-      {inscrito ? (
-        <Pequeno>
-          {soVer ? "sua conta já inscreveu o máximo de pessoas nesta data." : "toque para inscrever outra pessoa."}
-        </Pequeno>
-      ) : null}
-    </LinhaTocavel>
+    <Cartao style={{ gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <Text style={{ flex: 1, fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
+          {x.servico.nome.toLowerCase()}
+        </Text>
+        {inscrito ? (
+          <Pilula texto="você está inscrito" tom="verde" Icone={Check} />
+        ) : (
+          <Pilula texto={v.texto} tom={v.tom} Icone={Ticket} />
+        )}
+      </View>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Clock size={18} color={COR.inkMuted} strokeWidth={2.4} />
+          <Pequeno>
+            {hora(x.inicio)} às {hora(x.fim)}
+          </Pequeno>
+        </View>
+        {x.profissional ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Stethoscope size={18} color={COR.inkMuted} strokeWidth={2.4} />
+            <Pequeno>{x.profissional}</Pequeno>
+          </View>
+        ) : null}
+        {x.estado === "aberta" ? <Pilula texto="fila andando" tom="azul" /> : null}
+      </View>
+      {soVer ? <Pequeno>sua conta já inscreveu o máximo de pessoas nesta data.</Pequeno> : null}
+      <View style={{ alignItems: "flex-end" }}>
+        {soVer ? (
+          <Botao
+            texto="ver minha fila"
+            variante="secundario"
+            tamanho="medio"
+            onPress={() => router.replace("/inicio")}
+          />
+        ) : inscrito ? (
+          <Botao texto="outra pessoa" variante="secundario" tamanho="medio" onPress={inscrever} />
+        ) : (
+          <Botao texto="quero ir" tamanho="medio" onPress={inscrever} />
+        )}
+      </View>
+    </Cartao>
   );
 }
 
-const TEXTO_DO_SERVICO: Record<ServicoComLista["tipo"], { acao: string; detalhe: string }> = {
-  entrar: { acao: "entrar na lista", detalhe: "a unidade marca a data e avisa no app." },
-  na_lista: { acao: "ver minha fila", detalhe: "você já está na lista. toque para outra pessoa." },
-  requisicao: { acao: "como marcar", detalhe: "pede a requisição do médico. leve o papel à recepção." },
-  regulado: { acao: "como marcar", detalhe: "marcado pela regulação. procure a sua UBS." },
+const TEXTO_DO_SERVICO: Record<"requisicao" | "regulado", string> = {
+  requisicao: "pede a requisição do médico. leve o papel à recepção.",
+  regulado: "marcado pela regulação. procure a sua UBS.",
 };
 
 /** T5.1 / I1: um serviço com lista de espera; regulado e requisição só explicam. */
 function CartaoDoServico({ x, unidade }: { x: ServicoComLista; unidade: string }) {
-  const t = TEXTO_DO_SERVICO[x.tipo];
   const entra = x.tipo === "entrar" || x.tipo === "na_lista";
+  const entrar = () =>
+    router.push({
+      pathname: "/inscricao/[sessaoId]",
+      params: { sessaoId: "lista", servicoId: x.id, servico: x.nome, unidade },
+    });
   return (
-    <LinhaTocavel
-      acao={x.tipo === "na_lista" ? "para outra pessoa" : t.acao}
-      esquerda={<Avatar Icone={ClipboardList} tom={entra ? (x.tipo === "na_lista" ? "verde" : "azul") : "cinza"} />}
-      onPress={() => {
-        if (!entra) return;
-        router.push({
-          pathname: "/inscricao/[sessaoId]",
-          params: { sessaoId: "lista", servicoId: x.id, servico: x.nome, unidade },
-        });
-      }}
-    >
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
-        {x.nome.toLowerCase()}
-      </Text>
-      <Pequeno>{t.detalhe}</Pequeno>
-      {x.tipo === "na_lista" ? <Selo texto="na lista" tom="verde" /> : null}
-    </LinhaTocavel>
+    <Cartao style={{ gap: 10 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <Avatar Icone={ClipboardList} tom={x.tipo === "na_lista" ? "verde" : entra ? "azul" : "cinza"} />
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={{ fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, color: COR.ink }}>
+            {x.nome.toLowerCase()}
+          </Text>
+          {x.tipo === "na_lista" ? <Pilula texto="na lista" tom="verde" Icone={Check} /> : null}
+          {x.tipo === "requisicao" || x.tipo === "regulado" ? <Pequeno>{TEXTO_DO_SERVICO[x.tipo]}</Pequeno> : null}
+        </View>
+      </View>
+      {entra ? (
+        <View style={{ alignItems: "flex-end" }}>
+          <Botao
+            texto={x.tipo === "na_lista" ? "outra pessoa" : "entrar na lista"}
+            variante="secundario"
+            tamanho="medio"
+            onPress={entrar}
+          />
+        </View>
+      ) : null}
+    </Cartao>
   );
 }
 
@@ -160,10 +188,26 @@ export default function Unidade() {
   );
 
   const voltar = () => (router.canGoBack() ? router.back() : router.replace("/unidades"));
-  const [filtro, setFiltro] = useState<string>("todos");
-  const servicos = [...new Map((sessoes ?? []).map((x) => [x.servico.id, x.servico.nome.toLowerCase()]))].map(
-    ([id, rotulo]) => ({ id, rotulo }),
+  // A faixa: só os dias com atendimento; o escolhido volta ao primeiro se o dia sumir.
+  const dias = useMemo(
+    () =>
+      diasComAtendimento(
+        (sessoes ?? []).map((x) => x.inicio),
+        Date.now(),
+      ),
+    [sessoes],
   );
+  const [escolhido, setEscolhido] = useState<string | null>(null);
+  const dia = diaValido(escolhido, dias);
+  const [calendario, setCalendario] = useState(false);
+  const meses = useMemo(() => {
+    const com = new Set(dias.map((d) => d.chave));
+    const hoje = chaveDoDia(new Date().toISOString());
+    return [...new Set(dias.map((d) => d.chave.slice(0, 7)))].map((am) => {
+      const [a, m] = am.split("-").map(Number);
+      return { titulo: mesAno(`${am}-01`), semanas: gradeDoMes(a ?? 0, m ?? 1, com, hoje) };
+    });
+  }, [dias]);
 
   if (unidade === "nao_achou")
     return (
@@ -197,26 +241,35 @@ export default function Unidade() {
       {unidade === null && !erro ? <Carregando texto="buscando a unidade…" /> : null}
       {unidade ? (
         <>
-          <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
-            <Avatar Icone={Building2} tom={(sessoes?.length ?? 0) > 0 ? "verde" : "cinza"} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Titulo>{unidade.nome}</Titulo>
-              <Pequeno>
-                {nomeDoTipo(unidade.tipo)} · {unidade.endereco.bairro}
-              </Pequeno>
+          <Cartao style={{ gap: 12 }}>
+            <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+              <Avatar Icone={Building2} tom={(sessoes?.length ?? 0) > 0 ? "verde" : "cinza"} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <Titulo>{unidade.nome}</Titulo>
+                <Pilula texto={nomeDoTipo(unidade.tipo)} tom="azul" />
+              </View>
             </View>
-          </View>
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
-            <MapPin size={22} color={COR.inkMuted} strokeWidth={2.25} style={{ marginTop: 3 }} />
-            <TextoSuave style={{ flex: 1 }}>{enderecoEmLinha(unidade.endereco)}</TextoSuave>
-          </View>
-          <Botao texto="como chegar" variante="secundario" onPress={() => void abrirComoChegar(unidade)} />
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink, marginTop: 8 }}>
-            próximos atendimentos
-          </Text>
-          {servicos.length > 1 ? (
-            <Chips opcoes={[{ id: "todos", rotulo: "todos" }, ...servicos]} atual={filtro} mudar={setFiltro} />
-          ) : null}
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "flex-start" }}>
+              <MapPin size={20} color={COR.inkMuted} strokeWidth={2.25} style={{ marginTop: 4 }} />
+              <View style={{ flex: 1 }}>
+                <Texto style={{ fontFamily: FONTE.bold }}>
+                  {unidade.endereco.logradouro}, {unidade.endereco.numero}
+                </Texto>
+                <TextoSuave>
+                  {unidade.endereco.bairro}, CEP {unidade.endereco.cep.replace(/^(\d{5})(\d{3})$/, "$1-$2")}
+                </TextoSuave>
+              </View>
+            </View>
+            <View style={{ alignItems: "flex-start" }}>
+              <Botao
+                texto="como chegar"
+                variante="secundario"
+                tamanho="medio"
+                icone={Navigation}
+                onPress={() => void abrirComoChegar(unidade)}
+              />
+            </View>
+          </Cartao>
           {sessoes?.length === 0 ? (
             <View style={{ gap: 4, paddingVertical: 16 }}>
               <Texto style={{ fontFamily: FONTE.bold, textAlign: "center" }}>
@@ -227,17 +280,25 @@ export default function Unidade() {
               </TextoSuave>
             </View>
           ) : null}
-          {(sessoes ?? [])
-            .filter((x) => filtro === "todos" || x.servico.id === filtro)
-            .map((x) => (
-              <CartaoDaSessao key={x.id} x={x} unidade={unidade.nome} minhas={minhas} />
-            ))}
+          {dias.length > 0 ? (
+            <>
+              <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink, marginTop: 8 }}>
+                escolha o dia
+              </Text>
+              <FaixaDeDias dias={dias} atual={dia} mudar={setEscolhido} aoAbrirCalendario={() => setCalendario(true)} />
+              {(sessoes ?? [])
+                .filter((x) => chaveDoDia(x.inicio) === dia)
+                .map((x) => (
+                  <CartaoDaSessao key={x.id} x={x} unidade={unidade.nome} minhas={minhas} />
+                ))}
+            </>
+          ) : null}
           {servicosDaUnidade && servicosDaUnidade.length > 0 ? (
             <>
               <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink, marginTop: 8 }}>
                 lista de espera
               </Text>
-              <TextoSuave>entre na lista e a unidade marca a data. quem tem mais urgência é chamado antes.</TextoSuave>
+              <TextoSuave style={{ marginTop: -8 }}>a unidade marca a data e avisa no app.</TextoSuave>
               {servicosComLista(servicosDaUnidade, minhas).map((x) => (
                 <CartaoDoServico key={x.id} x={x} unidade={unidade.nome} />
               ))}
@@ -245,6 +306,13 @@ export default function Unidade() {
           ) : null}
         </>
       ) : null}
+      <CalendarioDoMes
+        aberta={calendario}
+        fechar={() => setCalendario(false)}
+        meses={meses}
+        atual={dia}
+        aoEscolher={setEscolhido}
+      />
     </Tela>
   );
 }
