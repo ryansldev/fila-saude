@@ -397,7 +397,11 @@ export async function semearExemplo(deps: {
     );
 
     // Fatia 4: a recepção (que agenda) alocou Bruno há 30 h e ele não respondeu: destacado na lista de ligação.
-    await alocarNaSessao(await contextoDoUsuario(db, idDe("recepcao"), agora - 30 * 3600_000), odontoDepois.id, brunoNaOdonto);
+    await alocarNaSessao(
+      await contextoDoUsuario(db, idDe("recepcao"), agora - 30 * 3600_000),
+      odontoDepois.id,
+      brunoNaOdonto,
+    );
 
     return {
       painel: `${origemDoPainel(slug)}/login`,

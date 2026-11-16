@@ -89,8 +89,11 @@ describe("agendador (T5.3, T5.4)", () => {
       alertaFaltas: false,
       risco: { nivel: "urgente", confirmado: false, regra: "Problema novo forte" },
     });
-    expect(urgente.motivos[0]).toBe("urgente sugerido");
+    // O risco vem em `risco`; os motivos não o repetem (design system, Agendamento A).
+    expect(urgente.motivos[0]).not.toBe("urgente sugerido");
     expect(urgente.motivos.at(-1)).toMatch(/^espera há \d+ dias$/);
+    expect(urgente.semApp).toBe(true);
+    expect(r.corpo.sugestao.find((s: { nome: string }) => s.nome === "Ana Agenda").semApp).toBe(false);
     expect(r.corpo.sugestao.find((s: { nome: string }) => s.nome === "Aline Apoio").autolesao).toBe(true);
   });
 
@@ -133,6 +136,7 @@ describe("agendador (T5.3, T5.4)", () => {
     const lig = await c.pedir("GET", `/v1/painel/unidades/${c.unidadeId}/ligacao`, agenda);
     expect(lig.status).toBe(200);
     const item = lig.corpo.find((x: { entradaId: string }) => x.entradaId === alocada.entradaId);
+    expect(Date.parse(item.alocadaEm)).toBeLessThan(Date.parse(item.prazo));
     expect(item).toMatchObject({
       nome: alocada.nome,
       servico: "Clínico",
@@ -161,7 +165,12 @@ describe("agendador (T5.3, T5.4)", () => {
     expect(r.status).toBe(200);
     const clinico = r.corpo.find((s: { servico: { id: string } }) => s.servico.id === c.servicoId);
     expect(clinico.sessoes.map((s: { id: string }) => s.id)).toContain(privadaId);
-    expect(clinico.sessoes.find((s: { id: string }) => s.id === privadaId)).toMatchObject({ vagas: 3, ocupadas: 2 });
+    expect(clinico.sessoes.find((s: { id: string }) => s.id === privadaId)).toMatchObject({
+      vagas: 3,
+      ocupadas: 2,
+      confirmadas: 1,
+      pendentes: 1,
+    });
     expect(clinico.aguardando).toBeGreaterThanOrEqual(1);
     expect(clinico.alertas).toBe(1); // Aline voltou à lista; urgente sugerida não alocada
   });

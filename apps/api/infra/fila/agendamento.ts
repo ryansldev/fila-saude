@@ -150,9 +150,11 @@ async function montarAlocacao(db: BancoDoTenant, sessaoId: string, agora: number
           entradaId,
           nome: e.pessoa.nome,
           idade: idade(e),
-          motivos,
+          // O risco já vem em `risco` (selo na tela): os motivos não o repetem.
+          motivos: motivos.slice(1),
           alerta: e.riscoConfirmado === null && e.classificacao.nivel === "urgente",
           autolesao: e.classificacao.apoio,
+          semApp: e.responsavelId === null,
           faltas: n,
           alertaFaltas: n >= config.alertaFaltas.faltas,
           risco: { nivel: riscoVigente(e), confirmado: e.riscoConfirmado !== null, regra: e.classificacao.regra },
@@ -333,6 +335,7 @@ export async function ligacaoDaUnidade(ctx: ContextoDaAcao, unidadeId: string): 
       telefone: e.responsavelId ? (telefones.get(e.responsavelId) ?? null) : null,
       servico: s?.nome ?? "",
       sessao: { id: i.sessaoId, inicio: (s?.s.inicio ?? new Date(0)).toISOString() },
+      alocadaEm: new Date(e.alocadaEm ?? i.prazo).toISOString(),
       prazo: new Date(i.prazo).toISOString(),
       destacada: i.destacada,
       ultimaTentativa: ultima ? ultima.toISOString() : null,
@@ -373,6 +376,25 @@ export async function listaDeEsperaDaUnidade(
       )
       .orderBy(asc(sessao.inicio))
       .limit(20);
+    const porEstado = new Map<string, { confirmadas: number; pendentes: number }>();
+    if (sessoes.length > 0) {
+      const linhas = await ctx.db
+        .select({ sessaoId: entrada.sessaoId, estado: entrada.estado, n: sql<number>`count(*)::int` })
+        .from(entrada)
+        .where(
+          inArray(
+            entrada.sessaoId,
+            sessoes.map((s) => s.id),
+          ),
+        )
+        .groupBy(entrada.sessaoId, entrada.estado);
+      for (const l of linhas) {
+        const c = porEstado.get(l.sessaoId ?? "") ?? { confirmadas: 0, pendentes: 0 };
+        if (l.estado === "confirmada") c.confirmadas += l.n;
+        if (l.estado === "alocada") c.pendentes += l.n;
+        porEstado.set(l.sessaoId ?? "", c);
+      }
+    }
     saida.push({
       servico: { id: srv.id, nome: srv.nome, modo: srv.modo },
       aguardando: naLista.length,
@@ -383,6 +405,7 @@ export async function listaDeEsperaDaUnidade(
         fim: s.fim.toISOString(),
         vagas: s.vagas,
         ocupadas: s.ocupadas,
+        ...(porEstado.get(s.id) ?? { confirmadas: 0, pendentes: 0 }),
         profissional: s.profissional,
       })),
     });

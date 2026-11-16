@@ -305,6 +305,8 @@ export const alocacaoDaSessaoSchema = z.object({
       alerta: z.boolean(),
       /** RN-RISCO-06: só agendador e triagem veem. */
       autolesao: z.boolean(),
+      /** Pessoa local sem conta: não vê o app nem recebe push (a ligação é o caminho). */
+      semApp: z.boolean(),
       faltas: z.number().int(),
       /** RN-FALTA-03 / I10. */
       alertaFaltas: z.boolean(),
@@ -328,6 +330,7 @@ export const itemDeLigacaoSchema = z.object({
   telefone: z.string().nullable(),
   servico: z.string(),
   sessao: z.object({ id: z.uuid(), inicio: z.iso.datetime() }),
+  alocadaEm: z.iso.datetime(),
   prazo: z.iso.datetime(),
   destacada: z.boolean(),
   ultimaTentativa: z.iso.datetime().nullable(),
@@ -346,6 +349,9 @@ export const listaDeEsperaDoServicoSchema = z.object({
       fim: z.iso.datetime(),
       vagas: z.number().int().nullable(),
       ocupadas: z.number().int(),
+      /** Para as barrinhas: quem já confirmou e quem foi alocado e não respondeu. */
+      confirmadas: z.number().int(),
+      pendentes: z.number().int(),
       profissional: z.string().nullable(),
     }),
   ),
