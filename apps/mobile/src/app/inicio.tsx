@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { CalendarDays, MapPin } from "lucide-react-native";
 import { Text, View } from "react-native";
-import { Destaque, FaixaDosAvisos, primeiroNome, SuaVez, useMinhaFila } from "@/components/atendimento";
+import { Destaque, FaixaDosAvisos, SuaVez, useMinhaFila } from "@/components/atendimento";
 import {
   Abas,
   Avatar,
@@ -16,6 +16,7 @@ import {
   Selo,
   Tela,
 } from "@/components/ui";
+import { primeiroNome } from "@/lib/conta";
 import { cumprimentoDoDia, hora, partesDoDia } from "@/lib/datas";
 import { useSessao } from "@/lib/sessao";
 
@@ -33,7 +34,7 @@ export default function Hoje() {
     .filter((x) => x.resumo.grupo === "proximos" && x.en.sessao)
     .sort((a, b) => (a.en.sessao?.inicio ?? "").localeCompare(b.en.sessao?.inicio ?? ""))[0];
   const outros = f.lista.filter((x) => x.resumo.grupo === "proximos" || x.resumo.grupo === "sem_data").length;
-  const nome = primeiroNome(s.conta?.nome);
+  const nome = s.conta?.nome ? primeiroNome(s.conta.nome) : undefined;
   const fala =
     deHoje.length === 0
       ? proximo

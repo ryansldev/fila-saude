@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cpfEscondido, iniciais, nomeDoMunicipio, primeiroNome, textoDosAvisos } from "@/lib/conta";
+import { cpfEscondido, iniciais, nomeDoMunicipio, nomeProprio, primeiroNome, textoDosAvisos } from "@/lib/conta";
 
 describe("cpfEscondido", () => {
   it("mostra só o meio do CPF, como nos apps do governo", () => {
@@ -19,7 +19,8 @@ describe("iniciais e primeiro nome", () => {
     expect(iniciais("")).toBe("");
   });
   it("primeiro nome em minúsculas, no estilo do app", () => {
-    expect(primeiroNome("Ana Maria da Silva")).toBe("ana");
+    expect(primeiroNome("Ana Maria da Silva")).toBe("Ana");
+    expect(primeiroNome("bRUNO lima")).toBe("Bruno");
     expect(primeiroNome("")).toBe("");
   });
 });
@@ -47,5 +48,13 @@ describe("textoDosAvisos", () => {
       texto: "desligados. toque para ligar nos ajustes",
     });
     expect(textoDosAvisos(null)).toEqual({ ligados: false, texto: "verificando…" });
+  });
+});
+
+describe("nomes de pessoas", () => {
+  it("primeira letra maiúscula, conectivos em minúsculas", () => {
+    expect(nomeProprio("maria DA silva")).toBe("Maria da Silva");
+    expect(nomeProprio("  joão  dos santos e souza ")).toBe("João dos Santos e Souza");
+    expect(nomeProprio("")).toBe("");
   });
 });

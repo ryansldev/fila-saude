@@ -17,6 +17,7 @@ import {
   TextoSuave,
   Titulo,
 } from "@/components/ui";
+import { nomeProprio } from "@/lib/conta";
 import { hora } from "@/lib/datas";
 import { type DestaqueDaFila, destaqueDaFila, type Passo, passosDaFila } from "@/lib/fila";
 import { ORIENTACAO_PIOROU, proximoPasso, resumoDaEntrada } from "@/lib/textos";
@@ -93,7 +94,7 @@ export default function TelaDaFila() {
         <Pequeno>
           {en.sessao ? `${hora(en.sessao.inicio)} às ${hora(en.sessao.fim)} · ` : ""}
           {en.unidade}
-          {en.paraMim ? "" : ` · para ${en.pessoa}`}
+          {en.paraMim ? "" : ` · para ${nomeProprio(en.pessoa)}`}
         </Pequeno>
         <Selo texto={r.selo} tom={r.tom} />
       </View>

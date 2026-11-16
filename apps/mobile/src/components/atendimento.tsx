@@ -24,6 +24,7 @@ import {
   Trilha,
 } from "@/components/ui";
 import { INTERVALO_DA_CONSULTA_MS } from "@/lib/config";
+import { nomeProprio } from "@/lib/conta";
 import { diaCurto, ehHoje, hora, partesDoDia } from "@/lib/datas";
 import { podeRefazer } from "@/lib/inscricoes";
 import { useSessao } from "@/lib/sessao";
@@ -42,7 +43,7 @@ import {
 export const quando = (en: MinhaEntrada) =>
   en.sessao ? (ehHoje(en.sessao.inicio, Date.now()) ? " · hoje" : ` · ${diaCurto(en.sessao.inicio)}`) : "";
 export const contexto = (en: MinhaEntrada) =>
-  `${en.unidade} · ${en.servico.toLowerCase()}${quando(en)}${en.paraMim ? "" : ` · para ${en.pessoa}`}`;
+  `${en.unidade} · ${en.servico.toLowerCase()}${quando(en)}${en.paraMim ? "" : ` · para ${nomeProprio(en.pessoa)}`}`;
 export const faltam = (posicao: number, minutos: number) =>
   minutos <= 0 || posicao <= 1 ? "você é o próximo" : `cerca de ${minutos} min para a sua vez`;
 
@@ -133,8 +134,6 @@ export function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: str
     </SafeAreaView>
   );
 }
-
-export const primeiroNome = (nome: string | undefined) => (nome ? nome.split(/\s+/)[0]?.toLowerCase() : undefined);
 
 /** Senha e posição, quando a pessoa já está na fila: o maior texto do cartão. */
 function NaFila({ en, sit }: { en: MinhaEntrada; sit: Situacao }) {
@@ -330,7 +329,7 @@ function CabecaDoAtendimento({
         <Pequeno>
           {en.sessao ? `${hora(en.sessao.inicio)} às ${hora(en.sessao.fim)} · ` : ""}
           {en.unidade}
-          {en.paraMim ? "" : ` · para ${en.pessoa}`}
+          {en.paraMim ? "" : ` · para ${nomeProprio(en.pessoa)}`}
         </Pequeno>
         <Selo texto={r.selo} tom={r.tom} />
       </View>

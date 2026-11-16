@@ -23,6 +23,7 @@ import {
   Titulo,
 } from "@/components/ui";
 import { ErroDaApi } from "@/lib/api";
+import { primeiroNome } from "@/lib/conta";
 import { diaCurto } from "@/lib/datas";
 import {
   type ErroDaVerificacao,
@@ -64,7 +65,6 @@ type DadosDaSessao = { servicoId?: string; servico?: string; unidade?: string; i
 
 const irParaMinhaFila = () => router.dismissTo("/inicio");
 const irParaAgenda = () => router.dismissTo("/unidades");
-const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? nome;
 
 /** T3.3: "para quem é?" (AD-018), questionário v1 e a inscrição, como no design do app. */
 export default function Inscricao() {
