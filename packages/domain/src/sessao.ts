@@ -124,6 +124,7 @@ export function porNaFila(
     pulos: 0,
     travadoAtras: [],
     saiuEm: agora,
+    presenteDesde: estado === "presente" ? agora : null,
     atendidoEmEtapas: [],
     motivoSaida: null,
   };

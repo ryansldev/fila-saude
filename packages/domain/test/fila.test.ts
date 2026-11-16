@@ -424,3 +424,14 @@ describe("minors m1/m5", () => {
     }
   });
 });
+
+describe("presenteDesde (Fila do dia: há quanto tempo está na unidade)", () => {
+  it("marca a hora em que ficou presente e some ao voltar a remoto", () => {
+    let d = entrar(diaCom(["ana"]), "ana", T);
+    expect(item(d, "ana").presenteDesde).toBe(T);
+    d = sair(d, "ana", T + 60_000);
+    expect(item(d, "ana").presenteDesde).toBeNull();
+    d = aplicar(marcarPresencaSemApp(d, { itemId: "ana" }, T + 120_000));
+    expect(item(d, "ana").presenteDesde).toBe(T + 120_000);
+  });
+});

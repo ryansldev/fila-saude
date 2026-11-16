@@ -111,7 +111,7 @@ function encerrarChamado(
   // RN-TRI-04 (2026-11-13): o atendimento é uma fila nova. Quem sai da triagem recebe o próximo
   // número e entra atrás de quem já estava no atendimento, dentro do seu nível de risco e prioridade;
   // sem janela protegida e sem regra de atraso (a pessoa estava na unidade). A senha não muda.
-  triado = { ...triado, estado: "presente", numero: livre.proximoNumero, travadoAtras: [] };
+  triado = { ...triado, estado: "presente", numero: livre.proximoNumero, travadoAtras: [], presenteDesde: agora };
   return { dia: { ...comItem(livre, triado), proximoNumero: livre.proximoNumero + 1 }, eventos };
 }
 
@@ -227,6 +227,7 @@ export function naoCompareceu(dia: DiaSessao, cmd: Cmd, agora: number): Resultad
     pulos,
     travadoAtras: [],
     saiuEm: para === "remoto" ? agora : item.saiuEm,
+    presenteDesde: null,
     motivoSaida: para === "saiu_da_fila" ? "pulos" : null,
   };
   const atual = soltarTravas(comItem(livre, fora), item.id);

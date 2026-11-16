@@ -531,3 +531,23 @@ describe("m5: estação com a sessão aberta", () => {
     }
   });
 });
+
+describe("presenteDesde nas chamadas", () => {
+  it("da triagem ao atendimento a espera recomeça", () => {
+    let d = diaComTriagem(["ana", "joao"]);
+    d = entrar(d, "ana");
+    d = chamar(d, "t1", T + MIN);
+    d = aplicar(finalizar(d, { estacaoId: "t1" }, T + 5 * MIN));
+    expect(item(d, "ana")).toMatchObject({ etapa: "atendimento", estado: "presente", presenteDesde: T + 5 * MIN });
+  });
+
+  it("o 1º pulo (fica presente) recomeça a contar; o 2º (vai a remoto) apaga", () => {
+    let d = entrar(diaCom(["ana"]), "ana");
+    d = chamar(d, "e1", T + MIN);
+    d = pular(d, "e1", T + 3 * MIN);
+    expect(item(d, "ana")).toMatchObject({ estado: "presente", presenteDesde: T + 3 * MIN });
+    d = chamar(d, "e1", T + 4 * MIN);
+    d = pular(d, "e1", T + 6 * MIN);
+    expect(item(d, "ana")).toMatchObject({ estado: "remoto", presenteDesde: null });
+  });
+});

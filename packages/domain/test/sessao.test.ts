@@ -446,6 +446,9 @@ describe("balcão (RN-FILA-03, RN-ENC-05)", () => {
     const { dia: d2, sessao, entrada: ze } = aplicar(r);
     const item = itemDe(d2, "ze");
     expect([item?.estado, item?.numero, item?.senha]).toEqual(["presente", 3, "C-003"]);
+    // Fila do dia: quem entra pelo balcão já está na unidade; quem entra na abertura, em casa.
+    expect(item?.presenteDesde).toBe(INICIO + MIN);
+    expect(d2.itens.filter((i) => i.id !== item?.id).map((i) => i.presenteDesde)).toEqual([null, null]);
     expect(ze.estado).toBe("na_fila");
     expect(ze.responsavelId).toBeNull(); // pessoa local
     expect(item?.prioridade.conferida).toBe(true); // a recepção conferiu na hora (idoso)

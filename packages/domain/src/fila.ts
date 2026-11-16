@@ -42,6 +42,11 @@ export type ItemFila = {
   travadoAtras: string[];
   /** Remoto desde (entrada na fila, "Vou sair" ou 2º pulo); `null` enquanto presente na etapa. */
   saiuEm: number | null;
+  /**
+   * Presente na etapa desde (check-in, recepção, balcão, passagem da triagem, 1º pulo); `null` em casa.
+   * Opcional: dias gravados antes do campo não o têm (vale `null`). Só para a tela (tempo de espera).
+   */
+  presenteDesde?: number | null;
   atendidoEmEtapas: Etapa[];
   /** Preenchido quando o item vai a "Saiu da fila"; `null` nos outros estados. */
   motivoSaida: MotivoSaida | null;
@@ -218,7 +223,7 @@ export function ficarElegivel(
         .slice(0, dia.config.janelaK)
         .map((i) => i.id);
   const numero = perdeuAVez ? dia.proximoNumero : x.numero;
-  const novo: ItemFila = { ...x, estado: "presente", numero, travadoAtras, saiuEm: null };
+  const novo: ItemFila = { ...x, estado: "presente", numero, travadoAtras, saiuEm: null, presenteDesde: agora };
   return {
     estado: {
       ...dia,
@@ -374,7 +379,7 @@ export function vouSair(dia: DiaSessao, cmd: { itemId: string }, agora: number):
   }
   const itens = dia.itens.map((i) =>
     i.id === item.id
-      ? { ...i, estado: "remoto" as const, saiuEm: agora, travadoAtras: [] }
+      ? { ...i, estado: "remoto" as const, saiuEm: agora, travadoAtras: [], presenteDesde: null }
       : { ...i, travadoAtras: i.travadoAtras.filter((t) => t !== item.id) },
   );
   return ok({ ...dia, itens }, [{ tipo: "saiu", itemId: item.id, entradaId: item.entradaId, sessaoId: dia.sessaoId }]);
