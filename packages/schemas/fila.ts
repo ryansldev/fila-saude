@@ -266,3 +266,86 @@ export const checkInSchema = z.array(
   }),
 );
 export type CheckIn = z.infer<typeof checkInSchema>;
+
+/** T5.3 / RN-AL-01..06: a sessão privada vista pelo agendador: vagas, alocados e a sugestão com motivos. */
+export const alocacaoDaSessaoSchema = z.object({
+  sessao: z.object({
+    id: z.uuid(),
+    servico: z.object({ id: z.uuid(), nome: z.string() }),
+    inicio: z.iso.datetime(),
+    fim: z.iso.datetime(),
+    vagas: z.number().int().nullable(),
+    ocupadas: z.number().int(),
+    estado: z.string(),
+    visibilidade: z.enum(["publica", "privada"]),
+    /** Planejada, privada, até a véspera (RN-AL-05) e com vaga (RN-AL-06). */
+    podeAlocar: z.boolean(),
+    motivo: z.string().nullable(),
+  }),
+  alocados: z.array(
+    z.object({
+      entradaId: z.uuid(),
+      nome: z.string(),
+      idade: z.number().int(),
+      estado: z.string(),
+      /** RN-CONF-01: 24 h da alocação, sem passar do início; só enquanto pendente. */
+      prazo: z.iso.datetime().nullable(),
+      destacada: z.boolean(),
+    }),
+  ),
+  sugestao: z.array(
+    z.object({
+      entradaId: z.uuid(),
+      nome: z.string(),
+      idade: z.number().int(),
+      motivos: z.array(z.string()),
+      /** I4: urgente sugerido ainda não alocado. */
+      alerta: z.boolean(),
+      /** RN-RISCO-06: só agendador e triagem veem. */
+      autolesao: z.boolean(),
+      faltas: z.number().int(),
+      /** RN-FALTA-03 / I10. */
+      alertaFaltas: z.boolean(),
+      risco: z.object({ nivel: z.string(), confirmado: z.boolean(), regra: z.string() }),
+    }),
+  ),
+});
+export type AlocacaoDaSessao = z.infer<typeof alocacaoDaSessaoSchema>;
+
+export const alocarEntradaSchema = z.object({ entradaId: z.uuid() });
+
+/** RN-CONF-02 / I6: o que o agendador registra depois de ligar. */
+export const respostaDoAgendadorSchema = z.object({ resposta: z.enum(["confirmou", "recusou", "sem_contato"]) });
+export const respostaRegistradaSchema = z.object({ estado: z.string() });
+
+/** RN-CONF-03: alocação pendente para ligar. */
+export const itemDeLigacaoSchema = z.object({
+  entradaId: z.uuid(),
+  nome: z.string(),
+  /** Do responsável com conta; pessoa local sem conta não tem. */
+  telefone: z.string().nullable(),
+  servico: z.string(),
+  sessao: z.object({ id: z.uuid(), inicio: z.iso.datetime() }),
+  prazo: z.iso.datetime(),
+  destacada: z.boolean(),
+  ultimaTentativa: z.iso.datetime().nullable(),
+});
+export type ItemDeLigacao = z.infer<typeof itemDeLigacaoSchema>;
+
+/** Lista de espera da unidade por serviço, com as sessões privadas em que dá para alocar. */
+export const listaDeEsperaDoServicoSchema = z.object({
+  servico: z.object({ id: z.uuid(), nome: z.string(), modo: z.enum(["livre", "requisicao", "regulado"]) }),
+  aguardando: z.number().int(),
+  alertas: z.number().int(),
+  sessoes: z.array(
+    z.object({
+      id: z.uuid(),
+      inicio: z.iso.datetime(),
+      fim: z.iso.datetime(),
+      vagas: z.number().int().nullable(),
+      ocupadas: z.number().int(),
+      profissional: z.string().nullable(),
+    }),
+  ),
+});
+export type ListaDeEsperaDoServico = z.infer<typeof listaDeEsperaDoServicoSchema>;

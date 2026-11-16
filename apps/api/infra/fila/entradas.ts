@@ -205,3 +205,15 @@ export async function entradasDaSessao(db: BancoDoTenant, sessaoId: string): Pro
   const linhas = await comPessoa(db).where(eq(entrada.sessaoId, sessaoId));
   return linhas.map(paraEntrada);
 }
+
+/**
+ * Trava a linha da entrada (`for update`) e a lê já com o estado gravado por quem tinha a trava antes.
+ * Dentro de `naSessao`, sempre depois da trava da sessão (mesma ordem em todo caminho: sem deadlock).
+ */
+export async function travarEntrada(tx: BancoDoTenant, id: string): Promise<Entrada> {
+  const [linha] = await tx.select({ id: entrada.id }).from(entrada).where(eq(entrada.id, id)).for("update");
+  if (!linha) throw new ErroApi(404, "nao_encontrado");
+  const e = await lerEntrada(tx, id);
+  if (!e) throw new ErroApi(404, "nao_encontrado");
+  return e;
+}
