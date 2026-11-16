@@ -64,7 +64,7 @@ export default function Ajuda() {
         <Text style={{ fontFamily: FONTE.semi, fontSize: 18, lineHeight: 26, color: COR.dangerInk }}>
           não espere na fila. ligue para o SAMU, de graça, a qualquer hora.
         </Text>
-        <BotaoLigar texto="ligar para o SAMU (192)" numero="192" tipo="perigoCheio" />
+        <BotaoLigar texto="ligar para o SAMU (192)" numero="192" variante="perigo" />
       </View>
       <Cartao style={{ gap: 10 }}>
         <Text
@@ -74,7 +74,7 @@ export default function Ajuda() {
           precisa conversar?
         </Text>
         <Texto>o CVV ouve você com sigilo, de graça, 24 horas por dia.</Texto>
-        <BotaoLigar texto="ligar para o CVV (188)" numero="188" tipo="secundario" />
+        <BotaoLigar texto="ligar para o CVV (188)" numero="188" variante="secundario" />
       </Cartao>
     </Tela>
   );

@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { View } from "react-native";
 import { useMinhaFila } from "@/components/atendimento";
 import {
   Abas,
@@ -8,54 +8,14 @@ import {
   Carregando,
   Cartao,
   CartaoTocavel,
-  COR,
   Faixa,
-  FONTE,
+  Segmentado,
   Tela,
   TextoSuave,
   Titulo,
 } from "@/components/ui";
 
 type Aba = "proximos" | "historico";
-
-/** Duas abas grandes, como um seletor do Duolingo: a escolhida fica cheia. */
-function Seletor({ atual, mudar, contagem }: { atual: Aba; mudar: (a: Aba) => void; contagem: Record<Aba, number> }) {
-  const opcao = (id: Aba, rotulo: string) => {
-    const ativa = atual === id;
-    return (
-      <Pressable
-        key={id}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: ativa }}
-        onPress={() => mudar(id)}
-        style={{
-          flex: 1,
-          minHeight: 48,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 12,
-          backgroundColor: ativa ? COR.surface : "transparent",
-          borderWidth: ativa ? 2 : 0,
-          borderBottomWidth: ativa ? 4 : 0,
-          borderColor: COR.linha,
-        }}
-      >
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 17, color: ativa ? COR.action : COR.inkMuted }}>
-          {rotulo} {contagem[id] > 0 ? `(${contagem[id]})` : ""}
-        </Text>
-      </Pressable>
-    );
-  };
-  return (
-    <View
-      accessibilityRole="tablist"
-      style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 16, backgroundColor: COR.surfaceMuted }}
-    >
-      {opcao("proximos", "próximos")}
-      {opcao("historico", "histórico")}
-    </View>
-  );
-}
 
 /**
  * Meus atendimentos: o que está marcado para outros dias, a lista de espera e a reserva ("próximos"),
@@ -74,7 +34,14 @@ export default function Atendimentos() {
   return (
     <Tela voltar={false} rodape={<Abas atual="atendimentos" />}>
       <Titulo>meus atendimentos</Titulo>
-      <Seletor atual={aba} mudar={setAba} contagem={{ proximos: proximos.length, historico: historico.length }} />
+      <Segmentado
+        atual={aba}
+        mudar={setAba}
+        opcoes={[
+          { id: "proximos", rotulo: `próximos${proximos.length > 0 ? ` (${proximos.length})` : ""}` },
+          { id: "historico", rotulo: `histórico${historico.length > 0 ? ` (${historico.length})` : ""}` },
+        ]}
+      />
       {f.erro ? (
         <Faixa
           tipo="perigo"

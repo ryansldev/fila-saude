@@ -1,7 +1,7 @@
 import { mascararCpf, mascararData, mascararTelefone } from "@fila-saude/schemas/mascaras";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Botao, Campo, CampoSenha, Faixa, LinkBotao, Pequeno, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { Botao, Campo, CampoSenha, Faixa, Pequeno, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { ErroDaApi } from "@/lib/api";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
@@ -68,7 +68,7 @@ export default function Cadastro() {
         acoes={
           <>
             <Botao texto="continuar" onPress={continuar} />
-            <LinkBotao texto="já tenho conta" onPress={() => router.replace("/entrar")} />
+            <Botao variante="texto" texto="já tenho conta" onPress={() => router.replace("/entrar")} />
           </>
         }
       >

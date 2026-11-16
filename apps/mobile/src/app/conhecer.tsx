@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Bell, CalendarCheck, Check, House, QrCode, Smartphone, Tv } from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import { Text, View } from "react-native";
-import { Botao, CartaoPosicao, COR, Faixa, FONTE, LinkBotao, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { Botao, CartaoPosicao, COR, Faixa, FONTE, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { gravar } from "@/lib/armazenamento";
 import { CHAVE_ONBOARDING, passoAnterior, proximoPasso } from "@/lib/onboarding";
 
@@ -221,9 +221,9 @@ export default function Conhecer() {
         <>
           <Botao texto={ultimo ? "criar minha conta" : "continuar"} onPress={continuar} />
           {ultimo ? (
-            <LinkBotao texto="já tenho conta" onPress={() => void terminar("/entrar")} />
+            <Botao variante="texto" texto="já tenho conta" onPress={() => void terminar("/entrar")} />
           ) : (
-            <LinkBotao texto="pular" cor={COR.inkMuted} onPress={() => void terminar()} />
+            <Botao variante="texto" texto="pular" onPress={() => void terminar()} />
           )}
         </>
       }

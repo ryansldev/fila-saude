@@ -2,7 +2,7 @@ import { cpfValido } from "@fila-saude/schemas/cpf";
 import { mascararCpf } from "@fila-saude/schemas/mascaras";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Botao, Campo, CampoSenha, Faixa, LinkBotao, Pequeno, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { Botao, Campo, CampoSenha, Faixa, Pequeno, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
 
@@ -38,7 +38,7 @@ export default function Entrar() {
       acoes={
         <>
           <Botao texto="entrar" onPress={enviar} carregando={enviando} desativado={!cpf || !senha} />
-          <LinkBotao texto="criar uma conta" onPress={() => router.replace("/cadastro")} />
+          <Botao variante="texto" texto="criar uma conta" onPress={() => router.replace("/cadastro")} />
         </>
       }
     >

@@ -2,9 +2,10 @@ import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { router, useFocusEffect } from "expo-router";
 import { ChevronRight, Hourglass } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
-import { Alert, Pressable, Text, View, type ViewStyle } from "react-native";
+import { Alert, Text, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  AreaTocavel,
   Avatar,
   BlocoData,
   Botao,
@@ -15,7 +16,6 @@ import {
   Faixa,
   FONTE,
   Gaveta,
-  LinkBotao,
   Logo,
   Pequeno,
   Selo,
@@ -88,7 +88,7 @@ export function ConfirmarCancelamento({
           {erro ? <Faixa tipo="perigo" titulo="não deu certo" texto={erro} /> : null}
           <Botao
             texto="não vou poder ir"
-            tipo="perigoCheio"
+            variante="perigo"
             carregando={enviando}
             onPress={async () => {
               setEnviando(true);
@@ -102,7 +102,7 @@ export function ConfirmarCancelamento({
               }
             }}
           />
-          <Botao texto="voltar, eu vou" tipo="secundario" onPress={fecharGaveta} desativado={enviando} />
+          <Botao texto="voltar, eu vou" variante="secundario" onPress={fecharGaveta} desativado={enviando} />
         </>
       ) : null}
     </Gaveta>
@@ -127,7 +127,7 @@ export function SuaVez({ senha, estacao, fechar }: { senha: string; estacao: str
           {estacao ? estacao.toLowerCase() : "veja a sala na TV"}
         </Text>
         <View style={{ alignSelf: "stretch", marginTop: 24 }}>
-          <Botao texto="estou indo" tipo="branco" corTexto={COR.successInk} onPress={fechar} />
+          <Botao texto="estou indo" variante="branco" onPress={fechar} />
         </View>
       </View>
     </SafeAreaView>
@@ -235,40 +235,40 @@ export function CartaoDoAtendimento({
         {mostraTrilha ? <Trilha etapa={r.etapa ?? 0} pendente={!r.naFila} /> : null}
         <NaFila en={en} sit={sit} />
         {sit.tipo === "recepcao" ? (
-          <Botao texto="ler o QR de novo" tipo="secundario" onPress={() => router.push("/check-in")} />
+          <Botao texto="ler o QR de novo" variante="secundario" onPress={() => router.push("/check-in")} />
         ) : null}
         {podeCheckIn ? <Botao texto="cheguei na unidade" onPress={() => router.push("/check-in")} /> : null}
         {presente ? (
           vouSair ? (
-            <Botao texto="vou sair um pouco" tipo="secundario" onPress={vouSair} />
+            <Botao texto="vou sair um pouco" variante="secundario" onPress={vouSair} />
           ) : (
             <Carregando />
           )
         ) : null}
         {presente && !piorou ? (
-          <LinkBotao texto="meus sintomas pioraram" cor={COR.dangerInk} onPress={() => setPiorou(true)} />
+          <Botao variante="textoPerigo" texto="meus sintomas pioraram" onPress={() => setPiorou(true)} />
         ) : null}
         {presente && piorou ? (
           <View style={{ gap: 10 }}>
             <Faixa tipo="perigo" titulo="seus sintomas pioraram?" texto={ORIENTACAO_PIOROU} />
-            <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="secundario" />
+            <BotaoLigar texto="ligar 192 · SAMU" numero="192" variante="secundario" />
           </View>
         ) : null}
         {sit.tipo === "alocada" ? (
           responder ? (
             <>
               <Botao texto="vou, confirmar" onPress={() => responder("confirmar")} />
-              <Botao texto="não posso nesta data" tipo="secundario" onPress={() => responder("recusar")} />
+              <Botao texto="não posso nesta data" variante="secundario" onPress={() => responder("recusar")} />
             </>
           ) : (
             <Carregando />
           )
         ) : null}
-        {refazer ? <LinkBotao texto="minha situação mudou: responder de novo" onPress={refazer} /> : null}
+        {refazer ? <Botao variante="texto" texto="minha situação mudou: responder de novo" onPress={refazer} /> : null}
         {aoCancelar ? (
-          <LinkBotao
+          <Botao
+            variante="textoPerigo"
             texto={sit.tipo === "alocada" || sit.tipo === "lista" ? "sair da lista de espera" : "não vou poder ir"}
-            cor={COR.dangerInk}
             onPress={aoCancelar}
           />
         ) : null}
@@ -292,14 +292,13 @@ function Tocavel({
 }) {
   if (!aoAbrir) return <View style={style}>{children}</View>;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`ver a fila de ${en.servico.toLowerCase()}`}
+    <AreaTocavel
+      rotulo={`ver a fila de ${en.servico.toLowerCase()}`}
       onPress={aoAbrir}
-      style={({ pressed }) => [style, pressed && { opacity: 0.6 }]}
+      style={(pressed) => ({ ...style, ...(pressed ? { opacity: 0.6 } : {}) })}
     >
       {children}
-    </Pressable>
+    </AreaTocavel>
   );
 }
 
@@ -366,7 +365,7 @@ function CartaoNaLista({
       </Tocavel>
       {aoCancelar ? (
         <View style={{ borderTopWidth: 2, borderTopColor: COR.surfaceMuted, marginTop: -2 }}>
-          <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} />
+          <Botao variante="textoPerigo" texto="não vou poder ir" onPress={aoCancelar} />
         </View>
       ) : null}
     </Cartao>

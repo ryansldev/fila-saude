@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Camera } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Text, View } from "react-native";
-import { Botao, COR, Faixa, FONTE, LinkBotao, Tela, TextoSuave } from "@/components/ui";
+import { Botao, COR, Faixa, FONTE, Tela, TextoSuave } from "@/components/ui";
 import { deParametros, lerQr, type QrLido, textoDoCheckIn } from "@/lib/check-in";
 import { useSessao } from "@/lib/sessao";
 import { mensagemDoErro } from "@/lib/textos";
@@ -71,7 +71,7 @@ export default function CheckInPeloQr() {
         acoes={
           <>
             <Botao texto="entrar" onPress={() => router.replace("/entrar")} />
-            <LinkBotao texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
+            <Botao variante="texto" texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
           </>
         }
       >
@@ -134,7 +134,7 @@ export default function CheckInPeloQr() {
         acoes={
           <>
             <Botao texto="ler de novo" onPress={deNovo} />
-            <Botao texto="ver minha fila" tipo="secundario" onPress={verFila} />
+            <Botao texto="ver minha fila" variante="secundario" onPress={verFila} />
           </>
         }
       >
@@ -158,8 +158,12 @@ export default function CheckInPeloQr() {
               <Botao texto="permitir a câmera" onPress={() => void pedirPermissao()} />
             )
           ) : null}
-          <LinkBotao texto={naoLe ? "esconder ajuda" : "não consigo ler"} onPress={() => setNaoLe(!naoLe)} />
-          <LinkBotao texto="voltar" onPress={() => (router.canGoBack() ? router.back() : verFila())} />
+          <Botao
+            variante="texto"
+            texto={naoLe ? "esconder ajuda" : "não consigo ler"}
+            onPress={() => setNaoLe(!naoLe)}
+          />
+          <Botao variante="texto" texto="voltar" onPress={() => (router.canGoBack() ? router.back() : verFila())} />
         </>
       }
     >

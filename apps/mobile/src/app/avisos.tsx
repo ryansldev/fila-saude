@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Bell, DoorOpen, House, type LucideIcon, Megaphone } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
-import { Botao, COR, FONTE, LinkBotao, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { Botao, COR, FONTE, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { useSessao } from "@/lib/sessao";
 
 const EXEMPLOS: { texto: string; Icone: LucideIcon; fundo: string; cor: string }[] = [
@@ -34,9 +34,9 @@ export default function Avisos() {
               seguir();
             }}
           />
-          <LinkBotao
+          <Botao
+            variante="texto"
             texto="agora não"
-            cor={COR.inkMuted}
             onPress={async () => {
               await s.pularAvisos();
               seguir();

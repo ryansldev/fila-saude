@@ -13,7 +13,6 @@ import {
   COR,
   Faixa,
   FONTE,
-  LinkBotao,
   Mascote,
   Opcao,
   Pequeno,
@@ -231,7 +230,7 @@ export default function Inscricao() {
         acoes={
           <>
             <Botao texto="entrar" onPress={() => router.replace("/entrar")} />
-            <LinkBotao texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
+            <Botao variante="texto" texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
           </>
         }
       >
@@ -364,10 +363,10 @@ export default function Inscricao() {
         fundo={COR.dangerBg}
         acoes={
           <>
-            <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="perigoCheio" />
+            <BotaoLigar texto="ligar 192 · SAMU" numero="192" variante="perigo" />
             <Botao
               texto="voltar às perguntas"
-              tipo="secundario"
+              variante="secundario"
               onPress={() => setPasso({ tipo: "pergunta", indice: 0 })}
             />
           </>
@@ -391,8 +390,12 @@ export default function Inscricao() {
         acoes={
           <>
             <BotaoLigar texto="ligar 188 · CVV" numero="188" />
-            <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="secundario" />
-            <LinkBotao texto="continuar a inscrição" onPress={() => setPasso({ tipo: "pergunta", indice: 1 })} />
+            <BotaoLigar texto="ligar 192 · SAMU" numero="192" variante="secundario" />
+            <Botao
+              variante="texto"
+              texto="continuar a inscrição"
+              onPress={() => setPasso({ tipo: "pergunta", indice: 1 })}
+            />
           </>
         }
       >

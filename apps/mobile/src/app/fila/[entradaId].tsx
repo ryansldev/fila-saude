@@ -11,7 +11,6 @@ import {
   corDoTom,
   Faixa,
   FONTE,
-  LinkBotao,
   Pequeno,
   Selo,
   Tela,
@@ -76,12 +75,12 @@ export default function TelaDaFila() {
 
   const principal =
     sit.tipo === "recepcao" ? (
-      <Botao texto="ler o QR de novo" tipo="secundario" onPress={() => router.push("/check-in")} />
+      <Botao texto="ler o QR de novo" variante="secundario" onPress={() => router.push("/check-in")} />
     ) : podeCheckIn ? (
       <Botao texto="cheguei na unidade" onPress={() => router.push("/check-in")} />
     ) : presente ? (
       vouSair ? (
-        <Botao texto="vou sair um pouco" tipo="secundario" onPress={vouSair} />
+        <Botao texto="vou sair um pouco" variante="secundario" onPress={vouSair} />
       ) : (
         <Carregando />
       )
@@ -117,15 +116,15 @@ export default function TelaDaFila() {
       ) : null}
 
       {presente && !piorou ? (
-        <LinkBotao texto="meus sintomas pioraram" cor={COR.dangerInk} onPress={() => setPiorou(true)} />
+        <Botao variante="textoPerigo" texto="meus sintomas pioraram" onPress={() => setPiorou(true)} />
       ) : null}
       {presente && piorou ? (
         <View style={{ gap: 10 }}>
           <Faixa tipo="perigo" titulo="seus sintomas pioraram?" texto={ORIENTACAO_PIOROU} />
-          <BotaoLigar texto="ligar 192 · SAMU" numero="192" tipo="secundario" />
+          <BotaoLigar texto="ligar 192 · SAMU" numero="192" variante="secundario" />
         </View>
       ) : null}
-      {aoCancelar ? <LinkBotao texto="não vou poder ir" cor={COR.dangerInk} onPress={aoCancelar} /> : null}
+      {aoCancelar ? <Botao variante="textoPerigo" texto="não vou poder ir" onPress={aoCancelar} /> : null}
       {f.gaveta}
     </Tela>
   );

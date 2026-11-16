@@ -16,7 +16,6 @@ import {
   Faixa,
   FONTE,
   LinhaTocavel,
-  LinkBotao,
   Pequeno,
   Selo,
   Tela,
@@ -122,9 +121,9 @@ function PedidoDeLocalizacao({ loc, pedir }: { loc: Localizacao; pedir: () => vo
           : "não deu para saber onde você está. as unidades estão em ordem alfabética."}
       </Pequeno>
       {loc.estado === "negada" && loc.bloqueada && Platform.OS !== "web" ? (
-        <LinkBotao texto="permitir nas configurações" onPress={() => void Linking.openSettings()} />
+        <Botao variante="texto" texto="permitir nas configurações" onPress={() => void Linking.openSettings()} />
       ) : loc.estado !== "negada" || !loc.bloqueada ? (
-        <LinkBotao texto="tentar de novo" onPress={pedir} />
+        <Botao variante="texto" texto="tentar de novo" onPress={pedir} />
       ) : null}
     </View>
   );

@@ -210,7 +210,7 @@ export default function Unidade() {
             <MapPin size={22} color={COR.inkMuted} strokeWidth={2.25} style={{ marginTop: 3 }} />
             <TextoSuave style={{ flex: 1 }}>{enderecoEmLinha(unidade.endereco)}</TextoSuave>
           </View>
-          <Botao texto="como chegar" tipo="secundario" onPress={() => void abrirComoChegar(unidade)} />
+          <Botao texto="como chegar" variante="secundario" onPress={() => void abrirComoChegar(unidade)} />
           <Text style={{ fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.ink, marginTop: 8 }}>
             próximos atendimentos
           </Text>

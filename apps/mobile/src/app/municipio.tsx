@@ -1,8 +1,8 @@
 import { router } from "expo-router";
 import { ChevronRight, MapPin } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, Text, View } from "react-native";
-import { Carregando, COR, Faixa, FONTE, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { ActivityIndicator, Text, View } from "react-native";
+import { AreaTocavel, Carregando, COR, Faixa, FONTE, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { type Municipio, rotuloDoMunicipio } from "@/lib/conta";
 import { useSessao } from "@/lib/sessao";
 import { avisoDoErro } from "@/lib/textos";
@@ -82,15 +82,15 @@ export default function EscolherMunicipio() {
         const atual = m.slug === s.municipio;
         const carregando = escolhendo === m.slug;
         return (
-          <Pressable
+          <AreaTocavel
             key={m.slug}
-            accessibilityRole="button"
-            accessibilityLabel={rotuloDoMunicipio(m)}
-            accessibilityHint={atual ? "é o seu município agora" : "escolher este município"}
-            accessibilityState={{ selected: atual, busy: carregando }}
-            disabled={Boolean(escolhendo)}
+            rotulo={rotuloDoMunicipio(m)}
+            dica={atual ? "é o seu município agora" : "escolher este município"}
+            selecionado={atual}
+            ocupado={carregando}
+            desativado={Boolean(escolhendo)}
             onPress={() => void escolher(m)}
-            style={({ pressed }) => ({
+            style={(pressed) => ({
               flexDirection: "row",
               alignItems: "center",
               gap: 14,
@@ -127,7 +127,7 @@ export default function EscolherMunicipio() {
             ) : (
               <ChevronRight size={26} color={atual ? COR.action : COR.inkMuted} strokeWidth={2.5} />
             )}
-          </Pressable>
+          </AreaTocavel>
         );
       })}
     </Tela>

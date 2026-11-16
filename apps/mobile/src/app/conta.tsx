@@ -10,8 +10,8 @@ import {
   MapPin,
 } from "lucide-react-native";
 import { type ReactNode, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { Abas, Botao, COR, FONTE, Gaveta, Pequeno, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { Abas, AreaTocavel, Botao, COR, FONTE, Gaveta, Pequeno, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
 import { cpfEscondido, iniciais, type Municipio, nomeDoMunicipio, primeiroNome, textoDosAvisos } from "@/lib/conta";
 import { useSessao } from "@/lib/sessao";
 
@@ -136,8 +136,8 @@ export default function Conta() {
       <Gaveta aberta={confirmarSaida} fechar={() => setConfirmarSaida(false)} travada={saindo}>
         <Titulo>sair da conta?</Titulo>
         <TextoSuave>você deixa de receber os avisos neste celular.</TextoSuave>
-        <Botao texto="sair da conta" tipo="perigoCheio" carregando={saindo} onPress={() => void sair()} />
-        <Botao texto="continuar na conta" tipo="secundario" onPress={() => setConfirmarSaida(false)} />
+        <Botao texto="sair da conta" variante="perigo" carregando={saindo} onPress={() => void sair()} />
+        <Botao texto="continuar na conta" variante="secundario" onPress={() => setConfirmarSaida(false)} />
       </Gaveta>
     </Tela>
   );
@@ -195,16 +195,9 @@ function Linha({
       </View>
     );
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={rotulo}
-      accessibilityHint={descricao}
-      accessibilityState={{ busy: carregando }}
-      disabled={carregando}
-      onPress={onPress}
-    >
-      {({ pressed }) => conteudo(pressed)}
-    </Pressable>
+    <AreaTocavel rotulo={rotulo} dica={descricao} ocupado={carregando} onPress={onPress}>
+      {(pressed) => conteudo(pressed)}
+    </AreaTocavel>
   );
 }
 

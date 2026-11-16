@@ -1,4 +1,5 @@
 import { BottomSheet, BottomSheetView } from "@expo/ui/community/bottom-sheet";
+import { COR, estiloDoBotao, FONTE, OPACIDADE_DESATIVADO, type TamanhoApp, type Variante } from "@fila-saude/design";
 import { router } from "expo-router";
 import {
   CalendarDays,
@@ -36,39 +37,7 @@ import Svg, { Path, SvgXml } from "react-native-svg";
 import { MASCOTE_SVG } from "./mascote-svg";
 
 // Tokens do design system "Fila Saúde" (artifact do app do paciente).
-export const COR = {
-  surface: "#ffffff",
-  surfaceMuted: "#eff5f5",
-  ink: "#111313",
-  inkMuted: "#646b6c",
-  border: "#bac8ca",
-  primary50: "#eaf5f9",
-  primary500: "#2e86de",
-  action: "#1a73c8",
-  actionPressed: "#185b9a",
-  primary900: "#0c2e4e",
-  warningBg: "#fffae8",
-  warningInk: "#66520a",
-  successBg: "#eef7f0",
-  successInk: "#00530c",
-  dangerBg: "#fef2f1",
-  dangerInk: "#993029",
-  call: "#30833c",
-  // Estilo "chunky" (botões e cartões com relevo, borda grossa clara).
-  linha: "#e1e8ea",
-  campoFundo: "#f6f9fa",
-  acaoSombra: "#145a9b",
-  verde: "#2f9e44",
-  verdeSombra: "#237a34",
-  amarelo: "#f59f00",
-};
-
-export const FONTE = {
-  regular: "Nunito_400Regular",
-  semi: "Nunito_600SemiBold",
-  bold: "Nunito_700Bold",
-  extra: "Nunito_800ExtraBold",
-};
+export { COR, FONTE };
 
 export function Logo({
   tamanho = 28,
@@ -312,83 +281,180 @@ export const Pequeno = ({ children, style }: { children: ReactNode; style?: Text
 );
 export const Progresso = ({ children }: { children: ReactNode }) => <Text style={e.prog}>{children}</Text>;
 
-type TipoBotao = "primario" | "secundario" | "perigo" | "perigoCheio" | "branco";
-
-// Botão com relevo: a borda de baixo, mais escura, "afunda" ao tocar (o gesto fica visível).
-const ESTILO_BOTAO: Record<TipoBotao, { fundo: string; borda: string; sombra: string; texto: string }> = {
-  primario: { fundo: COR.action, borda: COR.action, sombra: COR.acaoSombra, texto: "#ffffff" },
-  secundario: { fundo: COR.surface, borda: COR.linha, sombra: COR.linha, texto: COR.action },
-  perigo: { fundo: COR.surface, borda: COR.linha, sombra: COR.linha, texto: COR.dangerInk },
-  perigoCheio: { fundo: COR.dangerInk, borda: COR.dangerInk, sombra: "#6e1f1a", texto: "#ffffff" },
-  branco: { fundo: "#ffffff", borda: "#ffffff", sombra: "#d9e2e4", texto: COR.primary900 },
-};
-
+/**
+ * O botão do design system (Duolingo): um componente para todas as ações do app. Cores e medidas
+ * vêm de `@fila-saude/design`, as mesmas do `Button` do painel. A borda de baixo, mais escura,
+ * "afunda" ao tocar. Variações: principal (uma por área), secundario, sucesso, perigo (só
+ * emergência), perigoContorno (recusar, sair), texto e textoPerigo (baixo peso), branco.
+ */
 export function Botao({
   texto,
   onPress,
-  tipo = "primario",
+  variante = "principal",
+  tamanho = "padrao",
+  icone: Icone,
   carregando = false,
   desativado = false,
-  corTexto,
 }: {
   texto: string;
   onPress: () => void;
-  tipo?: TipoBotao;
+  variante?: Variante;
+  tamanho?: TamanhoApp;
+  icone?: LucideIcon | undefined;
   carregando?: boolean;
   desativado?: boolean;
-  corTexto?: string;
 }) {
-  const c = ESTILO_BOTAO[tipo];
+  const c = estiloDoBotao("app", variante, tamanho);
+  const bloqueado = desativado || carregando;
+  const plano = c.relevo === 0;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: desativado || carregando, busy: carregando }}
-      disabled={desativado || carregando}
+      accessibilityLabel={texto}
+      accessibilityState={{ disabled: bloqueado, busy: carregando }}
+      disabled={bloqueado}
       onPress={onPress}
       style={({ pressed }) => [
-        e.btn,
         {
+          minHeight: c.altura,
+          borderRadius: c.raio,
+          borderWidth: plano ? 0 : 2,
+          paddingHorizontal: c.paddingX,
+          alignItems: "center",
+          justifyContent: "center",
           backgroundColor: c.fundo,
           borderColor: c.borda,
           borderBottomColor: c.sombra,
-          borderBottomWidth: pressed ? 2 : 5,
-          marginTop: pressed ? 3 : 0,
-          opacity: desativado ? 0.45 : 1,
+          borderBottomWidth: plano ? 0 : desativado ? 2 : pressed ? c.relevoTocado : c.relevo,
+          marginTop: pressed && !plano && !desativado ? c.desce : 0,
+          opacity: desativado ? OPACIDADE_DESATIVADO : plano && pressed ? 0.6 : 1,
         },
       ]}
     >
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        {carregando ? <ActivityIndicator color={corTexto ?? c.texto} /> : null}
-        <Text style={[e.textoBtn, { color: corTexto ?? c.texto }]}>{carregando ? "aguarde…" : texto}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, maxWidth: "100%" }}>
+        {carregando ? (
+          <ActivityIndicator color={c.texto} />
+        ) : Icone ? (
+          <Icone size={c.fonteTamanho + 4} color={c.texto} strokeWidth={2.5} />
+        ) : null}
+        <Text
+          numberOfLines={plano ? 2 : 1}
+          ellipsizeMode="tail"
+          style={{
+            flexShrink: 1,
+            textAlign: "center",
+            fontFamily: c.fontePeso === 800 ? FONTE.extra : FONTE.bold,
+            fontSize: c.fonteTamanho,
+            lineHeight: c.fonteTamanho + 6,
+            letterSpacing: 0.2,
+            color: c.texto,
+            textDecorationLine: plano ? "underline" : "none",
+          }}
+        >
+          {carregando ? "aguarde…" : texto}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
-/** Botão de ligar (192, 188): abre o discador. */
+/** Botão de ligar (192, 188): um `Botao` que abre o discador. */
 export const BotaoLigar = ({
   texto,
   numero,
-  tipo = "primario",
+  variante = "principal",
 }: {
   texto: string;
   numero: string;
-  tipo?: TipoBotao;
-}) => <Botao texto={texto} tipo={tipo} onPress={() => void Linking.openURL(`tel:${numero}`)} />;
+  variante?: Variante;
+}) => <Botao texto={texto} variante={variante} onPress={() => void Linking.openURL(`tel:${numero}`)} />;
 
-export function LinkBotao({
-  texto,
+/**
+ * Área tocável do kit, para o que não tem cara de botão (cartão que abre a fila, linha de menu,
+ * cartão de município). A aparência vem de quem usa: `style` e `children` podem depender de `pressed`.
+ */
+export function AreaTocavel({
+  rotulo,
+  dica,
   onPress,
-  cor = COR.actionPressed,
+  papel = "button",
+  ocupado = false,
+  desativado = false,
+  selecionado,
+  style,
+  children,
 }: {
-  texto: string;
+  rotulo: string;
+  dica?: string | undefined;
   onPress: () => void;
-  cor?: string;
+  papel?: "button" | "link";
+  ocupado?: boolean;
+  desativado?: boolean;
+  selecionado?: boolean | undefined;
+  style?: ViewStyle | ((pressed: boolean) => ViewStyle) | undefined;
+  children: ReactNode | ((pressed: boolean) => ReactNode);
 }) {
   return (
-    <Pressable accessibilityRole="link" onPress={onPress} style={e.link}>
-      <Text style={[e.textoLink, { color: cor }]}>{texto}</Text>
+    <Pressable
+      accessibilityRole={papel}
+      accessibilityLabel={rotulo}
+      accessibilityHint={dica}
+      accessibilityState={{
+        busy: ocupado,
+        disabled: desativado,
+        ...(selecionado === undefined ? {} : { selected: selecionado }),
+      }}
+      disabled={desativado || ocupado}
+      onPress={onPress}
+      style={({ pressed }) => (typeof style === "function" ? style(pressed) : style)}
+    >
+      {({ pressed }) => (typeof children === "function" ? children(pressed) : children)}
     </Pressable>
+  );
+}
+
+/** Abas lado a lado, como o seletor do Duolingo: a escolhida fica cheia, com relevo. */
+export function Segmentado<T extends string>({
+  opcoes,
+  atual,
+  mudar,
+}: {
+  opcoes: { id: T; rotulo: string }[];
+  atual: T;
+  mudar: (id: T) => void;
+}) {
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 16, backgroundColor: COR.surfaceMuted }}
+    >
+      {opcoes.map((o) => {
+        const ativa = atual === o.id;
+        return (
+          <Pressable
+            key={o.id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: ativa }}
+            onPress={() => mudar(o.id)}
+            style={{
+              flex: 1,
+              minHeight: 48,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 12,
+              backgroundColor: ativa ? COR.surface : "transparent",
+              borderWidth: ativa ? 2 : 0,
+              borderBottomWidth: ativa ? 4 : 0,
+              borderColor: COR.linha,
+            }}
+          >
+            <Text style={{ fontFamily: FONTE.extra, fontSize: 17, color: ativa ? COR.action : COR.inkMuted }}>
+              {o.rotulo}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -427,7 +493,7 @@ export function CampoSenha({ rotulo, erro, ...props }: { rotulo: string; erro?: 
   return (
     <View style={{ gap: 6 }}>
       <Campo rotulo={rotulo} erro={erro} secureTextEntry={!ver} autoCapitalize="none" autoCorrect={false} {...props} />
-      <LinkBotao texto={ver ? "esconder senha" : "mostrar senha"} onPress={() => setVer(!ver)} />
+      <Botao variante="texto" texto={ver ? "esconder senha" : "mostrar senha"} onPress={() => setVer(!ver)} />
     </View>
   );
 }
@@ -500,16 +566,15 @@ export function Faixa({
         <Text style={[e.ft, { color: cor }, grande && { fontSize: 24, lineHeight: 30 }]}>{titulo}</Text>
         {texto ? <Text style={[e.fs, { color: cor }]}>{texto}</Text> : null}
         {acao ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ busy: acao.carregando ?? false }}
-            disabled={acao.carregando}
-            onPress={acao.onPress}
-            style={({ pressed }) => [e.acaoFaixa, { borderColor: cor }, pressed && { opacity: 0.6 }]}
-          >
-            {acao.carregando ? <ActivityIndicator color={cor} /> : null}
-            <Text style={[e.textoBtn, { color: cor, fontSize: 17 }]}>{acao.carregando ? "aguarde…" : acao.texto}</Text>
-          </Pressable>
+          <View style={{ marginTop: 10, alignSelf: "flex-start" }}>
+            <Botao
+              texto={acao.texto}
+              onPress={acao.onPress}
+              variante="secundario"
+              tamanho="medio"
+              carregando={acao.carregando ?? false}
+            />
+          </View>
         ) : null}
       </View>
     </View>
@@ -890,17 +955,6 @@ export const e = StyleSheet.create({
   pm: { fontFamily: FONTE.regular, fontSize: 18, lineHeight: 28, color: COR.inkMuted },
   small: { fontFamily: FONTE.semi, fontSize: 15, lineHeight: 22, color: COR.inkMuted },
   prog: { fontFamily: FONTE.bold, fontSize: 15, color: COR.inkMuted },
-  btn: {
-    minHeight: 56,
-    borderRadius: 16,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-  },
-  textoBtn: { fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, letterSpacing: 0.2 },
-  link: { minHeight: 44, paddingVertical: 10, alignItems: "center", justifyContent: "center" },
-  textoLink: { fontFamily: FONTE.bold, fontSize: 18, lineHeight: 24, textDecorationLine: "underline" },
   rotulo: { fontFamily: FONTE.bold, fontSize: 16, color: COR.ink },
   campo: {
     minHeight: 58,
@@ -937,18 +991,6 @@ export const e = StyleSheet.create({
   },
   textoOpt: { flex: 1, fontFamily: FONTE.bold, fontSize: 18, lineHeight: 24, color: COR.ink },
   faixa: { flexDirection: "row", gap: 12, alignItems: "flex-start", padding: 16, borderRadius: 16 },
-  acaoFaixa: {
-    flexDirection: "row",
-    alignSelf: "flex-start",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 48,
-    marginTop: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    borderWidth: 2,
-    backgroundColor: "#ffffff",
-  },
   ft: { fontFamily: FONTE.extra, fontSize: 18, lineHeight: 26 },
   fs: { fontFamily: FONTE.semi, fontSize: 16, lineHeight: 24 },
   card: {

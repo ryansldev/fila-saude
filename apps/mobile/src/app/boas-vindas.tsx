@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { Text, View } from "react-native";
-import { Botao, COR, FONTE, LinkBotao, Logo, Mascote, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { Botao, COR, FONTE, Logo, Mascote, Tela, TextoSuave, Titulo } from "@/components/ui";
 
 /** Primeira tela de quem está sem conta: a promessa do app em uma frase. */
 export default function BoasVindas() {
@@ -10,7 +10,7 @@ export default function BoasVindas() {
       acoes={
         <>
           <Botao texto="começar" onPress={() => router.push("/conhecer")} />
-          <LinkBotao texto="já tenho conta" onPress={() => router.push("/entrar")} />
+          <Botao variante="texto" texto="já tenho conta" onPress={() => router.push("/entrar")} />
         </>
       }
     >
