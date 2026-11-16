@@ -13,6 +13,14 @@ describe("tokens.css do painel", () => {
     expect(css).toContain("--ds-acao:#1a73c8");
   });
 
+  it("as classes ficam na camada components do Tailwind: utilitários de layout (px-12, text-4xl) continuam valendo", () => {
+    const css = gerarCss();
+    const camada = css.indexOf("@layer components {");
+    expect(camada).toBeGreaterThan(-1);
+    expect(css.indexOf(".ds-btn {")).toBeGreaterThan(camada);
+    expect(css.indexOf(".ds-btn-padrao {")).toBeGreaterThan(camada);
+  });
+
   it("o tokens.css versionado está em dia (senão: npm run design:gen)", () => {
     const arquivo = readFileSync(new URL("../tokens.css", import.meta.url), "utf8");
     expect(arquivo, "rode npm run design:gen").toBe(gerarCss());

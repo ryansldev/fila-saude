@@ -18,6 +18,9 @@ export function gerarCss(): string {
     `  --ds-perigo: ${COR.dangerInk};`,
     `  --ds-sucesso: ${COR.verde};`,
     "}",
+    // Na camada components do Tailwind: os utilitários de layout passados em className (largura,
+    // margem, tamanho do botão da TV) vencem; CSS fora de camada venceria tudo.
+    "@layer components {",
     ".ds-btn {",
     "  display: inline-flex; align-items: center; justify-content: center; gap: 6px;",
     "  font-family: var(--font-nunito), Nunito, system-ui, sans-serif; white-space: nowrap;",
@@ -47,5 +50,6 @@ export function gerarCss(): string {
   l.push(
     `.ds-btn:disabled { opacity: ${OPACIDADE_DESATIVADO}; cursor: not-allowed; border-bottom-width: 2px; transform: none; }`,
   );
+  l.push("}");
   return `${l.join("\n")}\n`;
 }

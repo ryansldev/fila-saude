@@ -7,6 +7,7 @@
   --ds-perigo: #993029;
   --ds-sucesso: #2f9e44;
 }
+@layer components {
 .ds-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   font-family: var(--font-nunito), Nunito, system-ui, sans-serif; white-space: nowrap;
@@ -34,3 +35,4 @@
 .ds-btn-icone { min-height: 32px; border-radius: 8px; font-size: 13px; padding: 0 0px; border-bottom-width: 2px; width: 32px; }
 .ds-btn-icone:active:not(:disabled) { border-bottom-width: 2px; transform: translateY(0px); }
 .ds-btn:disabled { opacity: 0.45; cursor: not-allowed; border-bottom-width: 2px; transform: none; }
+}
