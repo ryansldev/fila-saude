@@ -207,3 +207,19 @@ Execução rápida, como as fatias anteriores. Plano: [plano-fatia-3-triagem](pl
 | H8 | Chave do push "venha agora" | Passou a incluir a hora (`venha_agora:item:etapa:em`), porque "Vou sair" recomeça e pode haver um segundo "venha agora" na mesma etapa | Manter uma por etapa | Nenhum conhecido |
 
 H1 e H2 respondidas (AD-058, AD-059). RV7 continua aberta.
+
+## Fatia 4 da v0.1 (2026-11-16)
+
+Execução rápida. Plano: [plano-fatia-4-privada](plano-fatia-4-privada.md). Lista de espera pelo app, alocação pelo agendador e confirmação.
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| I1 | Onde o paciente entra na lista | Na página da unidade, "serviços com lista de espera" (ativos, modo livre) | Uma aba própria "lista de espera" | Baixo |
+| I2 | Serviço com requisição antes da T5.2 | A API recusa (`409 requisicao_em_breve`) e o app explica | Criar "aguardando encaminhamento" sem a foto | Baixo |
+| I3 | Vínculo e pré-cadastro (RN-LE-01) | Não exigidos até a fatia 5, como na inscrição pública | — | Médio no piloto |
+| I4 | Alerta ao agendador (RN-RISCO-03) | Visual: urgente sugerido não alocado no topo com selo, e contagem no menu | Push ou e-mail para a equipe | Baixo |
+| I5 | "Remover" e "trocar" (RN-AL-04) | Remover = recusa em nome do paciente (volta à lista com a data original, não é sugerido de novo para a sessão); trocar = remover + alocar | Uma transição própria "desalocar" que não marca a sessão como recusada | Baixo |
+| I6 | "Sem contato" (RN-CONF-02) | Só anota a tentativa (auditoria e "última tentativa" na lista de ligação) | Liberar a vaga após N tentativas | Baixo |
+| I7 | Conflito entre agendadores (INV-08) | Trava da sessão e da entrada; o segundo recebe 409 com a sugestão atualizada | Trava otimista pela `versao` enviada pelo painel | Baixo |
+| I8 | Texto do push "confirme" | "confirme sua consulta" + serviço, unidade, dia e hora; sem sintoma | — | Baixo |
+| I9 | Refazer o questionário pelo app | Só na lista (aguardando, alocada, confirmada); no dia vale "meus sintomas pioraram" | Também remoto no dia | Baixo |
