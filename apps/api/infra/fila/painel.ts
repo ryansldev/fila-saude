@@ -9,7 +9,7 @@ import {
   origemDaSessao,
   temPrioridade,
 } from "@fila-saude/domain";
-import type { FilaDaSessao, HojeNaUnidade } from "@fila-saude/schemas/fila";
+import type { FilaDaSessao, FilaDeHoje, HojeNaUnidade } from "@fila-saude/schemas/fila";
 import { and, asc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { exigirUnidade, SESSAO } from "infra/config/comum";
 import { exigirSessao, paraSessao } from "infra/config/sessoes";
@@ -262,4 +262,44 @@ export async function hojeNaUnidade(ctx: ContextoDaAcao, unidadeId: string): Pro
     .where(and(eq(estacao.unidadeId, unidadeId), isNull(estacao.arquivadaEm)))
     .orderBy(asc(estacao.criadoEm));
   return { sessoes, estacoes };
+}
+
+const iso = (n: number | null | undefined) => (n == null ? null : new Date(n).toISOString());
+
+// Fila do dia, caminho C: as sessões de hoje (as mesmas de `/hoje`) e as pessoas de todas, numa consulta.
+export async function filaDeHoje(ctx: ContextoDaAcao, unidadeId: string): Promise<FilaDeHoje> {
+  const hoje = await hojeNaUnidade(ctx, unidadeId);
+  const nomeDaEstacao = new Map(hoje.estacoes.map((e) => [e.id, e.nome]));
+  const sessoes: FilaDeHoje["sessoes"] = [];
+  const itens: FilaDeHoje["itens"] = [];
+  for (const s of hoje.sessoes) {
+    const dia = await lerDia(ctx.db, s.id);
+    const fila = await paraFila(ctx.db, s.id, dia);
+    const conta = (estados: string[]) => fila.itens.filter((i) => estados.includes(i.estado)).length;
+    sessoes.push({
+      ...s,
+      reserva: fila.reserva,
+      contagens: {
+        naFila: conta(["remoto", "presente", "chamado"]),
+        naUnidade: conta(["presente"]),
+        aCaminho: conta(["remoto"]),
+        chamados: conta(["chamado"]),
+        atendidos: conta(["atendido_na_etapa"]),
+      },
+    });
+    for (const i of fila.itens) {
+      const doDia = dia?.itens.find((x) => x.id === i.id);
+      const chamada = dia?.chamadas.findLast((c) => c.itemId === i.id);
+      const desde =
+        i.estado === "chamado" ? iso(chamada?.em) : i.estado === "presente" ? iso(doDia?.presenteDesde) : null;
+      itens.push({
+        ...i,
+        sessaoId: s.id,
+        servico: s.servico,
+        desde,
+        estacao: i.estado === "chamado" && i.estacaoId ? (nomeDaEstacao.get(i.estacaoId) ?? null) : null,
+      });
+    }
+  }
+  return { agora: new Date(ctx.agora).toISOString(), sessoes, itens };
 }

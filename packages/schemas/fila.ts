@@ -240,6 +240,37 @@ export const hojeNaUnidadeSchema = z.object({
 });
 export type HojeNaUnidade = z.infer<typeof hojeNaUnidadeSchema>;
 
+/** Fila do dia (caminho C): a unidade inteira numa resposta — as sessões de hoje e as pessoas de todas. */
+export const filaDeHojeSchema = z.object({
+  agora: z.iso.datetime(),
+  sessoes: z.array(
+    sessaoSchema.extend({
+      servico: z.string(),
+      reserva: z.number().int().min(0),
+      contagens: z.object({
+        naFila: z.number().int(),
+        naUnidade: z.number().int(),
+        aCaminho: z.number().int(),
+        chamados: z.number().int(),
+        atendidos: z.number().int(),
+      }),
+    }),
+  ),
+  itens: z.array(
+    itemDaFilaSchema.extend({
+      sessaoId: z.uuid(),
+      servico: z.string(),
+      /** Chamado: hora da chamada; na unidade: desde quando está presente; senão (ou dia antigo) `null`. */
+      desde: z.iso.datetime().nullable(),
+      /** Sala de quem está chamado. */
+      estacao: z.string().nullable(),
+    }),
+  ),
+});
+export type FilaDeHoje = z.infer<typeof filaDeHojeSchema>;
+export type SessaoDeHoje = FilaDeHoje["sessoes"][number];
+export type ItemDeHoje = FilaDeHoje["itens"][number];
+
 /** QR de entrada da unidade (RN-PRES-01): link que abre o app; muda a cada `intervaloSegundos`. */
 export const qrDaUnidadeSchema = z.object({
   conteudo: z.string().nullable(),
