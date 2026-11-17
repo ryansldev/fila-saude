@@ -97,7 +97,7 @@ const LOOKS_LIKE_PASSWORD = /^[a-z]{1,3}-?\d+$/i;
  * Busca do balcão, na hora e sem ir à API: nome (sem acento nem maiúscula), senha (com ou sem hífen)
  * e CPF — com os 11 dígitos do documento, compara os 6 do meio, que é o que o CPF mascarado mostra.
  */
-export function searchQueue<T extends { name: string; ticket: string; document: { cpf: string | null } }>(
+export function searchQueue<T extends { name: string; ticket: string; document: { cpf: string | null } | null }>(
   items: T[],
   term: string,
 ): T[] {
@@ -106,7 +106,7 @@ export function searchQueue<T extends { name: string; ticket: string; document: 
   const digits = t.replace(/\D/g, "");
   if (digits.length === 11) {
     const middle = digits.slice(3, 9);
-    return items.filter((i) => (i.document.cpf ?? "").replace(/\D/g, "") === middle);
+    return items.filter((i) => (i.document?.cpf ?? "").replace(/\D/g, "") === middle);
   }
   if (LOOKS_LIKE_PASSWORD.test(t)) {
     const ticket = onlyLettersAndNumbers(t);

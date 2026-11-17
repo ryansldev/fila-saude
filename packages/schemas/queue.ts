@@ -27,7 +27,8 @@ export const queueItemSchema = z.object({
   /** RN-FILA-05: o que a recepção precisa conferir antes da presença. */
   pendingChecks: z.array(z.string()),
   /** RN-PRES-03: para comparar com o documento; CPF mascarado (LGPD), só os dígitos do meio. */
-  document: z.object({ birthDate: z.string(), cpf: z.string().nullable() }),
+  /** Só para quem pode ver documentos na unidade (recepção, agendar); para os outros, `null` (RN-PERF-01). */
+  document: z.object({ birthDate: z.string(), cpf: z.string().nullable() }).nullable(),
   /**
    * Inscrita por outra conta: o primeiro nome de quem inscreveu e a relação (`null` nas inscrições de antes
    * da relação existir). `null` quando foi a própria pessoa.

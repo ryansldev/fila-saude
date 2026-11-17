@@ -69,6 +69,9 @@ export async function editService(ctx: ActionContext, serviceId: string, data: S
     ctx,
     { action: CONFIGURE, target: { kind: "service", id: serviceId }, unitId: current.unitId },
     async (tx) => {
+      // Trava o serviço (a inscrição e a lista de espera travam o mesmo): a contagem de entradas ativas
+      // abaixo não deixa escapar uma entrada que chega ao mesmo tempo (PD-42).
+      await tx.select({ id: service.id }).from(service).where(eq(service.id, serviceId)).for("update");
       if (data.prefix && data.prefix !== current.prefix) await freePrefix(tx, current.unitId, data.prefix, serviceId);
 
       if (data.requiresTriage !== undefined && data.requiresTriage !== current.requiresTriage) {

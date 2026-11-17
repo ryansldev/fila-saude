@@ -127,8 +127,9 @@ export const authCentral = betterAuth({
     },
   },
   emailAndPassword: { enabled: true, minPasswordLength: 8 },
-  // Responderia sem login se um CPF tem conta (oráculo de CPF): fica 404.
-  disabledPaths: ["/is-username-available"],
+  // Responderia sem login se um CPF tem conta (oráculo de CPF): fica 404. O login é só por CPF
+  // (`/sign-in/username`), onde as tentativas são contadas (RN-ID-04); por e-mail, fica 404.
+  disabledPaths: ["/is-username-available", "/sign-in/email"],
   // bearer: o app nativo guarda o token e o manda em Authorization (sem cookie, sem Origin).
   plugins: [username({ usernameValidator: validCpf, minUsernameLength: 11, maxUsernameLength: 11 }), bearer()],
   hooks: {

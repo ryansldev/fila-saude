@@ -65,7 +65,7 @@ export function QueueRow({
               {c.time}
             </span>
           ) : null}
-          {document
+          {document && i.document
             ? documentText(i.document).map((part, n) => (
                 <span key={part} className="inline-flex items-center gap-1 text-slate-500">
                   {n === 0 ? <IdCardIcon className="size-3.5" aria-hidden /> : null}

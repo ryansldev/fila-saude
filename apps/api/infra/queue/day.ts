@@ -152,7 +152,7 @@ export async function inSession<T>(
       if (before.get(e.id) !== JSON.stringify(e)) await updateEntry(tx, e);
     }
     if (m.events) {
-      const local = { unit: u.name, service: srv.name, start: s.start, timeZone: u.timeZone };
+      const local = { unit: u.name, start: s.start, timeZone: u.timeZone };
       await saveNotices(tx, local, m.day ?? day, m.entries ?? entries, m.events);
     }
     const changes: Partial<typeof session.$inferInsert> = {};

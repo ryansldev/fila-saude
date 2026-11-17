@@ -9,6 +9,7 @@ import {
   type SessionDay,
   sameDay,
   sessionOrigin,
+  verificationInEntry,
   verifyAndMark,
 } from "@fila-saude/domain";
 import type { QueueItem, SessionQueue, TodayInUnit, TodayQueue } from "@fila-saude/schemas/queue";
@@ -88,7 +89,12 @@ export async function entryNames(db: TenantDatabase, ids: string[]): Promise<Map
   return new Map(rows.map((l) => [l.id, l.name]));
 }
 
-async function forQueue(db: TenantDatabase, sessionId: string, day: SessionDay | null): Promise<SessionQueue> {
+async function forQueue(
+  db: TenantDatabase,
+  sessionId: string,
+  day: SessionDay | null,
+  documents: boolean,
+): Promise<SessionQueue> {
   const { s } = await requireSession(db, sessionId);
   const items = day?.items ?? [];
   const data = await entryData(
@@ -114,8 +120,9 @@ async function forQueue(db: TenantDatabase, sessionId: string, day: SessionDay |
       priority: hasPriority(i.priority),
       stationId: day?.stations.find((e) => e.calledItemId === i.id)?.id ?? null,
       pendingChecks: i.pendingChecks,
-      document: data.get(i.entryId)?.document ?? { birthDate: "", cpf: null },
-      guardian: data.get(i.entryId)?.guardian ?? null,
+      // RN-PERF-01: documento e quem inscreveu (dado de outra conta) só para quem pode ver documentos.
+      document: documents ? (data.get(i.entryId)?.document ?? null) : null,
+      guardian: documents ? (data.get(i.entryId)?.guardian ?? null) : null,
     })),
     reserve: inReserve,
   };
@@ -125,7 +132,7 @@ async function forQueue(db: TenantDatabase, sessionId: string, day: SessionDay |
 export async function sessionQueue(ctx: ActionContext, sessionId: string): Promise<SessionQueue> {
   const { service } = await requireSession(ctx.db, sessionId);
   await fromUnitStaff(ctx, service.unitId);
-  return forQueue(ctx.db, sessionId, await readDay(ctx.db, sessionId));
+  return forQueue(ctx.db, sessionId, await readDay(ctx.db, sessionId), seesDocuments(ctx, service.unitId));
 }
 
 // T3.4 / PD-33: abertura por botão; o worker chama a mesma função depois.
@@ -158,7 +165,7 @@ export async function openDaySession(ctx: ActionContext, sessionId: string): Pro
           result: r.state.day,
         };
       });
-      return forQueue(tx, sessionId, day);
+      return forQueue(tx, sessionId, day, seesDocuments(ctx, service.unitId));
     },
   );
 }
@@ -184,7 +191,7 @@ export async function closeDaySession(ctx: ActionContext, sessionId: string): Pr
         if (!r.ok) throw new ApiError(409, r.error);
         return { day: r.state.day, entries: r.state.entries, result: r.state.day };
       });
-      return forQueue(tx, sessionId, day);
+      return forQueue(tx, sessionId, day, seesDocuments(ctx, service.unitId));
     },
   );
 }
@@ -210,8 +217,8 @@ export async function markAttendanceInQueue(
       target: { kind: "entry", id: data.entryId },
       unitId: service.unitId,
       reason: data.reason ?? null,
-      // Recusar a validação tira a pessoa da fila: sempre com motivo.
-      requiresReason: data.result === "does_not_match",
+      // Recusar a validação tira a pessoa da fila; tirar a prioridade mexe na ordem (RN-PERF-03): com motivo.
+      requiresReason: data.result === "does_not_match" || data.result === "priority_does_not_match",
       data: () => ({ result: data.result }),
     },
     async (tx) => {
@@ -224,8 +231,11 @@ export async function markAttendanceInQueue(
         const entries = c.entries.map((en) => {
           const it = r.state.items.find((i) => i.entryId === en.id);
           if (!it || en.state !== "in_queue") return en;
-          const d = entryOutcome(en, it);
-          return d.ok ? d.state : en;
+          // AD-024: a prioridade conferida (ou retirada) fica na entrada e vale nas próximas idas.
+          const verified =
+            en.id === data.entryId && data.result !== "does_not_match" ? verificationInEntry(en, it) : en;
+          const d = entryOutcome(verified, it);
+          return d.ok ? d.state : verified;
         });
         return { day: r.state, entries, result: r.state };
       });
@@ -246,7 +256,7 @@ export async function markAttendanceInQueue(
             .set({ documentVerifiedBy: ctx.actor.userId, documentVerifiedAt: new Date(ctx.now) })
             .where(eq(localPerson.id, row.personId));
       }
-      return forQueue(tx, sessionId, day);
+      return forQueue(tx, sessionId, day, seesDocuments(ctx, service.unitId));
     },
   );
   if (verifiedAccount) {
@@ -260,6 +270,10 @@ export async function markAttendanceInQueue(
 
 // F1 (revisto): a fila do dia é de quem tem, na unidade, alguma ação dela (como o menu do painel).
 export const QUEUE_ACTIONS: Action[] = ["open_cancel_close_session", "verify_and_mark_attendance", "operate_calls"];
+
+/** RN-PERF-01: a recepção e quem agenda veem os documentos; os outros perfis da unidade, não. */
+const seesDocuments = (ctx: ActionContext, unitId: string) =>
+  conditionsInUnit(ctx.actor.profiles, "view_documents", unitId) !== null;
 
 async function fromUnitStaff(ctx: ActionContext, unitId: string) {
   for (const action of QUEUE_ACTIONS) {
@@ -306,6 +320,7 @@ const iso = (n: number | null | undefined) => (n == null ? null : new Date(n).to
 // Fila do dia, caminho C: as sessões de hoje (as mesmas de `/hoje`) e as pessoas de todas, numa consulta.
 export async function todayQueue(ctx: ActionContext, unitId: string): Promise<TodayQueue> {
   const today = await todayInUnit(ctx, unitId);
+  const documents = seesDocuments(ctx, unitId);
   const stationName = new Map(today.stations.map((e) => [e.id, e.name]));
   const sessions: TodayQueue["sessions"] = [];
   const items: TodayQueue["items"] = [];
@@ -313,7 +328,7 @@ export async function todayQueue(ctx: ActionContext, unitId: string): Promise<To
   const loaded = await Promise.all(
     today.sessions.map(async (s) => {
       const day = await readDay(ctx.db, s.id);
-      return { s, day, queue: await forQueue(ctx.db, s.id, day) };
+      return { s, day, queue: await forQueue(ctx.db, s.id, day, documents) };
     }),
   );
   for (const { s, day, queue } of loaded) {

@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import database from "infra/database";
 import { patient } from "infra/database/central/schema/auth";
+import { entry } from "infra/database/municipal/schema/entry";
 import { tv } from "infra/database/municipal/schema/tv";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
@@ -155,6 +156,39 @@ describe("presença e TV", () => {
       result: "does_not_match",
     });
     expect(r).toMatchObject({ status: 400, body: { error: "reason_required" } });
+  });
+
+  it("RN-PERF-03: tirar a prioridade ('prioridade não confere') também pede motivo", async () => {
+    const e = await signUpPerson(c.slug, c.sessionId, "Sem Prova");
+    const r = await c.request("POST", `/v1/panel/sessions/${c.sessionId}/attendance`, reception, {
+      entryId: e.id,
+      result: "priority_does_not_match",
+    });
+    expect(r).toMatchObject({ status: 400, body: { error: "reason_required" } });
+  });
+
+  it("AD-024: a conferência da prioridade fica na entrada (vale nas próximas idas)", async () => {
+    const withGroup = { ...ROUTINE, groups: ["pregnant" as const] };
+    const kept = await signUpPerson(c.slug, c.sessionId, "Gestante Conferida", withGroup);
+    const removed = await signUpPerson(c.slug, c.sessionId, "Gestante Sem Prova", withGroup);
+    const mark = (entryId: string, result: string) =>
+      c.request("POST", `/v1/panel/sessions/${c.sessionId}/attendance`, reception, {
+        entryId,
+        result,
+        reason: "conferido no balcão",
+      });
+    expect((await mark(kept.id, "matches")).status).toBe(200);
+    expect((await mark(removed.id, "priority_does_not_match")).status).toBe(200);
+    const priorityOf = async (id: string) =>
+      (
+        await orchestrator
+          .municipalityDatabase(c.slug)
+          .select({ p: entry.priority })
+          .from(entry)
+          .where(eq(entry.id, id))
+      )[0]?.p;
+    expect(await priorityOf(kept.id)).toMatchObject({ groups: ["pregnant"], verified: true });
+    expect((await priorityOf(removed.id))?.groups).toEqual([]);
   });
 
   it("RN-PRES-03: a recepção vê o que conferir no documento (nascimento e CPF mascarado)", async () => {

@@ -68,7 +68,8 @@ describe("confirmação pelo app (T5.4)", () => {
     expect(list).toHaveLength(1);
     expect(list[0]).toMatchObject({ kind: "confirm", patientId: accounts.Ana?.patientId });
     expect(list[0]?.title).toBe("confirme sua consulta");
-    expect(list[0]?.body).toContain("Clínico");
+    // RN-NOT-01: só a ação e o local; o nome do serviço (ex.: "Psiquiatria") revelaria dado clínico na tela bloqueada.
+    expect(list[0]?.body).not.toContain("Clínico");
     expect(list[0]?.body).toContain("UBS Centro");
     expect(list[0]?.body).not.toMatch(/moderado|novo/i);
   });
@@ -87,7 +88,11 @@ describe("confirmação pelo app (T5.4)", () => {
       body: { state: "confirmed" },
     });
     expect((await my("Ana")).confirmationDeadline).toBeNull();
-    expect((await app("POST", path, accounts.Ana?.cookie)).status).toBe(409);
+    // Com o motivo: sem ele o app só diria "não deu certo. tente de novo", e tentar de novo não adianta.
+    expect(await app("POST", path, accounts.Ana?.cookie)).toMatchObject({
+      status: 409,
+      body: { error: "forbidden_transition", message: expect.stringMatching(/já foi respondida/) },
+    });
   });
 
   it("RN-CONF-04: recusar libera a vaga e volta à lista com a data original", async () => {

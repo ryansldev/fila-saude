@@ -294,11 +294,18 @@ describe("POST /v1/auth/sign-up/email (cadastro do paciente)", () => {
     expect(withoutSession.status).toBe(401);
     expect(await withoutSession.json()).toEqual({ error: "not_authenticated" });
 
-    const wrongPassword = await callAuth("/sign-in/email", {
-      body: { email: data.email, password: "senha-errada-1" },
+    const wrongPassword = await callAuth("/sign-in/username", {
+      body: { username: data.cpf, password: "senha-errada-1" },
     });
     expect(wrongPassword.status).toBe(401);
     expect(await wrongPassword.json()).toEqual({ error: "invalid_credentials" });
+  });
+
+  it("RN-ID-04: login por e-mail não existe (só por CPF, onde as tentativas são contadas)", async () => {
+    const data = orchestrator.registrationData();
+    await orchestrator.registerPatient(data);
+    const r = await callAuth("/sign-in/email", { body: { email: data.email, password: data.password } });
+    expect(r.status).toBe(404);
   });
 
   it("PD-22: is-username-available não existe (não revela se o CPF tem conta)", async () => {

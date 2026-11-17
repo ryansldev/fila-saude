@@ -42,6 +42,14 @@ const MESSAGES: Record<string, string> = {
 
 const error409 = (code: string) => new ApiError(409, code, undefined, MESSAGES[code]);
 
+// Confirmar ou recusar a data (pelo app ou pelo agendador): o motivo, porque tentar de novo não resolve.
+const ANSWER_MESSAGES: Record<string, string> = {
+  forbidden_transition: "Esta alocação já foi respondida ou mudou. Atualize a tela.",
+  past_deadline: "O prazo para responder esta data já passou.",
+  no_slot: "A sessão não tem mais vaga.",
+};
+const answerError = (code: string) => new ApiError(409, code, undefined, ANSWER_MESSAGES[code]);
+
 async function requireScheduler(ctx: ActionContext, unitId: string) {
   if (!(await allowed(ctx.actor.profiles, SCHEDULE, unitId))) throw new ApiError(403, "no_permission");
 }
@@ -226,19 +234,19 @@ export async function answerAllocation(
 ): Promise<{ state: string }> {
   return inSession(tx, sessionId, async (c) => {
     const e = await lockEntry(c.tx, entryId);
-    if (e.sessionId !== sessionId) throw new ApiError(409, "forbidden_transition");
+    if (e.sessionId !== sessionId) throw answerError("forbidden_transition");
     if (answer === "no_contact") {
-      if (e.state !== "allocated") throw new ApiError(409, "forbidden_transition");
+      if (e.state !== "allocated") throw answerError("forbidden_transition");
       return { result: { state: e.state } };
     }
     const others = c.entries.filter((x) => x.id !== entryId);
     if (answer === "confirmed") {
       const r = confirm(e, c.session, now);
-      if (!r.ok) throw new ApiError(409, r.error);
+      if (!r.ok) throw answerError(r.error);
       return { entries: [...others, r.state], events: r.events, result: { state: r.state.state } };
     }
     const r = refuse(e, c.session, now);
-    if (!r.ok) throw new ApiError(409, r.error);
+    if (!r.ok) throw answerError(r.error);
     return {
       session: r.state.session,
       entries: [...others, r.state.entry],

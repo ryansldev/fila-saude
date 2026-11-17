@@ -67,7 +67,7 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
 }
 
 /** Onde e quando é a sessão do evento, para os avisos que não têm item na fila (o "confirme"). */
-export type NoticeLocal = { unit: string; service: string; start: Date; timeZone: string };
+export type NoticeLocal = { unit: string; start: Date; timeZone: string };
 
 const when = (start: Date, timeZone: string) => {
   const f = new Intl.DateTimeFormat("pt-BR", {
@@ -89,7 +89,8 @@ export function allocationText(ev: Event, local: NoticeLocal): Text | null {
     kind: "confirm",
     key: `confirme:${ev.entryId}:${ev.sessionId}:${ev.data?.deadline}`,
     title: "confirme sua consulta",
-    body: `${local.service} na ${local.unit}, ${when(local.start, local.timeZone)}. abra o app para confirmar.`,
+    // RN-NOT-01: só a ação e o local; o serviço apareceria na tela bloqueada (ex.: "Psiquiatria").
+    body: `${local.unit}, ${when(local.start, local.timeZone)}. abra o app para confirmar.`,
   };
 }
 

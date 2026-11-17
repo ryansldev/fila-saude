@@ -86,6 +86,15 @@ describe("fila de hoje da unidade inteira (Fila do dia, caminho C)", () => {
     expect(r.body.items.map((i: { name: string }) => i.name)).toContain("Caio Curativo");
   });
 
+  it("RN-PERF-01: documento e quem inscreveu só para quem pode ver documentos (recepção, agendar)", async () => {
+    const byReception = (await todayQueue(reception)).body.items.find(
+      (i: { name: string }) => i.name === "Ana Clínico",
+    );
+    expect(byReception.document).toMatchObject({ birthDate: expect.any(String) });
+    const byNurse = (await todayQueue(c.nurse)).body.items.find((i: { name: string }) => i.name === "Ana Clínico");
+    expect(byNurse).toMatchObject({ document: null, guardian: null });
+  });
+
   it("o chamado traz a hora da chamada e a sala", async () => {
     await c.request("POST", `/v1/panel/stations/${c.e1}/call`, c.nurse, {});
     const r = await todayQueue(reception);

@@ -128,9 +128,11 @@ export async function removeUnit(ctx: ActionContext, id: string): Promise<void> 
     ctx,
     { action: UNITS_AND_RULES, target: { kind: "unit", id }, unitId: id, data: () => ({ removed: true }) },
     async (tx) => {
-      const services = (await tx.select({ id: service.id }).from(service).where(eq(service.unitId, id))).map(
-        (s) => s.id,
-      );
+      // Trava os serviços da unidade (a inscrição e a lista de espera travam o serviço): nenhuma entrada
+      // nova escapa da conferência abaixo enquanto a unidade é removida.
+      const services = (
+        await tx.select({ id: service.id }).from(service).where(eq(service.unitId, id)).for("update")
+      ).map((s) => s.id);
       if (services.length > 0) {
         const [withSession] = await tx
           .select({ id: session.id })

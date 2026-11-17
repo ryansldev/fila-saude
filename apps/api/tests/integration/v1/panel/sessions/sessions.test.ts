@@ -120,6 +120,12 @@ describe("sessões avulsas", () => {
       status: 200,
       body: { state: "cancelled" },
     });
+    // Sessão cancelada não muda mais de visibilidade (só planejada ou aberta).
+    const visibility = await request("POST", `/v1/panel/sessions/${empty.id}/visibility`, admin, {
+      visibility: "private",
+      version: empty.version + 1,
+    });
+    expect(visibility).toMatchObject({ status: 409, body: { error: "forbidden_transition" } });
     const full = (await create(base())).body;
     const { joinWaitlist } = await import("infra/queue/entries");
     const { entry } = await import("infra/database/municipal/schema/entry");

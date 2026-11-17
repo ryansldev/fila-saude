@@ -182,6 +182,8 @@ export async function changeSessionVisibility(ctx: ActionContext, id: string, da
   const { s: current, service: srv } = await requireSession(ctx.db, id);
   return runAction(ctx, { action: SESSION, target: { kind: "session", id }, unitId: srv.unitId }, async (tx) => {
     lock(current, data.version);
+    // A visibilidade só muda com a sessão planejada ou aberta (encerrada ou cancelada não recebe ninguém).
+    if (current.state !== "planned" && current.state !== "open") throw new ApiError(409, "forbidden_transition");
     const config: SessionConfig = {
       slots: current.slots,
       visibility: current.visibility,
@@ -207,9 +209,12 @@ const FINAL_STATES = INACTIVE_ENTRY_STATES;
 
 // Só planejada e sem pacientes na v0.1 (o remanejamento vem depois).
 export async function cancelSession(ctx: ActionContext, id: string): Promise<Session> {
-  const { s: current, service: srv } = await requireSession(ctx.db, id);
+  const { service: srv } = await requireSession(ctx.db, id);
   return runAction(ctx, { action: SESSION, target: { kind: "session", id }, unitId: srv.unitId }, async (tx) => {
-    if (current.state !== "planned") throw new ApiError(409, "forbidden_transition");
+    // Trava a sessão como a inscrição faz: uma inscrição ao mesmo tempo espera e depois a vê cancelada,
+    // em vez de cair na reserva de uma sessão que já não existe.
+    const [current] = await tx.select().from(session).where(eq(session.id, id)).for("update");
+    if (current?.state !== "planned") throw new ApiError(409, "forbidden_transition");
     const [withValue] = await tx
       .select({ id: entry.id })
       .from(entry)
