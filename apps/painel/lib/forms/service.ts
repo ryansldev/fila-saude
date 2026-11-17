@@ -6,6 +6,9 @@ export const MODE_LABELS: Record<Mode, string> = {
   regulated: "Regulado (vaga vem da regulação)",
 };
 
+/** Onde o erro dos minutos aparece: o caminho do campo no schema do serviço. */
+export const MINUTES_FIELD = { triage: "averageTimeMin.triage", care: "averageTimeMin.care" } as const;
+
 export function showsTriageTime(requiresTriage: boolean): boolean {
   return requiresTriage;
 }

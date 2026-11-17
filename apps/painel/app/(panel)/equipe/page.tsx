@@ -31,6 +31,7 @@ import {
   ROLES,
   type Role,
   registrationProblems,
+  unitErrorKey,
 } from "@/lib/forms/user";
 import { useMe } from "@/lib/session";
 import { useList } from "@/lib/use-list";
@@ -111,7 +112,7 @@ function AssignmentsEditor({
               v.unitId,
               (id) =>
                 change({ ...value, unitLinks: value.unitLinks.map((x, j) => (j === i ? { ...x, unitId: id } : x)) }),
-              errors[`vinculos.${i}.unidadeId`],
+              errors[unitErrorKey("unitLinks", i)],
             )}
             <FormField label="Ocupação">
               <Selection
@@ -175,7 +176,7 @@ function AssignmentsEditor({
                       ...value,
                       roles: value.roles.map((x, j) => (j === i ? { ...x, unitId: id || null } : x)),
                     }),
-                  errors[`funcoes.${i}.unidadeId`],
+                  errors[unitErrorKey("roles", i)],
                 )
               ) : (
                 <span className="pb-2 text-sm text-slate-500">Vale para todo o município</span>

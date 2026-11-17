@@ -1,4 +1,3 @@
-import { toggleOption } from "@fila-saude/domain";
 import { maskCpf, maskData } from "@fila-saude/schemas/masks";
 import type { MyEntry, Relationship, ScheduleSession, SignUpInput } from "@fila-saude/schemas/queue";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
@@ -31,6 +30,8 @@ import {
   type AppAnswers,
   complete,
   EMPTY_ANSWERS,
+  markMultiple,
+  NONE,
   QUESTIONS,
   type Screen as QuestionnaireScreen,
   questionnaireOutcome,
@@ -670,9 +671,9 @@ export default function SignUp() {
     setError(null);
     if (!question.multiple)
       return setR({ ...r, [screen]: op, ...(screen === "reason" && op !== "new" ? { severity: null } : {}) });
-    const fresh = toggleOption(none[screen] ? ["nenhum"] : list, op, "nenhum");
-    setNone({ ...none, [screen]: fresh.includes("none") });
-    setR({ ...r, [screen]: fresh.filter((x) => x !== "none") });
+    const marked = markMultiple(list, Boolean(none[screen]), op);
+    setNone({ ...none, [screen]: marked.none });
+    setR({ ...r, [screen]: marked.answers });
   }
 
   // Voltar vai à pergunta anterior (ou a "para quem é"), sem perder as respostas.
@@ -710,7 +711,7 @@ export default function SignUp() {
       {/* A resposta da maioria vem primeiro (2026-11-16). */}
       {question.none ? (
         <>
-          <Option text={question.none} checked={Boolean(none[screen])} onPress={() => mark("nenhum")} />
+          <Option text={question.none} checked={Boolean(none[screen])} onPress={() => mark(NONE)} />
           <Small style={{ textAlign: "center" }}>ou marque o que tiver</Small>
         </>
       ) : null}

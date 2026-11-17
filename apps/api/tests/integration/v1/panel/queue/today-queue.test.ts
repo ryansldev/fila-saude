@@ -44,7 +44,7 @@ beforeAll(async () => {
   ).body.id as string;
   entries.ana = (await signUpPerson(c.slug, c.sessionId, "Ana Clínico")).id;
   entries.bia = (await signUpPerson(c.slug, c.sessionId, "Bia Clínico")).id;
-  entries.caio = (await signUpPerson(c.slug, dressingsId, "Caio Curativo")).id;
+  entries.caio = (await signUpPerson(c.slug, dressingsId, "caio  CURATIVO")).id;
   for (const s of [c.sessionId, dressingsId]) await c.request("POST", `/v1/panel/sessions/${s}/open`, c.admin);
 });
 afterAll(() => orchestrator.dropMunicipalities());
@@ -79,6 +79,11 @@ describe("fila de hoje da unidade inteira (Fila do dia, caminho C)", () => {
     expect(ana).toMatchObject({ sessionId: c.sessionId, service: "Clínico", state: "present" });
     expect(Date.parse(ana.since)).toBeLessThanOrEqual(Date.parse(r.body.now));
     expect(ana.document.cpf).toMatch(/^•••\.\d{3}\.\d{3}-••$/);
+  });
+
+  it("nome digitado em minúsculas aparece com maiúscula (regra dos nomes)", async () => {
+    const r = await todayQueue(reception);
+    expect(r.body.items.map((i: { name: string }) => i.name)).toContain("Caio Curativo");
   });
 
   it("o chamado traz a hora da chamada e a sala", async () => {

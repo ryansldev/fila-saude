@@ -3,7 +3,7 @@
 import { PlusIcon, XIcon } from "lucide-react";
 import { Text } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { addInterval, DAYS, type DayKey, type Time } from "@/lib/forms/time";
+import { addInterval, DAYS, type DayKey, intervalKey, type Time } from "@/lib/forms/time";
 
 /**
  * Horário de funcionamento: uma linha por dia, com os intervalos daquele dia; dia sem intervalo = fechado.
@@ -38,7 +38,7 @@ export function TimeEditor({
             <div className="flex flex-1 flex-col gap-2">
               {intervals.length === 0 ? <span className="pt-1.5 text-sm text-slate-400">Fechado</span> : null}
               {intervals.map((iv, i) => {
-                const error = errors[`horario.${key}.${i}`];
+                const error = errors[intervalKey(key, i)];
                 return (
                   // biome-ignore lint/suspicious/noArrayIndexKey: intervalos editáveis sem id próprio
                   <div key={i} className="flex flex-col gap-1">

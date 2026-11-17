@@ -1,5 +1,7 @@
+import { unitInputSchema } from "@fila-saude/schemas/unit";
 import { describe, expect, it } from "vitest";
-import { addInterval, DAYS, DEFAULT_TIME, timeProblems, timeSummary } from "@/lib/forms/time";
+import { validateClient } from "@/lib/forms/errors";
+import { addInterval, DAYS, DEFAULT_TIME, intervalKey, timeProblems, timeSummary } from "@/lib/forms/time";
 
 describe("horário de funcionamento", () => {
   it("padrão: segunda a sexta, 07:00–17:00; os dias vão de domingo (0) a sábado (6)", () => {
@@ -19,7 +21,7 @@ describe("horário de funcionamento", () => {
 
   it("fim antes do início e intervalos sobrepostos aparecem no intervalo certo", () => {
     expect(timeProblems({ "1": [{ opens: "12:00", closes: "08:00" }] })).toEqual({
-      "horario.1.0": "O fim deve ser depois do início.",
+      "time.1.0": "O fim deve ser depois do início.",
     });
     expect(
       timeProblems({
@@ -28,7 +30,7 @@ describe("horário de funcionamento", () => {
           { opens: "11:00", closes: "17:00" },
         ],
       }),
-    ).toEqual({ "horario.2.1": "Sobrepõe outro intervalo do dia." });
+    ).toEqual({ "time.2.1": "Sobrepõe outro intervalo do dia." });
     expect(timeProblems(DEFAULT_TIME)).toEqual({});
   });
 
@@ -41,5 +43,12 @@ describe("horário de funcionamento", () => {
       }),
     ).toBe("Seg a Sex 07:00–17:00 · Sáb 08:00–12:00");
     expect(timeSummary({})).toBe("Sem horário definido");
+  });
+});
+
+describe("chave do erro de um intervalo", () => {
+  it("é a mesma que a validação da unidade (e a API) devolve", () => {
+    const e = validateClient(unitInputSchema, { time: { "1": [{ opens: "8:00", closes: "17:00" }] } });
+    expect(Object.keys(e?.fields ?? {})).toContain(intervalKey("1", 0));
   });
 });

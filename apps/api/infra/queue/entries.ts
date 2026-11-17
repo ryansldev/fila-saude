@@ -5,6 +5,7 @@ import {
   type Entry,
   type EntryState,
   effectiveConfig,
+  properName,
   type Result,
 } from "@fila-saude/domain";
 import type { Relationship } from "@fila-saude/schemas/queue";
@@ -31,7 +32,8 @@ const FINAL_STATES: EntryState[] = ["cancelled", "completed", "closed_without_ca
 const ms = (d: Date | null) => (d ? d.getTime() : null);
 const data = (n: number | null) => (n === null ? null : new Date(n));
 
-const firstName = (name: string) =>
+/** Primeiro nome sem acento e em minúsculas, só para comparar (não é o `firstName` de exibição). */
+const comparableFirstName = (name: string) =>
   name
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -53,7 +55,7 @@ export async function personByCpf(db: TenantDatabase, p: InformedPerson) {
   // da conta: dados errados digitados por outra pessoa não o trancam fora.
   if (p.patientId && !existing.patientId) return existing;
   const otherAccount = p.patientId && existing.patientId && existing.patientId !== p.patientId;
-  const nameDiverges = !p.patientId && firstName(existing.name) !== firstName(p.name);
+  const nameDiverges = !p.patientId && comparableFirstName(existing.name) !== comparableFirstName(p.name);
   if (otherAccount || existing.birthDate !== p.birthDate || nameDiverges) {
     throw new ApiError(
       409,
@@ -65,21 +67,22 @@ export async function personByCpf(db: TenantDatabase, p: InformedPerson) {
   return existing;
 }
 
-// RN-LE-02 / AD-035: com CPF, a mesma pessoa_local; o dono da conta fica ligado pelo `patient_id`.
+// RN-LE-02 / AD-035: com CPF, a mesma pessoa local; o dono da conta fica ligado pelo `patient_id`.
+// O nome é gravado com maiúscula (regra dos nomes), então a fila, a estação e a TV já o recebem certo.
 export async function attendedPerson(db: TenantDatabase, p: InformedPerson): Promise<{ id: string }> {
   const existing = await personByCpf(db, p);
   if (existing) {
     if (p.patientId && !existing.patientId) {
       await db
         .update(localPerson)
-        .set({ patientId: p.patientId, name: p.name, birthDate: p.birthDate })
+        .set({ patientId: p.patientId, name: properName(p.name), birthDate: p.birthDate })
         .where(eq(localPerson.id, existing.id));
     }
     return { id: existing.id };
   }
   const [fresh] = await db
     .insert(localPerson)
-    .values({ name: p.name, birthDate: p.birthDate, cpf: p.cpf, patientId: p.patientId })
+    .values({ name: properName(p.name), birthDate: p.birthDate, cpf: p.cpf, patientId: p.patientId })
     .returning({ id: localPerson.id });
   if (!fresh) throw new Error("pessoa_local não criada");
   return fresh;

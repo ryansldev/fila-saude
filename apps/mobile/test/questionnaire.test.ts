@@ -1,6 +1,13 @@
 import { answersSchema } from "@fila-saude/schemas/queue";
 import { describe, expect, it } from "vitest";
-import { EMPTY_ANSWERS, QUESTIONS, questionnaireOutcome, questionSpeech, screensOf } from "@/lib/questionnaire";
+import {
+  EMPTY_ANSWERS,
+  markMultiple,
+  QUESTIONS,
+  questionnaireOutcome,
+  questionSpeech,
+  screensOf,
+} from "@/lib/questionnaire";
 
 const now = Date.UTC(2026, 10, 12, 12);
 
@@ -48,5 +55,20 @@ describe("opções do questionário", () => {
     expect(ids("alarms").filter((id) => !shape.alarms.safeParse([id]).success)).toEqual([]);
     expect(ids("conditions").filter((id) => !shape.conditions.safeParse([id]).success)).toEqual([]);
     expect(ids("groups").filter((id) => !shape.groups.safeParse([id]).success)).toEqual([]);
+  });
+});
+
+describe("marcar numa pergunta de várias respostas", () => {
+  it('"nenhum" marca a pergunta como respondida sem entrar nas respostas', () => {
+    expect(markMultiple([], false, "nenhum")).toEqual({ answers: [], none: true });
+  });
+  it('"nenhum" depois de opções limpa as opções; uma opção depois de "nenhum" o desmarca', () => {
+    expect(markMultiple(["diabetes"], false, "nenhum")).toEqual({ answers: [], none: true });
+    expect(markMultiple([], true, "diabetes")).toEqual({ answers: ["diabetes"], none: false });
+  });
+  it("sem nenhum sinal de alarme a pessoa segue (não vira emergência)", () => {
+    const { answers } = markMultiple([], false, "nenhum");
+    const r = { ...EMPTY_ANSWERS, alarms: answers as never[], reason: "exam" as const };
+    expect(questionnaireOutcome(r, "1990-01-01", now)).toBe("continues");
   });
 });

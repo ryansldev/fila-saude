@@ -12,7 +12,7 @@ import {
   verifyAndMark,
 } from "@fila-saude/domain";
 import type { QueueItem, SessionQueue, TodayInUnit, TodayQueue } from "@fila-saude/schemas/queue";
-import { and, asc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { requireUnit, SESSION } from "infra/config/common";
 import { forSession, requireSession } from "infra/config/sessions";
 import database from "infra/database";
@@ -95,9 +95,11 @@ async function forQueue(db: TenantDatabase, sessionId: string, day: SessionDay |
     db,
     items.map((i) => i.entryId),
   );
-  const inReserve = (await db.select({ state: entry.state }).from(entry).where(eq(entry.sessionId, sessionId))).filter(
-    (e) => e.state === "in_reserve",
-  ).length;
+  const [reserve] = await db
+    .select({ n: count() })
+    .from(entry)
+    .where(and(eq(entry.sessionId, sessionId), eq(entry.state, "in_reserve")));
+  const inReserve = reserve?.n ?? 0;
   return {
     session: await forSession(db, s),
     items: items.map((i) => ({
@@ -304,16 +306,16 @@ export async function todayQueue(ctx: ActionContext, unitId: string): Promise<To
   for (const s of today.sessions) {
     const day = await readDay(ctx.db, s.id);
     const queue = await forQueue(ctx.db, s.id, day);
-    const count = (states: ItemState[]) => queue.items.filter((i) => states.includes(i.state)).length;
+    const inStates = (states: ItemState[]) => queue.items.filter((i) => states.includes(i.state)).length;
     sessions.push({
       ...s,
       reserve: queue.reserve,
       counts: {
-        inQueue: count(["remote", "present", "called"]),
-        inUnit: count(["present"]),
-        onTheWay: count(["remote"]),
-        called: count(["called"]),
-        attended: count(["done_in_stage"]),
+        inQueue: inStates(["remote", "present", "called"]),
+        inUnit: inStates(["present"]),
+        onTheWay: inStates(["remote"]),
+        called: inStates(["called"]),
+        attended: inStates(["done_in_stage"]),
       },
     });
     for (const i of queue.items) {

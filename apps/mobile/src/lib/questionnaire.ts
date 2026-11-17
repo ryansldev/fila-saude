@@ -7,6 +7,7 @@ import {
   type DeclaredGroup,
   type Reason,
   type Severity,
+  toggleOption,
 } from "@fila-saude/domain";
 
 // Questionário v1 (specs/lista-espera, textos do protótipo revisado).
@@ -23,6 +24,15 @@ export const EMPTY_ANSWERS: AppAnswers = {
 };
 
 export const NONE = "nenhum";
+
+/**
+ * Marca ou desmarca numa pergunta de várias respostas. `NONE` ("nenhum destes", "nenhuma") é exclusivo
+ * e não entra nas respostas: vira `none`, que conta como pergunta respondida.
+ */
+export function markMultiple(answers: string[], none: boolean, option: string): { answers: string[]; none: boolean } {
+  const fresh = toggleOption(none ? [NONE] : answers, option, NONE);
+  return { answers: fresh.filter((x) => x !== NONE), none: fresh.includes(NONE) };
+}
 
 type Options = readonly (readonly [string, string])[];
 /** Cada opção leva o valor que a API guarda; um valor fora do tipo não compila. */

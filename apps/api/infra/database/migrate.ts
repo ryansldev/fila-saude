@@ -21,16 +21,17 @@ function setFolder(set: MigrationsSet) {
 
 type Journal = { entries: { tag: string; when: number }[] };
 
-// NC2: as migrations foram recriadas do zero em 2026-11-17. Um banco que tem migração aplicada fora do
-// journal veio do conjunto antigo: migrar por cima colidiria com as tabelas, então para com o motivo.
+// NC2: as migrations foram recriadas do zero em 2026-11-17. Migração aplicada mais antiga que a primeira
+// do journal só pode ser do conjunto antigo: migrar por cima colidiria com as tabelas, então para com o
+// motivo. Migração mais nova que o journal (banco à frente do código, num rollback) não cai aqui.
 async function refuseUnknownMigrations(client: Client, journal: Journal, set: MigrationsSet) {
   const table = await client.query("select to_regclass('drizzle.__drizzle_migrations') as t");
   if (!table.rows[0]?.t) return;
   const applied = await client.query<{ created_at: string }>("select created_at from drizzle.__drizzle_migrations");
-  const known = new Set(journal.entries.map((e) => e.when));
-  if (applied.rows.some((r) => !known.has(Number(r.created_at)))) {
+  const first = Math.min(...journal.entries.map((e) => e.when));
+  if (applied.rows.some((r) => Number(r.created_at) < first)) {
     throw new Error(
-      `o banco tem migrações de ${set} que não estão no journal (conjunto antigo): recrie o banco e rode npm run dev:seed`,
+      `o banco tem migrações de ${set} anteriores ao journal (conjunto antigo): recrie o banco e rode npm run dev:seed`,
     );
   }
 }

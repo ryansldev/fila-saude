@@ -127,13 +127,24 @@ describe("migrateDatabase", () => {
       await rm(folder, { recursive: true, force: true });
     }
   });
-  it("NC2: banco com migração fora do journal (anterior à recriação) é recusado com mensagem clara", async () => {
-    await connected(tenantUrl, (client) =>
-      client.query("insert into drizzle.__drizzle_migrations (hash, created_at) values ('antiga', 1)"),
-    );
-    await expect(migrateDatabase(tenantUrl, "municipal")).rejects.toThrow(/recrie o banco/);
-    await connected(tenantUrl, (client) =>
-      client.query("delete from drizzle.__drizzle_migrations where created_at = 1"),
-    );
-  });
+  async function withFakeMigration(createdAt: number, fn: () => Promise<void>) {
+    const insert = "insert into drizzle.__drizzle_migrations (hash, created_at) values ('fora', $1)";
+    await connected(tenantUrl, (client) => client.query(insert, [createdAt]));
+    try {
+      await fn();
+    } finally {
+      await connected(tenantUrl, (client) =>
+        client.query("delete from drizzle.__drizzle_migrations where hash = 'fora'"),
+      );
+    }
+  }
+
+  it("NC2: banco com migração anterior ao journal (conjunto antigo) é recusado com mensagem clara", () =>
+    withFakeMigration(1, () => expect(migrateDatabase(tenantUrl, "municipal")).rejects.toThrow(/recrie o banco/)));
+
+  it("NC2: banco à frente do código (migração mais nova que o journal) não manda recriar", () =>
+    withFakeMigration(Date.now() + 86400_000, async () => {
+      const r = await migrateDatabase(tenantUrl, "municipal").catch((e: Error) => e);
+      expect(r instanceof Error ? r.message : "").not.toMatch(/recrie/);
+    }));
 });

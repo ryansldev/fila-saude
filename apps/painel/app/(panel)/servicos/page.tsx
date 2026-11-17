@@ -21,7 +21,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
 import { useCurrentUnit } from "@/lib/current-unit";
 import { type SendingErrors, sendingErrors, validateClient } from "@/lib/forms/errors";
-import { type Mode, type ServiceValues, serviceForSending, showsTriageTime } from "@/lib/forms/service";
+import { MINUTES_FIELD, type Mode, type ServiceValues, serviceForSending, showsTriageTime } from "@/lib/forms/service";
 import { useList } from "@/lib/use-list";
 
 type Service = {
@@ -48,8 +48,8 @@ const ERROR_MINUTES = "Use um número inteiro de minutos.";
 function problemsOfMinutes(v: ServiceValues): Record<string, string> {
   const invalid = (t: string) => t.trim() !== "" && !/^\d+$/.test(t.trim());
   const fields: Record<string, string> = {};
-  if (showsTriageTime(v.requiresTriage) && invalid(v.triage)) fields["tempoMedioMin.triagem"] = ERROR_MINUTES;
-  if (invalid(v.care)) fields["tempoMedioMin.atendimento"] = ERROR_MINUTES;
+  if (showsTriageTime(v.requiresTriage) && invalid(v.triage)) fields[MINUTES_FIELD.triage] = ERROR_MINUTES;
+  if (invalid(v.care)) fields[MINUTES_FIELD.care] = ERROR_MINUTES;
   return fields;
 }
 
@@ -168,15 +168,11 @@ function ServicePanel({
         />
         <div className="flex flex-wrap gap-4">
           {showsTriageTime(v.requiresTriage) ? (
-            <FormField label="Tempo médio da triagem" error={errors.fields["tempoMedioMin.triagem"]} className="w-auto">
+            <FormField label="Tempo médio da triagem" error={errors.fields[MINUTES_FIELD.triage]} className="w-auto">
               <NumberField suffix="min" value={v.triage} onChange={(triage) => setV({ ...v, triage })} maxDigits={3} />
             </FormField>
           ) : null}
-          <FormField
-            label="Tempo médio do atendimento"
-            error={errors.fields["tempoMedioMin.atendimento"]}
-            className="w-auto"
-          >
+          <FormField label="Tempo médio do atendimento" error={errors.fields[MINUTES_FIELD.care]} className="w-auto">
             <NumberField suffix="min" value={v.care} onChange={(care) => setV({ ...v, care })} maxDigits={3} />
           </FormField>
         </div>

@@ -33,17 +33,20 @@ export function addInterval(h: Time, day: DayKey): Time {
   return { ...h, [day]: [...current, { opens: hhmm(start), closes: hhmm(end) }] };
 }
 
-/** Erros por intervalo (`horario.<dia>.<índice>`), os mesmos que a API recusaria. */
+/** Chave do erro de um intervalo: o caminho do campo no schema da unidade (`time.<dia>.<índice>`). */
+export const intervalKey = (day: string, index: number) => `time.${day}.${index}`;
+
+/** Erros por intervalo (`intervalKey`), os mesmos que a API recusaria. */
 export function timeProblems(h: Time): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const [day, list] of Object.entries(h)) {
     (list ?? []).forEach((iv, i) => {
-      if (iv.closes <= iv.opens) errors[`horario.${day}.${i}`] = "O fim deve ser depois do início.";
+      if (iv.closes <= iv.opens) errors[intervalKey(day, i)] = "O fim deve ser depois do início.";
     });
     (list ?? []).forEach((iv, i) => {
-      if (errors[`horario.${day}.${i}`]) return;
+      if (errors[intervalKey(day, i)]) return;
       const overrides = (list ?? []).some((other, j) => j < i && iv.opens < other.closes && other.opens < iv.closes);
-      if (overrides) errors[`horario.${day}.${i}`] = "Sobrepõe outro intervalo do dia.";
+      if (overrides) errors[intervalKey(day, i)] = "Sobrepõe outro intervalo do dia.";
     });
   }
   return errors;

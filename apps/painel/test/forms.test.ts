@@ -1,8 +1,9 @@
-import { staffUserInputSchema } from "@fila-saude/schemas/user";
+import { serviceInputSchema } from "@fila-saude/schemas/service";
+import { assignmentsSchema, staffUserInputSchema } from "@fila-saude/schemas/user";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
 import { errorMessage, sendingErrors, validateClient } from "@/lib/forms/errors";
-import { serviceForSending, showsTriageTime } from "@/lib/forms/service";
+import { MINUTES_FIELD, serviceForSending, showsTriageTime } from "@/lib/forms/service";
 import {
   adjustVisibility,
   allowedVisibilities,
@@ -15,7 +16,7 @@ import {
 } from "@/lib/forms/session";
 import { servicesForStage } from "@/lib/forms/station";
 import { configForSending, inheritedField } from "@/lib/forms/unit";
-import { assignableUnits, grantableRoles, registrationProblems } from "@/lib/forms/user";
+import { assignableUnits, grantableRoles, registrationProblems, unitErrorKey } from "@/lib/forms/user";
 import { panelMenu } from "@/lib/navigation";
 
 describe("erros da API nos formulários", () => {
@@ -237,6 +238,25 @@ describe("sessões do dia", () => {
   it("pede à API o intervalo do dia no fuso da unidade, com from e until", () => {
     expect(sessionsOfDayPath("u1", "2026-11-17", "America/Sao_Paulo")).toBe(
       "/v1/panel/units/u1/sessions?from=2026-11-17T03%3A00%3A00.000Z&until=2026-11-18T03%3A00%3A00.000Z",
+    );
+  });
+});
+
+describe("tempo médio do serviço", () => {
+  it("o erro dos minutos chega no campo que a tela mostra", () => {
+    const e = validateClient(serviceInputSchema, { averageTimeMin: { triage: 0, care: 0 } });
+    expect(Object.keys(e?.fields ?? {})).toEqual(expect.arrayContaining([MINUTES_FIELD.triage, MINUTES_FIELD.care]));
+  });
+});
+
+describe("unidade de um vínculo ou função", () => {
+  it("o erro chega na linha certa do editor", () => {
+    const e = validateClient(assignmentsSchema, {
+      unitLinks: [{ unitId: "", occupation: "nurse" }],
+      roles: [{ role: "scheduler", unitId: "x" }],
+    });
+    expect(Object.keys(e?.fields ?? {})).toEqual(
+      expect.arrayContaining([unitErrorKey("unitLinks", 0), unitErrorKey("roles", 0)]),
     );
   });
 });

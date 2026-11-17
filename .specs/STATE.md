@@ -7,7 +7,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - **Branch `feat/v0.1`**, sem PR. v0.1 rodando local com dados de exemplo: fatias 0 a 4 prontas (pública, na unidade, triagem, privada); falta a fatia 5 (pré-cadastro).
 - **Revisão de UI com o design system em andamento.** Feitas no painel: Agendamento, Fila do dia, QR de entrada e unidade no menu, Estação (com "Compareceu"), TV. No app: página da unidade, entrar, criar conta, aba "hoje" (bilhete), mapa das unidades, inscrição (com a relação para outra pessoa). Designs em [features/design-system/](features/design-system/).
 - **Código em inglês** pela tabela de [nomes no código](specs/nomes-no-codigo.md); telas e specs em português. Migrações recriadas do zero (NC2: apague os bancos `fila_*` do `postgres-dev` e rode `npm run dev:seed`).
-- **Testes (2026-11-17):** API 271, domínio 358, painel 156, app 135, schemas 72, design 9; lint limpo.
+- **Testes (2026-11-17):** API 273, domínio 358, painel 159, app 138, schemas 72, design 9; lint limpo.
 
 ## Esperando você
 
