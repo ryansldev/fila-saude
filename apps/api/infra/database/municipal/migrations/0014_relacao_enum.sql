@@ -1,0 +1,2 @@
+CREATE TYPE "public"."relacao_responsavel" AS ENUM('responsavel_legal', 'cuidador', 'familiar_autorizado');--> statement-breakpoint
+ALTER TABLE "entrada" ALTER COLUMN "relacao_responsavel" SET DATA TYPE "public"."relacao_responsavel" USING "relacao_responsavel"::"public"."relacao_responsavel";

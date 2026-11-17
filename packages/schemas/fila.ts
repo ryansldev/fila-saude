@@ -35,8 +35,11 @@ export const itemDaFilaSchema = z.object({
   pendencias: z.array(z.string()),
   /** RN-PRES-03: para comparar com o documento; CPF mascarado (LGPD), só os dígitos do meio. */
   documento: z.object({ nascimento: z.string(), cpf: z.string().nullable() }),
-  /** Inscrita por outra conta: o primeiro nome de quem inscreveu e a relação. `null` quando foi a própria pessoa. */
-  responsavel: z.object({ nome: z.string(), relacao: relacaoSchema }).nullable(),
+  /**
+   * Inscrita por outra conta: o primeiro nome de quem inscreveu e a relação (`null` nas inscrições de antes
+   * da relação existir). `null` quando foi a própria pessoa.
+   */
+  responsavel: z.object({ nome: z.string(), relacao: relacaoSchema.nullable() }).nullable(),
 });
 
 export const filaDaSessaoSchema = z.object({

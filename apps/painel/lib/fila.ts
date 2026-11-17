@@ -222,8 +222,9 @@ const RELACAO: Record<Relacao, string> = {
 };
 
 /** Quem inscreveu outra pessoa (2026-11-16): a pílula da linha, sem gênero ("por Bruno (responsável legal)"). */
-export function textoDoResponsavel(r: { nome: string; relacao: Relacao } | null) {
+export function textoDoResponsavel(r: { nome: string; relacao: Relacao | null } | null) {
   if (!r) return null;
+  if (!r.relacao) return { texto: `por ${r.nome}`, rotulo: `inscrição feita por ${r.nome}` };
   return {
     texto: `por ${r.nome} (${RELACAO[r.relacao]})`,
     rotulo: `inscrição feita por ${r.nome}, ${RELACAO[r.relacao]}`,

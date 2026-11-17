@@ -37,6 +37,7 @@ import {
   outraPessoaJaInscrita,
   type PassoDaPessoa,
   paraMimNoServico,
+  paraQuemDaInscricao,
   RELACOES,
   telaDoErro,
   tituloDoPronto,
@@ -161,25 +162,22 @@ export default function Inscricao() {
   const nascimento =
     modo === "refazer" ? (p.nascimento ?? "") : quem === "eu" ? (s.conta?.nascimento ?? "") : dataIso(outra.nascimento);
 
-  const paraQuem = (q: "eu" | "outra"): InscricaoEntrada["paraQuem"] =>
-    q === "eu"
-      ? { tipo: "eu" }
-      : {
-          tipo: "outra",
-          nome: outra.nome.trim(),
-          nascimento: dataIso(outra.nascimento),
-          cpf: outra.cpf.trim() ? outra.cpf : null,
-          relacao: relacao ?? "responsavel_legal",
-          declarou: true,
-        };
+  // Para outra pessoa, só monta com a relação e a declaração que a pessoa marcou (senão, `null`).
+  const paraQuem = (q: "eu" | "outra") => paraQuemDaInscricao(q, outra, relacao, declarou);
 
   async function enviar() {
     if (!completas(r) || enviandoRef.current || !quem) return;
     enviandoRef.current = true;
     setEnviando(true);
     setErro(null);
+    const pq = modo === "refazer" ? null : paraQuem(quem);
+    if (modo !== "refazer" && !pq) {
+      enviandoRef.current = false;
+      setEnviando(false);
+      return setPasso({ tipo: "pessoa", dado: "relacao" });
+    }
     const corpo: InscricaoEntrada | { respostas: RespostasDoApp } =
-      modo === "refazer" ? { respostas: r } : { paraQuem: paraQuem(quem), respostas: r };
+      modo === "refazer" || !pq ? { respostas: r } : { paraQuem: pq, respostas: r };
     try {
       const res = await s.api.post<{ estado?: string; classificacao: { nivel: string } }>(envio.enviar, corpo);
       if (modo === "refazer") return setPasso({ tipo: "refeito", nivel: res.classificacao.nivel });
@@ -203,7 +201,9 @@ export default function Inscricao() {
     setErroQuem(null);
     try {
       // A lista de espera não tem o "/verificar": as recusas vêm no envio, no fim do questionário.
-      if (envio.verificar) await s.api.post(envio.verificar, { paraQuem: paraQuem(q) });
+      const pq = paraQuem(q);
+      if (!pq) return;
+      if (envio.verificar) await s.api.post(envio.verificar, { paraQuem: pq });
       setQuem(q);
       setPasso({ tipo: "intro" });
     } catch (err) {
@@ -232,7 +232,8 @@ export default function Inscricao() {
   // enche a barra. Refazer vai direto às perguntas.
   const antes = modo === "refazer" ? 0 : quem === "outra" ? 6 : 2;
   const total = antes + telas.length;
-  const nomeCurto = primeiroNome(outra.nome) || "a pessoa";
+  // O primeiro nome digitado; quando ainda não há (refazer de outra pessoa), as falas dizem "a pessoa".
+  const nomeCurto = primeiroNome(outra.nome);
   const atendimento = (
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
       {sessao.servico ? <Pilula texto={sessao.servico.toLowerCase()} Icone={Stethoscope} tom="azul" /> : null}
@@ -501,6 +502,8 @@ export default function Inscricao() {
     const mudarOutra = (v: Partial<typeof outra>) => {
       setOutra({ ...outra, ...v });
       setErroQuem(null);
+      // A declaração é sobre esta pessoa: mudou um dado, marca de novo.
+      setDeclarou(false);
     };
     const progresso = { atual: 2 + i, total };
 
@@ -655,7 +658,7 @@ export default function Inscricao() {
   const lista = Array.isArray(valor) ? (valor as string[]) : [];
   const respondida = pergunta.multipla ? lista.length > 0 || Boolean(nenhum[tela]) : valor !== null;
   const ultima = passo.indice + 1 === telas.length;
-  const fala = falaDaPergunta(tela, quem, nomeCurto === "a pessoa" ? "" : nomeCurto);
+  const fala = falaDaPergunta(tela, quem, nomeCurto);
 
   function marcar(op: string) {
     setErro(null);

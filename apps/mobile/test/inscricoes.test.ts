@@ -10,6 +10,7 @@ import {
   mesmoNome,
   outraPessoaJaInscrita,
   paraMimNoServico,
+  paraQuemDaInscricao,
   RELACOES,
   telaDoErro,
   tituloDoPronto,
@@ -200,6 +201,27 @@ describe("o 'pronto!' da inscrição, sem '(a)'", () => {
     expect(tituloDoPronto("refeito", "eu", "")).toEqual({
       titulo: "respostas atualizadas",
       texto: "a unidade já vê as respostas novas.",
+    });
+  });
+});
+
+describe("o 'para quem' enviado à API (review 2026-11-16)", () => {
+  const ana = { nome: " Ana Souza ", nascimento: "07/07/2019", cpf: "" };
+
+  it("para mim não leva dados", () => {
+    expect(paraQuemDaInscricao("eu", ana, null, false)).toEqual({ tipo: "eu" });
+  });
+
+  it("outra pessoa só com a relação escolhida e a declaração marcada de verdade", () => {
+    expect(paraQuemDaInscricao("outra", ana, null, true)).toBeNull();
+    expect(paraQuemDaInscricao("outra", ana, "cuidador", false)).toBeNull();
+    expect(paraQuemDaInscricao("outra", ana, "cuidador", true)).toEqual({
+      tipo: "outra",
+      nome: "Ana Souza",
+      nascimento: "2019-07-07",
+      cpf: null,
+      relacao: "cuidador",
+      declarou: true,
     });
   });
 });

@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 let c: Awaited<ReturnType<typeof cenarioDaFila>>;
 let ana: Awaited<ReturnType<typeof orchestrator.loginPaciente>>;
 let outro: Awaited<ReturnType<typeof orchestrator.loginPaciente>>;
+let carla: Awaited<ReturnType<typeof orchestrator.loginPaciente>>;
 let privadaId: string;
 
 beforeAll(async () => {
@@ -14,6 +15,7 @@ beforeAll(async () => {
   c = await cenarioDaFila();
   ana = await orchestrator.loginPaciente(orchestrator.dadosDeCadastro({ nome: "Ana Paciente" }));
   outro = await orchestrator.loginPaciente();
+  carla = await orchestrator.loginPaciente(orchestrator.dadosDeCadastro({ nome: "carla souza" }));
   const agora = Date.now();
   privadaId = (
     await c.pedir("POST", `/v1/painel/unidades/${c.unidadeId}/sessoes`, c.admin, {
@@ -95,6 +97,19 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
       respostas: ROTINA,
     });
     expect(filha.status).toBe(201);
+    const mae = await inscrever(c.sessaoId, carla.cookie, {
+      paraQuem: {
+        tipo: "outra",
+        // Sem prioridade pela idade: não passa à frente da Ana, que o teste seguinte chama.
+        nome: "Lurdes Souza",
+        nascimento: "1980-07-07",
+        cpf: null,
+        relacao: "familiar_autorizado",
+        declarou: true,
+      },
+      respostas: ROTINA,
+    });
+    expect(mae.status).toBe(201);
     // 2026-11-16: para outra pessoa, a relação e a declaração são obrigatórias.
     const semRelacao = { tipo: "outra", nome: "Caio Paciente", nascimento: "2016-04-04", cpf: null };
     expect((await inscrever(c.sessaoId, ana.cookie, { paraQuem: semRelacao, respostas: ROTINA })).status).toBe(400);
@@ -114,7 +129,7 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     expect(emergencia).toMatchObject({ status: 409, corpo: { erro: "emergencia" } });
     expect(
       (await app("GET", `${m()}/agenda`)).corpo.find((s: { id: string }) => s.id === c.sessaoId).vagasRestantes,
-    ).toBe(18);
+    ).toBe(17);
   });
 
   it("INV-06 / T3.4: 'minhas' mostra só as do paciente, com posição e depois a chamada", async () => {
@@ -139,6 +154,8 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     const porNome = (nome: string) => fila.itens.find((i: { nome: string }) => i.nome === nome);
     expect(porNome("Bia Paciente").responsavel).toEqual({ nome: "Ana", relacao: "responsavel_legal" });
     expect(porNome("Ana Paciente").responsavel).toBeNull();
+    // O nome de quem inscreveu sai com a primeira letra maiúscula, mesmo digitado em minúsculas.
+    expect(porNome("Lurdes Souza").responsavel).toEqual({ nome: "Carla", relacao: "familiar_autorizado" });
     await c.pedir("POST", `/v1/painel/sessoes/${c.sessaoId}/presenca`, recepcao, {
       entradaId: minha.entradaId,
       resultado: "confere",

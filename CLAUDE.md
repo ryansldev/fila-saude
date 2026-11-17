@@ -22,7 +22,7 @@ Central de filas para o atendimento público (UBS, policlínicas): o paciente es
 - **TDD sempre**: o teste falha antes do código. No app, só funções puras têm teste (`src/lib`).
 - **Design system**: todo botão vem do kit. Painel: `components/ui/` (nenhum `<button>` fora dele, sem `variant=`/`size=`). App: `src/components/ui.tsx` (nenhum `<Pressable` fora dele). Os testes `design-system.test.ts` travam isso. Protótipos também usam as classes reais (`.ds-btn-*`).
 - **Nada de "Info · Info · Info"**: várias informações viram pílulas, ícones ou cartões.
-- O painel é estilo iFood (relevo leve); o app, estilo Duolingo (minúsculas, relevo). O **Dr. Lino** fica sobre fundo branco ou o cinza-claro da aba "hoje" (o jaleco é transparente), sem caixa branca visível em volta; nunca em fundo colorido ou escuro. **Nomes de pessoas** sempre com a primeira letra maiúscula (`nomeProprio`/`primeiroNome` em `apps/mobile/src/lib/conta.ts`), mesmo no app em minúsculas.
+- O painel é estilo iFood (relevo leve); o app, estilo Duolingo (minúsculas, relevo). O **Dr. Lino** fica sobre fundo branco ou o cinza-claro da aba "hoje" (o jaleco é transparente), sem caixa branca visível em volta; nunca em fundo colorido ou escuro. **Nomes de pessoas** sempre com a primeira letra maiúscula (`nomeProprio`/`primeiroNome` em `packages/domain/src/nomes.ts`, usados no app, no painel e na API), mesmo no app em minúsculas.
 - Textos para o usuário em português do Brasil; código e commits como já estão (commits em inglês, Conventional Commits, até 100 caracteres, minúsculas).
 - Decisões que a IA toma sozinha vão para `.specs/features/mvp-filas/decisoes-para-revisar.md` (contexto, o que fez, alternativa, custo se errado).
 

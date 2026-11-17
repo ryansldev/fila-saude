@@ -13,6 +13,7 @@ import {
   type ItemFila,
   type NivelRisco,
   naoCompareceu,
+  primeiroNome,
   type Resultado,
   rechamar,
   TEMPO_ALVO_MIN,
@@ -29,7 +30,6 @@ import { ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
 import { permitido, type Ressalvas } from "infra/painel/guard";
 import { lerDia, naSessao } from "./dia";
-import { primeiroNome } from "./nomes";
 import { nomesDasEntradas } from "./painel";
 
 const NA_FILA = 3;

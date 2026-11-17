@@ -1,7 +1,7 @@
-import type { MinhaEntrada, Relacao } from "@fila-saude/schemas/fila";
+import type { InscricaoEntrada, MinhaEntrada, Relacao } from "@fila-saude/schemas/fila";
 import { ErroDaApi } from "./api";
 import { mensagemDoErro } from "./textos";
-import { CPF_DA_CONTA } from "./validacao";
+import { CPF_DA_CONTA, dataIso } from "./validacao";
 
 /**
  * Estados em que a entrada terminou: deixam a pessoa livre para se inscrever de novo no serviço.
@@ -222,4 +222,26 @@ export function tituloDoPronto(
     case "refeito":
       return { titulo: "respostas atualizadas", texto: "a unidade já vê as respostas novas." };
   }
+}
+
+/**
+ * O "para quem" que vai à API. Para outra pessoa, só com a relação escolhida e a declaração marcada pela
+ * pessoa: sem as duas, `null` (nada é enviado em nome de quem não declarou).
+ */
+export function paraQuemDaInscricao(
+  quem: "eu" | "outra",
+  outra: { nome: string; nascimento: string; cpf: string },
+  relacao: Relacao | null,
+  declarou: boolean,
+): InscricaoEntrada["paraQuem"] | null {
+  if (quem === "eu") return { tipo: "eu" };
+  if (!relacao || !declarou) return null;
+  return {
+    tipo: "outra",
+    nome: outra.nome.trim(),
+    nascimento: dataIso(outra.nascimento),
+    cpf: outra.cpf.trim() ? outra.cpf : null,
+    relacao,
+    declarou: true,
+  };
 }

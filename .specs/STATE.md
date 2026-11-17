@@ -6,7 +6,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 
 - **Branch `feat/v0.1`**, sem PR. v0.1 rodando local com dados de exemplo: fatias 0 a 4 prontas (pública, na unidade, triagem, privada); falta a fatia 5 (pré-cadastro).
 - **Revisão de UI com o design system em andamento.** Feitas no painel: Agendamento, Fila do dia, QR de entrada e unidade no menu, Estação (com "Compareceu"), TV. No app: página da unidade, entrar, criar conta, aba "hoje" (bilhete), mapa das unidades, inscrição (com a relação para outra pessoa). Designs em [features/design-system/](features/design-system/).
-- **Testes (2026-11-16):** API 270, domínio 356, painel 153, app 131, schemas 70, design 9.
+- **Testes (2026-11-16):** API 268, domínio 358, painel 154, app 134, schemas 70, design 9.
 
 ## Esperando você
 

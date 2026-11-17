@@ -64,9 +64,11 @@ describe("a relação de quem inscreve outra pessoa (2026-11-16)", () => {
       documento: { nascimento: "2018-03-03", cpf: null },
     };
     expect(itemDaFilaSchema.safeParse({ ...item, responsavel: null }).success).toBe(true);
-    expect(
-      itemDaFilaSchema.safeParse({ ...item, responsavel: { nome: "Bruno", relacao: "cuidador" } }).success,
-    ).toBe(true);
+    expect(itemDaFilaSchema.safeParse({ ...item, responsavel: { nome: "Bruno", relacao: "cuidador" } }).success).toBe(
+      true,
+    );
     expect(itemDaFilaSchema.safeParse(item).success).toBe(false);
+    // Inscrita por outra conta antes de existir a relação: mostra quem inscreveu, sem a relação.
+    expect(itemDaFilaSchema.safeParse({ ...item, responsavel: { nome: "Bruno", relacao: null } }).success).toBe(true);
   });
 });

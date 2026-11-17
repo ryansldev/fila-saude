@@ -1,5 +1,4 @@
 import type { Classificacao, PrioridadeLegal } from "@fila-saude/domain";
-import type { Relacao } from "@fila-saude/schemas/fila";
 import { sql } from "drizzle-orm";
 import { integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { pessoaLocal } from "./pessoa-local";
@@ -21,6 +20,11 @@ export const estadoEntrada = pgEnum("estado_entrada", [
 ]);
 export const nivelRisco = pgEnum("nivel_risco", ["emergencia", "muito_urgente", "urgente", "atencao", "rotina"]);
 export const origemRemanejada = pgEnum("origem_remanejada", ["privada", "publica", "regulada"]);
+export const relacaoResponsavel = pgEnum("relacao_responsavel", [
+  "responsavel_legal",
+  "cuidador",
+  "familiar_autorizado",
+]);
 
 // PD-36: toda entrada aponta para uma `pessoa_local`; INV-01 pelo índice único parcial.
 export const entrada = pgTable(
@@ -35,7 +39,7 @@ export const entrada = pgTable(
       .references(() => pessoaLocal.id),
     responsavelPacienteId: text("responsavel_paciente_id"),
     /** Outra pessoa (2026-11-16): o que o responsável é dela (`responsavel_legal`, `cuidador`, `familiar_autorizado`). */
-    relacaoResponsavel: text("relacao_responsavel").$type<Relacao>(),
+    relacaoResponsavel: relacaoResponsavel("relacao_responsavel"),
     estado: estadoEntrada("estado").notNull(),
     dataEntradaOriginal: timestamp("data_entrada_original", { withTimezone: true }).notNull(),
     classificacao: jsonb("classificacao").$type<Classificacao>().notNull(),

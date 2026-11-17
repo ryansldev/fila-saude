@@ -70,6 +70,7 @@ export {
   riscoVigente,
   sugerir,
 } from "./lista.ts";
+export { nomeProprio, primeiroNome } from "./nomes.ts";
 export type { ChaveOrdem, ChaveSugestao, Risco } from "./ordem.ts";
 export { compararOrdem, compararSugestao } from "./ordem.ts";
 export type { Acao, Celula, LinhaMatriz, Perfil } from "./permissoes.ts";

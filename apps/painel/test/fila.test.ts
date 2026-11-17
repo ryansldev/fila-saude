@@ -265,6 +265,13 @@ describe("quem inscreveu outra pessoa (2026-11-16)", () => {
     );
   });
 
+  it("inscrita por outra conta antes de existir a relação: só quem inscreveu", () => {
+    expect(textoDoResponsavel({ nome: "Bruno", relacao: null })).toEqual({
+      texto: "por Bruno",
+      rotulo: "inscrição feita por Bruno",
+    });
+  });
+
   it("inscrita pela própria pessoa: nada", () => {
     expect(textoDoResponsavel(null)).toBeNull();
   });

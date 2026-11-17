@@ -7,6 +7,7 @@ import {
   encerrar,
   mesmoDia,
   origemDaSessao,
+  primeiroNome,
   temPrioridade,
 } from "@fila-saude/domain";
 import type { FilaDaSessao, FilaDeHoje, HojeNaUnidade, ItemDaFila } from "@fila-saude/schemas/fila";
@@ -25,47 +26,55 @@ import { ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
 import { condicoesNaUnidade } from "infra/painel/guard";
 import { lerDia, montarDia, naSessao } from "./dia";
-import { primeiroNome } from "./nomes";
 
 // "52998224725" → "•••.982.247-••": o bastante para conferir com o documento sem expor o CPF inteiro.
 const cpfMascarado = (cpf: string | null) => (cpf ? `•••.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-••` : null);
 
-async function documentosDasEntradas(db: BancoDoTenant, ids: string[]) {
-  if (ids.length === 0) return new Map<string, { nascimento: string; cpf: string | null }>();
+type DadosDaEntrada = Pick<ItemDaFila, "nome" | "documento" | "responsavel">;
+
+/**
+ * Numa consulta só (entrada ⋈ pessoa local), o que a Fila do dia mostra de cada pessoa: nome, documento para
+ * conferir e, quando outra conta inscreveu, o primeiro nome dela (do banco central) e a relação (2026-11-16).
+ */
+async function dadosDasEntradas(db: BancoDoTenant, ids: string[]): Promise<Map<string, DadosDaEntrada>> {
+  if (ids.length === 0) return new Map();
   const linhas = await db
-    .select({ id: entrada.id, nascimento: pessoaLocal.nascimento, cpf: pessoaLocal.cpf })
+    .select({
+      id: entrada.id,
+      nome: pessoaLocal.nome,
+      nascimento: pessoaLocal.nascimento,
+      cpf: pessoaLocal.cpf,
+      dono: pessoaLocal.pacienteId,
+      responsavelId: entrada.responsavelPacienteId,
+      relacao: entrada.relacaoResponsavel,
+    })
     .from(entrada)
     .innerJoin(pessoaLocal, eq(entrada.pessoaLocalId, pessoaLocal.id))
     .where(inArray(entrada.id, ids));
-  return new Map(linhas.map((l) => [l.id, { nascimento: l.nascimento, cpf: cpfMascarado(l.cpf) }]));
-}
-
-/** Inscrita por outra conta (2026-11-16): o primeiro nome de quem inscreveu, do banco central, e a relação. */
-async function responsaveisDasEntradas(db: BancoDoTenant, ids: string[]) {
-  const porEntrada = new Map<string, NonNullable<ItemDaFila["responsavel"]>>();
-  if (ids.length === 0) return porEntrada;
-  const linhas = (
-    await db
-      .select({ id: entrada.id, relacao: entrada.relacaoResponsavel, pacienteId: entrada.responsavelPacienteId })
-      .from(entrada)
-      .where(inArray(entrada.id, ids))
-  ).filter((l) => l.relacao && l.pacienteId);
-  if (linhas.length === 0) return porEntrada;
-  const contas = await database
-    .select({ id: paciente.id, nome: paciente.name })
-    .from(paciente)
-    .where(
-      inArray(
-        paciente.id,
-        linhas.map((l) => l.pacienteId as string),
-      ),
-    );
+  // Outra conta inscreveu quando quem inscreveu não é a própria pessoa atendida.
+  const deOutraConta = (l: (typeof linhas)[number]) => l.responsavelId !== null && l.responsavelId !== l.dono;
+  const contaIds = [...new Set(linhas.filter(deOutraConta).map((l) => l.responsavelId as string))];
+  const contas =
+    contaIds.length === 0
+      ? []
+      : await database
+          .select({ id: paciente.id, nome: paciente.name })
+          .from(paciente)
+          .where(inArray(paciente.id, contaIds));
   const nomes = new Map(contas.map((c) => [c.id, primeiroNome(c.nome)]));
-  for (const l of linhas) {
-    const nome = nomes.get(l.pacienteId as string);
-    if (nome && l.relacao) porEntrada.set(l.id, { nome, relacao: l.relacao });
-  }
-  return porEntrada;
+  return new Map(
+    linhas.map((l) => {
+      const quem = deOutraConta(l) ? nomes.get(l.responsavelId as string) : undefined;
+      return [
+        l.id,
+        {
+          nome: l.nome,
+          documento: { nascimento: l.nascimento, cpf: cpfMascarado(l.cpf) },
+          responsavel: quem ? { nome: quem, relacao: l.relacao } : null,
+        },
+      ];
+    }),
+  );
 }
 
 export async function nomesDasEntradas(db: BancoDoTenant, ids: string[]): Promise<Map<string, string>> {
@@ -81,15 +90,7 @@ export async function nomesDasEntradas(db: BancoDoTenant, ids: string[]): Promis
 async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | null): Promise<FilaDaSessao> {
   const { s } = await exigirSessao(db, sessaoId);
   const itens = dia?.itens ?? [];
-  const nomes = await nomesDasEntradas(
-    db,
-    itens.map((i) => i.entradaId),
-  );
-  const documentos = await documentosDasEntradas(
-    db,
-    itens.map((i) => i.entradaId),
-  );
-  const responsaveis = await responsaveisDasEntradas(
+  const dados = await dadosDasEntradas(
     db,
     itens.map((i) => i.entradaId),
   );
@@ -102,7 +103,7 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
       id: i.id,
       entradaId: i.entradaId,
       senha: i.senha,
-      nome: nomes.get(i.entradaId) ?? "",
+      nome: dados.get(i.entradaId)?.nome ?? "",
       etapa: i.etapa,
       estado: i.estado,
       pulos: i.pulos,
@@ -110,8 +111,8 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
       prioridade: temPrioridade(i.prioridade),
       estacaoId: dia?.estacoes.find((e) => e.chamadoItemId === i.id)?.id ?? null,
       pendencias: i.pendencias,
-      documento: documentos.get(i.entradaId) ?? { nascimento: "", cpf: null },
-      responsavel: responsaveis.get(i.entradaId) ?? null,
+      documento: dados.get(i.entradaId)?.documento ?? { nascimento: "", cpf: null },
+      responsavel: dados.get(i.entradaId)?.responsavel ?? null,
     })),
     reserva: naReserva,
   };
