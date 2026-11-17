@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { styledQr } from "@/lib/qr";
+import { qrRemaining, styledQr } from "@/lib/qr";
 import { cn } from "@/lib/utils";
 
 /**
@@ -11,21 +11,27 @@ import { cn } from "@/lib/utils";
 export function EntryQr({
   content,
   expiresAt,
+  serverNow,
   intervalSeconds,
   className,
 }: {
   content: string;
   expiresAt: string | null;
+  /** A hora do servidor na resposta do QR. */
+  serverNow: string;
   intervalSeconds: number;
   className?: string;
 }) {
   const svg = useMemo(() => styledQr(content), [content]);
   const [now, setNow] = useState(() => Date.now());
+  // Quando chegou a resposta, no relógio do computador: a barrinha conta o que passou desde então.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `serverNow` muda a cada resposta (é o gatilho).
+  const receivedAt = useMemo(() => Date.now(), [serverNow]);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
   }, []);
-  const remaining = expiresAt ? Math.max(0, Math.min(1, (Date.parse(expiresAt) - now) / (intervalSeconds * 1000))) : 1;
+  const remaining = qrRemaining(expiresAt, Date.parse(serverNow), receivedAt, now, intervalSeconds);
   return (
     <div className={cn("flex flex-col items-center", className)}>
       <div

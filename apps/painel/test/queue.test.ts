@@ -1,25 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
-  attendanceButtons,
   documentText,
   emptyQueue,
   groupQueue,
   guardianText,
   minutesSince,
-  pendingChecksText,
   queueActions,
-  queueCounters,
   rowContext,
   searchQueue,
   sessionPill,
-  sortQueue,
-  stateLabel,
   stationsItOperates,
   stopwatch,
   validFilter,
 } from "@/lib/queue";
-
-const item = (ticket: string, state: string) => ({ ticket, state });
 
 describe("fila do dia no painel (T3.4, T3.7)", () => {
   it("botões pela matriz e pela unidade do perfil (PD-38)", () => {
@@ -32,54 +25,21 @@ describe("fila do dia no painel (T3.4, T3.7)", () => {
     expect(queueActions(reception, "u1", "planned").attendance).toBe(false);
   });
 
-  it("ordem da tela: chamado, na unidade, remotos, depois os que saíram; pela senha", () => {
-    const order = sortQueue([
-      item("C-004", "done_in_stage"),
-      item("C-003", "remote"),
-      item("C-002", "present"),
-      item("C-001", "remote"),
-      item("C-005", "called"),
-    ]).map((i) => i.ticket);
-    expect(order).toEqual(["C-005", "C-002", "C-001", "C-003", "C-004"]);
-  });
-
-  it("textos dos estados e o cronômetro da chamada (AD-006)", () => {
-    expect(stateLabel("remote")).toBe("A caminho");
-    expect(stateLabel("present")).toBe("Na unidade");
-    expect(stateLabel("left_queue")).toBe("Saiu da fila");
+  it("o cronômetro da chamada (AD-006)", () => {
     const at = "2026-11-12T12:00:00.000Z";
     expect(stopwatch(at, Date.parse(at) + 65_000)).toBe("01:05");
     expect(stopwatch(at, Date.parse(at) - 1000)).toBe("00:00");
   });
-
-  it("RN-FILA-05: pendências do QR recusado em texto para a recepção; sem pendência, nada", () => {
-    expect(pendingChecksText(["account"])).toBe("Passe na recepção: conferir a conta");
-    expect(pendingChecksText(["attended_person", "priority"])).toBe(
-      "Passe na recepção: conferir a pessoa atendida, a prioridade",
-    );
-    expect(pendingChecksText([])).toBeNull();
-  });
 });
 
 describe("presença pela recepção (RN-PRES-03, RN-FILA-05), revisão 2026-11-13", () => {
-  it("qualquer remoto pode ter a presença marcada; com pendência, conferindo os documentos; 'não confere' sempre com motivo", () => {
-    expect(attendanceButtons({ state: "remote", pendingChecks: [] }, true)).toEqual({
-      mark: "Marcar presença",
-      notMatches: false,
-    });
-    expect(attendanceButtons({ state: "remote", pendingChecks: ["account"] }, true)).toEqual({
-      mark: "Conferir documentos e marcar presença",
-      notMatches: true,
-    });
-    expect(attendanceButtons({ state: "present", pendingChecks: [] }, true)).toBeNull();
-    expect(attendanceButtons({ state: "remote", pendingChecks: [] }, false)).toBeNull();
-  });
-
   it("CPF mascarado e nascimento em dd/mm/aaaa para comparar com o documento", () => {
-    expect(documentText({ birthDate: "1990-05-05", cpf: "•••.982.247-••" })).toBe(
-      "nasc. 05/05/1990 · CPF •••.982.247-••",
-    );
-    expect(documentText({ birthDate: "1990-05-05", cpf: null })).toBe("nasc. 05/05/1990 · sem CPF");
+    // Duas informações, duas partes na linha (nada de "Info · Info").
+    expect(documentText({ birthDate: "1990-05-05", cpf: "•••.982.247-••" })).toEqual([
+      "nasc. 05/05/1990",
+      "CPF •••.982.247-••",
+    ]);
+    expect(documentText({ birthDate: "1990-05-05", cpf: null })).toEqual(["nasc. 05/05/1990", "sem CPF"]);
   });
 });
 
@@ -118,10 +78,6 @@ describe("fila do dia por situação (redesenho 2026-11-13)", () => {
     expect(g.inUnit.map((i) => i.ticket)).toEqual(["C-002", "C-007"]);
     expect(g.onTheWay.map((i) => i.ticket)).toEqual(["C-005"]);
     expect(g.closed.map((i) => i.ticket)).toEqual(["C-003", "C-006"]);
-  });
-
-  it("contadores do topo: na unidade, a caminho (inclui quem espera a recepção), chamados e atendidos", () => {
-    expect(queueCounters(items)).toEqual({ inUnit: 2, onTheWay: 2, called: 1, attended: 1 });
   });
 });
 
@@ -249,6 +205,9 @@ describe("Fila do dia: tempo curto e fila vazia", () => {
     expect(emptyQueue([s("open", 0)], "America/Sao_Paulo", true)).toBe(
       "Ninguém na fila ainda. Quem se inscrever pelo app aparece aqui.",
     );
+    // Sessão que não recebe mais ninguém não convida a se inscrever.
+    expect(emptyQueue([s("closed", 0)], "America/Sao_Paulo", true)).toBe("Sessão encerrada. Ninguém ficou na fila.");
+    expect(emptyQueue([s("cancelled", 0)], "America/Sao_Paulo", true)).toBe("Sessão cancelada.");
   });
 });
 

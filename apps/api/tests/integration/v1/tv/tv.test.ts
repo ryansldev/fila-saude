@@ -54,7 +54,10 @@ describe("pareamento da TV (RN-TV-01, RN-TV-02)", () => {
       unit: { id: c.unitId },
       calls: [],
       qr: null,
+      // A TV anuncia e mostra a hora pelo relógio do servidor, no fuso da unidade (o da TV pode estar errado).
+      timeZone: "America/Sao_Paulo",
     });
+    expect(Math.abs(Date.parse((await screen()).body.now) - Date.now())).toBeLessThan(60_000);
     const list = await c.request("GET", `/v1/panel/units/${c.unitId}/tvs`, c.admin);
     expect(list.body).toEqual([expect.objectContaining({ id: tvId, online: true })]);
   });

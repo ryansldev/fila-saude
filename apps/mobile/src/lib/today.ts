@@ -51,6 +51,8 @@ export function ticketCardFor(en: { ticket: string | null; itemState: string | n
       return { banner: "confirme a sua data", ticket: null, button: "confirm" };
     case "late":
       return { banner: "a fila vai abrir", ticket: en.ticket, button: null };
+    case "reserve":
+      return { banner: "você está na reserva", ticket: null, button: null };
     default:
       return { banner: "a fila ainda não abriu", ticket: en.ticket, button: null };
   }
@@ -62,7 +64,8 @@ export function rowFor(sit: Situation): { box: string | null; sentence: string }
     case "position":
       return {
         box: `${sit.position}º`,
-        sentence: sit.position <= 1 || sit.minutes <= 0 ? "você é o próximo" : `cerca de ${sit.minutes} min`,
+        // Como na tela da fila: "o próximo" só na 1ª posição; tempo zero mais atrás é "já já".
+        sentence: sit.position <= 1 ? "você é o próximo" : sit.minutes <= 0 ? "já já" : `cerca de ${sit.minutes} min`,
       };
     case "come":
       return { box: null, sentence: "venha agora" };
@@ -72,6 +75,12 @@ export function rowFor(sit: Situation): { box: string | null; sentence: string }
       return { box: null, sentence: "sem previsão agora" };
     case "allocated":
       return { box: null, sentence: "confirme a sua data" };
+    case "turn":
+      return { box: null, sentence: "é a sua vez" };
+    case "reserve":
+      return { box: null, sentence: "na reserva: se alguém desistir, a vaga é sua" };
+    case "late":
+      return { box: null, sentence: "a fila vai abrir" };
     default:
       return { box: null, sentence: "a fila ainda não abriu" };
   }

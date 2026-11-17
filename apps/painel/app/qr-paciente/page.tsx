@@ -57,6 +57,7 @@ export default function PatientQr() {
             <EntryQr
               content={qr.detail.content}
               expiresAt={qr.detail.expiresAt}
+              serverNow={qr.detail.now}
               intervalSeconds={qr.detail.intervalSeconds}
             />
           ) : null}

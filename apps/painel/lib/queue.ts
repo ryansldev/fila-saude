@@ -24,13 +24,6 @@ export function queueActions(profiles: UserProfile[], unitId: string, sessionSta
   };
 }
 
-const WEIGHT: Record<string, number> = { called: 0, present: 1, remote: 2 };
-
-/** Chamado, na unidade, remotos e depois quem já saiu; dentro de cada grupo, pela senha. */
-export function sortQueue<T extends { ticket: string; state: string }>(items: T[]): T[] {
-  return [...items].sort((a, b) => (WEIGHT[a.state] ?? 3) - (WEIGHT[b.state] ?? 3) || a.ticket.localeCompare(b.ticket));
-}
-
 const LABELS: Record<string, string> = {
   remote: "A caminho",
   present: "Na unidade",
@@ -40,7 +33,7 @@ const LABELS: Record<string, string> = {
   reassigned: "Remanejado",
 };
 
-export const stateLabel = (state: string): string => LABELS[state] ?? state;
+const stateLabel = (state: string): string => LABELS[state] ?? state;
 
 /** Tempo desde a chamada (a tolerância é só um contador, AD-006). */
 export function stopwatch(since: string, now: number): string {
@@ -55,29 +48,10 @@ const PENDING_CHECKS: Record<string, string> = {
   priority: "a prioridade",
 };
 
-/** RN-FILA-05: o QR foi recusado e a recepção precisa conferir isto antes da presença. */
-export function pendingChecksText(pendingChecks: string[]): string | null {
-  if (pendingChecks.length === 0) return null;
-  return `Passe na recepção: conferir ${pendingChecks.map((p) => PENDING_CHECKS[p] ?? p).join(", ")}`;
-}
-
-/**
- * RN-PRES-03 / RN-FILA-05: a recepção marca a presença de qualquer remoto (sem app, não conseguiu ler
- * o QR); com pendência, confere os documentos na mesma ação e pode recusar ("não confere", com motivo).
- */
-export function attendanceButtons(
-  item: { state: string; pendingChecks: string[] },
-  canAttendance: boolean,
-): { mark: string; notMatches: boolean } | null {
-  if (!canAttendance || item.state !== "remote") return null;
-  const pending = item.pendingChecks.length > 0;
-  return { mark: pending ? "Conferir documentos e marcar presença" : "Marcar presença", notMatches: pending };
-}
-
-/** O que comparar com o documento: nascimento e CPF mascarado. */
-export function documentText(d: { birthDate: string; cpf: string | null }): string {
+/** O que comparar com o documento: nascimento e CPF mascarado, cada um no seu lugar da linha. */
+export function documentText(d: { birthDate: string; cpf: string | null }): [string, string] {
   const [a, m, day] = d.birthDate.split("-");
-  return `nasc. ${day}/${m}/${a} · ${d.cpf ? `CPF ${d.cpf}` : "sem CPF"}`;
+  return [`nasc. ${day}/${m}/${a}`, d.cpf ? `CPF ${d.cpf}` : "sem CPF"];
 }
 
 /** PD-46: as estações da unidade que o perfil pode operar (a API recusaria as outras com 403). */
@@ -108,16 +82,6 @@ export function groupQueue<T extends ItemWithState>(items: T[]) {
     inUnit: byTicket(items.filter((i) => i.state === "present")),
     onTheWay: byTicket(items.filter((i) => i.state === "remote" && i.pendingChecks.length === 0)),
     closed: byTicket(items.filter((i) => !["remote", "present", "called"].includes(i.state))),
-  };
-}
-
-/** Números do topo da fila do dia. */
-export function queueCounters(items: ItemWithState[]) {
-  return {
-    inUnit: items.filter((i) => i.state === "present").length,
-    onTheWay: items.filter((i) => i.state === "remote").length,
-    called: items.filter((i) => i.state === "called").length,
-    attended: items.filter((i) => i.state === "done_in_stage").length,
   };
 }
 
@@ -212,6 +176,10 @@ export function emptyQueue(
   timeZone: string,
   canOpen: boolean,
 ): string {
+  // Só sessões que não recebem mais ninguém: o vazio não convida a se inscrever.
+  if (sessions.length > 0 && sessions.every((s) => s.state === "cancelled")) return "Sessão cancelada.";
+  if (sessions.length > 0 && sessions.every((s) => s.state === "closed" || s.state === "cancelled"))
+    return "Sessão encerrada. Ninguém ficou na fila.";
   const planned = sessions.filter((s) => s.state === "planned");
   if (planned.length === 0 || planned.length < sessions.filter((s) => s.state !== "cancelled").length)
     return "Ninguém na fila ainda. Quem se inscrever pelo app aparece aqui.";

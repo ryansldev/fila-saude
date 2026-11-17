@@ -57,8 +57,9 @@ export default function Tv() {
   const [failures, setFailures] = useState(0);
   const [started, setStarted] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcements>(EMPTY_ANNOUNCEMENTS);
-  // A hora do topo, pelo relógio da TV.
+  // A hora do topo: o relógio da TV corrigido pela diferença para o servidor (o da TV pode estar errado).
   const [now, setNow] = useState(() => Date.now());
+  const [skew, setSkew] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 10_000);
     return () => clearInterval(id);
@@ -98,7 +99,10 @@ export default function Tv() {
           setFailures(0);
           if (data.state === "paired") {
             const maxDelay = data.highlightSeconds * 2000;
-            setAnnouncements((a) => receiveCalls(a, data.calls, Date.now(), maxDelay));
+            // A chamada é "recente" pela hora do servidor, não pela da TV.
+            const serverNow = Date.parse(data.now);
+            setSkew(serverNow - Date.now());
+            setAnnouncements((a) => receiveCalls(a, data.calls, serverNow, maxDelay));
           }
         }
       } catch {
@@ -169,7 +173,7 @@ export default function Tv() {
       ) : (
         <>
           <TvPanel
-            now={now}
+            now={now + skew}
             state={state}
             current={announcements.current?.call ?? null}
             last={lastAnnounced(announcements, state.calls).slice(0, 4)}

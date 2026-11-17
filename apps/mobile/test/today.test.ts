@@ -72,6 +72,17 @@ describe("a aba hoje", () => {
     expect(rowFor({ kind: "come" })).toEqual({ box: null, sentence: "venha agora" });
     expect(rowFor({ kind: "waiting" })).toEqual({ box: null, sentence: "a fila ainda não abriu" });
   });
+
+  it("frases que não se contradizem: 5º não é 'o próximo'; reserva e sua vez não são 'a fila não abriu'", () => {
+    expect(rowFor({ kind: "position", position: 5, minutes: 0, present: false, leave: false })).toEqual({
+      box: "5º",
+      sentence: "já já",
+    });
+    expect(rowFor({ kind: "reserve" }).sentence).toBe("na reserva: se alguém desistir, a vaga é sua");
+    expect(rowFor({ kind: "turn", ticket: "C-001", station: "Sala 1" }).sentence).toBe("é a sua vez");
+    expect(rowFor({ kind: "late" }).sentence).toBe("a fila vai abrir");
+    expect(ticketCardFor({ ticket: null, itemState: null }, { kind: "reserve" }).banner).toBe("você está na reserva");
+  });
 });
 
 describe("o número nas abas de baixo", () => {

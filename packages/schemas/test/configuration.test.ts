@@ -298,6 +298,8 @@ describe("tvStateSchema", () => {
       ok(tvStateSchema, {
         state: "paired",
         unit: { id, name: "UBS" },
+        now: exp,
+        timeZone: "America/Sao_Paulo",
         highlightSeconds: 10,
         calls: [{ id: "x", ticket: "C-001", destination: "Sala 1", at: exp }],
         services: [{ name: "Clínico", waiting: 2, onTheWay: 1 }],

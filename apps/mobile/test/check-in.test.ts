@@ -13,6 +13,8 @@ describe("check-in pelo QR no app (RN-PRES-01)", () => {
     expect(readQr("https://exemplo.com")).toBeNull();
     expect(readQr("filasaude://check-in?m=exemplo")).toBeNull();
     expect(readQr("qualquer coisa")).toBeNull();
+    // Um QR qualquer com codificação quebrada não derruba a leitura da câmera.
+    expect(readQr(`filasaude://check-in?m=%E0%A4%A&u=${U}&t=aaa`)).toBeNull();
   });
 
   it("RN-FILA-05: resultado em texto, com a orientação da recepção para quem tem pendência", () => {
@@ -25,6 +27,10 @@ describe("check-in pelo QR no app (RN-PRES-01)", () => {
       rows: [
         "Bia (V-002): passe na recepção para confirmar seus documentos. você ainda não entrou na fila da unidade.",
       ],
+      banner: {
+        title: "passe na recepção",
+        text: "para confirmar seus documentos. você ainda não entrou na fila da unidade.",
+      },
     });
     // Sem senha aberta aqui não é "passe na recepção".
     expect(checkInText([])).toEqual({
@@ -39,6 +45,25 @@ describe("QR lido depois de chamado (revisão 2026-11-14)", () => {
     expect(checkInText([{ person: "Ana", ticket: "V-001", result: "called" }])).toEqual({
       kind: "present",
       rows: ["Ana (V-001): você já foi chamado. vá para a sala indicada na TV."],
+    });
+  });
+});
+
+describe("faixa depois do QR com várias pessoas na conta", () => {
+  it("só quem tem pendência é mandado à recepção; quem entrou não ouve que não entrou", () => {
+    const all = checkInText([{ person: "Bia", ticket: "V-002", result: "pending_check" }]);
+    expect(all.banner).toEqual({
+      title: "passe na recepção",
+      text: "para confirmar seus documentos. você ainda não entrou na fila da unidade.",
+    });
+    const mixed = checkInText([
+      { person: "Ana", ticket: "V-001", result: "present" },
+      { person: "Bia", ticket: "V-002", result: "pending_check" },
+    ]);
+    expect(mixed.kind).toBe("reception");
+    expect(mixed.banner).toEqual({
+      title: "passe na recepção com quem tem pendência",
+      text: "quem aparece abaixo com pendência ainda não entrou na fila da unidade; os outros já entraram.",
     });
   });
 });

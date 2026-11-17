@@ -12,7 +12,12 @@ import { errorMessage } from "@/lib/texts";
 type State =
   | { kind: "reading" }
   | { kind: "sending" }
-  | { kind: "end"; result: "present" | "reception" | "no_ticket"; rows: string[] }
+  | {
+      kind: "end";
+      result: "present" | "reception" | "no_ticket";
+      rows: string[];
+      banner?: { title: string; text: string } | undefined;
+    }
   | { kind: "error"; text: string };
 
 const white = { color: "#ffffff" };
@@ -40,8 +45,8 @@ export default function CheckInByQr() {
         });
         // Só troca de município quando o check-in achou alguma senha da conta naquele município.
         if (r.length > 0 && s.municipality !== qr.municipality) await s.chooseMunicipality(qr.municipality);
-        const { kind, rows } = checkInText(r);
-        setState({ kind: "end", result: kind, rows });
+        const { kind, rows, banner } = checkInText(r);
+        setState({ kind: "end", result: kind, rows, banner });
       } catch (err) {
         setState({ kind: "error", text: errorMessage(err) });
       }
@@ -114,8 +119,8 @@ export default function CheckInByQr() {
         <Banner
           kind="notice"
           large
-          title="passe na recepção"
-          text="para confirmar seus documentos. você ainda não entrou na fila da unidade."
+          title={state.banner?.title ?? "passe na recepção"}
+          text={state.banner?.text ?? "para confirmar seus documentos."}
           style={{ marginTop: 8 }}
         />
         {state.rows.map((l) => (

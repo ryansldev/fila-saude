@@ -295,6 +295,8 @@ export const unitQrSchema = z.object({
   content: z.string().nullable(),
   intervalSeconds: z.number().int().min(1),
   expiresAt: z.iso.datetime().nullable(),
+  /** Hora do servidor na resposta: a barrinha de troca conta por ela, não pelo relógio do computador. */
+  now: z.iso.datetime(),
   sessions: z.array(z.object({ id: z.uuid(), service: z.string() })),
 });
 export type UnitQr = z.infer<typeof unitQrSchema>;

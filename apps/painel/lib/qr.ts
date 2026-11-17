@@ -63,3 +63,19 @@ export const qrVisible = (
   detail: { content: string | null; expiresAt?: string | null } | null,
   error: string | null,
 ): boolean => Boolean(detail?.content) && !error;
+
+/**
+ * Quanto falta para o QR trocar (1 = cheio, 0 = vazio), pelo relógio do servidor: o que faltava quando a
+ * resposta chegou, menos o tempo que passou desde então no computador (que pode estar adiantado).
+ */
+export function qrRemaining(
+  expiresAt: string | null,
+  serverNow: number,
+  receivedAt: number,
+  now: number,
+  intervalSeconds: number,
+): number {
+  if (!expiresAt) return 1;
+  const left = Date.parse(expiresAt) - serverNow - (now - receivedAt);
+  return Math.max(0, Math.min(1, left / (intervalSeconds * 1000)));
+}

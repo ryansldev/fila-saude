@@ -44,7 +44,14 @@ export async function qrFromOpen(
 ): Promise<UnitQr> {
   const open = rows.filter((s) => s.secret !== null);
   const interval = intervalOf(open);
-  if (open.length === 0) return { content: null, intervalSeconds: interval / 1000, expiresAt: null, sessions: [] };
+  if (open.length === 0)
+    return {
+      content: null,
+      intervalSeconds: interval / 1000,
+      expiresAt: null,
+      now: new Date(now).toISOString(),
+      sessions: [],
+    };
   const tokens = await Promise.all(open.map((s) => tokenQr(s.secret as string, now, interval)));
   const url = new URL("filasaude://check-in");
   url.searchParams.set("m", slug);
@@ -54,6 +61,7 @@ export async function qrFromOpen(
     content: url.toString(),
     intervalSeconds: interval / 1000,
     expiresAt: new Date((Math.floor(now / interval) + 1) * interval).toISOString(),
+    now: new Date(now).toISOString(),
     sessions: open.map((s) => ({ id: s.id, service: s.service })),
   };
 }

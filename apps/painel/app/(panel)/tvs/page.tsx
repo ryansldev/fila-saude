@@ -15,8 +15,9 @@ import { useQuery } from "@/lib/use-query";
 
 const WITHOUT_ERRORS: SendingErrors = { general: null, fields: {} };
 
-const when = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "nunca";
+// No fuso da unidade, como o resto do painel.
+const when = (iso: string | null, timeZone: string) =>
+  iso ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone }) : "nunca";
 
 /** Situação da TV como selo: verde quando mandou sinal há pouco. */
 function Situation({ online }: { online: boolean }) {
@@ -37,6 +38,7 @@ export default function Tvs() {
   const api = useApi();
   const confirm = useConfirm();
   const { current, unit } = useCurrentUnit(["configure_services_sessions_stations_tv"]);
+  const timeZone = unit?.timeZone ?? "America/Sao_Paulo";
   const tvs = useQuery<UnitTv[]>(current ? `/v1/panel/units/${current}/tvs` : null, 15_000);
   const [pairing, setPairing] = useState(false);
   const [code, setCode] = useState("");
@@ -109,8 +111,8 @@ export default function Tvs() {
         <DataTable header={["Pareada em", "Último sinal", "Situação", ""]}>
           {tvs.detail.map((t) => (
             <TableRow key={t.id}>
-              <TableCell>{when(t.pairedAt)}</TableCell>
-              <TableCell>{when(t.lastSignalAt)}</TableCell>
+              <TableCell>{when(t.pairedAt, timeZone)}</TableCell>
+              <TableCell>{when(t.lastSignalAt, timeZone)}</TableCell>
               <TableCell>
                 <Situation online={t.online} />
               </TableCell>

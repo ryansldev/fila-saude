@@ -148,6 +148,8 @@ export async function tvScreen(db: TenantDb, slug: string, token: string | null,
   return {
     state: "paired",
     unit: { id: u.id, name: u.name },
+    now: new Date(now).toISOString(),
+    timeZone: u.timeZone,
     highlightSeconds: unitConfig(u).tvHighlightSeconds,
     calls,
     services: [...byService].map(([name, n]) => ({ name, ...n })).sort((a, b) => a.name.localeCompare(b.name)),

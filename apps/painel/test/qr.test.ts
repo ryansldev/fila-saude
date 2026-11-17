@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
-import { qrVisible, speechWithoutSession, styledQr } from "@/lib/qr";
+import { qrRemaining, qrVisible, speechWithoutSession, styledQr } from "@/lib/qr";
 
 const require = createRequire(import.meta.url);
 const sharp = require("sharp");
@@ -54,5 +54,17 @@ describe("QR na tela", () => {
     expect(qrVisible({ content: null, expiresAt: null }, null)).toBe(false);
     expect(qrVisible({ content: "filasaude://check-in?t=a", expiresAt: past }, "Sem conexão")).toBe(false);
     expect(qrVisible(null, null)).toBe(false);
+  });
+});
+
+describe("barrinha de troca do QR", () => {
+  it("conta pelo relógio do servidor, mesmo com o do computador adiantado", () => {
+    const server = Date.parse("2026-11-17T12:00:15.000Z");
+    const expiresAt = "2026-11-17T12:00:30.000Z"; // faltam 15 s de 30
+    const local = server + 40_000; // computador 40 s adiantado
+    expect(qrRemaining(expiresAt, server, local, local, 30)).toBeCloseTo(0.5);
+    expect(qrRemaining(expiresAt, server, local, local + 6_000, 30)).toBeCloseTo(0.3);
+    expect(qrRemaining(expiresAt, server, local, local + 60_000, 30)).toBe(0);
+    expect(qrRemaining(null, server, local, local, 30)).toBe(1);
   });
 });

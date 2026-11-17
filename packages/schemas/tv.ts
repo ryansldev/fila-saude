@@ -22,6 +22,10 @@ export const tvStateSchema = z.discriminatedUnion("state", [
   z.object({
     state: z.literal("paired"),
     unit: z.object({ id: z.uuid(), name: z.string() }),
+    /** Hora do servidor: a TV anuncia e mostra a hora por ela (o relógio da TV pode estar errado). */
+    now: z.iso.datetime(),
+    /** Fuso da unidade, para o relógio da TV. */
+    timeZone: z.string(),
     highlightSeconds: z.number().int(),
     /** Mais recente primeiro; a TV anuncia as novas em fila (RN-TV-07). */
     calls: z.array(callInTvSchema),

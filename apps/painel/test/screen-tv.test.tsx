@@ -5,11 +5,14 @@ import { TvPanel } from "@/components/tv/tv-panel";
 
 afterEach(cleanup);
 
-const NOW = new Date(2026, 10, 16, 9, 42).getTime();
+// 12:42 UTC = 09:42 em Brasília: a TV mostra a hora no fuso da unidade, não no do aparelho.
+const NOW = Date.UTC(2026, 10, 16, 12, 42);
 
 const state: Extract<TvState, { state: "paired" }> = {
   state: "paired",
   unit: { id: "11111111-1111-4111-8111-111111111111", name: "UBS Centro" },
+  now: new Date(NOW).toISOString(),
+  timeZone: "America/Sao_Paulo",
   highlightSeconds: 10,
   calls: [],
   services: [

@@ -12,7 +12,12 @@ export function readQr(content: string): ReadQr | null {
   const params = new Map<string, string>();
   for (const pair of m[1].split("&")) {
     const [k, v = ""] = pair.split("=");
-    if (k) params.set(k, decodeURIComponent(v));
+    if (!k) continue;
+    try {
+      params.set(k, decodeURIComponent(v));
+    } catch {
+      return null; // codificação quebrada: outro QR qualquer, não o da unidade
+    }
   }
   return fromParameters({ m: params.get("m"), u: params.get("u"), t: params.get("t") });
 }
@@ -36,6 +41,8 @@ const RECEPTION = "passe na recepção para confirmar seus documentos. você ain
 export function checkInText(list: Result[]): {
   kind: "present" | "reception" | "no_ticket";
   rows: string[];
+  /** A faixa grande quando alguém precisa passar na recepção (só quem tem pendência). */
+  banner?: { title: string; text: string };
 } {
   if (list.length === 0) return { kind: "no_ticket", rows: ["você não tem senha aberta nesta unidade agora."] };
   const rows = list.map((r) => {
@@ -45,5 +52,17 @@ export function checkInText(list: Result[]): {
     if (r.result === "called") return `${forWhom}: você já foi chamado. vá para a sala indicada na TV.`;
     return `${forWhom}: você está na unidade. fique de olho na TV e no celular.`;
   });
-  return { kind: list.some((r) => r.result === "pending_check") ? "reception" : "present", rows };
+  const pending = list.filter((r) => r.result === "pending_check").length;
+  if (pending === 0) return { kind: "present", rows };
+  const banner =
+    pending === list.length
+      ? {
+          title: "passe na recepção",
+          text: "para confirmar seus documentos. você ainda não entrou na fila da unidade.",
+        }
+      : {
+          title: "passe na recepção com quem tem pendência",
+          text: "quem aparece abaixo com pendência ainda não entrou na fila da unidade; os outros já entraram.",
+        };
+  return { kind: "reception", rows, banner };
 }

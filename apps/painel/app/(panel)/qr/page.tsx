@@ -64,6 +64,7 @@ export default function StaffEntryQr() {
               <EntryQr
                 content={qr.detail.content}
                 expiresAt={qr.detail.expiresAt}
+                serverNow={qr.detail.now}
                 intervalSeconds={qr.detail.intervalSeconds}
               />
               <p className="mt-2 text-xs text-slate-500">troca sozinho a cada {qr.detail.intervalSeconds} s</p>

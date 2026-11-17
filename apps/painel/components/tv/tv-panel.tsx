@@ -8,8 +8,9 @@ type Call = { id: string; ticket: string; destination: string };
 const CARD = "rounded-[1.6vw] border-[0.18vw] border-b-[0.45vw] border-[var(--ds-line)] bg-white";
 const LABEL = "text-[1.25vw] font-extrabold tracking-[0.12em] text-slate-500 uppercase";
 
-const hour = (now: number) =>
-  new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false });
+// No fuso da unidade: aparelhos de TV costumam vir em UTC.
+const hour = (now: number, timeZone: string) =>
+  new Date(now).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone });
 
 /**
  * A tela da TV pareada (RN-TV-02/03/05), branca e azul: topo com a marca, a unidade e a hora; a chamada
@@ -36,7 +37,7 @@ export function TvPanel({
           fila saúde
         </span>
         <span className="truncate text-center text-[1.6vw] font-extrabold">{state.unit.name}</span>
-        <span className="text-right text-[2.2vw] font-black tabular-nums">{hour(now)}</span>
+        <span className="text-right text-[2.2vw] font-black tabular-nums">{hour(now, state.timeZone)}</span>
       </header>
       <div className="grid min-h-0 flex-1 grid-cols-[2fr_1fr] grid-rows-[minmax(0,1.5fr)_minmax(0,1fr)] gap-[1.4vw] px-[2.6vw] pt-[1.4vw] pb-[2.6vw]">
         <section
