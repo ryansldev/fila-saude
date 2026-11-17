@@ -315,3 +315,14 @@ Design: [app-hoje.md](../design-system/app-hoje.md).
 | HO4 | O número da aba "atendimentos" nas outras abas | Aparece em todas as abas; "unidades" e "conta" buscam a lista uma vez ao abrir, sem repetir a cada 3 s (pode ficar velho enquanto a pessoa está nelas) | Repetir a consulta em todas as abas | Baixo |
 | HO5 | O sininho | No topo de todas as telas com conta; tocar abre a tela dos avisos, que mostra se estão ligados, oferece ligar ou leva aos ajustes do celular | Uma gaveta no lugar da tela; só nas abas | Baixo |
 | HO6 | Dr. Lino no "hoje" | Sem a caixa branca, direto no fundo cinza-claro (`#f4f7f8`), como o usuário pediu depois de ver a faixa branca | Faixa branca de ponta a ponta (testada e recusada) ou redesenhar o jaleco branco no SVG | Baixo |
+
+## App: a inscrição com o Dr. Lino e a relação (2026-11-16)
+
+Design: [app-inscricao.md](../design-system/app-inscricao.md).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| IN1 | Texto das declarações para outra pessoa | Responsável legal: "declaro que sou responsável legal por {Ana}"; quem cuida ou ajuda: "{Ana} sabe e concorda com esta inscrição". Só o responsável legal responde pela pessoa; para adulto vale a concordância (mandato, CC art. 656); o dado de saúde segue a LGPD art. 11, II, sem depender disso. Provisório até o D5 | Uma declaração única para todos | Só o texto (app) |
+| IN2 | As relações | Três, como as pessoas se veem: "sou mãe, pai ou responsável legal de {Ana}", "cuido de {Ana} no dia a dia", "sou da família ou amigo de {Ana} e estou ajudando" (inclui quem faz um favor aos pais ou avós) | Mais opções ou separar família de amigo | Uma migração de valores e o texto no painel |
+| IN3 | O que o painel mostra | Pílula "por Carla (família ou amigo)" na linha da Fila do dia ("responsável legal", "cuida no dia a dia"), sem gênero e só com o primeiro nome | Nome completo, ou também na estação | Baixo |
+| IN4 | Recusa da conferência num dado | A conferência roda depois da relação; erro do CPF volta para a tela do CPF, erro da pessoa para a do nome | Conferir a cada tela | Uma chamada a mais por tela |

@@ -84,10 +84,28 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     expect(r.corpo).toMatchObject({ estado: "confirmada", classificacao: { nivel: "rotina", apoio: false } });
     expect(await inscrever(c.sessaoId, ana.cookie, eu)).toMatchObject({ status: 409, corpo: { erro: "duplicada" } });
     const filha = await inscrever(c.sessaoId, ana.cookie, {
-      paraQuem: { tipo: "outra", nome: "Bia Paciente", nascimento: "2015-02-02", cpf: null },
+      paraQuem: {
+        tipo: "outra",
+        relacao: "responsavel_legal",
+        declarou: true,
+        nome: "Bia Paciente",
+        nascimento: "2015-02-02",
+        cpf: null,
+      },
       respostas: ROTINA,
     });
     expect(filha.status).toBe(201);
+    // 2026-11-16: para outra pessoa, a relação e a declaração são obrigatórias.
+    const semRelacao = { tipo: "outra", nome: "Caio Paciente", nascimento: "2016-04-04", cpf: null };
+    expect((await inscrever(c.sessaoId, ana.cookie, { paraQuem: semRelacao, respostas: ROTINA })).status).toBe(400);
+    expect(
+      (
+        await inscrever(c.sessaoId, ana.cookie, {
+          paraQuem: { ...semRelacao, relacao: "cuidador", declarou: false },
+          respostas: ROTINA,
+        })
+      ).status,
+    ).toBe(400);
     expect((await inscrever(privadaId, outro.cookie, eu)).corpo.erro).toBe("sessao_privada");
     const emergencia = await inscrever(c.sessaoId, outro.cookie, {
       paraQuem: { tipo: "eu" },
@@ -116,6 +134,11 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     expect(minha).toMatchObject({ senha: "C-001", itemEstado: "remoto", estimativa: { tipo: "venha_agora" } });
 
     const recepcao = (await usuarioLogado(c.slug, c.gestor, "recepcao", ocupacao(c.unidadeId, "recepcao"))).cookie;
+    // A recepção vê quem inscreveu a Bia e a relação; a Ana se inscreveu sozinha.
+    const fila = (await c.pedir("GET", `/v1/painel/sessoes/${c.sessaoId}/fila`, recepcao)).corpo;
+    const porNome = (nome: string) => fila.itens.find((i: { nome: string }) => i.nome === nome);
+    expect(porNome("Bia Paciente").responsavel).toEqual({ nome: "Ana", relacao: "responsavel_legal" });
+    expect(porNome("Ana Paciente").responsavel).toBeNull();
     await c.pedir("POST", `/v1/painel/sessoes/${c.sessaoId}/presenca`, recepcao, {
       entradaId: minha.entradaId,
       resultado: "confere",

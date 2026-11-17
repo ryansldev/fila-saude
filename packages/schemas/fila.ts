@@ -15,6 +15,10 @@ export const estadoItemSchema = z.enum([
   "remanejado",
 ]);
 
+/** Quem inscreve outra pessoa diz o que é dela (2026-11-16; texto da declaração provisório até o D5). */
+export const relacaoSchema = z.enum(["responsavel_legal", "cuidador", "familiar_autorizado"]);
+export type Relacao = z.infer<typeof relacaoSchema>;
+
 /** Item da fila como o painel vê: nome para a equipe; nada clínico além do nível de risco usado na ordem. */
 export const itemDaFilaSchema = z.object({
   id: z.string(),
@@ -31,6 +35,8 @@ export const itemDaFilaSchema = z.object({
   pendencias: z.array(z.string()),
   /** RN-PRES-03: para comparar com o documento; CPF mascarado (LGPD), só os dígitos do meio. */
   documento: z.object({ nascimento: z.string(), cpf: z.string().nullable() }),
+  /** Inscrita por outra conta: o primeiro nome de quem inscreveu e a relação. `null` quando foi a própria pessoa. */
+  responsavel: z.object({ nome: z.string(), relacao: relacaoSchema }).nullable(),
 });
 
 export const filaDaSessaoSchema = z.object({
@@ -169,6 +175,8 @@ export const inscricaoEntradaSchema = z.object({
       nascimento: nascimentoSchema,
       // Opcional, mas quando vem é um CPF válido: senão a inscrição cai em outra pessoa (pessoa_local pelo CPF).
       cpf: cpfSchema.nullable(),
+      relacao: relacaoSchema,
+      declarou: z.literal(true),
     }),
   ]),
   respostas: respostasSchema,

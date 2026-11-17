@@ -61,10 +61,22 @@ describe("lista de espera pelo app (T5.1)", () => {
     expect(dup).toMatchObject({ status: 409, corpo: { erro: "duplicada", dados: { entradaId: r.corpo.entradaId } } });
 
     const filho = await entrar(c.servicoId, ana.cookie, {
-      paraQuem: { tipo: "outra", nome: "Caio Lista", nascimento: "2018-03-03", cpf: null },
+      paraQuem: {
+        tipo: "outra",
+        relacao: "responsavel_legal",
+        declarou: true,
+        nome: "Caio Lista",
+        nascimento: "2018-03-03",
+        cpf: null,
+      },
       respostas: ROTINA,
     });
     expect(filho.status).toBe(201);
+    const semRelacao = await entrar(c.servicoId, ana.cookie, {
+      paraQuem: { tipo: "outra", nome: "Duda Lista", nascimento: "2019-05-05", cpf: null },
+      respostas: ROTINA,
+    });
+    expect(semRelacao.status).toBe(400);
 
     const minhas = (await app("GET", `${m()}/minhas`, ana.cookie)).corpo;
     expect(
@@ -77,7 +89,14 @@ describe("lista de espera pelo app (T5.1)", () => {
 
   it("duplicada de outra conta não revela a entrada", async () => {
     const caio = {
-      paraQuem: { tipo: "outra", nome: "Caio Lista", nascimento: "2018-03-03", cpf: null },
+      paraQuem: {
+        tipo: "outra",
+        relacao: "responsavel_legal",
+        declarou: true,
+        nome: "Caio Lista",
+        nascimento: "2018-03-03",
+        cpf: null,
+      },
       respostas: ROTINA,
     };
     const dup = await entrar(c.servicoId, outro.cookie, caio);
@@ -118,7 +137,14 @@ describe("lista de espera pelo app (T5.1)", () => {
     ).entradaId;
     expect((await app("POST", `${m()}/entradas/${id}/cancelar`, ana.cookie)).status).toBe(200);
     const caio = {
-      paraQuem: { tipo: "outra", nome: "Caio Lista", nascimento: "2018-03-03", cpf: null },
+      paraQuem: {
+        tipo: "outra",
+        relacao: "responsavel_legal",
+        declarou: true,
+        nome: "Caio Lista",
+        nascimento: "2018-03-03",
+        cpf: null,
+      },
       respostas: ROTINA,
     };
     expect((await entrar(c.servicoId, ana.cookie, caio)).status).toBe(201);

@@ -19,7 +19,14 @@ async function app(metodo: string, caminho: string, cookie?: string, corpo?: unk
   return { status: r.status, corpo: texto ? JSON.parse(texto) : undefined };
 }
 const m = () => `/v1/municipios/${c.slug}`;
-const outra = (nome: string, nascimento: string, cpf: string | null) => ({ tipo: "outra", nome, nascimento, cpf });
+const outra = (nome: string, nascimento: string, cpf: string | null) => ({
+  tipo: "outra",
+  relacao: "responsavel_legal",
+  declarou: true,
+  nome,
+  nascimento,
+  cpf,
+});
 const inscrever = (cookie: string, paraQuem: unknown) =>
   app("POST", `${m()}/sessoes/${c.sessaoId}/inscricoes`, cookie, { paraQuem, respostas: ROTINA });
 const verificar = (cookie: string, paraQuem: unknown) =>

@@ -35,7 +35,7 @@ A recepção PODE criar entradas pelo painel para quem não tem app; a pessoa vi
 *Decisões: AD-035.*
 
 **RN-LE-05 · Para quem é**
-QUANDO o paciente entrar na lista ou se inscrever, O SISTEMA DEVE perguntar **para quem é**: ele mesmo ou outra pessoa. Para outra pessoa, ele informa nome, nascimento e CPF (se houver) e responde o questionário por ela. Classificação, prioridade legal e faltas são da pessoa atendida (RN-ID-06 para falta antes da conferência). O responsável recebe os pushes, vê a posição e lê o QR ao chegar com ela; o app mostra as inscrições de cada pessoa separadas. Não há cadastro de dependentes.
+QUANDO o paciente entrar na lista ou se inscrever, O SISTEMA DEVE perguntar **para quem é**: ele mesmo ou outra pessoa. Para outra pessoa, ele informa nome, nascimento e CPF (se houver), **a relação com ela** (mãe, pai ou responsável legal; quem cuida dela no dia a dia; família ou amigo que está ajudando) e faz a **declaração da relação**: o responsável legal declara que é responsável legal por ela; quem cuida ou ajuda declara que ela sabe e concorda com a inscrição. Sem as duas, a inscrição é recusada. O dado de saúde é tratado pelo município pelas bases da LGPD art. 11, II; a declaração registra quem inscreveu e em que condição (textos provisórios até o D5). Ele responde o questionário por ela, e a recepção vê na Fila do dia quem inscreveu e a relação. Classificação, prioridade legal e faltas são da pessoa atendida (RN-ID-06 para falta antes da conferência). O responsável recebe os pushes, vê a posição e lê o QR ao chegar com ela; o app mostra as inscrições de cada pessoa separadas. Não há cadastro de dependentes.
 *Decisões: AD-018.*
 
 **RN-LE-06 · Conferência da pessoa atendida**

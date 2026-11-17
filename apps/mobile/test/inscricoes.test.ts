@@ -2,6 +2,7 @@ import type { MinhaEntrada } from "@fila-saude/schemas/fila";
 import { describe, expect, it } from "vitest";
 import { ErroDaApi } from "@/lib/api";
 import {
+  declaracao,
   entradaAtiva,
   erroDaVerificacao,
   inscricaoNaAgenda,
@@ -9,6 +10,9 @@ import {
   mesmoNome,
   outraPessoaJaInscrita,
   paraMimNoServico,
+  RELACOES,
+  telaDoErro,
+  tituloDoPronto,
 } from "@/lib/inscricoes";
 
 const CURATIVOS = "00000000-0000-4000-8000-0000000000aa";
@@ -154,5 +158,48 @@ describe("conferência antes do questionário (/verificar): onde o erro aparece 
 
   it("sem internet ou outro erro: faixa sem saída (tentar de novo)", () => {
     expect(erroDaVerificacao(new ErroDaApi(0, "sem_conexao"))).toMatchObject({ tipo: "faixa", saida: null });
+  });
+});
+
+describe("inscrição para outra pessoa: a relação (2026-11-16)", () => {
+  it("as três relações, como as pessoas se veem, sem '(a)'", () => {
+    expect(RELACOES.map((r) => [r.id, r.texto("Ana")])).toEqual([
+      ["responsavel_legal", "sou mãe, pai ou responsável legal de Ana"],
+      ["cuidador", "cuido de Ana no dia a dia"],
+      ["familiar_autorizado", "sou da família ou amigo de Ana e estou ajudando"],
+    ]);
+  });
+
+  it("só o responsável legal declara que responde pela pessoa; os outros, que ela sabe e concorda", () => {
+    expect(declaracao("responsavel_legal", "Ana")).toBe("declaro que sou responsável legal por Ana");
+    expect(declaracao("cuidador", "Ana")).toBe("Ana sabe e concorda com esta inscrição");
+    expect(declaracao("familiar_autorizado", "Ana")).toBe("Ana sabe e concorda com esta inscrição");
+  });
+
+  it("recusa da conferência num dado volta para a tela dele", () => {
+    expect(telaDoErro({ tipo: "campo", campo: "cpf", texto: "x" })).toBe("cpf");
+    expect(telaDoErro({ tipo: "pessoa", texto: "x" })).toBe("nome");
+    expect(telaDoErro({ tipo: "faixa", titulo: "x", texto: "y", saida: null })).toBeNull();
+  });
+});
+
+describe("o 'pronto!' da inscrição, sem '(a)'", () => {
+  it("para mim e para outra pessoa", () => {
+    expect(tituloDoPronto("inscrito", "eu", "")).toEqual({ titulo: "prontinho!", texto: "a vaga é sua." });
+    expect(tituloDoPronto("inscrito", "outra", "Ana")).toEqual({
+      titulo: "prontinho!",
+      texto: "a vaga de Ana está garantida.",
+    });
+    expect(tituloDoPronto("lista", "eu", "")).toEqual({ titulo: "prontinho!", texto: "você está na lista de espera." });
+    expect(tituloDoPronto("lista", "outra", "Ana").texto).toBe("Ana está na lista de espera.");
+    expect(tituloDoPronto("reserva", "outra", "Ana")).toEqual({
+      titulo: "as vagas acabaram",
+      texto: "Ana está na lista de reserva desta data.",
+    });
+    expect(tituloDoPronto("pedido", "eu", "").titulo).toBe("falta o pedido médico");
+    expect(tituloDoPronto("refeito", "eu", "")).toEqual({
+      titulo: "respostas atualizadas",
+      texto: "a unidade já vê as respostas novas.",
+    });
   });
 });

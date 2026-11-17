@@ -9,7 +9,7 @@ import {
   origemDaSessao,
   temPrioridade,
 } from "@fila-saude/domain";
-import type { FilaDaSessao, FilaDeHoje, HojeNaUnidade } from "@fila-saude/schemas/fila";
+import type { FilaDaSessao, FilaDeHoje, HojeNaUnidade, ItemDaFila } from "@fila-saude/schemas/fila";
 import { and, asc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 import { exigirUnidade, SESSAO } from "infra/config/comum";
 import { exigirSessao, paraSessao } from "infra/config/sessoes";
@@ -25,6 +25,7 @@ import { ErroApi } from "infra/erros";
 import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
 import { condicoesNaUnidade } from "infra/painel/guard";
 import { lerDia, montarDia, naSessao } from "./dia";
+import { primeiroNome } from "./nomes";
 
 // "52998224725" → "•••.982.247-••": o bastante para conferir com o documento sem expor o CPF inteiro.
 const cpfMascarado = (cpf: string | null) => (cpf ? `•••.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-••` : null);
@@ -37,6 +38,34 @@ async function documentosDasEntradas(db: BancoDoTenant, ids: string[]) {
     .innerJoin(pessoaLocal, eq(entrada.pessoaLocalId, pessoaLocal.id))
     .where(inArray(entrada.id, ids));
   return new Map(linhas.map((l) => [l.id, { nascimento: l.nascimento, cpf: cpfMascarado(l.cpf) }]));
+}
+
+/** Inscrita por outra conta (2026-11-16): o primeiro nome de quem inscreveu, do banco central, e a relação. */
+async function responsaveisDasEntradas(db: BancoDoTenant, ids: string[]) {
+  const porEntrada = new Map<string, NonNullable<ItemDaFila["responsavel"]>>();
+  if (ids.length === 0) return porEntrada;
+  const linhas = (
+    await db
+      .select({ id: entrada.id, relacao: entrada.relacaoResponsavel, pacienteId: entrada.responsavelPacienteId })
+      .from(entrada)
+      .where(inArray(entrada.id, ids))
+  ).filter((l) => l.relacao && l.pacienteId);
+  if (linhas.length === 0) return porEntrada;
+  const contas = await database
+    .select({ id: paciente.id, nome: paciente.name })
+    .from(paciente)
+    .where(
+      inArray(
+        paciente.id,
+        linhas.map((l) => l.pacienteId as string),
+      ),
+    );
+  const nomes = new Map(contas.map((c) => [c.id, primeiroNome(c.nome)]));
+  for (const l of linhas) {
+    const nome = nomes.get(l.pacienteId as string);
+    if (nome && l.relacao) porEntrada.set(l.id, { nome, relacao: l.relacao });
+  }
+  return porEntrada;
 }
 
 export async function nomesDasEntradas(db: BancoDoTenant, ids: string[]): Promise<Map<string, string>> {
@@ -60,6 +89,10 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
     db,
     itens.map((i) => i.entradaId),
   );
+  const responsaveis = await responsaveisDasEntradas(
+    db,
+    itens.map((i) => i.entradaId),
+  );
   const naReserva = (
     await db.select({ estado: entrada.estado }).from(entrada).where(eq(entrada.sessaoId, sessaoId))
   ).filter((e) => e.estado === "na_reserva").length;
@@ -78,6 +111,7 @@ async function paraFila(db: BancoDoTenant, sessaoId: string, dia: DiaSessao | nu
       estacaoId: dia?.estacoes.find((e) => e.chamadoItemId === i.id)?.id ?? null,
       pendencias: i.pendencias,
       documento: documentos.get(i.entradaId) ?? { nascimento: "", cpf: null },
+      responsavel: responsaveis.get(i.entradaId) ?? null,
     })),
     reserva: naReserva,
   };

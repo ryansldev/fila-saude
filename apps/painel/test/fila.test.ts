@@ -16,6 +16,7 @@ import {
   rotuloDoEstado,
   textoDasPendencias,
   textoDoDocumento,
+  textoDoResponsavel,
 } from "@/lib/fila";
 
 const item = (senha: string, estado: string) => ({ senha, estado });
@@ -249,5 +250,22 @@ describe("Fila do dia: tempo curto e fila vazia", () => {
     expect(filaVazia([s("aberta", 0)], "America/Sao_Paulo", true)).toBe(
       "Ninguém na fila ainda. Quem se inscrever pelo app aparece aqui.",
     );
+  });
+});
+
+describe("quem inscreveu outra pessoa (2026-11-16)", () => {
+  it("o primeiro nome e a relação, sem gênero", () => {
+    expect(textoDoResponsavel({ nome: "Bruno", relacao: "responsavel_legal" })).toEqual({
+      texto: "por Bruno (responsável legal)",
+      rotulo: "inscrição feita por Bruno, responsável legal",
+    });
+    expect(textoDoResponsavel({ nome: "Bruno", relacao: "cuidador" })?.texto).toBe("por Bruno (cuida no dia a dia)");
+    expect(textoDoResponsavel({ nome: "Bruno", relacao: "familiar_autorizado" })?.texto).toBe(
+      "por Bruno (família ou amigo)",
+    );
+  });
+
+  it("inscrita pela própria pessoa: nada", () => {
+    expect(textoDoResponsavel(null)).toBeNull();
   });
 });

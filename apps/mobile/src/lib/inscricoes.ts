@@ -1,4 +1,4 @@
-import type { MinhaEntrada } from "@fila-saude/schemas/fila";
+import type { MinhaEntrada, Relacao } from "@fila-saude/schemas/fila";
 import { ErroDaApi } from "./api";
 import { mensagemDoErro } from "./textos";
 import { CPF_DA_CONTA } from "./validacao";
@@ -167,3 +167,59 @@ export function servicosComLista(
 /** I9: refazer o questionário pelo app só enquanto está na lista; no dia vale "meus sintomas pioraram". */
 export const podeRefazer = (e: Pick<MinhaEntrada, "estado">): boolean =>
   ["aguardando", "alocada", "confirmada"].includes(e.estado);
+
+/** Quem inscreve outra pessoa diz o que é dela (2026-11-16), como as pessoas se veem. Textos provisórios até o D5. */
+export const RELACOES: readonly { id: Relacao; texto: (nome: string) => string }[] = [
+  { id: "responsavel_legal", texto: (n) => `sou mãe, pai ou responsável legal de ${n}` },
+  { id: "cuidador", texto: (n) => `cuido de ${n} no dia a dia` },
+  { id: "familiar_autorizado", texto: (n) => `sou da família ou amigo de ${n} e estou ajudando` },
+];
+
+/**
+ * A declaração depende da relação: só o responsável legal (pais, tutor, curador) responde pela pessoa; para
+ * quem cuida ou ajuda um adulto, vale que ele saiba e concorde (mandato, Código Civil art. 656). O dado de
+ * saúde em si é tratado pelo município sem depender disso (LGPD art. 11, II). Provisório até o D5.
+ */
+export const declaracao = (relacao: Relacao, nome: string) =>
+  relacao === "responsavel_legal"
+    ? `declaro que sou responsável legal por ${nome}`
+    : `${nome} sabe e concorda com esta inscrição`;
+
+/** Os dados de outra pessoa, uma tela cada; a relação fecha. */
+export type PassoDaPessoa = "nome" | "nascimento" | "cpf" | "relacao";
+
+/** Recusa da conferência (`/verificar`) num dado: a tela para onde a pessoa volta para corrigir. */
+export function telaDoErro(e: ErroDaVerificacao): PassoDaPessoa | null {
+  if (e.tipo === "campo") return "cpf";
+  if (e.tipo === "pessoa") return "nome";
+  return null;
+}
+
+export type FimDaInscricao = "inscrito" | "lista" | "reserva" | "pedido" | "refeito";
+
+/** O "pronto!" (2026-11-16): título curto e a frase, sem "(a)"; para outra pessoa, com o nome dela. */
+export function tituloDoPronto(
+  fim: FimDaInscricao,
+  quem: "eu" | "outra" | null,
+  nome: string,
+): { titulo: string; texto: string } {
+  const outra = quem === "outra";
+  switch (fim) {
+    case "inscrito":
+      return { titulo: "prontinho!", texto: outra ? `a vaga de ${nome} está garantida.` : "a vaga é sua." };
+    case "lista":
+      return {
+        titulo: "prontinho!",
+        texto: outra ? `${nome} está na lista de espera.` : "você está na lista de espera.",
+      };
+    case "reserva":
+      return {
+        titulo: "as vagas acabaram",
+        texto: outra ? `${nome} está na lista de reserva desta data.` : "você está na lista de reserva desta data.",
+      };
+    case "pedido":
+      return { titulo: "falta o pedido médico", texto: "leve o pedido na recepção da unidade antes do dia." };
+    case "refeito":
+      return { titulo: "respostas atualizadas", texto: "a unidade já vê as respostas novas." };
+  }
+}

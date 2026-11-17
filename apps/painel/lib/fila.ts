@@ -1,4 +1,5 @@
 import { type Acao, condicoes, instanteParaLocal, type Perfil, pode } from "@fila-saude/domain";
+import type { Relacao } from "@fila-saude/schemas/fila";
 import type { PerfilDoUsuario } from "@/lib/navegacao";
 
 const naUnidade = (perfis: PerfilDoUsuario[], unidadeId: string) =>
@@ -212,4 +213,19 @@ export function filaVazia(
   const inscritos = planejadas.reduce((n, s) => n + s.ocupadas, 0);
   const comoAbrir = podeAbrir ? " Escolha o serviço acima para abrir a sessão." : "";
   return `A fila abre às ${hora}. Inscritos até agora: ${inscritos}.${comoAbrir}`;
+}
+
+const RELACAO: Record<Relacao, string> = {
+  responsavel_legal: "responsável legal",
+  cuidador: "cuida no dia a dia",
+  familiar_autorizado: "família ou amigo",
+};
+
+/** Quem inscreveu outra pessoa (2026-11-16): a pílula da linha, sem gênero ("por Bruno (responsável legal)"). */
+export function textoDoResponsavel(r: { nome: string; relacao: Relacao } | null) {
+  if (!r) return null;
+  return {
+    texto: `por ${r.nome} (${RELACAO[r.relacao]})`,
+    rotulo: `inscrição feita por ${r.nome}, ${RELACAO[r.relacao]}`,
+  };
 }

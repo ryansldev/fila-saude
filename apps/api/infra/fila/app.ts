@@ -126,7 +126,7 @@ export async function pessoaDoPedido(
     if (!conta) throw new ErroApi(401, "nao_autenticado");
     return { ...conta, pacienteId: p.pacienteId };
   }
-  const { nome, nascimento, cpf } = paraQuem;
+  const { nome, nascimento, cpf, relacao } = paraQuem;
   const digitos = cpf ? cpf.replace(/\D/g, "") : null;
   if (digitos) {
     const [dono] = await database.select({ id: paciente.id }).from(paciente).where(eq(paciente.cpf, digitos));
@@ -140,7 +140,7 @@ export async function pessoaDoPedido(
         "Essa pessoa já tem conta no Fila Saúde. Ela se inscreve pela própria conta.",
       );
   }
-  return { nome, nascimento, cpf: digitos, pacienteId: null };
+  return { nome, nascimento, cpf: digitos, pacienteId: null, relacao };
 }
 
 // T3.3 / AD-018: "para mim" usa os dados da conta; "outra pessoa" fica com a conta como responsável.

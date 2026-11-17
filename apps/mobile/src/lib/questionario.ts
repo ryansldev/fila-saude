@@ -17,13 +17,8 @@ export const NENHUM = "nenhum";
 
 type Opcoes = readonly (readonly [string, string])[];
 
-export const PERGUNTAS: Record<
-  Tela,
-  { pergunta: string; perguntaOutra: string; multipla: boolean; opcoes: Opcoes; nenhum?: string }
-> = {
+export const PERGUNTAS: Record<Tela, { multipla: boolean; opcoes: Opcoes; nenhum?: string }> = {
   alarmes: {
-    pergunta: "você está com algum destes agora?",
-    perguntaOutra: "a pessoa está com algum destes agora?",
     multipla: true,
     nenhum: "nenhum destes",
     opcoes: [
@@ -37,8 +32,6 @@ export const PERGUNTAS: Record<
     ],
   },
   motivo: {
-    pergunta: "por que você quer o atendimento?",
-    perguntaOutra: "por que ela precisa do atendimento?",
     multipla: false,
     opcoes: [
       ["novo", "problema novo ou que piorou"],
@@ -48,8 +41,6 @@ export const PERGUNTAS: Record<
     ],
   },
   gravidade: {
-    pergunta: "como está esse problema?",
-    perguntaOutra: "como está esse problema?",
     multipla: false,
     opcoes: [
       ["leve", "leve, faço as coisas normalmente"],
@@ -58,8 +49,6 @@ export const PERGUNTAS: Record<
     ],
   },
   condicoes: {
-    pergunta: "você tem alguma destas condições?",
-    perguntaOutra: "ela tem alguma destas condições?",
     multipla: true,
     nenhum: "nenhuma",
     opcoes: [
@@ -72,8 +61,6 @@ export const PERGUNTAS: Record<
     ],
   },
   grupos: {
-    pergunta: "alguma destas se aplica a você?",
-    perguntaOutra: "alguma destas se aplica a quem vai ser atendido?",
     multipla: true,
     nenhum: "nenhuma",
     opcoes: [
@@ -89,9 +76,23 @@ export const PERGUNTAS: Record<
   },
 };
 
-/** A pergunta na pessoa certa: "você" para mim, terceira pessoa para quem a conta inscreve. */
-export const perguntaDe = (tela: Tela, quem: "eu" | "outra" | null) =>
-  quem === "outra" ? PERGUNTAS[tela].perguntaOutra : PERGUNTAS[tela].pergunta;
+const FALAS: Record<Tela, { eu: string; outra: (nome: string) => string }> = {
+  alarmes: {
+    eu: "antes de tudo: você está com algum destes agora?",
+    outra: (n) => `antes de tudo: ${n} está com algum destes agora?`,
+  },
+  motivo: { eu: "e por que você quer o atendimento?", outra: (n) => `e por que ${n} precisa do atendimento?` },
+  gravidade: { eu: "entendi. e como está esse problema?", outra: () => "entendi. e como está esse problema?" },
+  condicoes: { eu: "você tem alguma destas condições?", outra: (n) => `${n} tem alguma destas condições?` },
+  grupos: {
+    eu: "por último: alguma destas se aplica a você?",
+    outra: (n) => `por último: alguma destas se aplica a ${n}?`,
+  },
+};
+
+/** A fala do Dr. Lino em cada pergunta (2026-11-16): "você" para mim; para outra pessoa, o primeiro nome dela. */
+export const falaDaPergunta = (tela: Tela, quem: "eu" | "outra" | null, nome: string): string =>
+  quem === "outra" ? FALAS[tela].outra(nome || "a pessoa") : FALAS[tela].eu;
 
 /** A gravidade só é perguntada para problema novo (Tela 3). */
 export function telasDo(r: RespostasDoApp): Tela[] {

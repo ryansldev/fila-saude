@@ -47,7 +47,7 @@ export async function inscrever(
     );
     if (!r.ok) throw new ErroApi(409, r.erro);
     const { id } = await pessoaAtendida(c.tx, cmd.pessoa);
-    await inserirEntrada(c.tx, r.estado.entrada, id);
+    await inserirEntrada(c.tx, r.estado.entrada, id, cmd.pessoa.relacao ?? null);
     return { dia: r.estado.dia, sessao: r.estado.sessao, resultado: r.estado.entrada };
   });
 }

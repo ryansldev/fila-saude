@@ -1,7 +1,7 @@
 import type { ItemDeHoje } from "@fila-saude/schemas/fila";
-import { ClockIcon, IdCardIcon, StethoscopeIcon } from "lucide-react";
+import { ClockIcon, IdCardIcon, StethoscopeIcon, UsersRoundIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { contextoDaLinha, textoDoDocumento } from "@/lib/fila";
+import { contextoDaLinha, textoDoDocumento, textoDoResponsavel } from "@/lib/fila";
 import { cn } from "@/lib/utils";
 
 const COR_DO_TOM = { neutro: "text-slate-600", alerta: "text-amber-800", chamado: "text-emerald-700" } as const;
@@ -23,6 +23,7 @@ export function LinhaDaFila({
   acoes?: ReactNode;
 }) {
   const c = contextoDaLinha(i, agora);
+  const responsavel = textoDoResponsavel(i.responsavel);
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3">
       <span className="w-20 shrink-0 rounded-lg bg-slate-100 py-1 text-center font-mono text-lg font-extrabold text-slate-800">
@@ -39,6 +40,16 @@ export function LinhaDaFila({
           {i.pulos > 0 ? (
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-700">
               {i.pulos === 1 ? "1 pulo" : `${i.pulos} pulos`}
+            </span>
+          ) : null}
+          {responsavel ? (
+            <span
+              title={responsavel.rotulo}
+              className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700"
+            >
+              <UsersRoundIcon className="size-3.5" aria-hidden />
+              <span className="sr-only">inscrição feita </span>
+              {responsavel.texto}
             </span>
           ) : null}
         </span>

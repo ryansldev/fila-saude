@@ -59,7 +59,14 @@ describe("identidade (CPF e nascimento)", () => {
     });
     const atacante = await orchestrator.loginPaciente();
     const r = await app("POST", `${m()}/sessoes/${c.sessaoId}/inscricoes`, atacante.cookie, {
-      paraQuem: { tipo: "outra", nome: "Qualquer Um", nascimento: "2000-01-01", cpf: vitima.dados.cpf },
+      paraQuem: {
+        tipo: "outra",
+        relacao: "responsavel_legal",
+        declarou: true,
+        nome: "Qualquer Um",
+        nascimento: "2000-01-01",
+        cpf: vitima.dados.cpf,
+      },
       respostas: ROTINA,
     });
     // A vítima tem conta: a recusa vem antes, sem conferir dados (2026-11-14).
@@ -192,7 +199,14 @@ describe("abusos e configurações", () => {
     const p = await orchestrator.loginPaciente();
     const outra = (i: number) =>
       app("POST", `${m()}/sessoes/${c.sessaoId}/inscricoes`, p.cookie, {
-        paraQuem: { tipo: "outra", nome: `Pessoa ${i}`, nascimento: "2000-01-01", cpf: null },
+        paraQuem: {
+          tipo: "outra",
+          relacao: "responsavel_legal",
+          declarou: true,
+          nome: `Pessoa ${i}`,
+          nascimento: "2000-01-01",
+          cpf: null,
+        },
         respostas: ROTINA,
       });
     for (let i = 0; i < 5; i++) expect((await outra(i)).status).toBe(201);

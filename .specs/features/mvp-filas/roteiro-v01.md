@@ -55,7 +55,9 @@ Para o push chegar no celular é preciso um projeto EAS e um build de desenvolvi
 | 1 | Paciente | App, conta nova num celular que nunca deu a permissão | Criar conta | Tela "a gente te avisa a hora de sair de casa" antes do pedido do celular; "agora não" segue sem pedir |
 | 2 | Paciente | App → Minha fila | Com os avisos negados ou pulados | Faixa "os avisos estão desligados" com "ligar os avisos" (ou "abrir os ajustes", se o celular não pergunta mais) |
 | 3 | Paciente | App → Minha fila | Inscrito em Curativos, tocar "não vou poder ir" | Gaveta de baixo: "você perde esta vaga"; ao confirmar, a entrada some e, no painel, fica como "saiu da fila"; o 1º da reserva entra |
-| 4 | Paciente | App → Unidades | Tocar em qualquer parte do cartão do atendimento | Abre "para quem é?"; não há mais um botão azul por cartão |
+| 4 | Paciente | App → Unidades | Tocar em qualquer parte do cartão do atendimento | Abre "para quem é?" com o Dr. Lino e o atendimento em pílulas; não há mais um botão azul por cartão |
+| 4b | Paciente | App → "para quem é?" | "para outra pessoa" | Nome, nascimento e CPF, uma tela cada, com o selo "dados de quem vai ser atendido"; depois "qual a sua relação com Ana?" e a declaração (sem as duas, não segue); "agora umas perguntinhas rápidas"; nas perguntas, "nenhum destes" primeiro; no fim, o Dr. Lino: "prontinho! a vaga de Ana está garantida." |
+| 4c | Recepção | Painel → Fila do dia | Olhar a linha de quem foi inscrito por outra conta | A pílula "por Bruno (responsável legal)" |
 | 5 | Paciente | App, modo avião | Abrir minha fila, unidades ou municípios | Faixa "sem internet" com "tentar de novo"; ao abrir, logo e roda girando em vez de tela branca |
 | 6 | Paciente | App → Entrar e Criar conta (iPhone) | Tocar no último campo | O teclado não cobre o campo nem o botão |
 

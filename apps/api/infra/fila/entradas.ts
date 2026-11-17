@@ -7,6 +7,7 @@ import {
   type Respostas,
   type Resultado,
 } from "@fila-saude/domain";
+import type { Relacao } from "@fila-saude/schemas/fila";
 import { and, eq, notInArray } from "drizzle-orm";
 import { PgTransaction } from "drizzle-orm/pg-core";
 import { entrada } from "infra/database/municipal/schema/entrada";
@@ -16,7 +17,14 @@ import { unidade } from "infra/database/municipal/schema/unidade";
 import type { BancoDoTenant, DbDoTenant, TxDoTenant } from "infra/database/tenants";
 import { ErroApi } from "infra/erros";
 
-export type PessoaInformada = { nome: string; nascimento: string; cpf: string | null; pacienteId: string | null };
+export type PessoaInformada = {
+  nome: string;
+  nascimento: string;
+  cpf: string | null;
+  pacienteId: string | null;
+  /** Outra pessoa: a relação declarada por quem inscreve. */
+  relacao?: Relacao | null;
+};
 
 const FINAIS: EstadoEntrada[] = ["cancelada", "concluida", "encerrada_sem_atendimento", "arquivada"];
 
@@ -77,12 +85,18 @@ export async function pessoaAtendida(db: BancoDoTenant, p: PessoaInformada): Pro
   return nova;
 }
 
-export async function inserirEntrada(db: BancoDoTenant, e: Entrada, pessoaLocalId: string): Promise<void> {
+export async function inserirEntrada(
+  db: BancoDoTenant,
+  e: Entrada,
+  pessoaLocalId: string,
+  relacao: Relacao | null = null,
+): Promise<void> {
   await db.insert(entrada).values({
     id: e.id,
     servicoId: e.servicoId,
     pessoaLocalId,
     responsavelPacienteId: e.responsavelId,
+    relacaoResponsavel: relacao,
     estado: e.estado,
     dataEntradaOriginal: new Date(e.dataEntradaOriginal),
     classificacao: e.classificacao,
@@ -170,7 +184,7 @@ async function entrar(tx: BancoDoTenant, cmd: CmdEntrarNaLista): Promise<Resulta
   );
   if (!r.ok) return r;
   const { id } = await pessoaAtendida(tx, cmd.pessoa);
-  await inserirEntrada(tx, r.estado, id);
+  await inserirEntrada(tx, r.estado, id, cmd.pessoa.relacao ?? null);
   return r;
 }
 

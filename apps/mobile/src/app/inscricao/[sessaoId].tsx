@@ -1,21 +1,23 @@
 import { alternarOpcao } from "@fila-saude/domain";
-import type { InscricaoEntrada, MinhaEntrada, SessaoDaAgenda } from "@fila-saude/schemas/fila";
+import type { InscricaoEntrada, MinhaEntrada, Relacao, SessaoDaAgenda } from "@fila-saude/schemas/fila";
 import { mascararCpf, mascararData } from "@fila-saude/schemas/mascaras";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { Building2, CalendarDays, Lock, Stethoscope, Timer, UserRound } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
 import {
+  BalaoDoLino,
   Botao,
   BotaoLigar,
   Campo,
   Carregando,
-  Cartao,
   COR,
   Faixa,
   FONTE,
   Mascote,
   Opcao,
   Pequeno,
+  Pilula,
   Selo,
   Tela,
   Texto,
@@ -23,21 +25,27 @@ import {
   Titulo,
 } from "@/components/ui";
 import { ErroDaApi } from "@/lib/api";
-import { primeiroNome } from "@/lib/conta";
+import { nomeProprio, primeiroNome } from "@/lib/conta";
 import { diaCurto } from "@/lib/datas";
 import {
+  declaracao,
   type ErroDaVerificacao,
   envioDaInscricao,
   erroDaVerificacao,
+  type FimDaInscricao,
   modoDaInscricao,
   outraPessoaJaInscrita,
+  type PassoDaPessoa,
   paraMimNoServico,
+  RELACOES,
+  telaDoErro,
+  tituloDoPronto,
 } from "@/lib/inscricoes";
 import {
   completas,
   desfechoDoQuestionario,
+  falaDaPergunta,
   PERGUNTAS,
-  perguntaDe,
   RESPOSTAS_VAZIAS,
   type RespostasDoApp,
   type Tela as TelaDoQuestionario,
@@ -49,6 +57,10 @@ import { dataIso, erroDaOutraPessoa } from "@/lib/validacao";
 
 type Passo =
   | { tipo: "quem" }
+  /** Outra pessoa: um dado por tela e, por fim, a relação com a declaração (2026-11-16). */
+  | { tipo: "pessoa"; dado: PassoDaPessoa }
+  /** Antes do questionário: "agora umas perguntinhas rápidas". */
+  | { tipo: "intro" }
   | { tipo: "pergunta"; indice: number }
   | { tipo: "emergencia" }
   | { tipo: "apoio" }
@@ -87,6 +99,8 @@ export default function Inscricao() {
   const [passo, setPasso] = useState<Passo>(modo === "refazer" ? { tipo: "pergunta", indice: 0 } : { tipo: "quem" });
   const [quem, setQuem] = useState<"eu" | "outra" | null>(modo === "refazer" && p.paraMim !== "1" ? "outra" : "eu");
   const [outra, setOutra] = useState({ nome: "", nascimento: "", cpf: "" });
+  const [relacao, setRelacao] = useState<Relacao | null>(null);
+  const [declarou, setDeclarou] = useState(false);
   const [r, setR] = useState<RespostasDoApp>(RESPOSTAS_VAZIAS);
   const [nenhum, setNenhum] = useState<Partial<Record<TelaDoQuestionario, boolean>>>({});
   const [erro, setErro] = useState<{ texto: string; duplicada: boolean } | null>(null);
@@ -146,16 +160,6 @@ export default function Inscricao() {
   // Sem a data da conta carregada, não dá para decidir emergência/apoio pela idade: espera.
   const nascimento =
     modo === "refazer" ? (p.nascimento ?? "") : quem === "eu" ? (s.conta?.nascimento ?? "") : dataIso(outra.nascimento);
-  const resumo = (
-    <Cartao>
-      {sessao.inicio ? (
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 20, color: COR.ink }}>{diaCurto(sessao.inicio)}</Text>
-      ) : null}
-      {sessao.unidade || sessao.servico ? (
-        <Texto>{[sessao.unidade, sessao.servico?.toLowerCase()].filter(Boolean).join(" · ")}</Texto>
-      ) : null}
-    </Cartao>
-  );
 
   const paraQuem = (q: "eu" | "outra"): InscricaoEntrada["paraQuem"] =>
     q === "eu"
@@ -165,6 +169,8 @@ export default function Inscricao() {
           nome: outra.nome.trim(),
           nascimento: dataIso(outra.nascimento),
           cpf: outra.cpf.trim() ? outra.cpf : null,
+          relacao: relacao ?? "responsavel_legal",
+          declarou: true,
         };
 
   async function enviar() {
@@ -199,9 +205,13 @@ export default function Inscricao() {
       // A lista de espera não tem o "/verificar": as recusas vêm no envio, no fim do questionário.
       if (envio.verificar) await s.api.post(envio.verificar, { paraQuem: paraQuem(q) });
       setQuem(q);
-      setPasso({ tipo: "pergunta", indice: 0 });
+      setPasso({ tipo: "intro" });
     } catch (err) {
-      setErroQuem(erroDaVerificacao(err));
+      const e = erroDaVerificacao(err);
+      setErroQuem(e);
+      // Recusa de um dado da outra pessoa: volta para a tela dele, com a mensagem no campo.
+      const tela = q === "outra" ? telaDoErro(e) : null;
+      if (tela) setPasso({ tipo: "pessoa", dado: tela });
     } finally {
       setVerificando(false);
     }
@@ -218,9 +228,18 @@ export default function Inscricao() {
     void enviar();
   }
 
-  // "para quem é" + uma pergunta por tela; o resultado enche a barra. Refazer não pergunta "para quem".
-  const antes = modo === "refazer" ? 0 : 1;
+  // "para quem é" (+ os 4 passos da outra pessoa) + a apresentação + uma pergunta por tela; o resultado
+  // enche a barra. Refazer vai direto às perguntas.
+  const antes = modo === "refazer" ? 0 : quem === "outra" ? 6 : 2;
   const total = antes + telas.length;
+  const nomeCurto = primeiroNome(outra.nome) || "a pessoa";
+  const atendimento = (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+      {sessao.servico ? <Pilula texto={sessao.servico.toLowerCase()} Icone={Stethoscope} tom="azul" /> : null}
+      {sessao.unidade ? <Pilula texto={sessao.unidade} Icone={Building2} tom="azul" /> : null}
+      {sessao.inicio ? <Pilula texto={diaCurto(sessao.inicio)} Icone={CalendarDays} tom="azul" /> : null}
+    </View>
+  );
 
   // Pelo link (deep link), a tela pode abrir sem conta ou sem município escolhido.
   if (s.pronto && !s.token)
@@ -245,116 +264,52 @@ export default function Inscricao() {
   if (s.pronto && !s.municipio) return <Redirect href="/municipio" />;
   if (!s.pronto) return <Carregando cheia />;
 
-  if (passo.tipo === "lista")
+  const FINS: Record<string, FimDaInscricao> = {
+    lista: "lista",
+    refeito: "refeito",
+    inscrito: "inscrito",
+    reserva: "reserva",
+    pedido: "pedido",
+  };
+  const fim = FINS[passo.tipo];
+  if (fim) {
+    const t = tituloDoPronto(fim, quem, nomeCurto);
+    const depois: Record<FimDaInscricao, string | null> = {
+      inscrito: sessao.aberta
+        ? "a fila de hoje já começou: a senha e a posição já estão em minha fila."
+        : "não precisa confirmar. no dia, a gente avisa quando a fila começar e a hora de sair de casa.",
+      lista:
+        "a unidade marca a data e avisa aqui. aí é só confirmar. quem tem mais urgência ou prioridade pela lei é chamado antes.",
+      reserva: "se alguém desistir, a vaga passa para a reserva e avisamos na hora.",
+      pedido: "a inscrição está feita. a vaga só fica garantida quando a unidade receber o pedido.",
+      refeito:
+        passo.tipo === "refeito" && passo.nivel === "urgente"
+          ? "pela resposta, a equipe vai olhar o caso com prioridade."
+          : null,
+    };
     return (
       <Tela
         progresso={{ atual: total, total }}
         aoVoltar={irParaMinhaFila}
         acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
       >
-        <Mascote tamanho={140} />
-        <Faixa
-          tipo="ok"
-          titulo={
-            quem === "outra" ? `${primeiroNome(outra.nome)} está na lista de espera!` : "você está na lista de espera!"
-          }
-          texto="a unidade marca a data e avisa aqui. aí é só confirmar."
-        />
-        {resumo}
-        <TextoSuave>
-          quem tem mais urgência ou prioridade pela lei é chamado antes. a data de entrada conta para o desempate.
-        </TextoSuave>
-      </Tela>
-    );
-
-  if (passo.tipo === "refeito")
-    return (
-      <Tela
-        progresso={{ atual: total, total }}
-        aoVoltar={irParaMinhaFila}
-        acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
-      >
-        <Faixa
-          tipo="ok"
-          titulo="respostas atualizadas"
-          texto="a unidade já vê as respostas novas."
-          style={{ marginTop: 8 }}
-        />
-        {passo.nivel === "urgente" ? (
-          <TextoSuave>pela sua resposta, a equipe vai olhar o seu caso com prioridade.</TextoSuave>
+        <View style={{ alignItems: "center", gap: 4 }}>
+          <Mascote tamanho={160} moldura={false} />
+          <Titulo style={{ textAlign: "center" }}>{t.titulo}</Titulo>
+          <Texto style={{ textAlign: "center" }}>{t.texto}</Texto>
+        </View>
+        {fim !== "refeito" ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+            {sessao.servico ? <Pilula texto={sessao.servico.toLowerCase()} Icone={Stethoscope} tom="azul" /> : null}
+            {sessao.inicio ? <Pilula texto={diaCurto(sessao.inicio)} Icone={CalendarDays} tom="azul" /> : null}
+            {sessao.unidade ? <Pilula texto={sessao.unidade} Icone={Building2} tom="azul" /> : null}
+            {quem === "outra" ? <Pilula texto={nomeProprio(outra.nome)} Icone={UserRound} tom="azul" /> : null}
+          </View>
         ) : null}
+        {depois[fim] ? <TextoSuave style={{ textAlign: "center" }}>{depois[fim]}</TextoSuave> : null}
       </Tela>
     );
-
-  if (passo.tipo === "inscrito")
-    return (
-      <Tela
-        progresso={{ atual: total, total }}
-        aoVoltar={irParaMinhaFila}
-        acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
-      >
-        <Mascote tamanho={140} />
-        {quem === "outra" ? (
-          <Faixa
-            tipo="ok"
-            titulo={`${primeiroNome(outra.nome)} está inscrito(a)!`}
-            texto="a vaga é dele(a). não precisa confirmar. você recebe os avisos."
-          />
-        ) : (
-          <Faixa tipo="ok" titulo="você está inscrito!" texto="a vaga é sua. não precisa confirmar." />
-        )}
-        {resumo}
-        <TextoSuave>
-          {sessao.aberta
-            ? `a fila de hoje já começou: ${quem === "outra" ? "a senha" : "sua senha"} e a posição já estão em minha fila.`
-            : "no dia, avisamos quando a fila começar e a hora de sair de casa."}
-        </TextoSuave>
-      </Tela>
-    );
-
-  if (passo.tipo === "reserva")
-    return (
-      <Tela
-        progresso={{ atual: total, total }}
-        aoVoltar={irParaMinhaFila}
-        acoes={<Botao texto="ok, entendi" onPress={irParaMinhaFila} />}
-      >
-        <Faixa
-          tipo="aviso"
-          titulo="as vagas acabaram"
-          texto={
-            quem === "outra"
-              ? `${primeiroNome(outra.nome)} está na lista de reserva desta data.`
-              : "você está na lista de reserva desta data."
-          }
-          style={{ marginTop: 8 }}
-        />
-        {resumo}
-        <TextoSuave>se alguém desistir, a vaga é sua e avisamos na hora.</TextoSuave>
-      </Tela>
-    );
-
-  if (passo.tipo === "pedido")
-    return (
-      <Tela
-        progresso={{ atual: total, total }}
-        aoVoltar={irParaMinhaFila}
-        acoes={<Botao texto="ver minha fila" onPress={irParaMinhaFila} />}
-      >
-        <Faixa
-          tipo="aviso"
-          titulo="falta o pedido médico"
-          texto="leve o pedido na recepção da unidade antes do dia."
-          style={{ marginTop: 8 }}
-        />
-        {resumo}
-        <TextoSuave>
-          {quem === "outra"
-            ? `a inscrição de ${primeiroNome(outra.nome)} está feita. a vaga só fica garantida quando a unidade receber o pedido.`
-            : "a sua inscrição está feita. a vaga só fica garantida quando a unidade receber o pedido."}
-        </TextoSuave>
-      </Tela>
-    );
+  }
 
   if (passo.tipo === "emergencia")
     return (
@@ -407,6 +362,19 @@ export default function Inscricao() {
       </Tela>
     );
 
+  // Recusa da API que é de um campo: aparece embaixo dele.
+  const erroCpfDaApi = erroQuem?.tipo === "campo" ? erroQuem.texto : undefined;
+  const erroPessoaDaApi = erroQuem?.tipo === "pessoa" ? erroQuem.texto : undefined;
+  const faixaDaApi =
+    erroQuem?.tipo === "faixa" ? <Faixa tipo="perigo" titulo={erroQuem.titulo} texto={erroQuem.texto} /> : null;
+  const saidaDaApi =
+    erroQuem?.tipo === "faixa" && erroQuem.saida ? (
+      <Botao
+        texto={erroQuem.saida === "agenda" ? "ver os atendimentos" : "ver minha fila"}
+        onPress={erroQuem.saida === "agenda" ? irParaAgenda : irParaMinhaFila}
+      />
+    ) : null;
+
   if (passo.tipo === "quem") {
     // Pelo link, a sessão pode já ter fechado ou não ser aberta ao público.
     if (daAgenda === "fora")
@@ -423,53 +391,32 @@ export default function Inscricao() {
       );
 
     const escolhido = quem === "eu" && donoInscrito ? null : quem;
-    const errosOutra = escolhido === "outra" ? erroDaOutraPessoa(outra, s.conta?.cpf) : {};
-    const outraRepetida =
-      escolhido === "outra" &&
-      outraPessoaJaInscrita(minhas, sessao.servicoId, {
-        nome: outra.nome,
-        nascimento: dataIso(outra.nascimento),
-        cpf: outra.cpf,
-      });
-    const mostrar = (k: keyof typeof errosOutra) => (tentouQuem ? errosOutra[k] : undefined);
-    // Recusa da API que é de um campo: aparece embaixo dele.
-    const erroCpfDaApi = erroQuem?.tipo === "campo" ? erroQuem.texto : undefined;
-    const erroPessoaDaApi = erroQuem?.tipo === "pessoa" ? erroQuem.texto : undefined;
-    const mudarOutra = (v: Partial<typeof outra>) => {
-      setOutra({ ...outra, ...v });
-      setErroQuem(null);
-    };
     const contaPronta = escolhido === "outra" || (escolhido === "eu" && Boolean(s.conta?.nascimento));
     // Sem as inscrições da conta, só deixa seguir se a busca falhou (a API ainda recusa a duplicada).
-    const pode = contaPronta && (carregado || erroAoCarregar !== null) && !outraRepetida;
+    const pode = contaPronta && (carregado || erroAoCarregar !== null);
     return (
       <Tela
         progresso={{ atual: 1, total }}
         // Aberta pelo link, não há tela anterior: o X leva aos atendimentos.
         aoVoltar={() => (router.canGoBack() ? router.back() : router.replace("/unidades"))}
         acoes={
-          erroQuem?.tipo === "faixa" && erroQuem.saida ? (
-            <Botao
-              texto={erroQuem.saida === "agenda" ? "ver os atendimentos" : "ver minha fila"}
-              onPress={erroQuem.saida === "agenda" ? irParaAgenda : irParaMinhaFila}
-            />
-          ) : (
+          saidaDaApi ?? (
             <Botao
               texto="continuar"
               desativado={!pode}
               carregando={verificando}
               onPress={() => {
-                setTentouQuem(true);
-                if (escolhido && Object.keys(errosOutra).length === 0 && !outraRepetida) void verificarQuem(escolhido);
+                if (escolhido === "eu") void verificarQuem("eu");
+                else if (escolhido === "outra") setPasso({ tipo: "pessoa", dado: "nome" });
               }}
             />
           )
         }
       >
-        <Titulo>para quem é o atendimento?</Titulo>
+        <BalaoDoLino texto="oi! esse atendimento é para quem?" />
+        {atendimento}
         {/* No alto, para ser vista sem rolar: o botão de baixo vira a saída. */}
-        {erroQuem?.tipo === "faixa" ? <Faixa tipo="perigo" titulo={erroQuem.titulo} texto={erroQuem.texto} /> : null}
-        {sessao.inicio || sessao.servico ? resumo : null}
+        {faixaDaApi}
         {erroAoCarregar ? (
           <Faixa
             tipo="perigo"
@@ -533,51 +480,182 @@ export default function Inscricao() {
             />
           </>
         )}
-        {escolhido === "outra" ? (
-          <View style={{ gap: 12 }}>
-            <Campo
-              rotulo="nome de quem será atendido"
-              value={outra.nome}
-              onChangeText={(t) => mudarOutra({ nome: t })}
-              autoCapitalize="words"
-              erro={
-                outraRepetida
-                  ? "esta pessoa já está inscrita neste serviço pela sua conta. veja em minha fila."
-                  : (erroPessoaDaApi ?? mostrar("nome"))
-              }
-            />
-            <Campo
-              rotulo="data de nascimento"
-              placeholder="dd/mm/aaaa"
-              keyboardType="number-pad"
-              value={outra.nascimento}
-              onChangeText={(t) => mudarOutra({ nascimento: mascararData(t) })}
-              maxLength={10}
-              erro={erroPessoaDaApi ? "confira a data de nascimento." : mostrar("nascimento")}
-            />
-            <Campo
-              rotulo="CPF (se tiver)"
-              keyboardType="number-pad"
-              value={outra.cpf}
-              onChangeText={(t) => mudarOutra({ cpf: mascararCpf(t) })}
-              maxLength={14}
-              placeholder="000.000.000-00"
-              erro={erroCpfDaApi ?? mostrar("cpf")}
-            />
-            <Pequeno>você recebe os avisos e leva a pessoa no dia.</Pequeno>
-          </View>
-        ) : null}
       </Tela>
     );
   }
 
+  if (passo.tipo === "pessoa") {
+    const dado = passo.dado;
+    const ordem: PassoDaPessoa[] = ["nome", "nascimento", "cpf", "relacao"];
+    const i = ordem.indexOf(dado);
+    const ir = (d: PassoDaPessoa | undefined) => {
+      setTentouQuem(false);
+      setPasso(d ? { tipo: "pessoa", dado: d } : { tipo: "quem" });
+    };
+    const erros = erroDaOutraPessoa(outra, s.conta?.cpf);
+    const repetida = outraPessoaJaInscrita(minhas, sessao.servicoId, {
+      nome: outra.nome,
+      nascimento: dataIso(outra.nascimento),
+      cpf: outra.cpf,
+    });
+    const mudarOutra = (v: Partial<typeof outra>) => {
+      setOutra({ ...outra, ...v });
+      setErroQuem(null);
+    };
+    const progresso = { atual: 2 + i, total };
+
+    if (dado === "relacao")
+      return (
+        <Tela
+          progresso={progresso}
+          aoVoltar={() => ir("cpf")}
+          acoes={
+            saidaDaApi ?? (
+              <Botao
+                texto="continuar"
+                desativado={!relacao || !declarou}
+                carregando={verificando}
+                onPress={() => void verificarQuem("outra")}
+              />
+            )
+          }
+        >
+          <BalaoDoLino texto={`e qual a sua relação com ${nomeCurto}?`} />
+          {faixaDaApi}
+          {RELACOES.map((rel) => (
+            <Opcao
+              key={rel.id}
+              texto={rel.texto(nomeCurto)}
+              unica
+              marcada={relacao === rel.id}
+              onPress={() => {
+                // A declaração muda com a relação: trocar pede marcar de novo.
+                if (rel.id !== relacao) setDeclarou(false);
+                setRelacao(rel.id);
+              }}
+            />
+          ))}
+          {relacao ? (
+            <>
+              <Pequeno style={{ fontFamily: FONTE.extra, marginBottom: -6 }}>para continuar</Pequeno>
+              <Opcao texto={declaracao(relacao, nomeCurto)} marcada={declarou} onPress={() => setDeclarou(!declarou)} />
+            </>
+          ) : null}
+          <Pequeno>você recebe os avisos e leva {nomeCurto} no dia. a recepção vê que foi você quem inscreveu.</Pequeno>
+        </Tela>
+      );
+
+    const campo = {
+      nome: {
+        fala: "qual é o nome da pessoa que vai ser atendida?",
+        rotulo: "nome da pessoa",
+        valor: outra.nome,
+        mudar: (t: string) => mudarOutra({ nome: t }),
+        erro: erroPessoaDaApi ?? (tentouQuem ? erros.nome : undefined),
+        extra: { autoCapitalize: "words" as const, placeholder: "nome completo" },
+      },
+      nascimento: {
+        fala: `e quando ${nomeCurto} nasceu?`,
+        rotulo: `nascimento de ${nomeCurto}`,
+        valor: outra.nascimento,
+        mudar: (t: string) => mudarOutra({ nascimento: mascararData(t) }),
+        erro: erroPessoaDaApi ? "confira a data de nascimento." : tentouQuem ? erros.nascimento : undefined,
+        extra: { keyboardType: "number-pad" as const, maxLength: 10, placeholder: "dd/mm/aaaa" },
+      },
+      cpf: {
+        fala: `${nomeCurto} tem CPF? se não tiver, tudo bem.`,
+        rotulo: `CPF de ${nomeCurto}`,
+        valor: outra.cpf,
+        mudar: (t: string) => mudarOutra({ cpf: mascararCpf(t) }),
+        erro:
+          erroCpfDaApi ??
+          (tentouQuem
+            ? (erros.cpf ??
+              (repetida ? "esta pessoa já está inscrita neste serviço pela sua conta. veja em minha fila." : undefined))
+            : undefined),
+        extra: { keyboardType: "number-pad" as const, maxLength: 14, placeholder: "000.000.000-00" },
+      },
+    }[dado];
+    const continuar = () => {
+      setTentouQuem(true);
+      if (erros[dado] || (dado === "cpf" && repetida)) return;
+      ir(ordem[i + 1]);
+    };
+    return (
+      <Tela
+        progresso={progresso}
+        aoVoltar={() => ir(ordem[i - 1])}
+        acoes={
+          <>
+            <Botao texto="continuar" onPress={continuar} />
+            {dado === "cpf" ? (
+              <Botao
+                variante="texto"
+                texto={`${nomeCurto} não tem CPF`}
+                onPress={() => {
+                  mudarOutra({ cpf: "" });
+                  if (
+                    !outraPessoaJaInscrita(minhas, sessao.servicoId, {
+                      ...outra,
+                      nascimento: dataIso(outra.nascimento),
+                      cpf: "",
+                    })
+                  )
+                    ir("relacao");
+                  else setTentouQuem(true);
+                }}
+              />
+            ) : null}
+          </>
+        }
+      >
+        <Pilula texto="dados de quem vai ser atendido" Icone={UserRound} tom="azul" />
+        <BalaoDoLino texto={campo.fala} />
+        <Campo
+          key={dado}
+          rotulo={campo.rotulo}
+          value={campo.valor}
+          onChangeText={campo.mudar}
+          erro={campo.erro}
+          autoFocus
+          returnKeyType="next"
+          onSubmitEditing={continuar}
+          {...campo.extra}
+        />
+      </Tela>
+    );
+  }
+
+  if (passo.tipo === "intro")
+    return (
+      <Tela
+        progresso={{ atual: antes, total }}
+        aoVoltar={() => setPasso(quem === "outra" ? { tipo: "pessoa", dado: "relacao" } : { tipo: "quem" })}
+        acoes={<Botao texto="vamos lá" onPress={() => setPasso({ tipo: "pergunta", indice: 0 })} />}
+      >
+        <BalaoDoLino
+          texto={
+            quem === "outra"
+              ? `agora umas perguntinhas rápidas sobre ${nomeCurto}, para a unidade atender melhor.`
+              : "agora umas perguntinhas rápidas, para a unidade te atender melhor."
+          }
+        />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          <Pilula texto="1 minuto" Icone={Timer} tom="azul" />
+          <Pilula texto="só a equipe da unidade vê" Icone={Lock} tom="azul" />
+        </View>
+      </Tela>
+    );
+
+  // Os fins já voltaram acima pelo mapa `FINS`; aqui só sobram as perguntas.
+  if (passo.tipo !== "pergunta") return null;
   const tela = telas[passo.indice] as TelaDoQuestionario;
   const pergunta = PERGUNTAS[tela];
   const valor = r[tela];
   const lista = Array.isArray(valor) ? (valor as string[]) : [];
   const respondida = pergunta.multipla ? lista.length > 0 || Boolean(nenhum[tela]) : valor !== null;
   const ultima = passo.indice + 1 === telas.length;
-  const titulo = perguntaDe(tela, quem);
+  const fala = falaDaPergunta(tela, quem, nomeCurto === "a pessoa" ? "" : nomeCurto);
 
   function marcar(op: string) {
     setErro(null);
@@ -596,7 +674,7 @@ export default function Inscricao() {
       aoVoltar={() => {
         setErro(null);
         if (indice === 0 && modo === "refazer") return router.canGoBack() ? router.back() : irParaMinhaFila();
-        setPasso(indice > 0 ? { tipo: "pergunta", indice: indice - 1 } : { tipo: "quem" });
+        setPasso(indice > 0 ? { tipo: "pergunta", indice: indice - 1 } : { tipo: "intro" });
       }}
       acoes={
         erro?.duplicada ? (
@@ -619,8 +697,14 @@ export default function Inscricao() {
         )
       }
     >
-      <Titulo>{titulo}</Titulo>
-      {pergunta.multipla ? <Pequeno>marque todos que tiver.</Pequeno> : null}
+      <BalaoDoLino texto={fala} />
+      {/* A resposta da maioria vem primeiro (2026-11-16). */}
+      {pergunta.nenhum ? (
+        <>
+          <Opcao texto={pergunta.nenhum} marcada={Boolean(nenhum[tela])} onPress={() => marcar("nenhum")} />
+          <Pequeno style={{ textAlign: "center" }}>ou marque o que tiver</Pequeno>
+        </>
+      ) : null}
       {pergunta.opcoes.map(([id, texto]) => (
         <Opcao
           key={id}
@@ -630,9 +714,6 @@ export default function Inscricao() {
           onPress={() => marcar(id)}
         />
       ))}
-      {pergunta.nenhum ? (
-        <Opcao texto={pergunta.nenhum} marcada={Boolean(nenhum[tela])} onPress={() => marcar("nenhum")} />
-      ) : null}
       {tela === "grupos" && r.grupos.length > 0 ? (
         <Faixa
           tipo="info"

@@ -42,7 +42,14 @@ beforeAll(async () => {
   await database.update(paciente).set({ verificadoEm: new Date() }).where(eq(paciente.id, bruno.pacienteId));
   await inscrever(ana.cookie);
   await inscrever(bruno.cookie);
-  await inscrever(bruno.cookie, { tipo: "outra", nome: "Bia Reis", nascimento: "2018-03-03", cpf: null });
+  await inscrever(bruno.cookie, {
+    tipo: "outra",
+    relacao: "responsavel_legal",
+    declarou: true,
+    nome: "Bia Reis",
+    nascimento: "2018-03-03",
+    cpf: null,
+  });
 });
 afterAll(() => orchestrator.derrubarMunicipios());
 

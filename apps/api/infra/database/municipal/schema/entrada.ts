@@ -1,4 +1,5 @@
 import type { Classificacao, PrioridadeLegal } from "@fila-saude/domain";
+import type { Relacao } from "@fila-saude/schemas/fila";
 import { sql } from "drizzle-orm";
 import { integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { pessoaLocal } from "./pessoa-local";
@@ -33,6 +34,8 @@ export const entrada = pgTable(
       .notNull()
       .references(() => pessoaLocal.id),
     responsavelPacienteId: text("responsavel_paciente_id"),
+    /** Outra pessoa (2026-11-16): o que o responsável é dela (`responsavel_legal`, `cuidador`, `familiar_autorizado`). */
+    relacaoResponsavel: text("relacao_responsavel").$type<Relacao>(),
     estado: estadoEntrada("estado").notNull(),
     dataEntradaOriginal: timestamp("data_entrada_original", { withTimezone: true }).notNull(),
     classificacao: jsonb("classificacao").$type<Classificacao>().notNull(),
