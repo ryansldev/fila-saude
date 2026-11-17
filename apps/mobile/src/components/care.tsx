@@ -390,33 +390,51 @@ export function useMyQueue() {
   const [trying, setTrying] = useState(false);
   const fetchNow = useRef<(() => Promise<void>) | null>(null);
 
+  // Cada consulta e cada ação mudam o número: resposta de uma consulta que saiu antes não sobrescreve o
+  // que veio depois (nem desfaz o "vou sair" ou o "não vou poder ir" que acabou de ser feito).
+  const generation = useRef(0);
+  const listKey = useRef<string | null>(null);
   useFocusEffect(
     useCallback(() => {
       if (!s.municipality) return;
       let active = true;
-      // Trocou de município ou de conta: nada da lista anterior fica na tela.
-      setEntries(null);
-      const fetch = () =>
-        s.api
-          .get<MyEntry[]>(`/v1/municipalities/${s.municipality}/mine`)
-          .then((l) => {
-            if (!active) return;
-            setEntries(l);
-            setError(null);
-          })
-          .catch((err) => {
-            if (active) setError(errorNotice(err));
-          });
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      // Trocou de município ou de conta: nada da lista anterior fica na tela (voltar à aba não apaga).
+      const key = `${s.municipality}:${s.token ?? ""}`;
+      if (listKey.current !== key) {
+        listKey.current = key;
+        setEntries(null);
+      }
+      const fetch = async () => {
+        const mine = ++generation.current;
+        try {
+          const l = await s.api.get<MyEntry[]>(`/v1/municipalities/${s.municipality}/mine`);
+          if (!active || mine !== generation.current) return;
+          setEntries(l);
+          setError(null);
+        } catch (err) {
+          if (active && mine === generation.current) setError(errorNotice(err));
+        }
+      };
+      // A próxima consulta sai só depois da resposta desta (rede lenta não empilha consultas).
+      const loop = async () => {
+        await fetch();
+        if (active) timer = setTimeout(loop, QUERY_INTERVAL_MS);
+      };
       fetchNow.current = fetch;
-      void fetch();
-      const id = setInterval(fetch, QUERY_INTERVAL_MS);
+      void loop();
       return () => {
         active = false;
         fetchNow.current = null;
-        clearInterval(id);
+        if (timer) clearTimeout(timer);
       };
-    }, [s.api, s.municipality]),
+    }, [s.api, s.municipality, s.token]),
   );
+  /** Atualização otimista depois de uma ação: invalida as consultas que já estavam no ar. */
+  const update: typeof setEntries = (f) => {
+    generation.current++;
+    setEntries(f);
+  };
 
   const now = Date.now();
   const list = (entries ?? []).map((en) => {
@@ -435,7 +453,7 @@ export function useMyQueue() {
     s.api
       .post<{ state: string }>(`/v1/municipalities/${s.municipality}/entries/${en.entryId}/${r}`)
       .then((res) => {
-        setEntries((l) =>
+        update((l) =>
           (l ?? []).map((x) =>
             x.entryId === en.entryId
               ? { ...x, state: res.state, confirmationDeadline: null, ...(r === "refuse" ? { session: null } : {}) }
@@ -496,7 +514,7 @@ export function useMyQueue() {
             s.api
               .post(`/v1/municipalities/${s.municipality}/entries/${en.entryId}/leaving`)
               .then(() => {
-                setEntries((l) => (l ?? []).map((x) => (x.entryId === en.entryId ? { ...x, itemState: "remote" } : x)));
+                update((l) => (l ?? []).map((x) => (x.entryId === en.entryId ? { ...x, itemState: "remote" } : x)));
                 void fetchNow.current?.();
               })
               .catch((err) => Alert.alert("não deu certo", errorMessage(err)))
@@ -548,7 +566,7 @@ export function useMyQueue() {
         confirm={async (entryId) => {
           await s.api.post(`/v1/municipalities/${s.municipality}/entries/${entryId}/cancel`);
           const notice = cancel ? cancellationNotice(cancel.sit) : cancellationNotice({ kind: "confirmed" });
-          setEntries((l) => (l ?? []).filter((x) => x.entryId !== entryId));
+          update((l) => (l ?? []).filter((x) => x.entryId !== entryId));
           setCancel(null);
           setCancelled(notice);
           void fetchNow.current?.();

@@ -6,7 +6,7 @@ export class ApiError extends Error {
 
   constructor(status: number, error: string, message?: string) {
     super(message ?? error);
-    this.name = "ErroDaApi";
+    this.name = "ApiError";
     this.status = status;
     this.error = error;
     this.userMessage = message;

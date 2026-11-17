@@ -337,3 +337,17 @@ describe("cancelar: o que o botão diz e o que acontece", () => {
     });
   });
 });
+
+describe("mensagens de erro no estilo do app (minúsculas)", () => {
+  it("o texto do app vem primeiro; sem ele, o da API com a primeira letra minúscula", () => {
+    expect(errorMessage(new ApiError(400, "invalid_qr", "QR vencido. Leia de novo o QR da unidade."))).toBe(
+      "QR vencido. leia de novo o QR da unidade.",
+    );
+    expect(errorMessage(new ApiError(409, "session_closed", "Este atendimento já terminou."))).toBe(
+      "este atendimento já foi encerrado.",
+    );
+    expect(errorMessage(new ApiError(409, "limit_per_account", "Uma conta põe até 5 pessoas."))).toBe(
+      "uma conta põe até 5 pessoas.",
+    );
+  });
+});

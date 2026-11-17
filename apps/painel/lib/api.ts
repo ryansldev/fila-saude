@@ -16,7 +16,7 @@ export class ApiError extends Error {
     data?: Record<string, unknown>,
   ) {
     super(message ?? error);
-    this.name = "ErroDaApi";
+    this.name = "ApiError";
     this.status = status;
     this.error = error;
     if (message !== undefined) this.userMessage = message;

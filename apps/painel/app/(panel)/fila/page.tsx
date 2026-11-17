@@ -48,6 +48,9 @@ export default function DayQueue() {
   const [filter, setFilter] = useState<string>("todas");
   const [term, setTerm] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
+  // O aviso é da unidade em que aconteceu: trocar de unidade o apaga.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `current` é o gatilho.
+  useEffect(() => setNotice(null), [current]);
 
   const sessions = queue.detail?.sessions ?? [];
   // O filtro guardado só vale se a sessão ainda está entre as de hoje.

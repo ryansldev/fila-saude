@@ -1,7 +1,7 @@
 "use client";
 
 import type { CallListItem, ServiceWaitlist, SessionAllocation } from "@fila-saude/schemas/queue";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/dialogs";
 import { Notice, Selection, SidePanel } from "@/components/form";
 import { PageHeader } from "@/components/page";
@@ -36,6 +36,8 @@ export default function Scheduling() {
   const callList = useQuery<CallListItem[]>(current ? `/v1/panel/units/${current}/call-list` : null, 30_000);
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
   const allocation = useQuery<SessionAllocation>(
     sessionId ? `/v1/panel/sessions/${sessionId}/allocation` : null,
     10_000,
@@ -77,8 +79,11 @@ export default function Scheduling() {
 
   async function allocate(entryId: string, name: string) {
     setSending(true);
+    const asked = sessionId;
     try {
-      allocation.setDetail(await api.post<SessionAllocation>(`/v1/panel/sessions/${sessionId}/allocate`, { entryId }));
+      const r = await api.post<SessionAllocation>(`/v1/panel/sessions/${asked}/allocate`, { entryId });
+      // Trocou de sessão durante o pedido: a vista é da anterior e não vai para a tela (a nova recarrega).
+      if (sessionIdRef.current === asked) allocation.setDetail(r);
       setNotice({ text: `Vaga marcada para ${name}. O app pede a confirmação; se não responder, ligue.`, kind: "ok" });
       callList.reload();
       list.reload();
@@ -86,7 +91,7 @@ export default function Scheduling() {
     } catch (e) {
       // I7: outro agendador mexeu antes; a resposta traz a vista atualizada.
       const fresh = e instanceof ApiError ? (e.data?.allocation as SessionAllocation | undefined) : undefined;
-      if (fresh) allocation.setDetail(fresh);
+      if (fresh && sessionIdRef.current === asked) allocation.setDetail(fresh);
       else allocation.reload();
       list.reload();
       setNotice({ text: errorMessage(e), kind: "error" });

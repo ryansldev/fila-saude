@@ -1,4 +1,4 @@
-import { instantToLocal, localToInstant } from "@fila-saude/domain";
+import { instantToLocal, localToInstant, type ServiceMode } from "@fila-saude/domain";
 
 export type Visibility = "public" | "private";
 
@@ -21,7 +21,7 @@ export function adjustVisibility(
 }
 
 /** Serviço regulado só tem sessão privada. */
-export function allowedVisibilities(mode: string): Visibility[] {
+export function allowedVisibilities(mode: ServiceMode): Visibility[] {
   return mode === "regulated" ? ["private"] : ["public", "private"];
 }
 

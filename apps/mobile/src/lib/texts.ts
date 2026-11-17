@@ -72,8 +72,17 @@ const MESSAGES: Record<string, string> = {
   invalid_qr: "QR vencido. leia de novo o QR da unidade.",
 };
 
+/** Primeira letra minúscula (o app escreve assim); siglas como "QR" e "CPF" ficam como estão. */
+const appStyle = (t: string) => (/^[A-ZÀ-Ú][a-zà-ú]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t);
+
+/** O texto do app para o código vem primeiro; sem ele, o da API, no estilo do app (minúsculas). */
 export function errorMessage(e: unknown): string {
-  if (e instanceof ApiError) return e.userMessage ?? MESSAGES[e.error] ?? "não deu certo. tente de novo.";
+  if (e instanceof ApiError) {
+    const text = MESSAGES[e.error] ?? e.userMessage;
+    return text
+      ? appStyle(text).replace(/\. ([A-ZÀ-Ú][a-zà-ú])/g, (_, c: string) => `. ${c.toLowerCase()}`)
+      : "não deu certo. tente de novo.";
+  }
   return "não deu certo. tente de novo.";
 }
 

@@ -39,10 +39,12 @@ const MESSAGES: Record<string, string | ((e: ApiError) => string)> = {
 /** Texto para a pessoa a partir de qualquer erro da chamada. */
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
+    // A API explica o caso quando sabe mais (ex.: "Essa pessoa já não está disponível"); o texto do
+    // painel é a reserva para o mesmo código sem explicação.
+    if (e.userMessage) return e.userMessage;
     const m = MESSAGES[e.error];
     if (typeof m === "function") return m(e);
     if (m) return m;
-    if (e.userMessage) return e.userMessage;
   }
   return "Não foi possível concluir. Tente de novo.";
 }

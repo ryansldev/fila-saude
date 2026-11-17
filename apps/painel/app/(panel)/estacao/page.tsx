@@ -2,7 +2,7 @@
 
 import type { ApiRiskLevel, StationCommand, StationOperation, TodayInUnit } from "@fila-saude/schemas/queue";
 import { ClockIcon, StethoscopeIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/dialogs";
 import { Notice } from "@/components/form";
 import { PageHeader } from "@/components/page";
@@ -35,8 +35,10 @@ export default function Station() {
   const me = useMe();
   const today = useQuery<TodayInUnit>(current ? `/v1/panel/units/${current}/today` : null, 60_000);
   const [stationId, setStationId] = useState<string | null>(null);
+  const stationIdRef = useRef(stationId);
+  stationIdRef.current = stationId;
   const op = useQuery<StationOperation>(stationId ? `/v1/panel/stations/${stationId}/operation` : null, 3_000);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; kind: "error" | "ok" } | null>(null);
   const [sending, setSending] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   // Cor escolhida na triagem para quem está na sala; volta a nada a cada novo chamado e a cada mudança de
@@ -55,6 +57,12 @@ export default function Station() {
     () => (current ? stationsItOperates(today.detail?.stations ?? [], profiles, current) : []),
     [current, today.detail, profiles],
   );
+  // Trocou de unidade: larga a estação (e o aviso) da anterior na hora, sem esperar a lista nova.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `current` é o gatilho.
+  useEffect(() => {
+    setStationId(null);
+    setNotice(null);
+  }, [current]);
   useEffect(() => {
     if (!today.detail) return;
     if (stations.some((e) => e.id === stationId)) return;
@@ -97,12 +105,19 @@ export default function Station() {
     )
       return;
     setSending(true);
+    const asked = stationId;
     try {
       const body = classifies && color ? { confirmedRisk: color, ...(refer ? { refer: true } : {}) } : {};
-      op.setDetail(await api.post<StationOperation>(`/v1/panel/stations/${stationId}/${c}`, body));
-      setNotice(null);
+      const r = await api.post<StationOperation>(`/v1/panel/stations/${asked}/${c}`, body);
+      // Trocou de estação durante o pedido: a resposta é da anterior e não vai para a tela.
+      if (stationIdRef.current !== asked) return;
+      op.setDetail(r);
+      // "Chamar o próximo" sem ninguém que esta estação possa chamar: diz por que nada mudou.
+      setNotice(
+        r.notice === "nobody_waiting" ? { text: "Ninguém que esta estação possa chamar agora.", kind: "ok" } : null,
+      );
     } catch (e) {
-      setNotice(errorMessage(e));
+      setNotice({ text: errorMessage(e), kind: "error" });
     } finally {
       setSending(false);
     }
@@ -130,7 +145,10 @@ export default function Station() {
         </div>
         <StationCard stations={stations} current={stationId} onChoose={chooseStation} />
       </div>
-      <Notice text={notice ?? op.error ?? today.error} />
+      <Notice
+        text={op.error ?? today.error ?? notice?.text ?? null}
+        kind={op.error || today.error ? "error" : (notice?.kind ?? "error")}
+      />
       {today.detail && stations.length === 0 ? (
         <p className="text-gray-600">Nenhuma estação que você opere nesta unidade.</p>
       ) : null}

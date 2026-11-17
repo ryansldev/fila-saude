@@ -17,7 +17,7 @@ function json(status: number, body: unknown) {
 }
 
 describe("createApi", () => {
-  it("api: envia cookie e converte 409 em ErroDaApi com o código", async () => {
+  it("api: envia cookie e converte 409 em ApiError com o código", async () => {
     const { fetcher, calls } = fakeFetcher(() => json(409, { error: "session_open", message: "feche a sessão antes" }));
     const api = createApi("http://pref-a.localhost:3333", fetcher);
 
@@ -75,7 +75,7 @@ describe("createApi", () => {
     expect(error).toMatchObject({ status: 400, error: "invalid_input", fields });
   });
 
-  it("api: erro sem corpo no formato da PD-22 vira ErroDaApi invalid_response com o status", async () => {
+  it("api: erro sem corpo no formato da PD-22 vira ApiError invalid_response com o status", async () => {
     const { fetcher } = fakeFetcher(() => new Response("Bad Gateway", { status: 502 }));
     const error = await createApi("", fetcher)
       .get("/v1/x")
@@ -84,7 +84,7 @@ describe("createApi", () => {
     expect(error).toMatchObject({ status: 502, error: "invalid_response" });
   });
 
-  it("api: 2xx com corpo que não é JSON vira ErroDaApi invalid_response", async () => {
+  it("api: 2xx com corpo que não é JSON vira ApiError invalid_response", async () => {
     const { fetcher } = fakeFetcher(() => new Response("<html>ok</html>", { status: 200 }));
     const error = await createApi("", fetcher)
       .get("/v1/x")
@@ -93,7 +93,7 @@ describe("createApi", () => {
     expect(error).toMatchObject({ status: 200, error: "invalid_response" });
   });
 
-  it("api: falha de rede vira ErroDaApi sem_conexao com status 0", async () => {
+  it("api: falha de rede vira ApiError no_connection com status 0", async () => {
     const fetcher = (async () => {
       throw new TypeError("Failed to fetch");
     }) as typeof fetch;

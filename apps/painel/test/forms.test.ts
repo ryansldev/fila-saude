@@ -42,6 +42,11 @@ describe("erros da API nos formulários", () => {
     expect(errorMessage(new ApiError(409, "outdated_version"))).toMatch(/recarregue/i);
     expect(errorMessage(new ApiError(409, "session_has_patients"))).toMatch(/pacientes/i);
   });
+  it("a mensagem específica da API vence o texto genérico do painel para o mesmo código", () => {
+    const e = new ApiError(409, "forbidden_transition", "Essa pessoa já não está disponível para esta sessão.");
+    expect(errorMessage(e)).toBe("Essa pessoa já não está disponível para esta sessão.");
+    expect(errorMessage(new ApiError(409, "forbidden_transition"))).toMatch(/estado atual/);
+  });
   it("erro desconhecido vira mensagem genérica", () => {
     expect(errorMessage(new Error("x"))).toMatch(/tente de novo/i);
   });

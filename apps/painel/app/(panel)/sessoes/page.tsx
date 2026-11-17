@@ -1,5 +1,8 @@
 "use client";
 
+import type { Service as ServiceSchema } from "@fila-saude/schemas/service";
+import type { Session } from "@fila-saude/schemas/session";
+
 import { sessionEditSchema, sessionInputSchema, visibilityInputSchema } from "@fila-saude/schemas/session";
 import { PlusIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -37,21 +40,8 @@ import {
 } from "@/lib/forms/session";
 import { useList } from "@/lib/use-list";
 
-type Session = {
-  id: string;
-  serviceId: string;
-  start: string;
-  end: string;
-  slots: number | null;
-  taken: number;
-  visibility: Visibility;
-  waivesPreRegistration: boolean;
-  professional: string | null;
-  stations: string[];
-  state: string;
-  version: number;
-};
-type Service = { id: string; name: string; mode: string };
+// Os tipos do contrato: estado da sessão e modo do serviço são os enums do schema, não strings soltas.
+type Service = Pick<ServiceSchema, "id" | "name" | "mode">;
 type Station = { id: string; name: string; stage: "triage" | "care"; services: string[] };
 
 const WITHOUT_ERRORS: SendingErrors = { general: null, fields: {} };

@@ -137,7 +137,7 @@ describe("conferência antes do questionário (/verificar): onde o erro aparece 
     expect(checkError(error("session_closed"))).toMatchObject({ kind: "banner", exit: "schedule" });
     expect(checkError(error("private_session"))).toMatchObject({ kind: "banner", exit: "schedule" });
     const limit = checkError(error("limit_per_account", "Uma conta inscreve até 5 pessoas."));
-    expect(limit).toMatchObject({ kind: "banner", exit: "queue", text: "Uma conta inscreve até 5 pessoas." });
+    expect(limit).toMatchObject({ kind: "banner", exit: "queue", text: "uma conta inscreve até 5 pessoas." });
     expect(checkError(error("referral_pending"))).toMatchObject({ kind: "banner", exit: "queue" });
     expect(checkError(error("duplicate"))).toMatchObject({ kind: "banner", exit: "queue" });
   });
