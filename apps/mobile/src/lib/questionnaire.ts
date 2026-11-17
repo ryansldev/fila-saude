@@ -1,9 +1,8 @@
 import {
   type Alarm,
   type Answers,
-  ageAt,
+  alarmOutcome,
   type Condition,
-  classify,
   type DeclaredGroup,
   type Reason,
   type Severity,
@@ -138,12 +137,5 @@ export const complete = (r: AppAnswers): r is Answers =>
  * RN-RISCO-02 / RN-RISCO-06: emergência não entra na lista (orienta 192); autolesão mostra CVV e SAMU
  * e deixa seguir. O nível de verdade é calculado de novo na API.
  */
-export function questionnaireOutcome(
-  r: AppAnswers,
-  birthDate: string,
-  now: number,
-): "emergency" | "support" | "continues" {
-  const c = classify({ ...r, reason: r.reason ?? "follow_up" }, ageAt(birthDate, now, "America/Sao_Paulo"));
-  if (c.level === "emergency") return "emergency";
-  return c.support ? "support" : "continues";
-}
+export const questionnaireOutcome = (r: AppAnswers): "emergency" | "support" | "continues" =>
+  alarmOutcome(r.alarms) ?? "continues";

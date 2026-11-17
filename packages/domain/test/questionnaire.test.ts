@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Alarm } from "../src/kinds.ts";
-import { classify, toggleOption } from "../src/questionnaire.ts";
+import { alarmOutcome, classify, toggleOption } from "../src/questionnaire.ts";
 import { answers, newProblem } from "./fixtures.ts";
 
 describe("classificação de risco (RN-RISCO)", () => {
@@ -78,5 +78,13 @@ describe("opções exclusivas do questionário", () => {
     const checked = Object.freeze(["diabetes"]) as string[];
     expect(toggleOption(checked, "asma", "nenhuma")).toEqual(["diabetes", "asma"]);
     expect(checked).toEqual(["diabetes"]);
+  });
+});
+
+describe("alarmOutcome (tela 1)", () => {
+  it("RN-RISCO-02/06: alarme é emergência; só autolesão é apoio; sem alarme, segue", () => {
+    expect(alarmOutcome(["chest_pain", "self_harm"])).toBe("emergency");
+    expect(alarmOutcome(["self_harm"])).toBe("support");
+    expect(alarmOutcome([])).toBeNull();
   });
 });

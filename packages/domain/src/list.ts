@@ -9,7 +9,14 @@ import {
 import { type Answers, type Classification, isUrgent, type RiskLevel, type UnitConfig } from "./kinds.ts";
 import { sameName } from "./names.ts";
 import { compareSuggestion, type Risk, type SuggestionKey } from "./order.ts";
-import { type Group, groupFromDeclared, type LegalPriority, personPriority, toVerify } from "./priority.ts";
+import {
+  GROUP_LABEL,
+  type Group,
+  groupFromDeclared,
+  type LegalPriority,
+  personPriority,
+  toVerify,
+} from "./priority.ts";
 import { classify } from "./questionnaire.ts";
 import { DEFAULT_CONFIG, type SessionDay } from "./queue.ts";
 import { type Event, failure, ok, type Result } from "./result.ts";
@@ -229,17 +236,6 @@ const RISK_LABEL: Record<Risk, string> = {
   urgent: "urgente",
   attention: "atenção",
   routine: "rotina",
-};
-
-const GROUP_LABEL: Record<Exclude<Group, "elderly" | "elderly80">, string> = {
-  pregnant: "gestante",
-  breastfeeding: "lactante",
-  infant: "criança de colo",
-  disability: "pessoa com deficiência",
-  autism: "TEA",
-  mobility: "mobilidade reduzida",
-  donor: "doador de sangue",
-  obesity: "obesidade",
 };
 
 function reasons(e: Entry, now: number, timeZone: string): string[] {

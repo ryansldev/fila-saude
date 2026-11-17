@@ -99,9 +99,8 @@ export default function SignUp() {
     start?: string;
     timeZone?: string;
     open?: string;
-    /** Modo "refazer": a entrada, a data de nascimento de quem é atendido e se é a própria conta. */
+    /** Modo "refazer": a entrada e se é a própria conta. */
     entryId?: string;
-    birthDate?: string;
     forMe?: string;
   }>();
   const s = useSession();
@@ -173,9 +172,6 @@ export default function SignUp() {
   const loaded = mine !== null && (hasEverything || fromSchedule !== null);
 
   const screens = screensOf(r);
-  // Sem a data da conta carregada, não dá para decidir emergência/apoio pela idade: espera.
-  const birthDate =
-    mode === "redo" ? (p.birthDate ?? "") : forWhom === "me" ? (s.account?.birthDate ?? "") : dataIso(other.birthDate);
 
   // Para outra pessoa, só monta com a relação e a declaração que a pessoa marcou (senão, `null`).
   const buildForWhom = (q: "me" | "other") => signUpForWhom(q, other, relationship, declared);
@@ -234,7 +230,7 @@ export default function SignUp() {
   function advance() {
     if (step.kind !== "question") return;
     if (screens[step.index] === "alarms") {
-      const d = questionnaireOutcome(r, birthDate, Date.now());
+      const d = questionnaireOutcome(r);
       if (d === "emergency") return setStep({ kind: "emergency" });
       if (d === "support") return setStep({ kind: "support" });
     }
@@ -334,7 +330,7 @@ export default function SignUp() {
         background={COLOR.dangerBg}
         actions={
           <>
-            <CallButton text="ligar 192 · SAMU" number="192" variant="danger" />
+            <CallButton text="ligar para o SAMU (192)" number="192" variant="danger" />
             <Button
               text="voltar às perguntas"
               variant="secondary"
@@ -360,8 +356,8 @@ export default function SignUp() {
         back={false}
         actions={
           <>
-            <CallButton text="ligar 188 · CVV" number="188" />
-            <CallButton text="ligar 192 · SAMU" number="192" variant="secondary" />
+            <CallButton text="ligar para o CVV (188)" number="188" />
+            <CallButton text="ligar para o SAMU (192)" number="192" variant="secondary" />
             <Button
               variant="text"
               text="continuar a inscrição"

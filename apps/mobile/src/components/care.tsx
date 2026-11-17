@@ -476,7 +476,6 @@ export function useMyQueue() {
               serviceId: en.serviceId,
               service: en.service,
               unit: en.unit,
-              birthDate: en.birthDate,
               forMe: en.forMe ? "1" : "0",
             },
           })

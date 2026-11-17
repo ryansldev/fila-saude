@@ -2,7 +2,7 @@
 
 import type { ApiRiskLevel, StationCommand, StationOperation, TodayInUnit } from "@fila-saude/schemas/queue";
 import { ClockIcon, StethoscopeIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/dialogs";
 import { Notice } from "@/components/form";
 import { PageHeader } from "@/components/page";
@@ -26,6 +26,8 @@ function readStation(): string | null {
 }
 
 /** Estação de chamada (T3.7): um paciente por vez; a tolerância só avisa (AD-006). */
+const NO_PROFILES: never[] = [];
+
 export default function Station() {
   const api = useApi();
   const confirm = useConfirm();
@@ -37,17 +39,22 @@ export default function Station() {
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  // Cor escolhida na triagem para quem está chamado; volta a nada a cada novo chamado.
+  // Cor escolhida na triagem para quem está na sala; volta a nada a cada novo chamado e a cada mudança de
+  // fase (desfazer o Compareceu, rechamar): uma cor de antes não pode ir junto sem ninguém escolher.
   const [color, setColor] = useState<ApiRiskLevel | null>(null);
-  const calledId = op.detail?.called?.itemId ?? null;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `calledId` é o gatilho (um novo chamado limpa a cor).
+  const inCall = op.detail?.called;
+  const calledKey = inCall ? `${inCall.itemId}:${inCall.showedUpAt ?? ""}:${inCall.calledAt}` : null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `calledKey` é o gatilho.
   useEffect(() => {
     setColor(null);
-  }, [calledId]);
+  }, [calledKey]);
 
   // PD-46: só as estações que o perfil opera nesta unidade.
-  const profiles = me.state === "authenticated" ? me.me.profiles : [];
-  const stations = current ? stationsItOperates(today.detail?.stations ?? [], profiles, current) : [];
+  const profiles = me.state === "authenticated" ? me.me.profiles : NO_PROFILES;
+  const stations = useMemo(
+    () => (current ? stationsItOperates(today.detail?.stations ?? [], profiles, current) : []),
+    [current, today.detail, profiles],
+  );
   useEffect(() => {
     if (!today.detail) return;
     if (stations.some((e) => e.id === stationId)) return;

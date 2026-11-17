@@ -9,8 +9,6 @@ import {
   screensOf,
 } from "@/lib/questionnaire";
 
-const now = Date.UTC(2026, 10, 12, 12);
-
 describe("questionário no app (T3.3, questionário v1)", () => {
   it("a gravidade só aparece para problema novo", () => {
     expect(screensOf({ ...EMPTY_ANSWERS, reason: "exam" })).toEqual(["alarms", "reason", "conditions", "groups"]);
@@ -25,9 +23,9 @@ describe("questionário no app (T3.3, questionário v1)", () => {
 
   it("RN-RISCO-02: sinal de alarme → emergência (192), sem entrar na lista; autolesão → apoio CVV/SAMU", () => {
     const r = { ...EMPTY_ANSWERS, reason: "follow_up" as const };
-    expect(questionnaireOutcome({ ...r, alarms: ["chest_pain"] }, "1990-01-01", now)).toBe("emergency");
-    expect(questionnaireOutcome({ ...r, alarms: ["self_harm"] }, "1990-01-01", now)).toBe("support");
-    expect(questionnaireOutcome(r, "1990-01-01", now)).toBe("continues");
+    expect(questionnaireOutcome({ ...r, alarms: ["chest_pain"] })).toBe("emergency");
+    expect(questionnaireOutcome({ ...r, alarms: ["self_harm"] })).toBe("support");
+    expect(questionnaireOutcome(r)).toBe("continues");
   });
 
   it("o Dr. Lino pergunta numa conversa; para outra pessoa, usa o primeiro nome dela", () => {
@@ -69,6 +67,6 @@ describe("marcar numa pergunta de várias respostas", () => {
   it("sem nenhum sinal de alarme a pessoa segue (não vira emergência)", () => {
     const { answers } = markMultiple([], false, "nenhum");
     const r = { ...EMPTY_ANSWERS, alarms: answers as never[], reason: "exam" as const };
-    expect(questionnaireOutcome(r, "1990-01-01", now)).toBe("continues");
+    expect(questionnaireOutcome(r)).toBe("continues");
   });
 });

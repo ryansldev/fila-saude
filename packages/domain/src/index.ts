@@ -89,6 +89,7 @@ export {
   canGivePriority,
   expired,
   fromAge,
+  GROUP_LABEL,
   GROUPS,
   groupFromDeclared,
   hasPriority,
@@ -97,7 +98,7 @@ export {
   toVerify,
 } from "./priority.ts";
 export { tokenQr, validateQr } from "./qr.ts";
-export { classify, toggleOption } from "./questionnaire.ts";
+export { alarmOutcome, classify, toggleOption } from "./questionnaire.ts";
 export type { Call, ExitReason, PendingCheck, QueueItem, SessionDay, Stage, Station } from "./queue.ts";
 export {
   checkIn,

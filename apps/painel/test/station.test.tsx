@@ -23,7 +23,7 @@ function operation(partial: Partial<StationOperation> = {}): StationOperation {
       toleranceExceeded: false,
       showedUpAt: null,
       priority: ["elderly"],
-      triage: { suggestedRisk: "urgent", rule: "problema novo forte", support: false, priority: ["elderly"] },
+      triage: { suggestedRisk: "urgent", rule: "problema novo forte", support: false },
     },
     waiting: 1,
     remote: 1,
@@ -82,6 +82,53 @@ describe("PainelDaEstacao", () => {
     expect(screen.getByText("app sugeriu")).toBeDefined();
     expect(screen.getByRole("button", { name: /Finalizar e chamar o próximo/ })).toBeDefined();
     expect(screen.queryByRole("button", { name: "Rechamar" })).toBeNull();
+  });
+
+  // `triage: null` tira a ficha (o chamado chega sem ela); sem o argumento, fica a do operation().
+  const inRoom = (o: StationOperation, triage?: NonNullable<StationOperation["called"]>["triage"] | null) => {
+    const called = o.called && { ...o.called, showedUpAt: ago(1) };
+    if (called && triage === null) delete called.triage;
+    else if (called && triage) called.triage = triage;
+    return { ...o, called };
+  };
+  const finishing = () => screen.getByRole("button", { name: /Finalizar e chamar o próximo/ }) as HTMLButtonElement;
+
+  it("H3: na triagem, sem cor não finaliza; com cor, finaliza", () => {
+    const { rerender } = render(<StationPanel op={inRoom(operation())} {...props} />);
+    expect(finishing().disabled).toBe(true);
+    rerender(<StationPanel op={inRoom(operation())} {...props} color="attention" />);
+    expect(finishing().disabled).toBe(false);
+  });
+
+  it("sem a ficha da triagem as cores aparecem do mesmo jeito (a API exige a cor)", () => {
+    render(<StationPanel op={inRoom(operation(), null)} {...props} />);
+    expect(screen.getByText("Classifique o risco")).toBeDefined();
+    expect(screen.queryByText("app sugeriu")).toBeNull();
+    expect(finishing().disabled).toBe(true);
+  });
+
+  it("AD-059: encaminhar e o aviso do 1º lugar só com vermelho", () => {
+    const { rerender } = render(<StationPanel op={inRoom(operation())} {...props} color="urgent" />);
+    expect(screen.queryByRole("button", { name: /Encaminhar à emergência/ })).toBeNull();
+    rerender(<StationPanel op={inRoom(operation())} {...props} color="emergency" />);
+    expect(screen.getByRole("button", { name: /Encaminhar à emergência/ })).toBeDefined();
+    expect(screen.getByText(/1º lugar do atendimento/)).toBeDefined();
+  });
+
+  it("RN-RISCO-06: o apoio (autolesão) aparece na triagem; a sala de atendimento não classifica", () => {
+    const o = operation();
+    const support = inRoom(o, o.called?.triage && { ...o.called.triage, support: true });
+    const { rerender } = render(<StationPanel op={support} {...props} />);
+    expect(screen.getAllByText(/188/).length).toBeGreaterThan(0);
+    const care = operation({ station: { id: "a1", name: "Consultório 1", stage: "care" } });
+    rerender(
+      <StationPanel
+        op={inRoom({ ...care, called: care.called && { ...care.called, stage: "care" } }, null)}
+        {...props}
+      />,
+    );
+    expect(screen.queryByText("Classifique o risco")).toBeNull();
+    expect(finishing().disabled).toBe(false);
   });
 
   it("fila vazia: ninguém ainda e ninguém a caminho", () => {

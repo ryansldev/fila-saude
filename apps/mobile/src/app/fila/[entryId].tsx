@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Check } from "lucide-react-native";
+import { Building2, Check, Clock, UserRound } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { NoticeBanner, useMyQueue, YourTurn } from "@/components/care";
@@ -11,6 +11,7 @@ import {
   COLOR,
   FONT,
   Loading,
+  Pill,
   Screen,
   Small,
   SoftText,
@@ -97,11 +98,18 @@ export default function QueueScreen() {
     <Screen actions={primary}>
       <View style={{ gap: 6 }}>
         <Title>{en.service.toLowerCase()}</Title>
-        <Small>
-          {en.session ? `${hour(en.session.start, en.timeZone)} às ${hour(en.session.end, en.timeZone)} · ` : ""}
-          {en.unit}
-          {en.forMe ? "" : ` · para ${properName(en.person)}`}
-        </Small>
+        {/* Horário, unidade e para quem viram pílulas (nada de "Info · Info · Info"). */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {en.session ? (
+            <Pill
+              text={`${hour(en.session.start, en.timeZone)} às ${hour(en.session.end, en.timeZone)}`}
+              Icon={Clock}
+              tone="blue"
+            />
+          ) : null}
+          <Pill text={en.unit} Icon={Building2} tone="blue" />
+          {en.forMe ? null : <Pill text={`para ${properName(en.person)}`} Icon={UserRound} tone="blue" />}
+        </View>
         <Badge text={r.badge} tone={r.tone} />
       </View>
 

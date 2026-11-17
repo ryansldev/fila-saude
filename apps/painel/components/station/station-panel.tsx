@@ -198,8 +198,8 @@ function Called({
 }: Props & { called: NonNullable<StationOperation["called"]>; triage: boolean }) {
   const phase = calledPhase(called);
   const form = called.triage;
-  // Sem a ficha da triagem não há cores na tela: a cor não pode travar o finalizar.
-  const needsColor = needsClassify(op.station.stage, Boolean(form), color);
+  // As cores aparecem sempre na triagem (não dependem da ficha); sem cor, não finaliza (H3).
+  const needsColor = needsClassify(op.station.stage, true, color);
   return (
     <>
       <section
@@ -284,7 +284,7 @@ function Called({
           aria-label="Fechar o atendimento"
           className="flex flex-col gap-3 rounded-2xl border border-[var(--ds-line)] bg-white p-4"
         >
-          {triage && form ? (
+          {triage ? (
             <fieldset className="flex flex-col gap-3">
               <legend className="mb-3 font-extrabold text-slate-900">Classifique o risco</legend>
               <div className="grid grid-cols-2 gap-2.5 pt-1 sm:grid-cols-3 xl:grid-cols-5">
@@ -293,16 +293,18 @@ function Called({
                     key={c.level}
                     color={c}
                     selected={color === c.level}
-                    suggested={c.level === form.suggestedRisk}
+                    suggested={c.level === form?.suggestedRisk}
                     onClick={() => onChooseColor(c.level)}
                   />
                 ))}
               </div>
-              <p className="flex items-center gap-1.5 text-sm text-slate-600">
-                <SmartphoneIcon className={ICON} aria-hidden />o app sugeriu{" "}
-                {levelColor(form.suggestedRisk).label.toLowerCase()} porque:{" "}
-                {form.rule.charAt(0).toLowerCase() + form.rule.slice(1)}
-              </p>
+              {form ? (
+                <p className="flex items-center gap-1.5 text-sm text-slate-600">
+                  <SmartphoneIcon className={ICON} aria-hidden />o app sugeriu{" "}
+                  {levelColor(form.suggestedRisk).label.toLowerCase()} porque:{" "}
+                  {form.rule.charAt(0).toLowerCase() + form.rule.slice(1)}
+                </p>
+              ) : null}
             </fieldset>
           ) : null}
           {triage && canRefer(color) ? (

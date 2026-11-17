@@ -7,9 +7,9 @@ type Cmd = { stationId: string };
 
 /**
  * Fechar o chamado da estação (Finalizar ou chamar o próximo). Na triagem, o profissional pode
- * confirmar ou reclassificar o risco de quem sai dela (RN-TRI-03, RN-RISCO-01).
+ * confirmar ou reclassificar o risco de quem sai dela (RN-TRI-03, RN-RISCO-01); `refer`, com vermelho,
+ * encaminha à emergência e tira da fila desta unidade (AD-059).
  */
-/** `encaminhar`: com vermelho, encaminha à emergência e tira da fila desta unidade (AD-059). */
 type CmdClose = Cmd & { confirmedRisk?: RiskLevel; refer?: boolean };
 
 const MIN = 60_000;

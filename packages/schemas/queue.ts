@@ -54,7 +54,6 @@ export const triageFormSchema = z.object({
   suggestedRisk: riskLevelSchema,
   rule: z.string(),
   support: z.boolean(),
-  priority: z.array(z.string()),
 });
 
 export const calledSchema = z.object({

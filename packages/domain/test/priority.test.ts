@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   expired,
+  GROUP_LABEL,
   GROUPS,
   type Group,
   groupFromDeclared,
@@ -119,5 +120,13 @@ describe("prioridade legal (RN-RISCO-04)", () => {
     const r = personPriority(person, declared, at("2026-06-15T15:00:00Z"), TIME_ZONE);
     expect(r).toEqual(["elderly80", "pregnant"]);
     expect(r).not.toBe(declared);
+  });
+});
+
+describe("rótulos dos grupos (painel e sugestão do agendador usam os mesmos)", () => {
+  it("todo grupo tem rótulo em português", () => {
+    expect(GROUP_LABEL.autism).toBe("autismo (TEA)");
+    expect(GROUP_LABEL.elderly80).toBe("80 anos ou mais");
+    expect(Object.values(GROUP_LABEL).every((t) => t.length > 0)).toBe(true);
   });
 });

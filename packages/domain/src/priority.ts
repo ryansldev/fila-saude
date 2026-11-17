@@ -14,6 +14,20 @@ export type Group =
   | "donor"
   | "obesity";
 
+/** Como cada grupo aparece para a equipe (estação e sugestão do agendador). */
+export const GROUP_LABEL: Record<Group, string> = {
+  elderly: "60 anos ou mais",
+  elderly80: "80 anos ou mais",
+  pregnant: "gestante",
+  breastfeeding: "lactante",
+  infant: "criança de colo",
+  disability: "pessoa com deficiência",
+  autism: "autismo (TEA)",
+  mobility: "mobilidade reduzida",
+  donor: "doador de sangue",
+  obesity: "obesidade",
+};
+
 type Verification = "visual" | "document" | "birthDate" | "to_define";
 
 /**

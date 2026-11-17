@@ -65,7 +65,7 @@ async function calledData(db: TenantDatabase, entryId: string, triage: boolean) 
   const [e] = await db.select({ c: entry.classification, p: entry.priority }).from(entry).where(eq(entry.id, entryId));
   const priority = e?.p.groups ?? [];
   if (!triage) return { priority };
-  const form = e && { suggestedRisk: e.c.level, rule: e.c.rule, support: e.c.support, priority };
+  const form = e && { suggestedRisk: e.c.level, rule: e.c.rule, support: e.c.support };
   return { priority, triage: form };
 }
 
@@ -146,7 +146,6 @@ function withConfirmedRisk(entries: Entry[], events: Event[]): Entry[] {
   for (const ev of events) {
     if (!ev.entryId) continue;
     if (ev.kind === "risk_confirmed") level.set(ev.entryId, ev.data?.level as RiskLevel);
-    if (ev.kind === "referred_to_emergency") level.set(ev.entryId, "emergency");
   }
   return entries.map((en) => (level.has(en.id) ? { ...en, confirmedRisk: level.get(en.id) ?? null } : en));
 }
