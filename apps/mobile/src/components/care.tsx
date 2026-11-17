@@ -209,7 +209,7 @@ export function CareCard({
   onCancel: (() => void) | null;
   /** RN-CONF-01: alocada, à espera da resposta; `null` enquanto envia ou fora disso. */
   answer?: ((r: "confirm" | "refuse") => void) | null;
-  /** RN-RISCO-03 / I9: refazer o questionário enquanto está na lista. */
+  /** RN-RISCO-03 / AD-060: refazer o questionário na lista ou em casa na fila do dia. */
   redo?: (() => void) | null;
   /** Abre a tela da fila deste atendimento (senha grande e progresso). */
   onOpen?: () => void;

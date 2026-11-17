@@ -116,7 +116,7 @@ describe("lista de espera pelo app (T5.1)", () => {
     expect(emergency).toMatchObject({ status: 409, body: { error: "emergency" } });
   });
 
-  it("RN-RISCO-03 / I9: refaz o questionário na lista; só a conta responsável", async () => {
+  it("RN-RISCO-03: refaz o questionário na lista; só a conta responsável", async () => {
     const id = (await app("GET", `${m()}/mine`, ana.cookie)).body.find(
       (e: { person: string }) => e.person === "Ana Lista",
     ).entryId;

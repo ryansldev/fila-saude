@@ -222,7 +222,6 @@ Execução rápida. Plano: [plano-fatia-4-privada](../../arquivo/planos/mvp-fila
 | I6 | "Sem contato" (RN-CONF-02) | Só anota a tentativa (auditoria e "última tentativa" na lista de ligação) | Liberar a vaga após N tentativas | Baixo |
 | I7 | Conflito entre agendadores (INV-08) | Trava da sessão e da entrada; o segundo recebe 409 com a sugestão atualizada | Trava otimista pela `versao` enviada pelo painel | Baixo |
 | I8 | Texto do push "confirme" | "confirme sua consulta" + serviço, unidade, dia e hora; sem sintoma | — | Baixo |
-| I9 | Refazer o questionário pelo app | Só na lista (aguardando, alocada, confirmada); no dia vale "meus sintomas pioraram" | Também remoto no dia | Baixo |
 | I10 | Alerta de faltas (RN-FALTA-03, RN-AL-03) | Conta as faltas da mesma pessoa atendida nos encerramentos da janela (padrão 2 em 90 dias), sem a regra do titular (RN-ID-06: responsável x pessoa conferida) | Aplicar `titularDaFalta` e guardar as faltas numa tabela própria | Baixo na v0.1; revisar antes do piloto |
 
 ## Design system (2026-11-16)

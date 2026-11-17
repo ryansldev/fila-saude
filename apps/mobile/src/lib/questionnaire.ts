@@ -97,6 +97,15 @@ export const QUESTIONS: Record<Screen, { multiple: boolean; options: Options; no
   },
 };
 
+/**
+ * Na 1ª pergunta (2026-11-17): as respostas mudam a ordem da fila, então quem inventa sintoma passa na
+ * frente de quem precisa. Texto provisório até a revisão jurídica (D5).
+ */
+export const TRUTH_WARNING = {
+  title: "responda com a verdade",
+  text: "suas respostas mudam a ordem da fila. informar um sintoma que não tem para passar na frente pode ser crime de falsidade ideológica (art. 299 do código penal).",
+};
+
 const SPEECHES: Record<Screen, { me: string; other: (name: string) => string }> = {
   alarms: {
     me: "antes de tudo: você está com algum destes agora?",

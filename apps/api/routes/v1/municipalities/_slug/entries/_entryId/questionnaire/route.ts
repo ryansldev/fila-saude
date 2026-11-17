@@ -5,7 +5,7 @@ import { pathId } from "infra/config/common";
 import { validate } from "infra/errors";
 import { redoPatientQuestionnaire } from "infra/queue/waitlist";
 
-// RN-RISCO-03 / I9: refazer o questionário de quem está na lista.
+// RN-RISCO-03 / RN-PIORA-01: refazer o questionário na lista ou na fila do dia, ainda em casa.
 export default async function (app: FastifyInstance) {
   app.post("/", { preHandler: [app.requireTenant, app.requirePatient] }, async (req) => {
     const { db, patient } = patientOf(req);

@@ -65,6 +65,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-057 | Prazo de chegada depois do "venha agora" | ativa |
 | AD-058 | Triagem pelo Manchester padrão (cinco cores) | ativa |
 | AD-059 | Vermelho fica na unidade; encaminhar à emergência é à parte | ativa |
+| AD-060 | Refazer o questionário em casa no dia, com alerta de declaração falsa | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -302,6 +303,10 @@ A triagem classifica pelas cinco cores do Sistema Manchester: vermelho (emergên
 ### AD-059 · Vermelho fica na unidade; encaminhar à emergência é à parte
 2026-11-14 · ativa · Muda: AD-058, RN-TRI-03, RN-TRI-04
 Vermelho na triagem põe a pessoa em 1º lugar no atendimento desta unidade, à frente do laranja (urgência confirmada de maior peso). Encaminhar à emergência é uma ação explícita do enfermeiro, só com vermelho, com confirmação: a triagem fecha, a pessoa sai da fila da unidade e a entrada fica concluída, com o evento `encaminhado_emergencia`. **Por quê:** decisão sua, 2026-11-14: muitas vezes a pessoa está na unidade e pode ser atendida ali; tirar da fila de imediato não faz sentido.
+
+### AD-060 · Refazer o questionário em casa no dia, com alerta de declaração falsa
+2026-11-17 · ativa · Muda: RN-RISCO-03, RN-PIORA-01 (substitui a provisória I9)
+Quem está na fila do dia ainda em casa refaz o questionário pelo app e o risco sugerido sobe na fila, como a RN-PIORA-01 já dizia; na unidade continua valendo "meus sintomas pioraram". A 1ª pergunta do questionário (inscrição, lista e refazer) avisa que as respostas mudam a ordem da fila e que informar sintoma falso para passar na frente pode ser crime de falsidade ideológica (art. 299 do Código Penal); o texto aguarda a revisão jurídica (D5). **Por quê:** decisão sua, 2026-11-17 ("precisamos seguir a spec. MAS, devemos alertar do crime de falsidade ideológica pra ninguém passar um sintoma ou algo do tipo que não seja verdade").
 
 ## Arquitetura
 

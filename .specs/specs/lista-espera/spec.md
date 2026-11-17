@@ -61,8 +61,8 @@ O nível calculado pelo app é sempre **sugerido** (pré-triagem). QUANDO o enfe
 Em sessão pública e no balcão não há agendador: o nível fica sugerido até a triagem confirmar, e em serviço sem triagem permanece sugerido. No balcão, a recepção aplica o mesmo questionário com o paciente; QUANDO o resultado for emergência, O SISTEMA DEVE orientar encaminhá-lo à emergência.
 
 **RN-RISCO-03 · Refazer o questionário**
-O paciente PODE refazer o questionário enquanto espera. QUANDO subir para urgente, O SISTEMA DEVE alertar o agendador; QUANDO cair em emergência, orientar ligar para o SAMU (192). Prioridade legal nova declarada por quem já está presente só vale depois que a recepção conferir; até lá ele segue no lugar, sem ela. Quem já está presente não muda o risco pelo app (RN-PIORA-01).
-*Decisões: AD-054.*
+O paciente PODE refazer o questionário enquanto espera, na lista ou na fila do dia ainda em casa. A 1ª pergunta DEVE avisar que as respostas mudam a ordem da fila e que informar sintoma falso pode ser crime (falsidade ideológica). QUANDO subir para urgente, O SISTEMA DEVE alertar o agendador; QUANDO cair em emergência, orientar ligar para o SAMU (192). Prioridade legal nova declarada por quem já está presente só vale depois que a recepção conferir; até lá ele segue no lugar, sem ela. Quem já está presente não muda o risco pelo app (RN-PIORA-01).
+*Decisões: AD-054, AD-060.*
 
 **RN-RISCO-04 · Prioridade legal**
 A **prioridade legal** é um campo separado, declarado pelo paciente. Grupos (lista fixa no código no MVP; Lei 10.048 com a redação da Lei 14.626/2023): idoso (60+, e 80+ com prioridade especial), gestante, lactante, pessoa com criança de colo, PcD, TEA, pessoa com mobilidade reduzida, doador de sangue, pessoa com obesidade. Grupos de leis estaduais ou municipais entram por mudança de código.

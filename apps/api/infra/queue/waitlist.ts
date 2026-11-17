@@ -1,4 +1,4 @@
-import { type Answers, activeEntryOf, INACTIVE_ENTRY_STATES, redoQuestionnaire } from "@fila-saude/domain";
+import { type Answers, activeEntryOf, type Entry, INACTIVE_ENTRY_STATES, redoQuestionnaire } from "@fila-saude/domain";
 import type { SignUpInput, UnitService } from "@fila-saude/schemas/queue";
 import { and, asc, eq, isNull, notInArray } from "drizzle-orm";
 import type { AuthenticatedPatient } from "infra/auth/patient-session";
@@ -8,12 +8,12 @@ import { unit } from "infra/database/municipal/schema/unit";
 import type { TenantDatabase, TenantDb } from "infra/database/tenants";
 import { ApiError } from "infra/errors";
 import { MAX_PER_ACCOUNT, personFromRequest } from "./app";
-import { unitConfig } from "./day";
-import { joinWaitlist, personByCpf, readEntry, serviceActiveEntries, updateEntry } from "./entries";
+import { inSession, unitConfig } from "./day";
+import { joinWaitlist, lockEntry, personByCpf, serviceActiveEntries, updateEntry } from "./entries";
 import { answerAllocation } from "./scheduling";
 
 const FINAL_STATES = INACTIVE_ENTRY_STATES;
-/** I9: refazer o questionário pelo app só na lista; no dia vale "meus sintomas pioraram" (H6). */
+/** RN-RISCO-03 / AD-060: na lista; na fila do dia, só em casa (`remote`), pela trava da sessão. */
 const IN_WAITLIST = ["waiting", "allocated", "confirmed"];
 
 // I1: serviços ativos da unidade (não removida), com o modo de marcação; o app decide o que oferecer.
@@ -111,7 +111,10 @@ export async function joinWaitlistFromApp(
   });
 }
 
-/** RN-RISCO-03 / I9: a conta responsável refaz o questionário de quem está na lista. */
+/**
+ * RN-RISCO-03 / RN-PIORA-01: a conta responsável refaz o questionário de quem está na lista ou na fila do
+ * dia ainda em casa (o risco sugerido sobe na fila). Quem já está na unidade não muda o risco pelo app.
+ */
 export async function redoPatientQuestionnaire(
   db: TenantDb,
   patientId: string,
@@ -119,22 +122,39 @@ export async function redoPatientQuestionnaire(
   answers: Answers,
   now: number,
 ) {
+  const [row] = await db
+    .select({ serviceId: entry.serviceId, state: entry.state, sessionId: entry.sessionId })
+    .from(entry)
+    .where(and(eq(entry.id, entryId), eq(entry.guardianPatientId, patientId)));
+  if (!row) throw new ApiError(404, "not_found");
+  const answer = (c: Entry["classification"]) => ({ classification: { level: c.level, support: c.support } });
+  const { sessionId } = row;
+  if (row.state === "in_queue" && sessionId) {
+    // Na fila do dia: a trava da sessão vem antes da trava da entrada (mesma ordem de todo caminho).
+    return db.transaction((tx) =>
+      inSession(tx, sessionId, async (c) => {
+        const e = await lockEntry(c.tx, entryId);
+        const item = c.day?.items.find((i) => i.entryId === entryId);
+        if (e.state !== "in_queue" || item?.state !== "remote") throw new ApiError(409, "forbidden_transition");
+        const r = redoQuestionnaire(e, c.day, { answers }, now, unitConfig(c.rowUnit));
+        if (!r.ok) throw new ApiError(409, r.error);
+        return {
+          day: r.state.day,
+          entries: [...c.entries.filter((x) => x.id !== e.id), r.state.entry],
+          events: r.events,
+          result: answer(r.state.entry.classification),
+        };
+      }),
+    );
+  }
   return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({ id: entry.id, serviceId: entry.serviceId })
-      .from(entry)
-      .where(and(eq(entry.id, entryId), eq(entry.guardianPatientId, patientId)))
-      .for("update");
-    if (!row) throw new ApiError(404, "not_found");
-    const e = await readEntry(tx, entryId);
-    if (!e) throw new ApiError(404, "not_found");
+    const e = await lockEntry(tx, entryId);
     if (!IN_WAITLIST.includes(e.state)) throw new ApiError(409, "forbidden_transition");
     const { u } = await activeService(tx, row.serviceId);
     const r = redoQuestionnaire(e, null, { answers }, now, unitConfig(u));
     if (!r.ok) throw new ApiError(409, r.error);
     await updateEntry(tx, r.state.entry);
-    const c = r.state.entry.classification;
-    return { classification: { level: c.level, support: c.support } };
+    return answer(r.state.entry.classification);
   });
 }
 

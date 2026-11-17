@@ -167,8 +167,12 @@ export function servicesWithList(
   }));
 }
 
-/** I9: refazer o questionário pelo app só enquanto está na lista; no dia vale "meus sintomas pioraram". */
-export const canRedo = (e: Pick<MyEntry, "state">): boolean => ["waiting", "allocated", "confirmed"].includes(e.state);
+/**
+ * RN-RISCO-03 / RN-PIORA-01: refazer o questionário pelo app na lista ou na fila do dia ainda em casa;
+ * na unidade vale "meus sintomas pioraram".
+ */
+export const canRedo = (e: Pick<MyEntry, "state" | "itemState">): boolean =>
+  ["waiting", "allocated", "confirmed"].includes(e.state) || (e.state === "in_queue" && e.itemState === "remote");
 
 /** Quem inscreve outra pessoa diz o que é dela (2026-11-16), como as pessoas se veem. Textos provisórios até o D5. */
 export const RELATIONSHIPS: readonly { id: Relationship; text: (name: string) => string }[] = [

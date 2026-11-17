@@ -37,6 +37,7 @@ import {
   questionnaireOutcome,
   questionSpeech,
   screensOf,
+  TRUTH_WARNING,
 } from "@/lib/questionnaire";
 import { useSession } from "@/lib/session";
 import {
@@ -708,6 +709,7 @@ export default function SignUp() {
       }
     >
       <LinoBubble text={speech} />
+      {index === 0 ? <Banner kind="info" title={TRUTH_WARNING.title} text={TRUTH_WARNING.text} /> : null}
       {/* A resposta da maioria vem primeiro (2026-11-16). */}
       {question.none ? (
         <>

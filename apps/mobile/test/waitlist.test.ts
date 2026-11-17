@@ -78,11 +78,14 @@ describe("lista de espera no app (fatia 4)", () => {
     expect(nextStep(e, entrySituation(e, 0), 0)).toBe("confirme até quarta, 18/11, às 8h.");
   });
 
-  it("I9: refazer o questionário só na lista (aguardando, alocada, confirmada antes do dia)", () => {
+  it("AD-060: refazer o questionário na lista e em casa na fila do dia", () => {
     expect(canRedo(my({ state: "waiting" }))).toBe(true);
     expect(canRedo(my({ state: "allocated" }))).toBe(true);
     expect(canRedo(my({ state: "confirmed" }))).toBe(true);
-    expect(canRedo(my({ state: "in_queue" }))).toBe(false);
+    // RN-PIORA-01: na fila do dia, só em casa; na unidade vale "meus sintomas pioraram".
+    expect(canRedo(my({ state: "in_queue", itemState: "remote" }))).toBe(true);
+    expect(canRedo(my({ state: "in_queue", itemState: "present" }))).toBe(false);
+    expect(canRedo(my({ state: "in_queue", itemState: "called" }))).toBe(false);
     expect(canRedo(my({ state: "in_reserve" }))).toBe(false);
   });
 });
