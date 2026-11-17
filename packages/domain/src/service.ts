@@ -3,6 +3,7 @@
 import {
   ENTRY_TRANSITIONS,
   type EntryState,
+  INACTIVE_ENTRY_STATES,
   type SessionState,
   singleTransition,
   type Transition,
@@ -14,7 +15,7 @@ export type ServiceMode = "direct" | "referral" | "regulated";
 type ServiceEntry = { id: string; state: EntryState; safeSlot: boolean; sessionOpened: boolean };
 type Change = { id: string; for: EntryState; push: boolean };
 
-const INACTIVE: EntryState[] = ["completed", "cancelled", "closed_without_care", "archived"];
+const INACTIVE = INACTIVE_ENTRY_STATES;
 
 const EVENT_REGULATED = 'Serviço muda para "regulado"';
 const EVENT_DIRECT = 'Serviço muda para "livre"';

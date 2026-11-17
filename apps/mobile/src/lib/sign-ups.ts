@@ -1,3 +1,4 @@
+import { INACTIVE_ENTRY_STATES } from "@fila-saude/domain";
 import type { MyEntry, Relationship, SignUpInput } from "@fila-saude/schemas/queue";
 import { ApiError } from "./api";
 import { errorMessage } from "./texts";
@@ -7,7 +8,7 @@ import { ACCOUNT_CPF, dataIso } from "./validation";
  * Estados em que a entrada terminou: deixam a pessoa livre para se inscrever de novo no serviço.
  * Remanejada NÃO é final: a pessoa continua no serviço, esperando a unidade marcar outra data.
  */
-const FINAL_STATES = new Set(["cancelled", "completed", "closed_without_care", "archived"]);
+const FINAL_STATES = new Set<string>(INACTIVE_ENTRY_STATES);
 
 export const activeEntry = (e: Pick<MyEntry, "state">) => !FINAL_STATES.has(e.state);
 

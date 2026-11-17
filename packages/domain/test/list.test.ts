@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activeEntryOf,
   allocate,
+  allocationBlocker,
   answerStillNeeds,
   archive,
   askStillNeeds,
@@ -13,6 +14,7 @@ import {
   entryPriority,
   pendingAtOpening,
   reactivate,
+  refusalEnds,
   refuse,
   type Service,
   type SessionSlots,
@@ -354,6 +356,16 @@ describe("confirmação", () => {
     expect(apply(r).entry.state).toBe("cancelled");
     expect(events(r).find((ev) => ev.kind === "cancelled")?.reason).toBe("inscreva-se de novo");
   });
+
+  it("RN-REM-03: refusalEnds avisa antes da recusa que vai encerrar o pedido", () => {
+    const s = sessionSlots();
+    const rem = entry("r", { state: "reassigned", reassigned: "private" });
+    expect(refusalEnds(allocated(rem, s).entry)).toBe(false);
+    expect(refusalEnds(allocated(entry("x"), s).entry)).toBe(false);
+    const publicSecond = { ...rem, reassigned: "public" as const, refusals: 1 };
+    expect(refusalEnds(allocated(publicSecond, s).entry)).toBe(true);
+    expect(refusalEnds(publicSecond)).toBe(false); // não alocada: não há data para recusar
+  });
 });
 
 describe("abertura da sessão", () => {
@@ -465,5 +477,15 @@ describe("I1: idade na lista de espera (AD-027)", () => {
     const suggestion = suggest(freeze([other, created]), sessionSlots({ slots: 5 }), DEFAULT_CONFIG, after);
     expect(suggestion.map((s) => s.entryId)).toEqual(["ze", "ana"]);
     expect(suggestion[0]?.reasons).toContain("pessoa idosa, 60 anos");
+  });
+});
+
+describe("allocationBlocker", () => {
+  it("RN-AL-04: só sessão privada, até a véspera e com vaga; a mesma regra do allocate", () => {
+    const s = sessionSlots();
+    expect(allocationBlocker(s, T)).toBeNull();
+    expect(allocationBlocker({ ...s, visibility: "public" }, T)).toBe("forbidden_transition");
+    expect(allocationBlocker({ ...s, start: T + H }, T)).toBe("past_deadline");
+    expect(allocationBlocker({ ...s, slots: 1, taken: 1 }, T)).toBe("no_slot");
   });
 });

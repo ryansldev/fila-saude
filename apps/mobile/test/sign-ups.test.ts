@@ -38,6 +38,7 @@ const base: MyEntry = {
   serviceId: DRESSINGS,
   forMe: true,
   birthDate: "1990-05-05",
+  refusalEnds: false,
   canCancel: true,
   stage: null,
   triaged: false,

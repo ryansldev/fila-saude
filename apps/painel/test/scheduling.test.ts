@@ -5,8 +5,8 @@ import {
   allocateUntil,
   pendingChecksSummary,
   reasonRow,
+  refusalNotice,
   riskBadge,
-  riskLabel,
   slotBars,
   slotText,
   whenInTimeZone,
@@ -40,11 +40,6 @@ describe("agendamento no painel (fatia 4)", () => {
     });
     expect(allocatedSituation({ state: "confirmed", highlighted: false })).toEqual({ label: "Confirmou", tone: "ok" });
     expect(allocatedSituation({ state: "in_queue", highlighted: false }).label).toBe("Na fila");
-  });
-
-  it("RN-RISCO-01: o risco diz se é sugerido pelo app ou confirmado pela triagem", () => {
-    expect(riskLabel({ level: "urgent", confirmed: false })).toBe("Urgente · sugerido pelo app");
-    expect(riskLabel({ level: "attention", confirmed: true })).toBe("Atenção · confirmado");
   });
 
   it("todo item do menu tem ícone (Agendamento tinha um círculo vazio)", () => {
@@ -101,6 +96,16 @@ describe("agendamento no painel (fatia 4)", () => {
     );
     expect(reasonRow({ level: "urgent", rule: "Problema novo forte" }, ["espera há 3 dias"])).toBe(
       "Problema novo forte · espera há 3 dias",
+    );
+  });
+});
+
+describe("recusa registrada pelo agendador", () => {
+  it("diz se a pessoa voltou para a lista ou se o pedido foi encerrado", () => {
+    expect(refusalNotice("waiting")).toBe("Recusa registrada. A vaga está livre e a pessoa voltou para a lista.");
+    expect(refusalNotice("reassigned")).toBe("Recusa registrada. A vaga está livre e a pessoa voltou para a lista.");
+    expect(refusalNotice("cancelled")).toBe(
+      "Recusa registrada. A vaga está livre. Era a 2ª recusa de quem foi remanejado: o pedido foi encerrado.",
     );
   });
 });

@@ -1,6 +1,6 @@
 import type { SessionAllocation } from "@fila-saude/schemas/queue";
-import { Button } from "@/components/ui/button";
 import { allocatedSituation, allocateUntil, slotText, whenInTimeZone } from "@/lib/scheduling";
+import { AnswerButtons } from "./answer-buttons";
 import { Badge } from "./badge";
 import type { Answer } from "./kinds";
 import { SlotBars } from "./slot-bars";
@@ -54,32 +54,7 @@ export function SessionSlots({
                 </div>
                 <Badge text={s.label} tone={s.tone} />
                 {a.state === "allocated" ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="compact"
-                      variant="success"
-                      disabled={sending}
-                      onClick={() => answer(a.entryId, a.name, "confirmed")}
-                    >
-                      Confirmou
-                    </Button>
-                    <Button
-                      size="compact"
-                      variant="secondary"
-                      disabled={sending}
-                      onClick={() => answer(a.entryId, a.name, "no_contact")}
-                    >
-                      Sem contato
-                    </Button>
-                    <Button
-                      size="compact"
-                      variant="outlineDanger"
-                      disabled={sending}
-                      onClick={() => answer(a.entryId, a.name, "refused")}
-                    >
-                      Recusou
-                    </Button>
-                  </div>
+                  <AnswerButtons sending={sending} onAnswer={(r) => answer(a.entryId, a.name, r)} />
                 ) : null}
               </li>
             );

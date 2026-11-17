@@ -34,6 +34,7 @@ export type { EntryState, ItemState, SessionState, Transition } from "./contract
 export {
   applyTransition,
   ENTRY_TRANSITIONS,
+  INACTIVE_ENTRY_STATES,
   ITEM_TRANSITIONS,
   SESSION_TRANSITIONS,
   singleTransition,
@@ -57,6 +58,7 @@ export type { CallListItem, Entry, Exit, Origin, Person, Service, SessionSlots, 
 export {
   activeEntryOf,
   allocate,
+  allocationBlocker,
   answerStillNeeds,
   archive,
   askStillNeeds,
@@ -69,6 +71,7 @@ export {
   entryPriority,
   pendingAtOpening,
   reactivate,
+  refusalEnds,
   refuse,
   suggest,
   verificationInEntry,

@@ -8,6 +8,13 @@
       "when": 1794884107086,
       "tag": "0000_municipal",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794918432852,
+      "tag": "0001_session_day_closing_at",
+      "breakpoints": true
     }
   ]
 }

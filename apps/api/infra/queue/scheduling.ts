@@ -2,18 +2,18 @@ import {
   type Action,
   ageAt,
   allocate,
+  allocationBlocker,
   callList,
   confirm,
   confirmationDeadline,
   currentRisk,
   type Entry,
   refuse,
-  sameDay,
   suggest,
   type UnitConfig,
 } from "@fila-saude/domain";
-import type { CallListItem, ServiceWaitlist, SessionAllocation } from "@fila-saude/schemas/queue";
-import { and, asc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
+import type { CallListItem, SchedulerAnswer, ServiceWaitlist, SessionAllocation } from "@fila-saude/schemas/queue";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { requireUnit } from "infra/config/common";
 import database from "infra/database";
 import { patient } from "infra/database/central/schema/auth";
@@ -28,11 +28,10 @@ import { ApiError } from "infra/errors";
 import { type ActionContext, runAction } from "infra/panel/action";
 import { allowed } from "infra/panel/guard";
 import { inSession, toSessionSlots, unitConfig } from "./day";
-import { lockEntry, readEntry, serviceActiveEntries } from "./entries";
+import { lockEntry, readEntries, serviceActiveEntries } from "./entries";
 
 export const SCHEDULE: Action = "allocate_confirm_refuse_for_patient";
 const DAY = 86400_000;
-const FINAL_STATES = ["cancelled", "completed", "closed_without_care", "archived"] as const;
 
 const MESSAGES: Record<string, string> = {
   no_slot: "A sessão não tem mais vaga. A lista foi atualizada.",
@@ -86,18 +85,20 @@ async function noShowsByEntry(db: TenantDatabase, entryIds: string[], config: Un
   return count;
 }
 
+const BLOCKER_REASON: Record<NonNullable<ReturnType<typeof allocationBlocker>>, string> = {
+  forbidden_transition: "Sessão pública: o paciente se inscreve.",
+  past_deadline: "A alocação vai até a véspera da sessão.",
+  no_slot: "Sem vagas livres.",
+};
+
 function canAllocate(
   s: typeof session.$inferSelect,
   config: UnitConfig,
   now: number,
 ): { canAllocate: boolean; reason: string | null } {
   if (s.state !== "planned") return { canAllocate: false, reason: "A sessão não está mais planejada." };
-  if (s.visibility !== "private") return { canAllocate: false, reason: "Sessão pública: o paciente se inscreve." };
-  const start = s.start.getTime();
-  if (now >= start || sameDay(now, start, config.timeZone))
-    return { canAllocate: false, reason: "A alocação vai até a véspera da sessão." };
-  if (s.slots !== null && s.taken >= s.slots) return { canAllocate: false, reason: "Sem vagas livres." };
-  return { canAllocate: true, reason: null };
+  const blocker = allocationBlocker(toSessionSlots(s), now, config);
+  return blocker ? { canAllocate: false, reason: BLOCKER_REASON[blocker] } : { canAllocate: true, reason: null };
 }
 
 async function buildAllocation(db: TenantDatabase, sessionId: string, now: number): Promise<SessionAllocation> {
@@ -200,15 +201,17 @@ export async function allocateSession(ctx: ActionContext, sessionId: string, ent
         }),
     );
   } catch (err) {
+    // O 409 leva a lista atualizada; se nem ela puder ser lida, vale o 409 original.
     if (err instanceof ApiError && err.status === 409) {
-      err.data = { allocation: await buildAllocation(ctx.db, sessionId, Date.now()) };
+      const allocation = await buildAllocation(ctx.db, sessionId, ctx.now).catch(() => null);
+      if (allocation) err.data = { allocation };
     }
     throw err;
   }
   return buildAllocation(ctx.db, sessionId, ctx.now);
 }
 
-export type Answer = "confirmed" | "refused" | "no_contact";
+export type Answer = SchedulerAnswer;
 
 /**
  * RN-CONF-01..04: a resposta à alocação, do paciente ou do agendador em nome dele. Confirmar mantém
@@ -283,13 +286,18 @@ export async function unitCallList(ctx: ActionContext, unitId: string): Promise<
     .innerJoin(service, eq(entry.serviceId, service.id))
     .where(and(eq(service.unitId, unitId), eq(entry.state, "allocated")));
   if (rows.length === 0) return [];
-  const entries = (await Promise.all(rows.map((l) => readEntry(ctx.db, l.id)))).filter((e): e is Entry => e !== null);
+  const entries = await readEntries(
+    ctx.db,
+    rows.map((l) => l.id),
+  );
+  const entryById = new Map(entries.map((e) => [e.id, e]));
   const sessionIds = [...new Set(rows.map((l) => l.sessionId).filter((x): x is string => x !== null))];
   const sessions = await ctx.db
     .select({ s: session, name: service.name })
     .from(session)
     .innerJoin(service, eq(session.serviceId, service.id))
     .where(inArray(session.id, sessionIds));
+  const sessionById = new Map(sessions.map((x) => [x.s.id, x]));
   const items = callList(
     entries,
     sessions.map((x) => toSessionSlots(x.s)),
@@ -321,8 +329,8 @@ export async function unitCallList(ctx: ActionContext, unitId: string): Promise<
       ),
     );
   return items.map((i) => {
-    const e = entries.find((x) => x.id === i.entryId) as Entry;
-    const s = sessions.find((x) => x.s.id === i.sessionId);
+    const e = entryById.get(i.entryId) as Entry;
+    const s = sessionById.get(i.sessionId);
     const last = attempts
       .filter((t) => t.target === e.id && t.at.getTime() >= (e.allocatedAt ?? 0))
       .reduce<Date | null>((m, t) => (m && m > t.at ? m : t.at), null);
@@ -349,60 +357,68 @@ export async function unitWaitlist(ctx: ActionContext, unitId: string): Promise<
     .from(service)
     .where(and(eq(service.unitId, unitId), eq(service.active, true)))
     .orderBy(asc(service.name));
-  const exit: ServiceWaitlist[] = [];
-  for (const srv of services) {
-    const inWaitlist = (
-      await ctx.db
-        .select({ state: entry.state, classification: entry.classification, risk: entry.confirmedRisk })
-        .from(entry)
-        .where(and(eq(entry.serviceId, srv.id), notInArray(entry.state, [...FINAL_STATES])))
-    ).filter((e) => e.state === "waiting" || e.state === "reassigned");
-    const sessions = await ctx.db
-      .select()
-      .from(session)
+  if (services.length === 0) return [];
+  const serviceIds = services.map((x) => x.id);
+  // Na lista: aguardando ou remanejada. Alerta: urgente sugerido pelo app e ainda não confirmado.
+  const counts = await ctx.db
+    .select({
+      serviceId: entry.serviceId,
+      waiting: sql<number>`count(*)::int`,
+      alerts: sql<number>`count(*) filter (where ${entry.confirmedRisk} is null and ${entry.classification}->>'level' = 'urgent')::int`,
+    })
+    .from(entry)
+    .where(and(inArray(entry.serviceId, serviceIds), inArray(entry.state, ["waiting", "reassigned"])))
+    .groupBy(entry.serviceId);
+  const countOf = new Map(counts.map((c) => [c.serviceId, c]));
+  const allSessions = await ctx.db
+    .select()
+    .from(session)
+    .where(
+      and(
+        inArray(session.serviceId, serviceIds),
+        eq(session.visibility, "private"),
+        eq(session.state, "planned"),
+        gt(session.start, new Date(ctx.now)),
+      ),
+    )
+    .orderBy(asc(session.start));
+  const byState = new Map<string, { confirmed: number; pending: number }>();
+  if (allSessions.length > 0) {
+    const rows = await ctx.db
+      .select({ sessionId: entry.sessionId, state: entry.state, n: sql<number>`count(*)::int` })
+      .from(entry)
       .where(
         and(
-          eq(session.serviceId, srv.id),
-          eq(session.visibility, "private"),
-          eq(session.state, "planned"),
-          gt(session.start, new Date(ctx.now)),
-        ),
-      )
-      .orderBy(asc(session.start))
-      .limit(20);
-    const byState = new Map<string, { confirmed: number; pending: number }>();
-    if (sessions.length > 0) {
-      const rows = await ctx.db
-        .select({ sessionId: entry.sessionId, state: entry.state, n: sql<number>`count(*)::int` })
-        .from(entry)
-        .where(
           inArray(
             entry.sessionId,
-            sessions.map((s) => s.id),
+            allSessions.map((x) => x.id),
           ),
-        )
-        .groupBy(entry.sessionId, entry.state);
-      for (const l of rows) {
-        const c = byState.get(l.sessionId ?? "") ?? { confirmed: 0, pending: 0 };
-        if (l.state === "confirmed") c.confirmed += l.n;
-        if (l.state === "allocated") c.pending += l.n;
-        byState.set(l.sessionId ?? "", c);
-      }
+          inArray(entry.state, ["confirmed", "allocated"]),
+        ),
+      )
+      .groupBy(entry.sessionId, entry.state);
+    for (const l of rows) {
+      const c = byState.get(l.sessionId ?? "") ?? { confirmed: 0, pending: 0 };
+      if (l.state === "confirmed") c.confirmed += l.n;
+      if (l.state === "allocated") c.pending += l.n;
+      byState.set(l.sessionId ?? "", c);
     }
-    exit.push({
-      service: { id: srv.id, name: srv.name, mode: srv.mode },
-      waiting: inWaitlist.length,
-      alerts: inWaitlist.filter((e) => e.risk === null && e.classification.level === "urgent").length,
-      sessions: sessions.map((s) => ({
-        id: s.id,
-        start: s.start.toISOString(),
-        end: s.end.toISOString(),
-        slots: s.slots,
-        taken: s.taken,
-        ...(byState.get(s.id) ?? { confirmed: 0, pending: 0 }),
-        professional: s.professional,
-      })),
-    });
   }
-  return exit;
+  return services.map((srv) => ({
+    service: { id: srv.id, name: srv.name, mode: srv.mode },
+    waiting: countOf.get(srv.id)?.waiting ?? 0,
+    alerts: countOf.get(srv.id)?.alerts ?? 0,
+    sessions: allSessions
+      .filter((x) => x.serviceId === srv.id)
+      .slice(0, 20)
+      .map((x) => ({
+        id: x.id,
+        start: x.start.toISOString(),
+        end: x.end.toISOString(),
+        slots: x.slots,
+        taken: x.taken,
+        ...(byState.get(x.id) ?? { confirmed: 0, pending: 0 }),
+        professional: x.professional,
+      })),
+  }));
 }

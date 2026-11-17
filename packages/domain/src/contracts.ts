@@ -15,6 +15,14 @@ export type EntryState =
   | "cancelled"
   | "closed_without_care";
 
+/** Entrada que não conta como ativa: fora da lista e da fila (arquivada ainda pode ser reativada). */
+export const INACTIVE_ENTRY_STATES: readonly EntryState[] = [
+  "cancelled",
+  "completed",
+  "closed_without_care",
+  "archived",
+];
+
 // Pendência fica na entrada: com ela o check-in é recusado.
 export type ItemState = "remote" | "present" | "called" | "done_in_stage" | "left_queue" | "reassigned";
 

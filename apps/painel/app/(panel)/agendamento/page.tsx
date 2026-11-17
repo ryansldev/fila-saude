@@ -17,7 +17,7 @@ import { ApiError } from "@/lib/api";
 import { useApi } from "@/lib/api-context";
 import { useCurrentUnit } from "@/lib/current-unit";
 import { errorMessage } from "@/lib/forms/errors";
-import { pendingChecksSummary, whenInTimeZone } from "@/lib/scheduling";
+import { pendingChecksSummary, refusalNotice, whenInTimeZone } from "@/lib/scheduling";
 import { useQuery } from "@/lib/use-query";
 
 const MAX_IN_SEGMENTED = 4;
@@ -92,7 +92,8 @@ export default function Scheduling() {
       answer === "refused" &&
       !(await confirm({
         title: `${name} recusou?`,
-        description: "A vaga fica livre e a pessoa volta para a lista com a data de entrada de antes.",
+        description:
+          "A vaga fica livre. A pessoa volta para a lista com a data de entrada de antes (quem foi remanejado e já recusou uma vez tem o pedido encerrado).",
         action: "Registrar recusa",
         danger: true,
       }))
@@ -100,10 +101,10 @@ export default function Scheduling() {
       return;
     setSending(true);
     try {
-      await api.post(`/v1/panel/entries/${entryId}/answer`, { answer });
+      const r = await api.post<{ state: string }>(`/v1/panel/entries/${entryId}/answer`, { answer });
       const texts: Record<Answer, string> = {
         confirmed: `${name} confirmou.`,
-        refused: "Recusa registrada. A vaga está livre.",
+        refused: refusalNotice(r.state),
         no_contact: "Tentativa anotada. Tente de novo mais tarde.",
       };
       setNotice({ text: texts[answer], kind: "ok" });

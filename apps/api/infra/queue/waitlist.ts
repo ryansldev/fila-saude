@@ -1,4 +1,4 @@
-import { type Answers, activeEntryOf, redoQuestionnaire } from "@fila-saude/domain";
+import { type Answers, activeEntryOf, INACTIVE_ENTRY_STATES, redoQuestionnaire } from "@fila-saude/domain";
 import type { SignUpInput, UnitService } from "@fila-saude/schemas/queue";
 import { and, asc, eq, isNull, notInArray } from "drizzle-orm";
 import type { AuthenticatedPatient } from "infra/auth/patient-session";
@@ -12,7 +12,7 @@ import { unitConfig } from "./day";
 import { joinWaitlist, personByCpf, readEntry, serviceActiveEntries, updateEntry } from "./entries";
 import { answerAllocation } from "./scheduling";
 
-const FINAL_STATES = ["cancelled", "completed", "closed_without_care", "archived"] as const;
+const FINAL_STATES = INACTIVE_ENTRY_STATES;
 /** I9: refazer o questionário pelo app só na lista; no dia vale "meus sintomas pioraram" (H6). */
 const IN_WAITLIST = ["waiting", "allocated", "confirmed"];
 
@@ -51,6 +51,9 @@ export async function joinWaitlistFromApp(
 ) {
   const person = await personFromRequest(p, data.forWhom);
   return db.transaction(async (tx) => {
+    // INV-01 / L-003: trava o serviço para que pedidos simultâneos confiram a duplicada e o limite
+    // por conta um depois do outro (a pessoa sem CPF não tem índice único que segure).
+    await tx.select({ id: service.id }).from(service).where(eq(service.id, serviceId)).for("update");
     const { s } = await activeService(tx, serviceId);
     if (s.mode === "referral")
       throw new ApiError(

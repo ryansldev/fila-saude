@@ -8,6 +8,7 @@ import {
   errorMessage,
   errorNotice,
   nextStep,
+  refusalNotice,
   WORSENED_GUIDANCE,
 } from "@/lib/texts";
 
@@ -30,6 +31,7 @@ const base: MyEntry = {
   serviceId: "00000000-0000-4000-8000-0000000000aa",
   forMe: true,
   birthDate: "1990-05-05",
+  refusalEnds: false,
   canCancel: true,
   stage: "care",
   triaged: false,
@@ -290,5 +292,15 @@ describe("triagem no app (fatia 3)", () => {
   it("RN-PIORA-01 (H6): presente não refaz o questionário; a orientação é avisar no local e o 192", () => {
     expect(WORSENED_GUIDANCE).toMatch(/recepção ou a enfermagem/);
     expect(WORSENED_GUIDANCE).toMatch(/192/);
+  });
+});
+
+describe("depois de recusar a data", () => {
+  it("na lista de novo ou pedido encerrado, conforme a resposta da API", () => {
+    expect(refusalNotice("waiting")).toBe("a vaga fica para outra pessoa. você continua na lista de espera.");
+    expect(refusalNotice("reassigned")).toBe("a vaga fica para outra pessoa. você continua na lista de espera.");
+    expect(refusalNotice("cancelled")).toBe(
+      "a vaga fica para outra pessoa. como já era a segunda data recusada, o pedido foi encerrado. se ainda precisar, fale com a unidade.",
+    );
   });
 });

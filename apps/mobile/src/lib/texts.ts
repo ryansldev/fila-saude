@@ -221,3 +221,12 @@ export function nextStep(e: MyEntry, sit: Situation, now: number): string {
       return "inscrição cancelada.";
   }
 }
+
+/**
+ * RN-CONF-04 / RN-REM-03: depois de "não posso nesta data". Volta para a lista, menos na 2ª recusa de
+ * quem foi remanejado, que encerra o pedido; o texto segue o estado que a API devolveu.
+ */
+export const refusalNotice = (state: string): string =>
+  state === "cancelled"
+    ? "a vaga fica para outra pessoa. como já era a segunda data recusada, o pedido foi encerrado. se ainda precisar, fale com a unidade."
+    : "a vaga fica para outra pessoa. você continua na lista de espera.";

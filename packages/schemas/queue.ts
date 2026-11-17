@@ -209,6 +209,8 @@ export const myEntrySchema = z.object({
   forMe: z.boolean(),
   /** Nascimento da pessoa atendida: "mesma pessoa" é CPF ou nome + nascimento (RN-LE-02). */
   birthDate: z.string(),
+  /** RN-REM-03: recusar esta data encerra o pedido (2ª recusa de quem foi remanejado); o app avisa antes. */
+  refusalEnds: z.boolean(),
   /** RN-CANC-01: o "não vou poder ir" vale aqui (remanejada usa "desistir", ainda sem tela). */
   canCancel: z.boolean(),
   /** Etapa em que está na fila do dia (triagem ou atendimento); `null` fora da fila. */
@@ -365,6 +367,7 @@ export const allocateInputSchema = z.object({ entryId: z.uuid() });
 
 /** RN-CONF-02 / I6: o que o agendador registra depois de ligar. */
 export const schedulerAnswerSchema = z.object({ answer: z.enum(["confirmed", "refused", "no_contact"]) });
+export type SchedulerAnswer = z.infer<typeof schedulerAnswerSchema>["answer"];
 export const registeredAnswerSchema = z.object({ state: z.string() });
 
 /** RN-CONF-03: alocação pendente para ligar. */

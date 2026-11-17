@@ -1,4 +1,11 @@
-import { cancelEntry, estimate, fillFromReserve, leaving } from "@fila-saude/domain";
+import {
+  cancelEntry,
+  estimate,
+  fillFromReserve,
+  INACTIVE_ENTRY_STATES,
+  leaving,
+  refusalEnds,
+} from "@fila-saude/domain";
 import type { MyEntry, PublicUnit, ScheduleSession, SignUpInput } from "@fila-saude/schemas/queue";
 import { and, asc, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
 import type { AuthenticatedPatient } from "infra/auth/patient-session";
@@ -18,7 +25,7 @@ import { forService, inSession, readDay, unitConfig } from "./day";
 import { type InformedPerson, lockEntry, updateEntry } from "./entries";
 import { signUp } from "./sign-up";
 
-const FINAL_STATES = ["cancelled", "completed", "closed_without_care", "archived"] as const;
+const FINAL_STATES = INACTIVE_ENTRY_STATES;
 const SCHEDULE_DAYS = 14;
 // Estados em que o paciente ainda pode desistir (cancelarEntrada no domínio).
 const CANCELLABLE = ["waiting", "awaiting_referral", "allocated", "confirmed", "in_reserve", "in_queue"];
@@ -233,6 +240,7 @@ export async function mine(db: TenantDb, patientId: string, now: number): Promis
       serviceId: srv.id,
       forMe: p.patientId === patientId,
       birthDate: p.birthDate,
+      refusalEnds: refusalEnds(e),
       canCancel: e.reassigned === null && CANCELLABLE.includes(e.state) && item?.state !== "called",
       stage: item?.stage ?? null,
       triaged: Boolean(item?.attendedInStages.includes("triage")),

@@ -44,10 +44,6 @@ const LEVELS: Record<string, string> = {
   routine: "Rotina",
 };
 
-/** RN-RISCO-01: o agendador vê se o risco é o sugerido pelo app ou o confirmado na triagem. */
-export const riskLabel = (r: { level: string; confirmed: boolean }): string =>
-  `${LEVELS[r.level] ?? r.level} · ${r.confirmed ? "confirmado" : "sugerido pelo app"}`;
-
 export const TONE_CLASSES: Record<Tone, string> = {
   neutral: "bg-slate-100 text-slate-700",
   alert: "bg-amber-100 text-amber-900",
@@ -103,3 +99,12 @@ export function pendingChecksSummary(
 export function allocateUntil(start: string, timeZone: string): string {
   return whenInTimeZone(new Date(eve(Date.parse(start), timeZone)).toISOString(), timeZone).split(" às ")[0] ?? "";
 }
+
+/**
+ * RN-CONF-04 / RN-REM-03: depois de "Recusou". A recusa devolve a pessoa à lista, menos a 2ª recusa de
+ * quem foi remanejado, que encerra o pedido; o texto segue o estado que a API devolveu.
+ */
+export const refusalNotice = (state: string): string =>
+  state === "cancelled"
+    ? "Recusa registrada. A vaga está livre. Era a 2ª recusa de quem foi remanejado: o pedido foi encerrado."
+    : "Recusa registrada. A vaga está livre e a pessoa voltou para a lista.";

@@ -75,7 +75,7 @@ describe("confirmação pelo app (T5.4)", () => {
 
   it("RN-CONF-01: 'minhas' mostra a alocação com o prazo de confirmação", async () => {
     const e = await my("Ana");
-    expect(e).toMatchObject({ state: "allocated", session: { id: privateId } });
+    expect(e).toMatchObject({ state: "allocated", session: { id: privateId }, refusalEnds: false });
     expect(Date.parse(e.confirmationDeadline)).toBeGreaterThan(Date.now());
   });
 

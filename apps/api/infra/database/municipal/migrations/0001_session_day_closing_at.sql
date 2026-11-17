@@ -1,0 +1,1 @@
+CREATE INDEX "session_day_closing_at_idx" ON "session_day" USING btree ((("day"->'closing'->>'at')::bigint));

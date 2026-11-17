@@ -1,1 +1,1 @@
-export type Answer = "confirmed" | "refused" | "no_contact";
+export type { SchedulerAnswer as Answer } from "@fila-saude/schemas/queue";

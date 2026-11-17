@@ -3,13 +3,13 @@ import {
   type Answers,
   createEntry,
   type Entry,
-  type EntryState,
   effectiveConfig,
+  INACTIVE_ENTRY_STATES,
   properName,
   type Result,
 } from "@fila-saude/domain";
 import type { Relationship } from "@fila-saude/schemas/queue";
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { PgTransaction } from "drizzle-orm/pg-core";
 import { entry } from "infra/database/municipal/schema/entry";
 import { localPerson } from "infra/database/municipal/schema/local-person";
@@ -27,7 +27,7 @@ export type InformedPerson = {
   relationship?: Relationship | null;
 };
 
-const FINAL_STATES: EntryState[] = ["cancelled", "completed", "closed_without_care", "archived"];
+const FINAL_STATES = INACTIVE_ENTRY_STATES;
 
 const ms = (d: Date | null) => (d ? d.getTime() : null);
 const data = (n: number | null) => (n === null ? null : new Date(n));
@@ -148,8 +148,16 @@ export async function readEntry(db: TenantDatabase, id: string): Promise<Entry |
   return row ? forEntry(row) : null;
 }
 
+/** Várias entradas numa consulta só (sem uma ida ao banco por entrada). */
+export async function readEntries(db: TenantDatabase, ids: string[]): Promise<Entry[]> {
+  if (ids.length === 0) return [];
+  return (await withPerson(db).where(inArray(entry.id, ids))).map(forEntry);
+}
+
 export async function serviceActiveEntries(db: TenantDatabase, serviceId: string): Promise<Entry[]> {
-  const rows = await withPerson(db).where(and(eq(entry.serviceId, serviceId), notInArray(entry.state, FINAL_STATES)));
+  const rows = await withPerson(db).where(
+    and(eq(entry.serviceId, serviceId), notInArray(entry.state, [...FINAL_STATES])),
+  );
   return rows.map(forEntry);
 }
 

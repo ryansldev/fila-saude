@@ -1,7 +1,7 @@
 import type { CallListItem } from "@fila-saude/schemas/queue";
 import { PhoneIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { whenInTimeZone } from "@/lib/scheduling";
+import { AnswerButtons } from "./answer-buttons";
 import { Badge } from "./badge";
 import type { Answer } from "./kinds";
 
@@ -45,32 +45,7 @@ export function CallList({
               <span className="text-slate-600">última tentativa {whenInTimeZone(i.lastAttempt, timeZone)}</span>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="compact"
-              variant="success"
-              disabled={sending}
-              onClick={() => answer(i.entryId, i.name, "confirmed")}
-            >
-              Confirmou
-            </Button>
-            <Button
-              size="compact"
-              variant="secondary"
-              disabled={sending}
-              onClick={() => answer(i.entryId, i.name, "no_contact")}
-            >
-              Sem contato
-            </Button>
-            <Button
-              size="compact"
-              variant="outlineDanger"
-              disabled={sending}
-              onClick={() => answer(i.entryId, i.name, "refused")}
-            >
-              Recusou
-            </Button>
-          </div>
+          <AnswerButtons sending={sending} onAnswer={(r) => answer(i.entryId, i.name, r)} />
         </li>
       ))}
     </ul>

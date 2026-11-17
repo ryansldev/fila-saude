@@ -1,6 +1,7 @@
 import {
   changeVisibility,
   fillFromReserve,
+  INACTIVE_ENTRY_STATES,
   type ServiceMode,
   type SessionConfig,
   validateSession,
@@ -202,7 +203,7 @@ export async function changeSessionVisibility(ctx: ActionContext, id: string, da
   });
 }
 
-const FINAL_STATES = ["cancelled", "completed", "closed_without_care", "archived"] as const;
+const FINAL_STATES = INACTIVE_ENTRY_STATES;
 
 // Só planejada e sem pacientes na v0.1 (o remanejamento vem depois).
 export async function cancelSession(ctx: ActionContext, id: string): Promise<Session> {

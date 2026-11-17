@@ -25,6 +25,7 @@ const base: MyEntry = {
   serviceId: "00000000-0000-4000-8000-0000000000aa",
   forMe: true,
   birthDate: "1992-08-15",
+  refusalEnds: false,
   canCancel: true,
   stage: "care",
   triaged: false,

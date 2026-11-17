@@ -38,6 +38,7 @@ import {
   errorMessage,
   errorNotice,
   nextStep,
+  refusalNotice,
   type Situation,
   WORSENED_GUIDANCE,
 } from "@/lib/texts";
@@ -440,8 +441,7 @@ export function useMyQueue() {
               : x,
           ),
         );
-        if (r === "refuse")
-          Alert.alert("tudo certo", "a vaga fica para outra pessoa. você continua na lista de espera.");
+        if (r === "refuse") Alert.alert("tudo certo", refusalNotice(res.state));
         void fetchNow.current?.();
       })
       .catch((err) => Alert.alert("não deu certo", errorMessage(err)))
@@ -457,7 +457,9 @@ export function useMyQueue() {
               ? sendAnswer(en, r)
               : Alert.alert(
                   "não pode nesta data?",
-                  "a vaga fica para outra pessoa. você continua na lista, com a mesma data de entrada.",
+                  en.refusalEnds
+                    ? "a vaga fica para outra pessoa e, como esta já é a segunda data recusada, o pedido é encerrado."
+                    : "a vaga fica para outra pessoa. você continua na lista, com a mesma data de entrada.",
                   [
                     { text: "voltar", style: "cancel" },
                     { text: "não posso", style: "destructive", onPress: () => sendAnswer(en, "refuse") },

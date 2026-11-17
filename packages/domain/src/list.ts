@@ -1,4 +1,11 @@
-import { applyTransition, ENTRY_TRANSITIONS, type EntryState, singleTransition, type Transition } from "./contracts.ts";
+import {
+  applyTransition,
+  ENTRY_TRANSITIONS,
+  type EntryState,
+  INACTIVE_ENTRY_STATES,
+  singleTransition,
+  type Transition,
+} from "./contracts.ts";
 import { type Answers, type Classification, isUrgent, type RiskLevel, type UnitConfig } from "./kinds.ts";
 import { compareSuggestion, type Risk, type SuggestionKey } from "./order.ts";
 import { type Group, groupFromDeclared, type LegalPriority, personPriority, toVerify } from "./priority.ts";
@@ -77,7 +84,7 @@ const DAY = 24 * H;
 /** Prazo para reativar uma entrada arquivada (RN-PARADA-02, proposta). */
 const REACTIVATE_DAYS = 30;
 
-const INACTIVE: EntryState[] = ["cancelled", "completed", "closed_without_care", "archived"];
+const INACTIVE = INACTIVE_ENTRY_STATES;
 
 const EVENT_CREATES = "Paciente ou recepção cria";
 const EVENT_EMERGENCY = "Questionário = Emergência";
@@ -272,6 +279,21 @@ export function confirmationDeadline(entry: Entry, session: SessionSlots, config
  * Agendador aloca (RN-AL-04/05/06, RN-RISCO-01): só em sessão privada do serviço, até a véspera
  * no fuso da unidade, com vaga livre. O nível vira confirmado (o do agendador, se ele alterou).
  */
+/**
+ * RN-AL-04: o que impede alocar nesta sessão, seja quem for (`null` = pode): só privada, até a véspera
+ * da sessão no fuso da unidade e com vaga. O `allocate` e a tela do agendador usam a mesma regra.
+ */
+export function allocationBlocker(
+  session: SessionSlots,
+  now: number,
+  config: UnitConfig = DEFAULT_CONFIG,
+): "forbidden_transition" | "past_deadline" | "no_slot" | null {
+  if (session.visibility !== "private") return "forbidden_transition";
+  if (now >= session.start || sameDay(now, session.start, config.timeZone)) return "past_deadline";
+  if (session.slots !== null && session.taken >= session.slots) return "no_slot";
+  return null;
+}
+
 export function allocate(
   entry: Entry,
   session: SessionSlots,
@@ -283,9 +305,8 @@ export function allocate(
   if (entry.serviceId !== session.serviceId || session.visibility !== "private") return failure("forbidden_transition");
   if (applyTransition(ENTRY_TRANSITIONS, entry.state, EVENT_ALLOCATES) !== "allocated")
     return failure("forbidden_transition");
-  // Emergência não entra em lista nem fila (RN-LE-01), como em `registerRegulated`.
-  if (now >= session.start || sameDay(now, session.start, config.timeZone)) return failure("past_deadline");
-  if (session.slots !== null && session.taken >= session.slots) return failure("no_slot");
+  const blocker = allocationBlocker(session, now, config);
+  if (blocker) return failure(blocker);
 
   const fresh: Entry = {
     ...entry,
@@ -387,6 +408,12 @@ export function otherDateInSession(
  * (RN-REM-03) e delega a `otherDateInSession`. O app chama `otherDate` (encerramento.ts) para
  * qualquer remanejada com data, inclusive alocada; `recusar` dá o mesmo resultado para ela.
  */
+/** RN-REM-03: recusar esta alocação encerra o pedido (2ª recusa de remanejada de sessão pública ou regulada). */
+export function refusalEnds(entry: Pick<Entry, "state" | "reassigned" | "refusals">): boolean {
+  if (entry.state !== "allocated" || entry.reassigned === null) return false;
+  return otherDateDestination(entry.state, entry.refusals, entry.reassigned) === "cancelled";
+}
+
 export function refuse(entry: Entry, session: SessionSlots, now: number): Result<Exit> {
   if (!allocatedHere(entry, session)) return failure("forbidden_transition");
   if (entry.reassigned !== null) {

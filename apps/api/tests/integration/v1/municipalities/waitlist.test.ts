@@ -1,3 +1,4 @@
+import { joinWaitlistFromApp } from "infra/queue/waitlist";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { queueScenario, ROUTINE } from "tests/queue";
@@ -148,5 +149,24 @@ describe("lista de espera pelo app (T5.1)", () => {
       answers: ROUTINE,
     };
     expect((await enter(c.serviceId, ana.cookie, caio)).status).toBe(201);
+  });
+  it("INV-01 / L-003: pedidos simultâneos para a mesma pessoa sem CPF criam uma entrada só", async () => {
+    const db = orchestrator.municipalityDatabase(c.slug);
+    const patient = { patientId: "conta-paralela", cpf: orchestrator.generateCpf(), verified: false };
+    const data = {
+      forWhom: {
+        kind: "other" as const,
+        relationship: "legal_guardian" as const,
+        declared: true as const,
+        name: "Trio Paralelo",
+        birthDate: "2016-06-06",
+        cpf: null,
+      },
+      answers: ROUTINE,
+    };
+    const results = await Promise.allSettled(
+      Array.from({ length: 10 }, () => joinWaitlistFromApp(db, patient, c.serviceId, data, Date.now())),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
   });
 });

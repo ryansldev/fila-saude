@@ -21,6 +21,7 @@ const my = (x: Partial<MyEntry>): MyEntry => ({
   serviceId: SRV,
   forMe: true,
   birthDate: "1990-01-01",
+  refusalEnds: false,
   canCancel: true,
   stage: null,
   triaged: false,
