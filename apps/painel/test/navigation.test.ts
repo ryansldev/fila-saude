@@ -1,6 +1,6 @@
 import { can, PROFILES } from "@fila-saude/domain";
 import { describe, expect, it } from "vitest";
-import { MENU_ITEMS, panelMenu } from "@/lib/navigation";
+import { MENU_ITEMS, panelMenu, unitForPath } from "@/lib/navigation";
 
 const labels = (profiles: Parameters<typeof panelMenu>[0]) => panelMenu(profiles).map((i) => i.label);
 
@@ -59,5 +59,19 @@ describe("panelMenu", () => {
         expect(present.has(item.href), `${profile} ${item.label}`).toBe(item.actions.some((a) => can([profile], a)));
       }
     }
+  });
+});
+
+describe("página que só vale em outra unidade da pessoa", () => {
+  const profiles = [
+    { profile: "unit_manager" as const, unitId: "u1" },
+    { profile: "reception" as const, unitId: "u2" },
+  ];
+  it("troca para a unidade em que a página vale, em vez de mostrar 'Sem acesso'", () => {
+    expect(unitForPath("/equipe", profiles, ["u2", "u1"], "u2")).toBe("u1");
+  });
+  it("não troca quando a página já vale aqui ou não vale em nenhuma", () => {
+    expect(unitForPath("/fila", profiles, ["u1", "u2"], "u2")).toBeNull();
+    expect(unitForPath("/agendamento", profiles, ["u1", "u2"], "u2")).toBeNull();
   });
 });

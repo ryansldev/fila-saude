@@ -1,7 +1,7 @@
 "use client";
 
 import { type StaffMe, staffMeSchema } from "@fila-saude/schemas/auth";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, createElement, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { type Api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/api-context";
 import { panelMenu } from "@/lib/navigation";
@@ -25,12 +25,30 @@ export type MeState =
   | { state: "error" }
   | { state: "authenticated"; me: StaffMe };
 
-/** Quem está logado no painel (cookie da sessão). 401 → anônimo. */
+const MeContext = createContext<MeState | null>(null);
+
+/**
+ * Quem está logado, uma vez para o painel inteiro (layout): as páginas leem daqui em vez de pedir `/me`
+ * de novo a cada navegação (e piscar sem unidades enquanto esperam).
+ */
+export function MeProvider({ children }: { children: ReactNode }) {
+  const state = useOwnMe(true);
+  return createElement(MeContext.Provider, { value: state }, children);
+}
+
+/** Quem está logado no painel (cookie da sessão). 401 → anônimo. Fora do provedor, busca sozinho. */
 export function useMe(): MeState {
+  const ctx = useContext(MeContext);
+  const own = useOwnMe(ctx === null);
+  return ctx ?? own;
+}
+
+function useOwnMe(fetch: boolean): MeState {
   const api = useApi();
   const [state, setState] = useState<MeState>({ state: "loading" });
 
   useEffect(() => {
+    if (!fetch) return;
     let active = true;
     fetchMe(api)
       .then((me) => active && setState({ state: "authenticated", me }))
@@ -41,7 +59,7 @@ export function useMe(): MeState {
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [api, fetch]);
 
   return state;
 }

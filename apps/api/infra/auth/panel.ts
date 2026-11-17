@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { properName } from "@fila-saude/domain";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { hashPassword } from "better-auth/crypto";
@@ -61,7 +62,8 @@ export async function createStaffUser(
   const id = randomUUID();
   await db.insert(staffUser).values({
     id,
-    name: data.name,
+    // Regra dos nomes: primeira letra maiúscula (a tabela da Equipe, o menu e a auditoria mostram assim).
+    name: properName(data.name),
     email: data.email ?? `${login}@painel.invalid`,
     username: login,
     displayUsername: data.login,

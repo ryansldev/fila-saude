@@ -21,6 +21,7 @@ import { TimeEditor } from "@/components/time-editor";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
+import { usePanelUnit } from "@/lib/current-unit";
 import { errorMessage, type SendingErrors, sendingErrors, validateClient } from "@/lib/forms/errors";
 import { DEFAULT_TIME, type Time, timeProblems, timeSummary } from "@/lib/forms/time";
 import { timeZoneOptions } from "@/lib/forms/time-zones";
@@ -304,7 +305,13 @@ function ConfigureUnit({ unit, onClose, onSave }: { unit: Unit; onClose: () => v
 
 export default function Units() {
   const api = useApi();
-  const { items, error, reload } = useList<Unit>("/v1/panel/units");
+  const { items, error, reload: reloadList } = useList<Unit>("/v1/panel/units");
+  // A lista da tela e a do menu (cartão da unidade e a troca) mudam juntas.
+  const { reload: reloadMenu } = usePanelUnit();
+  const reload = () => {
+    reloadList();
+    reloadMenu();
+  };
   const [open, setOpen] = useState<string | null>(null);
   const selected = items.find((u) => u.id === open) ?? null;
   const [creating, setCreating] = useState(false);

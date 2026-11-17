@@ -56,7 +56,8 @@ let slugsCounter = 0;
 // `t<timestamp36><n>`: único entre arquivos e execuções, sempre válido para `validateSlug`.
 function uniqueSlug() {
   slugsCounter += 1;
-  const slug = `t${Date.now().toString(36)}${slugsCounter}`;
+  // O pid separa os workers do Vitest que começam no mesmo milissegundo (até 30 caracteres no slug).
+  const slug = `t${Date.now().toString(36)}${process.pid.toString(36)}${slugsCounter}`;
   fileSlugs.add(slug);
   return slug;
 }
@@ -92,8 +93,11 @@ function municipalityDatabase(slug: string): TenantDb {
   return db;
 }
 
-function forgetDatabase(slug: string) {
+// Esquece e fecha o pool: um pool vivo segura conexões com o banco que o teste vai derrubar.
+async function forgetDatabase(slug: string) {
+  const db = databases.get(slug);
   databases.delete(slug);
+  await db?.$client.end().catch(() => {});
 }
 
 async function createUserWithProfiles(

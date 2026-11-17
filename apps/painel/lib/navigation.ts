@@ -90,3 +90,17 @@ export function profilesInUnit<P extends UserProfile>(profiles: P[], unitId: str
   if (unitId === null) return profiles;
   return profiles.filter((p) => p.unitId === null || p.unitId === unitId);
 }
+
+/**
+ * A página não vale na unidade escolhida, mas vale em outra unidade da pessoa (por exemplo, o destino
+ * depois do login): a unidade para onde trocar, em vez de mostrar "Sem acesso". `null` = não troca.
+ */
+export function unitForPath<P extends UserProfile>(
+  path: string,
+  profiles: P[],
+  unitIds: string[],
+  current: string | null,
+): string | null {
+  if (canAccess(path, profilesInUnit(profiles, current))) return null;
+  return unitIds.find((id) => id !== current && canAccess(path, profilesInUnit(profiles, id))) ?? null;
+}

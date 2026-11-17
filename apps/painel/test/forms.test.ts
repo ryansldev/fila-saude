@@ -4,7 +4,7 @@ import { assignmentsSchema, staffUserInputSchema } from "@fila-saude/schemas/use
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
 import { errorMessage, sendingErrors, validateClient } from "@/lib/forms/errors";
-import { MINUTES_FIELD, serviceForSending, showsTriageTime } from "@/lib/forms/service";
+import { averageTimeText, MINUTES_FIELD, serviceForSending, showsTriageTime } from "@/lib/forms/service";
 import {
   adjustVisibility,
   allowedVisibilities,
@@ -259,5 +259,14 @@ describe("unidade de um vínculo ou função", () => {
     expect(Object.keys(e?.fields ?? {})).toEqual(
       expect.arrayContaining([assignmentUnitKey("unitLinks", 0), assignmentUnitKey("roles", 0)]),
     );
+  });
+});
+
+describe("tempo médio na tabela de serviços", () => {
+  it("mostra só o que foi informado; nada informado é 'padrão da unidade'", () => {
+    expect(averageTimeText({ triage: 5, care: 15 })).toBe("5 min + 15 min");
+    expect(averageTimeText({ care: 15 })).toBe("15 min");
+    expect(averageTimeText({ triage: 5 })).toBe("5 min na triagem");
+    expect(averageTimeText({})).toBe("padrão da unidade");
   });
 });

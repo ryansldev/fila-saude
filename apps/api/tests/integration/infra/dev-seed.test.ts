@@ -170,8 +170,7 @@ describe("dev:seed", () => {
   it("PD-40: rodar de novo apaga e recria — mesmas contagens, ids novos, sessão antiga inválida", async () => {
     const cookie = await orchestrator.loginStaff(slug, "gestor", "exemplo123");
     const [before] = await db().select().from(unit);
-    await orchestrator.municipalityDatabase(slug).$client.end();
-    orchestrator.forgetDatabase(slug);
+    await orchestrator.forgetDatabase(slug);
     summary = await seedExample(deps());
     const [after] = await db().select().from(unit);
     expect(after?.id).not.toBe(before?.id);
@@ -185,8 +184,7 @@ describe("dev:seed", () => {
     await database.update(municipality).set({ status: "creating" }).where(eq(municipality.slug, slug));
     const cpfs = EXAMPLE_CPFS;
     expect((await database.select().from(patient).where(inArray(patient.cpf, cpfs))).length).toBe(3);
-    await orchestrator.municipalityDatabase(slug).$client.end();
-    orchestrator.forgetDatabase(slug);
+    await orchestrator.forgetDatabase(slug);
     summary = await seedExample(deps());
     const [row] = await database.select().from(municipality).where(eq(municipality.slug, slug));
     expect(row?.status).toBe("active");

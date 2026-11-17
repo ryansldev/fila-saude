@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { UnitInMenu } from "@/components/ui/unit-in-menu";
 import { useApi } from "@/lib/api-context";
 import { UnitProvider, usePanelUnit } from "@/lib/current-unit";
-import { MENU_ICONS, type MenuGroup, panelMenu, profilesInUnit } from "@/lib/navigation";
-import { leave, useMe } from "@/lib/session";
+import { MENU_ICONS, type MenuGroup, panelMenu, profilesInUnit, unitForPath } from "@/lib/navigation";
+import { leave, MeProvider, useMe } from "@/lib/session";
 
 const GROUPS: { id: MenuGroup; title: string }[] = [
   { id: "care", title: "Atendimento" },
@@ -22,9 +22,11 @@ const GROUPS: { id: MenuGroup; title: string }[] = [
 
 export default function PanelLayout({ children }: { children: ReactNode }) {
   return (
-    <UnitProvider>
-      <Frame>{children}</Frame>
-    </UnitProvider>
+    <MeProvider>
+      <UnitProvider>
+        <Frame>{children}</Frame>
+      </UnitProvider>
+    </MeProvider>
   );
 }
 
@@ -34,11 +36,24 @@ function Frame({ children }: { children: ReactNode }) {
   const api = useApi();
   const path = usePathname();
   const me = useMe();
-  const { current: unitId } = usePanelUnit();
+  const { current: unitId, all: units, choose } = usePanelUnit();
 
   useEffect(() => {
     if (me.state === "anonymous") router.replace("/login");
   }, [me.state, router]);
+
+  // A página vale em outra unidade da pessoa (o destino do login, um link): troca para ela.
+  const allProfiles = me.state === "authenticated" ? me.me.profiles : null;
+  useEffect(() => {
+    if (!allProfiles || units.length === 0) return;
+    const other = unitForPath(
+      path,
+      allProfiles,
+      units.map((u) => u.id),
+      unitId,
+    );
+    if (other) choose(other);
+  }, [path, allProfiles, units, unitId, choose]);
 
   if (me.state === "error") return <p className="p-8 text-gray-700">Não foi possível carregar. Tente de novo.</p>;
   if (me.state !== "authenticated") return <p className="p-8 text-gray-500">Carregando...</p>;

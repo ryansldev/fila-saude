@@ -1,11 +1,5 @@
 export type Mode = "direct" | "referral" | "regulated";
 
-export const MODE_LABELS: Record<Mode, string> = {
-  direct: "Livre (paciente entra na lista)",
-  referral: "Com requisição (validada pela unidade)",
-  regulated: "Regulado (vaga vem da regulação)",
-};
-
 /** Onde o erro dos minutos aparece: o caminho do campo no schema do serviço. */
 export const MINUTES_FIELD = { triage: "averageTimeMin.triage", care: "averageTimeMin.care" } as const;
 
@@ -33,4 +27,12 @@ export function serviceForSending(v: ServiceValues) {
     mode: v.mode,
     averageTimeMin,
   };
+}
+
+/** A coluna "Tempo médio": só o que foi informado; sem nada, a estimativa usa o padrão da unidade. */
+export function averageTimeText(t: { triage?: number | undefined; care?: number | undefined }): string {
+  if (t.triage && t.care) return `${t.triage} min + ${t.care} min`;
+  if (t.care) return `${t.care} min`;
+  if (t.triage) return `${t.triage} min na triagem`;
+  return "padrão da unidade";
 }

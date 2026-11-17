@@ -72,6 +72,8 @@ type UnitState = {
   all: UnitSummary[];
   current: string | null;
   choose: (id: string) => void;
+  /** Busca as unidades de novo (criar, editar ou remover uma unidade muda o menu). */
+  reload: () => void;
   error: string | null;
   loaded: boolean;
 };
@@ -85,7 +87,10 @@ function useUnitState(fetch: boolean): UnitState {
   const [current, setCurrent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [version, setVersion] = useState(0);
+  const reload = useCallback(() => setVersion((v) => v + 1), []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` é o gatilho da recarga.
   useEffect(() => {
     if (!fetch) return;
     let active = true;
@@ -107,7 +112,7 @@ function useUnitState(fetch: boolean): UnitState {
     return () => {
       active = false;
     };
-  }, [api, fetch]);
+  }, [api, fetch, version]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -121,7 +126,7 @@ function useUnitState(fetch: boolean): UnitState {
     store(id);
   }, []);
 
-  return { all, current, choose, error, loaded };
+  return { all, current, choose, reload, error, loaded };
 }
 
 /** Provedor da unidade do painel inteiro (layout): o cartão do menu troca, as páginas leem. */

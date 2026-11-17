@@ -21,7 +21,14 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { useApi } from "@/lib/api-context";
 import { useCurrentUnit } from "@/lib/current-unit";
 import { type SendingErrors, sendingErrors, validateClient } from "@/lib/forms/errors";
-import { MINUTES_FIELD, type Mode, type ServiceValues, serviceForSending, showsTriageTime } from "@/lib/forms/service";
+import {
+  averageTimeText,
+  MINUTES_FIELD,
+  type Mode,
+  type ServiceValues,
+  serviceForSending,
+  showsTriageTime,
+} from "@/lib/forms/service";
 import { useList } from "@/lib/use-list";
 
 type Service = {
@@ -218,10 +225,7 @@ export default function Services() {
               <TableCell className="font-semibold text-slate-900">{s.name}</TableCell>
               <TableCell>{MODE_DESCRIPTION[s.mode].label}</TableCell>
               <TableCell>{s.requiresTriage ? "Sim" : "Não"}</TableCell>
-              <TableCell>
-                {s.averageTimeMin.triage ? `${s.averageTimeMin.triage} min + ` : ""}
-                {s.averageTimeMin.care} min
-              </TableCell>
+              <TableCell>{averageTimeText(s.averageTimeMin)}</TableCell>
               <TableCell>
                 <RowActions edit={{ label: `Editar ${s.name}`, onClick: () => setEditing(s) }} />
               </TableCell>

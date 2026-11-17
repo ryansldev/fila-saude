@@ -334,11 +334,14 @@ function PanelEditSession({
   const [v, setV] = useState<EditValues | null>(null);
   const [errors, setErrors] = useState(WITHOUT_ERRORS);
   const [sending, setSending] = useState(false);
+  // Versão já gravada nesta abertura (a edição passou e a visibilidade falhou).
+  const [savedVersion, setSavedVersion] = useState<number | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: só ao abrir outra sessão.
   useEffect(() => {
     if (session) {
       setV(fromSession(session));
       setErrors(WITHOUT_ERRORS);
+      setSavedVersion(null);
     }
   }, [session?.id]);
 
@@ -375,11 +378,16 @@ function PanelEditSession({
     if (!hasEdit && !changedVisibility) return onClose();
 
     setSending(true);
+    // A edição e a visibilidade são dois pedidos: se só o segundo falha, o primeiro já valeu. A versão
+    // nova fica guardada para o próximo "Salvar" e a lista recarrega com o que mudou.
+    let version = savedVersion ?? session.version;
+    let edited = false;
     try {
-      let version = session.version;
       if (hasEdit) {
         const saved = await api.patch<Session>(`/v1/panel/sessions/${session.id}`, { ...edit, version });
         version = saved.version;
+        edited = true;
+        setSavedVersion(saved.version);
       }
       if (changedVisibility) {
         await api.post(`/v1/panel/sessions/${session.id}/visibility`, {
@@ -391,6 +399,7 @@ function PanelEditSession({
       onSave();
       onClose();
     } catch (err) {
+      if (edited) onSave();
       setErrors(sendingErrors(err));
     } finally {
       setSending(false);

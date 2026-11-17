@@ -43,6 +43,14 @@ describe("equipe do painel", () => {
     });
   });
 
+  it("nome da equipe gravado com a primeira letra maiúscula (regra dos nomes)", async () => {
+    const r = await request("POST", "/v1/panel/users", manager, {
+      ...fresh("marianome", occupation(unitId, "reception")),
+      name: "maria DA souza",
+    });
+    expect(r).toMatchObject({ status: 201, body: { name: "Maria da Souza" } });
+  });
+
   it("escopo: função da unidade sem unidade, unidade inexistente e SMS com unidade → 400", async () => {
     const withoutUnit = { unitLinks: [], roles: [{ role: "unit_manager", unitId: null }] };
     expect((await request("POST", "/v1/panel/users", manager, fresh("semu", withoutUnit))).status).toBe(400);

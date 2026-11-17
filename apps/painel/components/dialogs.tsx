@@ -36,6 +36,11 @@ export function DialogsProvider({ children }: { children: ReactNode }) {
   const current = useRef<Request | null>(null);
 
   const open = useCallback((p: Request) => {
+    // Um diálogo novo por cima do outro (duplo clique): o anterior responde "cancelar", senão quem
+    // esperava por ele ficaria esperando para sempre.
+    const previous = current.current;
+    if (previous?.kind === "confirm") previous.resolve(false);
+    else if (previous) previous.resolve(null);
     current.current = p;
     setText("");
     setTried(false);
