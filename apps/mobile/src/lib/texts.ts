@@ -230,3 +230,29 @@ export const refusalNotice = (state: string): string =>
   state === "cancelled"
     ? "a vaga fica para outra pessoa. como já era a segunda data recusada, o pedido foi encerrado. se ainda precisar, fale com a unidade."
     : "a vaga fica para outra pessoa. você continua na lista de espera.";
+
+/**
+ * RN-CANC-01 / RN-CONF-04: o botão de sair e o que acontece. Quem está alocado e só não pode na data
+ * recusa a data ("não posso nesta data") e continua na lista; sair da lista encerra o pedido.
+ */
+export function cancellationText(sit: Situation): { button: string; effect: string; hint: string } {
+  if (sit.kind === "allocated")
+    return {
+      button: "sair da lista de espera",
+      effect: "você sai da lista de espera.",
+      hint: 'se só esta data não dá, toque em "não posso nesta data": você continua na lista.',
+    };
+  if (sit.kind === "list")
+    return { button: "sair da lista de espera", effect: "você sai da lista de espera.", hint: "" };
+  if (sit.kind === "reserve")
+    return {
+      button: "não vou poder ir",
+      effect: "você sai da reserva.",
+      hint: "para outro dia, faça uma nova inscrição.",
+    };
+  return {
+    button: "não vou poder ir",
+    effect: "você perde esta vaga.",
+    hint: "para outro dia, faça uma nova inscrição.",
+  };
+}

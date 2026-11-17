@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
 import {
   cancellationNotice,
+  cancellationText,
   entrySituation,
   entrySummary,
   errorMessage,
   errorNotice,
   nextStep,
   refusalNotice,
+  type Situation,
   WORSENED_GUIDANCE,
 } from "@/lib/texts";
 
@@ -308,5 +310,30 @@ describe("depois de recusar a data", () => {
     expect(refusalNotice("cancelled")).toBe(
       "a vaga fica para outra pessoa. como já era a segunda data recusada, o pedido foi encerrado. se ainda precisar, fale com a unidade.",
     );
+  });
+});
+
+describe("cancelar: o que o botão diz e o que acontece", () => {
+  it("alocada: sair da lista encerra o pedido; recusar só a data é o outro botão", () => {
+    expect(cancellationText({ kind: "allocated" } as Situation)).toEqual({
+      button: "sair da lista de espera",
+      effect: "você sai da lista de espera.",
+      hint: 'se só esta data não dá, toque em "não posso nesta data": você continua na lista.',
+    });
+  });
+  it("na lista e na reserva, e quem tem a vaga do dia", () => {
+    expect(cancellationText({ kind: "list" } as Situation)).toMatchObject({
+      button: "sair da lista de espera",
+      effect: "você sai da lista de espera.",
+    });
+    expect(cancellationText({ kind: "reserve" } as Situation)).toMatchObject({
+      button: "não vou poder ir",
+      effect: "você sai da reserva.",
+    });
+    expect(cancellationText({ kind: "waiting" } as Situation)).toEqual({
+      button: "não vou poder ir",
+      effect: "você perde esta vaga.",
+      hint: "para outro dia, faça uma nova inscrição.",
+    });
   });
 });

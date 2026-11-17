@@ -157,7 +157,15 @@ describe("agendador (T5.3, T5.4)", () => {
       highlighted: false,
       lastAttempt: expect.any(String),
     });
-    if (allocated.name === "Ana Agenda") expect(item.phone).toEqual(expect.any(String));
+    // O telefone sai da conta (Ana tem app; Rosa não). A corrida do teste anterior decide quem foi alocada
+    // nesta sessão; a outra vai para uma sessão à parte, para os dois casos serem sempre conferidos.
+    if (allocated.name === "Rosa Rotina") await allocate(schedule, ids.ana as string, await privateOne(5, 6));
+    const calls = (await c.request("GET", `/v1/panel/units/${c.unitId}/call-list`, schedule)).body as {
+      name: string;
+      phone: string | null;
+    }[];
+    expect(calls.find((x) => x.name === "Ana Agenda")?.phone).toMatch(/\d{4}/);
+    if (allocated.name === "Rosa Rotina") expect(calls.find((x) => x.name === "Rosa Rotina")?.phone).toBeNull();
     expect((await c.request("GET", `/v1/panel/units/${c.unitId}/call-list`, c.nurse)).status).toBe(403);
   });
 

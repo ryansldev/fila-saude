@@ -1,7 +1,7 @@
 "use client";
 
 import type { CallListItem, ServiceWaitlist, SessionAllocation } from "@fila-saude/schemas/queue";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/dialogs";
 import { Notice, Selection, SidePanel } from "@/components/form";
 import { PageHeader } from "@/components/page";
@@ -17,7 +17,7 @@ import { ApiError } from "@/lib/api";
 import { useApi } from "@/lib/api-context";
 import { useCurrentUnit } from "@/lib/current-unit";
 import { errorMessage } from "@/lib/forms/errors";
-import { pendingChecksSummary, refusalNotice, whenInTimeZone } from "@/lib/scheduling";
+import { announceCallListChange, pendingChecksSummary, refusalNotice, whenInTimeZone } from "@/lib/scheduling";
 import { useQuery } from "@/lib/use-query";
 
 const MAX_IN_SEGMENTED = 4;
@@ -50,7 +50,7 @@ export default function Scheduling() {
     return () => clearInterval(id);
   }, []);
 
-  const services = (list.detail ?? []).filter((s) => s.service.mode !== "regulated");
+  const services = useMemo(() => (list.detail ?? []).filter((s) => s.service.mode !== "regulated"), [list.detail]);
   const service = services.find((s) => s.service.id === serviceId) ?? null;
 
   // Primeiro o serviço com mais alertas; depois a primeira sessão. Trocar de unidade recomeça.
@@ -64,23 +64,31 @@ export default function Scheduling() {
     setSessionId(service.sessions[0]?.id ?? null);
   }, [service, sessionId]);
 
+  // O aviso é da última ação nesta unidade e nesta sessão: trocar uma delas o apaga.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `current`, `serviceId` e `sessionId` são os gatilhos.
+  useEffect(() => setNotice(null), [current, serviceId, sessionId]);
+
   function updateEverything() {
     allocation.reload();
     callList.reload();
     list.reload();
+    announceCallListChange();
   }
 
   async function allocate(entryId: string, name: string) {
     setSending(true);
     try {
       allocation.setDetail(await api.post<SessionAllocation>(`/v1/panel/sessions/${sessionId}/allocate`, { entryId }));
-      setNotice({ text: `${name} alocada. O app pede a confirmação; se não responder, ligue.`, kind: "ok" });
+      setNotice({ text: `Vaga marcada para ${name}. O app pede a confirmação; se não responder, ligue.`, kind: "ok" });
       callList.reload();
       list.reload();
+      announceCallListChange();
     } catch (e) {
       // I7: outro agendador mexeu antes; a resposta traz a vista atualizada.
       const fresh = e instanceof ApiError ? (e.data?.allocation as SessionAllocation | undefined) : undefined;
       if (fresh) allocation.setDetail(fresh);
+      else allocation.reload();
+      list.reload();
       setNotice({ text: errorMessage(e), kind: "error" });
     } finally {
       setSending(false);
@@ -110,6 +118,8 @@ export default function Scheduling() {
       setNotice({ text: texts[answer], kind: "ok" });
       updateEverything();
     } catch (e) {
+      // A pessoa pode ter respondido pelo app enquanto isso: a tela volta ao estado de agora.
+      updateEverything();
       setNotice({ text: errorMessage(e), kind: "error" });
     } finally {
       setSending(false);
@@ -117,7 +127,6 @@ export default function Scheduling() {
   }
 
   const pendingChecks = pendingChecksSummary(callList.detail ?? [], now);
-  const [highlight, ...rest] = pendingChecks ? pendingChecks.text.split(" · ") : [];
   const d = allocation.detail;
   const serviceOptions = services.map((s) => ({
     id: s.service.id,
@@ -142,12 +151,16 @@ export default function Scheduling() {
           ) : null
         }
       />
-      <Notice text={notice?.text ?? list.error ?? allocation.error ?? callList.error} kind={notice?.kind ?? "error"} />
+      {/* O erro das consultas vem antes do aviso da última ação: a tela não mostra sucesso com dado velho. */}
+      <Notice
+        text={list.error ?? allocation.error ?? callList.error ?? notice?.text ?? null}
+        kind={list.error || allocation.error || callList.error ? "error" : (notice?.kind ?? "error")}
+      />
 
       {pendingChecks ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950">
           <span>
-            <strong>{highlight}</strong> · {rest.join(" · ")}
+            <strong>{pendingChecks.howMany}</strong> · {pendingChecks.oldest}
           </span>
           <Button size="compact" variant="secondary" onClick={() => setSeeCallList(true)}>
             Ver lista de ligação

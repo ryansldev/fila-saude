@@ -27,6 +27,7 @@ describe("agendamento no painel (fatia 4)", () => {
   it("vagas: ocupadas de quantas; sem limite diz 'sem limite'", () => {
     expect(slotText(2, 5)).toBe("2 de 5 vagas");
     expect(slotText(3, null)).toBe("3 alocados · sem limite");
+    expect(slotText(1, null)).toBe("1 alocado · sem limite");
   });
 
   it("RN-CONF-03: situação do alocado; sem resposta depois do prazo fica destacada", () => {
@@ -73,11 +74,14 @@ describe("agendamento no painel (fatia 4)", () => {
     });
     expect(pendingChecksSummary([item("Ana Souza", 2), item("Bruno Lima", 30)], now)).toEqual({
       total: 2,
-      text: "2 pessoas para ligar · Bruno Lima sem resposta há 30 h",
+      howMany: "2 pessoas para ligar",
+      oldest: "Bruno Lima sem resposta há 30 h",
     });
-    expect(pendingChecksSummary([item("Ana Souza", 2)], now)?.text).toBe(
-      "1 pessoa para ligar · Ana Souza sem resposta há 2 h",
-    );
+    // Um nome com "·" não quebra mais o destaque (a faixa não reparte o texto).
+    expect(pendingChecksSummary([item("Ana · Souza", 2)], now)).toMatchObject({
+      howMany: "1 pessoa para ligar",
+      oldest: "Ana · Souza sem resposta há 2 h",
+    });
   });
 
   it("alocação vai até a véspera, no fuso da unidade", () => {

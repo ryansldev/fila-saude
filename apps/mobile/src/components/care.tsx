@@ -33,6 +33,7 @@ import { useSession } from "@/lib/session";
 import { canRedo, SIGN_UP_PATH } from "@/lib/sign-ups";
 import {
   cancellationNotice,
+  cancellationText,
   entrySituation,
   entrySummary,
   errorMessage,
@@ -59,13 +60,6 @@ export const missing = (position: number, minutes: number) =>
 // "é a sua vez" dispensado não volta ao trocar de aba (a tela remonta); vale enquanto o app está aberto.
 export const SEEN_TURNS = new Set<string>();
 
-export const cancellationEffect = (sit: Situation) =>
-  sit.kind === "reserve"
-    ? "você sai da reserva."
-    : sit.kind === "list"
-      ? "você sai da lista de espera."
-      : "você perde esta vaga.";
-
 /** Confirmação do "não vou poder ir" (tela 10): diz o efeito antes; o botão de perigo é o principal. */
 export function ConfirmCancellation({
   target,
@@ -89,15 +83,15 @@ export function ConfirmCancellation({
     <Sheet open={target !== null} close={closeSheet} locked={sending}>
       {target ? (
         <>
-          <Title>não vou poder ir?</Title>
+          <Title>{cancellationText(target.sit).button}?</Title>
           <Text style={{ fontFamily: FONT.extra, fontSize: 20, lineHeight: 28, color: COLOR.dangerInk }}>
-            {cancellationEffect(target.sit)}
+            {cancellationText(target.sit).effect}
           </Text>
           <Small>{target.ctx}</Small>
-          <SoftText>para outro dia, faça uma nova inscrição.</SoftText>
+          {cancellationText(target.sit).hint ? <SoftText>{cancellationText(target.sit).hint}</SoftText> : null}
           {error ? <Banner kind="danger" title="não deu certo" text={error} /> : null}
           <Button
-            text="não vou poder ir"
+            text={cancellationText(target.sit).button}
             variant="danger"
             loading={sending}
             onPress={async () => {
@@ -223,7 +217,7 @@ export function CareCard({
   const now = Date.now();
   const r = entrySummary(en, sit, now);
   const [worsened, setWorsened] = useState(false);
-  if (variant === "list") return <CardInList en={en} sit={sit} onCancel={onCancel} onOpen={onOpen} />;
+  if (variant === "list") return <CardInList en={en} sit={sit} onCancel={onCancel} onOpen={onOpen} answer={answer} />;
   const canCheckIn = ["position", "come", "no_estimate"].includes(sit.kind) && en.itemState === "remote";
   const present = (sit.kind === "position" || sit.kind === "no_estimate") && sit.present;
   const showsTrack = r.stage !== null && r.stage < 4;
@@ -269,13 +263,7 @@ export function CareCard({
           )
         ) : null}
         {redo ? <Button variant="text" text="minha situação mudou: responder de novo" onPress={redo} /> : null}
-        {onCancel ? (
-          <Button
-            variant="dangerText"
-            text={sit.kind === "allocated" || sit.kind === "list" ? "sair da lista de espera" : "não vou poder ir"}
-            onPress={onCancel}
-          />
-        ) : null}
+        {onCancel ? <Button variant="dangerText" text={cancellationText(sit).button} onPress={onCancel} /> : null}
       </View>
     </Card>
   );
@@ -341,11 +329,14 @@ function CardInList({
   sit,
   onCancel,
   onOpen,
+  answer,
 }: {
   en: MyEntry;
   sit: Situation;
   onCancel: (() => void) | null;
   onOpen?: (() => void) | undefined;
+  /** RN-CONF-01/04: alocada responde aqui também; sem isso, só sobraria sair da lista. */
+  answer: ((r: "confirm" | "refuse") => void) | null;
 }) {
   const now = Date.now();
   const closed = entrySummary(en, sit, now).group === "closed";
@@ -359,9 +350,15 @@ function CardInList({
           </Text>
         )}
       </Tappable>
+      {sit.kind === "allocated" && answer ? (
+        <View style={{ gap: 10 }}>
+          <Button text="vou, confirmar" onPress={() => answer("confirm")} />
+          <Button text="não posso nesta data" variant="secondary" onPress={() => answer("refuse")} />
+        </View>
+      ) : null}
       {onCancel ? (
         <View style={{ borderTopWidth: 2, borderTopColor: COLOR.surfaceMuted, marginTop: -2 }}>
-          <Button variant="dangerText" text="não vou poder ir" onPress={onCancel} />
+          <Button variant="dangerText" text={cancellationText(sit).button} onPress={onCancel} />
         </View>
       ) : null}
     </Card>
@@ -834,11 +831,7 @@ export function TicketCardOptions({
             </View>
           ) : null}
           {a.onCancel ? (
-            <Button
-              variant="dangerText"
-              text={target.sit.kind === "allocated" ? "sair da lista de espera" : "não vou poder ir"}
-              onPress={doIt(a.onCancel)}
-            />
+            <Button variant="dangerText" text={cancellationText(target.sit).button} onPress={doIt(a.onCancel)} />
           ) : null}
         </>
       ) : null}

@@ -17,7 +17,7 @@ export function whenInTimeZone(iso: string, timeZone: string): string {
 
 /** RN-AL-06: quantas vagas a sessão já tem ocupadas. */
 export const slotText = (taken: number, slots: number | null): string =>
-  slots === null ? `${taken} alocados · sem limite` : `${taken} de ${slots} vagas`;
+  slots === null ? `${taken} ${taken === 1 ? "alocado" : "alocados"} · sem limite` : `${taken} de ${slots} vagas`;
 
 export type Tone = "neutral" | "alert" | "ok";
 
@@ -87,12 +87,12 @@ export const reasonRow = (risk: { level: string; rule: string }, reasons: string
 export function pendingChecksSummary(
   items: { name: string; allocatedAt: string }[],
   now: number,
-): { total: number; text: string } | null {
+): { total: number; howMany: string; oldest: string } | null {
   if (items.length === 0) return null;
   const oldest = items.reduce((a, b) => (Date.parse(b.allocatedAt) < Date.parse(a.allocatedAt) ? b : a));
   const hours = Math.max(0, Math.floor((now - Date.parse(oldest.allocatedAt)) / 3_600_000));
   const howMany = items.length === 1 ? "1 pessoa para ligar" : `${items.length} pessoas para ligar`;
-  return { total: items.length, text: `${howMany} · ${oldest.name} sem resposta há ${hours} h` };
+  return { total: items.length, howMany, oldest: `${oldest.name} sem resposta há ${hours} h` };
 }
 
 /** RN-AL-05: até quando dá para alocar (a véspera da sessão, no fuso da unidade): "seg., 16/11". */
@@ -108,3 +108,7 @@ export const refusalNotice = (state: string): string =>
   state === "cancelled"
     ? "Recusa registrada. A vaga está livre. Era a 2ª recusa de quem foi remanejado: o pedido foi encerrado."
     : "Recusa registrada. A vaga está livre e a pessoa voltou para a lista.";
+
+/** A lista de ligação mudou (alocar, confirmar, recusar): o contador do menu recarrega na hora. */
+export const CALL_LIST_CHANGED = "fila-saude:call-list-changed";
+export const announceCallListChange = () => window.dispatchEvent(new Event(CALL_LIST_CHANGED));
