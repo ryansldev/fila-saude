@@ -81,7 +81,7 @@ describe("resolução do tenant no processo", () => {
     try {
       const byRoot = await app.inject({ url: `/v1/municipalities/${a.slug}/database`, headers: { host: "localhost" } });
       expect(byRoot.statusCode).toBe(200);
-      // Fuso do ambiente (TENANT_FUSO), não o do catálogo (America/Recife): o central não é lido.
+      // Fuso do ambiente (TENANT_TIME_ZONE), não o do catálogo (America/Recife): o central não é lido.
       expect(byRoot.json()).toEqual({ slug: a.slug, timeZone: "America/Manaus", database: a.database });
 
       // Domínio próprio da prefeitura e rota sem `:slug`: o tenant é sempre o fixo.

@@ -21,6 +21,20 @@ function setFolder(set: MigrationsSet) {
 
 type Journal = { entries: { tag: string; when: number }[] };
 
+// NC2: as migrations foram recriadas do zero em 2026-11-17. Um banco que tem migração aplicada fora do
+// journal veio do conjunto antigo: migrar por cima colidiria com as tabelas, então para com o motivo.
+async function refuseUnknownMigrations(client: Client, journal: Journal, set: MigrationsSet) {
+  const table = await client.query("select to_regclass('drizzle.__drizzle_migrations') as t");
+  if (!table.rows[0]?.t) return;
+  const applied = await client.query<{ created_at: string }>("select created_at from drizzle.__drizzle_migrations");
+  const known = new Set(journal.entries.map((e) => e.when));
+  if (applied.rows.some((r) => !known.has(Number(r.created_at)))) {
+    throw new Error(
+      `o banco tem migrações de ${set} que não estão no journal (conjunto antigo): recrie o banco e rode npm run dev:seed`,
+    );
+  }
+}
+
 // `folder` só existe para o teste apontar um conjunto de migrations à parte.
 export async function migrateDatabase(
   url: string,
@@ -37,6 +51,7 @@ export async function migrateDatabase(
   await client.connect();
 
   try {
+    await refuseUnknownMigrations(client, journal, set);
     await migrate(drizzle(client), { migrationsFolder });
 
     // O drizzle grava o `when` do journal em `created_at`; o tag é o nome legível da migration.

@@ -35,12 +35,12 @@ export function DialogsProvider({ children }: { children: ReactNode }) {
   const [tried, setTried] = useState(false);
   const current = useRef<Request | null>(null);
 
-  const open = (p: Request) => {
+  const open = useCallback((p: Request) => {
     current.current = p;
     setText("");
     setTried(false);
     setRequest(p);
-  };
+  }, []);
   const close = (answer: boolean) => {
     const p = current.current;
     current.current = null;
@@ -52,11 +52,11 @@ export function DialogsProvider({ children }: { children: ReactNode }) {
 
   const confirm = useCallback(
     (c: Confirmation) => new Promise<boolean>((resolve) => open({ kind: "confirm", resolve, ...c })),
-    [],
+    [open],
   );
   const ask = useCallback(
     (p: Question) => new Promise<string | null>((resolve) => open({ kind: "ask", resolve, ...p })),
-    [],
+    [open],
   );
 
   const empty = request?.kind === "ask" && !text.trim();

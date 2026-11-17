@@ -67,7 +67,7 @@ async function noShowsByEntry(db: TenantDatabase, entryIds: string[], config: Un
   if (entryIds.length === 0) return count;
   const since = now - config.noShowAlert.days * DAY;
   const days = await db
-    .select({ noShows: sql<string[]>`${sessionDay.day}->'encerramento'->'faltas'` })
+    .select({ noShows: sql<string[]>`${sessionDay.day}->'closing'->'noShows'` })
     .from(sessionDay)
     .where(sql`(${sessionDay.day}->'closing'->>'at')::bigint >= ${since}`);
   const noShow = days.flatMap((d) => (d.noShows ?? []).map((itemId) => itemId.split("/")[1] ?? ""));
@@ -152,7 +152,7 @@ async function buildAllocation(db: TenantDatabase, sessionId: string, now: numbe
           // O risco já vem em `risco` (selo na tela): os motivos não o repetem.
           reasons: reasons.slice(1),
           alert: e.confirmedRisk === null && e.classification.level === "urgent",
-          self_harm: e.classification.support,
+          selfHarm: e.classification.support,
           withoutApp: e.guardianId === null,
           noShows: n,
           noShowAlert: n >= config.noShowAlert.noShows,

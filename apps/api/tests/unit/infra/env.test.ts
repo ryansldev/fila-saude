@@ -44,7 +44,7 @@ describe("envSchema", () => {
     expect(problem?.message).toMatch(/TENANT_DATABASE_URL/);
   });
 
-  it("PD-12: TENANT_FUSO informado é mantido", () => {
+  it("PD-12: TENANT_TIME_ZONE informado é mantido", () => {
     const result = envSchema.safeParse({ ...base, ...single, TENANT_TIME_ZONE: "America/Recife" });
     expect(result.data?.TENANT_TIME_ZONE).toBe("America/Recife");
   });

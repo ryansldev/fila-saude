@@ -61,13 +61,14 @@ POSTGRES_DB=fila_central
 POSTGRES_PORT=5432
 POSTGRES_HOST=localhost
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fila_central
-TENANT_DATABASE_URL_TEMPLATE=postgresql://postgres:postgres@localhost:5432/{banco}
+TENANT_DATABASE_URL_TEMPLATE=postgresql://postgres:postgres@localhost:5432/{database}
 TENANT_BASE_DOMAIN=localhost
 TENANT_MODE=multi
 CENTRAL_URL=http://localhost:3333
-MAILER=banco
+MAILER=database
 TENANT_CACHE_TTL_MS=60000
 AUTH_JWT_TTL=15m
+PANEL_ORIGIN_TEMPLATE=http://{slug}.localhost:3000
 ```
 
 `POSTGRES_DB` é o banco central (`fila_central`); cada município tem o próprio banco `fila_t_<slug>`, cuja URL sai de `TENANT_DATABASE_URL_TEMPLATE`.

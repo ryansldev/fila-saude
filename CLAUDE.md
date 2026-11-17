@@ -20,6 +20,7 @@ Central de filas para o atendimento público (UBS, policlínicas): o paciente es
 ## Regras
 
 - **TDD sempre**: o teste falha antes do código. No app, só funções puras têm teste (`src/lib`).
+- **Code review antes de cada commit** (v0.1 em diante): rode `/code-review` no diff, corrija os bugs confirmados (com teste, pelo TDD) e conte no fim o que ficou de fora e por quê.
 - **Design system**: todo botão vem do kit. Painel: `components/ui/` (nenhum `<button>` fora dele, sem `variant=`/`size=`). App: `src/components/ui.tsx` (nenhum `<Pressable` fora dele). Os testes `design-system.test.ts` travam isso. Protótipos também usam as classes reais (`.ds-btn-*`).
 - **Nada de "Info · Info · Info"**: várias informações viram pílulas, ícones ou cartões.
 - O painel é estilo iFood (relevo leve); o app, estilo Duolingo (minúsculas, relevo). O **Dr. Lino** fica sobre fundo branco ou o cinza-claro da aba "hoje" (o jaleco é transparente), sem caixa branca visível em volta; nunca em fundo colorido ou escuro. **Nomes de pessoas** sempre com a primeira letra maiúscula (`properName`/`firstName` em `packages/domain/src/names.ts`, usados no app, no painel e na API), mesmo no app em minúsculas.
@@ -43,4 +44,4 @@ Faz parte de terminar qualquer tarefa, no mesmo commit:
 4. **Temporários nunca no repositório**: prints, scripts de teste e rascunhos ficam no scratchpad da sessão.
 5. **`.superpowers/`** (fora do git): ao terminar um plano, apague `.superpowers/sdd/<plano>/`; protótipos de `brainstorm/` de telas já construídas são apagados.
 6. **Decisão provisória aprovada** pelo usuário sai de `decisoes-para-revisar.md` e entra em `decisions.md`.
-7. Antes de dizer que terminou: `git status` sem arquivo solto.
+7. Antes de dizer que terminou: code review feito e `git status` sem arquivo solto.

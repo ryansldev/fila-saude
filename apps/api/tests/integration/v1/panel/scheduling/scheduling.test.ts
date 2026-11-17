@@ -1,3 +1,5 @@
+import type { SessionDay } from "@fila-saude/domain";
+import { sessionDay } from "infra/database/municipal/schema/session-day";
 import { joinWaitlist } from "infra/queue/entries";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
@@ -84,7 +86,7 @@ describe("agendador (T5.3, T5.4)", () => {
     const urgent = r.body.suggestion.find((s: { name: string }) => s.name === "Ulisses Urgente");
     expect(urgent).toMatchObject({
       alert: true,
-      self_harm: false,
+      selfHarm: false,
       noShows: 0,
       noShowAlert: false,
       risk: { level: "urgent", confirmed: false, rule: "Problema novo forte" },
@@ -94,7 +96,18 @@ describe("agendador (T5.3, T5.4)", () => {
     expect(urgent.reasons.at(-1)).toMatch(/^espera há \d+ dias$/);
     expect(urgent.withoutApp).toBe(true);
     expect(r.body.suggestion.find((s: { name: string }) => s.name === "Ana Agenda").withoutApp).toBe(false);
-    expect(r.body.suggestion.find((s: { name: string }) => s.name === "Aline Apoio").self_harm).toBe(true);
+    expect(r.body.suggestion.find((s: { name: string }) => s.name === "Aline Apoio").selfHarm).toBe(true);
+  });
+
+  it("RN-FALTA-03: as faltas dos encerramentos da janela contam na sugestão", async () => {
+    const closed = await privateOne(1, 5);
+    const day = { closing: { at: Date.now() - DAY, noShows: [`${closed}/${ids.routine}`], origin: "private" } };
+    await orchestrator
+      .municipalityDatabase(c.slug)
+      .insert(sessionDay)
+      .values({ sessionId: closed, day: day as unknown as SessionDay });
+    const r = await allocation(schedule);
+    expect(r.body.suggestion.find((s: { name: string }) => s.name === "Rosa Rotina")).toMatchObject({ noShows: 1 });
   });
 
   it("RN-AL-04/06: alocar ocupa a vaga, tira da sugestão e põe nos alocados com o prazo", async () => {

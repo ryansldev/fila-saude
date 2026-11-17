@@ -1,4 +1,5 @@
 import type { PublicUnit } from "@fila-saude/schemas/queue";
+import type { UnitKind } from "@fila-saude/schemas/unit";
 
 export type Point = { lat: number; lng: number };
 
@@ -57,13 +58,13 @@ export function sortUnits(units: PublicUnit[], here: Point | null): UnitInList[]
   });
 }
 
-const KINDS: Record<string, string> = {
+const KINDS: Record<UnitKind, string> = {
   ubs: "posto de saúde (UBS)",
   polyclinic: "policlínica",
   upa: "pronto atendimento (UPA)",
 };
 
-export const kindName = (kind: string) => KINDS[kind] ?? "unidade de saúde";
+export const kindName = (kind: string) => KINDS[kind as UnitKind] ?? "unidade de saúde";
 
 export const appointmentsText = (n: number) => (n === 0 ? "sem vaga agora" : n === 1 ? "1 aberto" : `${n} abertos`);
 

@@ -45,7 +45,7 @@ export function Suggestion({
                     <span className="text-slate-500">· {x.age} anos</span>
                     {x.withoutApp ? <span className="text-slate-500">· sem app</span> : null}
                     {risk ? <Badge text={risk.label} tone={risk.tone} /> : null}
-                    {x.self_harm ? <Badge text="Risco de autolesão · CVV 188 · SAMU 192" tone="danger" /> : null}
+                    {x.selfHarm ? <Badge text="Risco de autolesão · CVV 188 · SAMU 192" tone="danger" /> : null}
                     {x.noShowAlert ? <Badge text={`${x.noShows} faltas recentes`} tone="neutral" /> : null}
                   </div>
                   <span className="text-sm text-slate-600" title={x.risk.rule}>

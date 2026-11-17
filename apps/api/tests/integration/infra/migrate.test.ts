@@ -127,4 +127,13 @@ describe("migrateDatabase", () => {
       await rm(folder, { recursive: true, force: true });
     }
   });
+  it("NC2: banco com migração fora do journal (anterior à recriação) é recusado com mensagem clara", async () => {
+    await connected(tenantUrl, (client) =>
+      client.query("insert into drizzle.__drizzle_migrations (hash, created_at) values ('antiga', 1)"),
+    );
+    await expect(migrateDatabase(tenantUrl, "municipal")).rejects.toThrow(/recrie o banco/);
+    await connected(tenantUrl, (client) =>
+      client.query("delete from drizzle.__drizzle_migrations where created_at = 1"),
+    );
+  });
 });

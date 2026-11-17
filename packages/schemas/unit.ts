@@ -42,9 +42,12 @@ export const addressSchema = z.object({
   neighborhood: z.string().trim().min(1),
 });
 
+export const unitKindSchema = z.enum(["ubs", "polyclinic", "upa"]);
+export type UnitKind = z.infer<typeof unitKindSchema>;
+
 export const unitInputSchema = z.object({
   name: z.string().trim().min(1),
-  kind: z.enum(["ubs", "polyclinic", "upa"]),
+  kind: unitKindSchema,
   // Código do estabelecimento no CNES (7 dígitos); opcional na v0.1.
   cnes: z
     .string()

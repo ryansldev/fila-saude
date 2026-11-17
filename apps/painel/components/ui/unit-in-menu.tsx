@@ -1,6 +1,6 @@
 "use client";
 
-import type { TodaySummary } from "@fila-saude/schemas/unit";
+import type { TodaySummary, UnitKind } from "@fila-saude/schemas/unit";
 import { Building2Icon, ChevronDownIcon, IdCardIcon, MapPinIcon } from "lucide-react";
 import { useState } from "react";
 import { SidePanel } from "@/components/form";
@@ -8,7 +8,7 @@ import { addressRows, summaryText, type UnitSummary, usePanelUnit } from "@/lib/
 import { useQuery } from "@/lib/use-query";
 import { cn } from "@/lib/utils";
 
-const KINDS: Record<string, string> = { ubs: "UBS", polyclinic: "Policlínica", upa: "UPA" };
+const KINDS: Record<UnitKind, string> = { ubs: "UBS", polyclinic: "Policlínica", upa: "UPA" };
 
 const hint = (u: UnitSummary) => [u.name, ...(u.address ? addressRows(u.address) : [])].join("\n");
 

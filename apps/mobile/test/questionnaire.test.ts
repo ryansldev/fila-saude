@@ -1,5 +1,6 @@
+import { answersSchema } from "@fila-saude/schemas/queue";
 import { describe, expect, it } from "vitest";
-import { EMPTY_ANSWERS, questionnaireOutcome, questionSpeech, screensOf } from "@/lib/questionnaire";
+import { EMPTY_ANSWERS, QUESTIONS, questionnaireOutcome, questionSpeech, screensOf } from "@/lib/questionnaire";
 
 const now = Date.UTC(2026, 10, 12, 12);
 
@@ -35,5 +36,17 @@ describe("questionário no app (T3.3, questionário v1)", () => {
 
   it("sem o nome ainda (refazer de outra pessoa), fala 'a pessoa'", () => {
     expect(questionSpeech("conditions", "other", "")).toBe("a pessoa tem alguma destas condições?");
+  });
+});
+
+describe("opções do questionário", () => {
+  const ids = (screen: keyof typeof QUESTIONS) => QUESTIONS[screen].options.map(([id]) => id);
+  it("cada opção é um valor que a API aceita", () => {
+    const shape = answersSchema.shape;
+    expect(ids("reason").filter((id) => !shape.reason.safeParse(id).success)).toEqual([]);
+    expect(ids("severity").filter((id) => !shape.severity.safeParse(id).success)).toEqual([]);
+    expect(ids("alarms").filter((id) => !shape.alarms.safeParse([id]).success)).toEqual([]);
+    expect(ids("conditions").filter((id) => !shape.conditions.safeParse([id]).success)).toEqual([]);
+    expect(ids("groups").filter((id) => !shape.groups.safeParse([id]).success)).toEqual([]);
   });
 });

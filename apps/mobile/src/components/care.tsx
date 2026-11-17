@@ -30,7 +30,7 @@ import { properName } from "@/lib/account";
 import { QUERY_INTERVAL_MS } from "@/lib/config";
 import { dayParts, hour, isToday, shortDay } from "@/lib/dates";
 import { useSession } from "@/lib/session";
-import { canRedo } from "@/lib/sign-ups";
+import { canRedo, SIGN_UP_PATH } from "@/lib/sign-ups";
 import {
   cancellationNotice,
   entrySituation,
@@ -468,7 +468,7 @@ export function useMyQueue() {
           router.push({
             pathname: "/inscricao/[sessionId]",
             params: {
-              sessionId: "refazer",
+              sessionId: SIGN_UP_PATH.redo,
               entryId: en.entryId,
               serviceId: en.serviceId,
               service: en.service,

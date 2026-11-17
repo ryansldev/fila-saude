@@ -1,4 +1,13 @@
-import { type Answers, ageAt, classify } from "@fila-saude/domain";
+import {
+  type Alarm,
+  type Answers,
+  ageAt,
+  type Condition,
+  classify,
+  type DeclaredGroup,
+  type Reason,
+  type Severity,
+} from "@fila-saude/domain";
 
 // Questionário v1 (specs/lista-espera, textos do protótipo revisado).
 
@@ -16,63 +25,65 @@ export const EMPTY_ANSWERS: AppAnswers = {
 export const NONE = "nenhum";
 
 type Options = readonly (readonly [string, string])[];
+/** Cada opção leva o valor que a API guarda; um valor fora do tipo não compila. */
+const options = <T extends string>(o: readonly (readonly [T, string])[]): Options => o;
 
 export const QUESTIONS: Record<Screen, { multiple: boolean; options: Options; none?: string }> = {
   alarms: {
     multiple: true,
     none: "nenhum destes",
-    options: [
+    options: options<Alarm>([
       ["shortness_of_breath", "falta de ar forte ou dificuldade para respirar"],
       ["chest_pain", "dor ou aperto forte no peito"],
-      ["desmaio", "desmaio, confusão ou sonolência estranha"],
+      ["fainting", "desmaio, confusão ou sonolência estranha"],
       ["one_sided_weakness", "fraqueza, formigamento ou boca torta de repente"],
-      ["sangramento", "sangramento que não para"],
-      ["convulsao", "convulsão"],
-      ["autolesao", "pensamentos de tirar a própria vida ou de se machucar"],
-    ],
+      ["bleeding", "sangramento que não para"],
+      ["seizure", "convulsão"],
+      ["self_harm", "pensamentos de tirar a própria vida ou de se machucar"],
+    ]),
   },
   reason: {
     multiple: false,
-    options: [
-      ["novo", "problema novo ou que piorou"],
-      ["acompanhamento", "acompanhamento de doença que já tenho"],
-      ["exame", "exame, check-up ou rotina"],
-      ["receita", "renovar receita"],
-    ],
+    options: options<Reason>([
+      ["new", "problema novo ou que piorou"],
+      ["follow_up", "acompanhamento de doença que já tenho"],
+      ["exam", "exame, check-up ou rotina"],
+      ["prescription", "renovar receita"],
+    ]),
   },
   severity: {
     multiple: false,
-    options: [
-      ["leve", "leve, faço as coisas normalmente"],
-      ["moderado", "moderado, atrapalha o dia"],
-      ["forte", "forte, não consigo fazer quase nada"],
-    ],
+    options: options<Severity>([
+      ["mild", "leve, faço as coisas normalmente"],
+      ["moderate", "moderado, atrapalha o dia"],
+      ["severe", "forte, não consigo fazer quase nada"],
+    ]),
   },
   conditions: {
     multiple: true,
     none: "nenhuma",
-    options: [
+    options: options<Condition>([
       ["diabetes", "diabetes"],
       ["high_blood_pressure", "pressão alta"],
-      ["coracao", "doença do coração"],
-      ["respiratoria", "asma, bronquite ou DPOC"],
+      ["heart", "doença do coração"],
+      ["respiratory", "asma, bronquite ou DPOC"],
       ["cancer", "câncer em tratamento"],
       ["low_immunity", "imunidade baixa (transplante, HIV, uso de corticoide)"],
-    ],
+    ]),
   },
   groups: {
     multiple: true,
     none: "nenhuma",
-    options: [
-      ["gestante", "gestante"],
-      ["lactante", "lactante"],
+    options: options<DeclaredGroup>([
+      ["pregnant", "gestante"],
+      ["breastfeeding", "lactante"],
       ["infant_in_arms", "com criança de colo"],
-      ["pcd", "pessoa com deficiência"],
-      ["tea", "TEA"],
+      ["disability", "pessoa com deficiência"],
+      ["autism", "TEA"],
       ["reduced_mobility", "mobilidade reduzida"],
       ["blood_donor", "doador de sangue"],
-      ["obesidade", "obesidade"],
-    ],
+      ["obesity", "obesidade"],
+    ]),
   },
 };
 

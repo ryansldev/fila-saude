@@ -349,7 +349,7 @@ export const sessionAllocationSchema = z.object({
       /** I4: urgente sugerido ainda não alocado. */
       alert: z.boolean(),
       /** RN-RISCO-06: só agendador e triagem veem. */
-      self_harm: z.boolean(),
+      selfHarm: z.boolean(),
       /** Pessoa local sem conta: não vê o app nem recebe push (a ligação é o caminho). */
       withoutApp: z.boolean(),
       noShows: z.number().int(),

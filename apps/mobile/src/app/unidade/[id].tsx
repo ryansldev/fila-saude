@@ -24,7 +24,7 @@ import {
 import { hour } from "@/lib/dates";
 import { dayKey, daysWithCare, monthGrid, monthYear, validDay } from "@/lib/days";
 import { useSession } from "@/lib/session";
-import { type ServiceWithList, servicesWithList, signUpInSchedule } from "@/lib/sign-ups";
+import { type ServiceWithList, SIGN_UP_PATH, servicesWithList, signUpInSchedule } from "@/lib/sign-ups";
 import { errorNotice } from "@/lib/texts";
 import { directionsLink, kindName } from "@/lib/units";
 
@@ -117,7 +117,7 @@ function ServiceCard({ x, unit }: { x: ServiceWithList; unit: string }) {
   const enter = () =>
     router.push({
       pathname: "/inscricao/[sessionId]",
-      params: { sessionId: "lista", serviceId: x.id, service: x.name, unit },
+      params: { sessionId: SIGN_UP_PATH.list, serviceId: x.id, service: x.name, unit },
     });
   return (
     <Card style={{ gap: 10 }}>

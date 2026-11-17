@@ -29,7 +29,7 @@ async function generateTimeNotices(db: TenantDb, now: number): Promise<void> {
         );
         if (!lock.rows[0]?.ok) return;
         await inSession(tx, id, async (c) => {
-          if (!c.day || c.day.state !== "open") return { result: null };
+          if (c.day?.state !== "open") return { result: null };
           // AD-057: o "venha agora" fica registrado no dia com a hora; o prazo de chegada conta dela.
           const come = comeNowNotices(c.day, now, { manualMode: false });
           const leave = leaveHomeNotices(come.day, now, { manualMode: false });

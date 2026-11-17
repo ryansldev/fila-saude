@@ -1,7 +1,7 @@
 "use client";
 
 import { maskPostalCode, onlyDigits } from "@fila-saude/schemas/masks";
-import { unitEditSchema, unitInputSchema } from "@fila-saude/schemas/unit";
+import { type UnitKind, unitEditSchema, unitInputSchema } from "@fila-saude/schemas/unit";
 import { PlusIcon } from "lucide-react";
 import { type ComponentProps, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/components/dialogs";
@@ -58,9 +58,9 @@ function textAddress(e: Address) {
 }
 
 const WITHOUT_ERRORS: SendingErrors = { general: null, fields: {} };
-const KINDS = [
+const KINDS: { value: UnitKind; label: string; description: string }[] = [
   { value: "ubs", label: "UBS", description: "Atenção básica: consultas, vacinas e acompanhamento." },
-  { value: "policlinica", label: "Policlínica", description: "Especialidades e exames, em geral com encaminhamento." },
+  { value: "polyclinic", label: "Policlínica", description: "Especialidades e exames, em geral com encaminhamento." },
   { value: "upa", label: "UPA", description: "Urgência e emergência, aberta por mais horas." },
 ];
 const KIND_LABEL: Record<string, string> = Object.fromEntries(KINDS.map((t) => [t.value, t.label]));

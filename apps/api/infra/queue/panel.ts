@@ -168,7 +168,7 @@ export async function closeDaySession(ctx: ActionContext, sessionId: string): Pr
     },
     async (tx) => {
       const day = await inSession(tx, sessionId, async (c) => {
-        if (!c.day || c.day.state !== "open") throw new ApiError(409, "forbidden_transition");
+        if (c.day?.state !== "open") throw new ApiError(409, "forbidden_transition");
         const r = close(c.day, c.entries, ctx.now, {
           withoutSignalWithoutContingency: false,
           origin: sessionOrigin(c.session, c.service),

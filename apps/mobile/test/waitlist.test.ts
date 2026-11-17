@@ -30,8 +30,8 @@ const my = (x: Partial<MyEntry>): MyEntry => ({
 
 describe("lista de espera no app (fatia 4)", () => {
   it("a tela de inscrição tem três modos pelo caminho: sessão, lista e refazer", () => {
-    expect(signUpMode("list")).toBe("list");
-    expect(signUpMode("redo")).toBe("redo");
+    expect(signUpMode("lista")).toBe("list");
+    expect(signUpMode("refazer")).toBe("redo");
     expect(signUpMode("00000000-0000-4000-8000-000000000009")).toBe("session");
   });
 

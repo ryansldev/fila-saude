@@ -119,8 +119,11 @@ export function checkError(err: unknown): CheckError {
 /** A mesma tela serve à inscrição numa sessão, à entrada na lista de espera e a refazer o questionário. */
 export type SignUpMode = "session" | "list" | "redo";
 
+/** O endereço da tela fica em português: `/inscricao/lista` e `/inscricao/refazer`. */
+export const SIGN_UP_PATH: Record<Exclude<SignUpMode, "session">, string> = { list: "lista", redo: "refazer" };
+
 export const signUpMode = (sessionId: string | undefined): SignUpMode =>
-  sessionId === "list" ? "list" : sessionId === "redo" ? "redo" : "session";
+  sessionId === SIGN_UP_PATH.list ? "list" : sessionId === SIGN_UP_PATH.redo ? "redo" : "session";
 
 /** Para onde a tela manda as respostas; só a sessão confere antes, no passo "para quem". */
 export function signUpRequest(

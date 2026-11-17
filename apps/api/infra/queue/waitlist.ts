@@ -33,7 +33,7 @@ async function activeService(db: TenantDatabase, serviceId: string) {
     .from(service)
     .innerJoin(unit, eq(service.unitId, unit.id))
     .where(eq(service.id, serviceId));
-  if (!row || !row.s.active || row.u.archivedAt !== null) throw new ApiError(404, "not_found");
+  if (!row?.s.active || row.u.archivedAt !== null) throw new ApiError(404, "not_found");
   return row;
 }
 
