@@ -26,6 +26,7 @@ const base: MyEntry = {
   forMe: true,
   birthDate: "1992-08-15",
   refusalEnds: false,
+  timeZone: "America/Sao_Paulo",
   canCancel: true,
   stage: "care",
   triaged: false,

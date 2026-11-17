@@ -76,7 +76,15 @@ type Step =
   /** RN-RISCO-03: respostas novas salvas (modo "refazer"). */
   | { kind: "redone"; level: string };
 
-type SessionData = { serviceId?: string; service?: string; unit?: string; start?: string; open?: boolean };
+type SessionData = {
+  serviceId?: string;
+  service?: string;
+  unit?: string;
+  start?: string;
+  /** Fuso da unidade: o dia da sessão aparece nele. */
+  timeZone?: string;
+  open?: boolean;
+};
 
 const goToMyQueue = () => router.dismissTo("/inicio");
 const goToSchedule = () => router.dismissTo("/unidades");
@@ -89,6 +97,7 @@ export default function SignUp() {
     service?: string;
     unit?: string;
     start?: string;
+    timeZone?: string;
     open?: string;
     /** Modo "refazer": a entrada, a data de nascimento de quem é atendido e se é a própria conta. */
     entryId?: string;
@@ -149,6 +158,7 @@ export default function SignUp() {
           service: fromSchedule.service.name,
           unit: fromSchedule.unit.name,
           start: fromSchedule.start,
+          timeZone: fromSchedule.unit.timeZone,
           open: fromSchedule.state === "open",
         }
       : {
@@ -156,6 +166,7 @@ export default function SignUp() {
           ...(p.service ? { service: p.service } : {}),
           ...(p.unit ? { unit: p.unit } : {}),
           ...(p.start ? { start: p.start } : {}),
+          ...(p.timeZone ? { timeZone: p.timeZone } : {}),
           open: p.open === "1",
         };
   const ownerSignedUp = forMeInService(mine, session.serviceId);
@@ -241,7 +252,7 @@ export default function SignUp() {
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
       {session.service ? <Pill text={session.service.toLowerCase()} Icon={Stethoscope} tone="blue" /> : null}
       {session.unit ? <Pill text={session.unit} Icon={Building2} tone="blue" /> : null}
-      {session.start ? <Pill text={shortDay(session.start)} Icon={CalendarDays} tone="blue" /> : null}
+      {session.start ? <Pill text={shortDay(session.start, session.timeZone)} Icon={CalendarDays} tone="blue" /> : null}
     </View>
   );
 
@@ -304,7 +315,9 @@ export default function SignUp() {
         {end !== "redone" ? (
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
             {session.service ? <Pill text={session.service.toLowerCase()} Icon={Stethoscope} tone="blue" /> : null}
-            {session.start ? <Pill text={shortDay(session.start)} Icon={CalendarDays} tone="blue" /> : null}
+            {session.start ? (
+              <Pill text={shortDay(session.start, session.timeZone)} Icon={CalendarDays} tone="blue" />
+            ) : null}
             {session.unit ? <Pill text={session.unit} Icon={Building2} tone="blue" /> : null}
             {forWhom === "other" ? <Pill text={properName(other.name)} Icon={UserRound} tone="blue" /> : null}
           </View>

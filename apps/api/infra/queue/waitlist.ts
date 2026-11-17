@@ -1,4 +1,11 @@
-import { type Answers, activeEntryOf, type Entry, INACTIVE_ENTRY_STATES, redoQuestionnaire } from "@fila-saude/domain";
+import {
+  type Answers,
+  activeEntryOf,
+  type Entry,
+  INACTIVE_ENTRY_STATES,
+  MAX_PER_ACCOUNT,
+  redoQuestionnaire,
+} from "@fila-saude/domain";
 import type { SignUpInput, UnitService } from "@fila-saude/schemas/queue";
 import { and, asc, eq, isNull, notInArray } from "drizzle-orm";
 import type { AuthenticatedPatient } from "infra/auth/patient-session";
@@ -7,7 +14,7 @@ import { service } from "infra/database/municipal/schema/service";
 import { unit } from "infra/database/municipal/schema/unit";
 import type { TenantDatabase, TenantDb } from "infra/database/tenants";
 import { ApiError } from "infra/errors";
-import { MAX_PER_ACCOUNT, personFromRequest } from "./app";
+import { personFromRequest } from "./app";
 import { inSession, unitConfig } from "./day";
 import { joinWaitlist, lockEntry, personByCpf, serviceActiveEntries, updateEntry } from "./entries";
 import { answerAllocation } from "./scheduling";

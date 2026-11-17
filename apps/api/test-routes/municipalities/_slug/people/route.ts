@@ -4,7 +4,7 @@ import { localPerson } from "infra/database/municipal/schema/local-person";
 import { validate } from "infra/errors";
 import { z } from "zod";
 
-// PD-19 / T1.7: rota só de teste que grava e lista `pessoa_local` no banco do município resolvido
+// PD-19 / T1.7: rota só de teste que grava e lista `local_person` no banco do município resolvido
 // (`/v1/teste/municipios/:slug/pessoas`), para provar que A e B nunca se enxergam.
 const newPerson = z.object({ name: z.string().min(1), birthDate: z.iso.date() });
 

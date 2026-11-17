@@ -98,7 +98,7 @@ export default function QueueScreen() {
       <View style={{ gap: 6 }}>
         <Title>{en.service.toLowerCase()}</Title>
         <Small>
-          {en.session ? `${hour(en.session.start)} às ${hour(en.session.end)} · ` : ""}
+          {en.session ? `${hour(en.session.start, en.timeZone)} às ${hour(en.session.end, en.timeZone)} · ` : ""}
           {en.unit}
           {en.forMe ? "" : ` · para ${properName(en.person)}`}
         </Small>

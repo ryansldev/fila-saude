@@ -35,7 +35,7 @@ export type Api = {
 
 type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
-const NOT_JSON = Symbol("nao_json");
+const NOT_JSON = Symbol("not_json");
 
 async function readJson(answer: Response): Promise<unknown> {
   const text = await answer.text();

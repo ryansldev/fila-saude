@@ -296,8 +296,8 @@ const EVENT_VERIFICATION = {
 /**
  * RN-FILA-05: a recepção confere e, na mesma ação, marca a presença (o atraso conta a partir daqui).
  * A conferência da prioridade vale nas próximas idas: guarde-a com `verificationInEntry` (AD-024).
- * "prioridade_nao_confere" retira os grupos declarados; idoso (da data de nascimento) fica.
- * "nao_confere" tira da fila sem falta e sem remanejamento; a entrada vai a Cancelada com
+ * "priority_does_not_match" retira os grupos declarados; idoso (da data de nascimento) fica.
+ * "does_not_match" tira da fila sem falta e sem remanejamento; a entrada vai a Cancelada com
  * `entryOutcome` (ou no encerramento).
  */
 export function verifyAndMark(

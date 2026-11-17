@@ -61,6 +61,8 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
       name: "UBS Centro",
       address: { street: expect.any(String), neighborhood: expect.any(String) },
       appointments: 1,
+      // O app mostra datas e horas no fuso da unidade (AM, MT e AC não são o de Brasília).
+      timeZone: "America/Sao_Paulo",
     });
     expect(u).toHaveProperty("lat");
     expect(u).toHaveProperty("lng");
@@ -74,9 +76,15 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     expect(ids).not.toContain(privateId);
     expect(r.body[0]).toMatchObject({
       service: { name: "Clínico" },
-      unit: { name: "UBS Centro" },
+      unit: { name: "UBS Centro", timeZone: "America/Sao_Paulo" },
       remainingSlots: 20,
     });
+    // A página de uma unidade pede só a agenda dela.
+    const ofUnit = await app("GET", `${m()}/schedule?unitId=${c.unitId}`);
+    expect(ofUnit.body.map((s: { id: string }) => s.id)).toContain(c.sessionId);
+    const ofOther = await app("GET", `${m()}/schedule?unitId=00000000-0000-4000-8000-000000000000`);
+    expect(ofOther).toMatchObject({ status: 200, body: [] });
+    expect((await app("GET", `${m()}/schedule?unitId=x`)).status).toBe(400);
   });
 
   it("T3.3: inscrição exige conta; para mim e para outra pessoa; recusas com o código certo", async () => {
@@ -142,7 +150,7 @@ describe("app do paciente na API (T3.2, T3.3, T3.4)", () => {
     // O app precisa saber o serviço e se a inscrição é da própria conta, para não oferecer de novo (AD-032).
     const fromAna = r.body.find((e: { person: string }) => e.person === "Ana Paciente");
     const fromBia = r.body.find((e: { person: string }) => e.person === "Bia Paciente");
-    expect(fromAna).toMatchObject({ serviceId: c.serviceId, forMe: true });
+    expect(fromAna).toMatchObject({ serviceId: c.serviceId, forMe: true, timeZone: "America/Sao_Paulo" });
     expect(fromBia).toMatchObject({ serviceId: c.serviceId, forMe: false });
 
     await c.request("POST", `/v1/panel/sessions/${c.sessionId}/open`, c.admin);

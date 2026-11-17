@@ -1,4 +1,4 @@
-import { INACTIVE_ENTRY_STATES } from "@fila-saude/domain";
+import { INACTIVE_ENTRY_STATES, MAX_PER_ACCOUNT, samePerson } from "@fila-saude/domain";
 import type { MyEntry, Relationship, SignUpInput } from "@fila-saude/schemas/queue";
 import { ApiError } from "./api";
 import { errorMessage } from "./texts";
@@ -13,7 +13,6 @@ const FINAL_STATES = new Set<string>(INACTIVE_ENTRY_STATES);
 export const activeEntry = (e: Pick<MyEntry, "state">) => !FINAL_STATES.has(e.state);
 
 /** RN-ID-07 (enxuto, mesmo número da API): uma conta inscreve até 5 pessoas por atendimento. */
-export const MAX_PER_ACCOUNT = 5;
 
 /** AD-032: o dono da conta já tem uma entrada ativa neste serviço (então "para mim" não pode de novo). */
 export function forMeInService(mine: MyEntry[] | null, serviceId: string | undefined): boolean {
@@ -48,24 +47,7 @@ export function signUpInSchedule(
   return { kind: "signed_up", badge: ownerBadge(my, session.id), canOther: inThisSession < MAX_PER_ACCOUNT };
 }
 
-const normalize = (name: string) => name.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
-
-/** Mesmo nome, sem ligar para maiúsculas, acentos e espaços a mais. */
-export function sameName(a: string, b: string): boolean {
-  const na = normalize(a);
-  return na !== "" && na === normalize(b);
-}
-
 type Person = { name: string; birthDate: string; cpf?: string | null | undefined };
-const digits = (cpf: string | null | undefined) => (cpf ?? "").replace(/\D/g, "");
-
-/** RN-LE-02 (como no domínio): mesmo CPF quando os dois têm; senão, mesmo nome e mesmo nascimento. */
-export function samePerson(a: Person, b: Person): boolean {
-  const ca = digits(a.cpf);
-  const cb = digits(b.cpf);
-  if (ca && cb) return ca === cb;
-  return a.birthDate !== "" && a.birthDate === b.birthDate && sameName(a.name, b.name);
-}
 
 /**
  * A conta já inscreveu esta "outra pessoa" no serviço: evita mandar a mesma pessoa duas vezes.

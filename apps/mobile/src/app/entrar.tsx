@@ -76,7 +76,8 @@ export default function SignIn() {
             text="ver as unidades perto de mim"
             onPress={() => {
               setForgot(false);
-              router.push("/unidades");
+              // Sem município escolhido, a lista de unidades não sabe de onde mostrar.
+              router.push(s.municipality ? "/unidades" : { pathname: "/municipio", params: { next: "unidades" } });
             }}
           />
           <Button variant="text" text="voltar para entrar" onPress={() => setForgot(false)} />

@@ -7,6 +7,7 @@ import {
   type Transition,
 } from "./contracts.ts";
 import { type Answers, type Classification, isUrgent, type RiskLevel, type UnitConfig } from "./kinds.ts";
+import { sameName } from "./names.ts";
 import { compareSuggestion, type Risk, type SuggestionKey } from "./order.ts";
 import { type Group, groupFromDeclared, type LegalPriority, personPriority, toVerify } from "./priority.ts";
 import { classify } from "./questionnaire.ts";
@@ -112,16 +113,24 @@ export function destinationByCondition(
   return row.for === "(não cria)" ? null : row.for;
 }
 
-const normalizeName = (name: string): string =>
-  name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+const digits = (cpf: string | null | undefined): string => (cpf ?? "").replace(/\D/g, "");
 
-const digits = (cpf: string): string => cpf.replace(/\D/g, "");
-
-/** RN-LE-02: a mesma pessoa atendida, pelo CPF quando os dois têm; senão, por nome + nascimento. */
-function samePerson(a: Person, b: Person): boolean {
-  if (a.cpf && b.cpf) return digits(a.cpf) === digits(b.cpf);
-  return a.birthDate === b.birthDate && normalizeName(a.name) === normalizeName(b.name);
+/**
+ * RN-LE-02: a mesma pessoa atendida, pelo CPF quando os dois têm; senão, por nome + nascimento. O app
+ * usa a mesma regra enquanto a pessoa digita (data ou nome vazio não acusa ninguém).
+ */
+export function samePerson(
+  a: Pick<Person, "name" | "birthDate"> & { cpf?: string | null },
+  b: Pick<Person, "name" | "birthDate"> & { cpf?: string | null },
+): boolean {
+  const ca = digits(a.cpf);
+  const cb = digits(b.cpf);
+  if (ca && cb) return ca === cb;
+  return a.birthDate !== "" && a.birthDate === b.birthDate && sameName(a.name, b.name);
 }
+
+/** RN-ID-07: quantas pessoas uma conta inscreve por sessão e põe na lista de um serviço. */
+export const MAX_PER_ACCOUNT = 5;
 
 /** Entrada ativa da pessoa atendida no serviço (INV-01), para mostrar a existente ao recusar a duplicada. */
 export function activeEntryOf(entries: Entry[], person: Person, serviceId: string): Entry | undefined {

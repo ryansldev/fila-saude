@@ -151,7 +151,7 @@ export function entrySummary(
     ? "closed"
     : !en.session || sit.kind === "reassigned"
       ? "no_date"
-      : base.inQueue || isToday(en.session.start, now)
+      : base.inQueue || isToday(en.session.start, now, en.timeZone)
         ? "today"
         : "upcoming";
   return { ...base, group };
@@ -188,13 +188,13 @@ export function nextStep(e: MyEntry, sit: Situation, now: number): string {
       return "se alguém desistir, a vaga é sua. avisamos aqui.";
     case "allocated":
       return e.confirmationDeadline
-        ? `confirme até ${shortDay(e.confirmationDeadline)}, às ${hour(e.confirmationDeadline)}.`
+        ? `confirme até ${shortDay(e.confirmationDeadline, e.timeZone)}, às ${hour(e.confirmationDeadline, e.timeZone)}.`
         : "a unidade marcou este horário para você.";
     case "confirmed":
     case "waiting": {
       if (!e.session) return "avisamos quando a fila abrir.";
-      const opens = hour(e.session.start);
-      return isToday(e.session.start, now)
+      const opens = hour(e.session.start, e.timeZone);
+      return isToday(e.session.start, now, e.timeZone)
         ? `a fila abre às ${opens}. até lá, pode esperar em casa.`
         : `no dia, a fila abre às ${opens}. avisamos quando abrir.`;
     }

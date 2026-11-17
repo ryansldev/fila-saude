@@ -9,6 +9,7 @@ import database, { schemaCentral } from "infra/database";
 import { patient } from "infra/database/central/schema/auth";
 import env from "infra/env";
 import { ApiError, errorBody, validate } from "infra/errors";
+import { Attempts } from "./attempts";
 
 // RN-ID-02: texto exato da orientação ao paciente quando o CPF já tem conta.
 export const CPF_IN_USE_MESSAGE = "Procure a recepção da sua unidade para contestar.";
@@ -98,6 +99,11 @@ function authAsError(err: unknown): unknown {
   return err instanceof ApiError ? new APIError(err.status as 400, errorBody(err)) : err;
 }
 
+// RN-ID-04: 5 senhas erradas seguidas no mesmo CPF bloqueiam o login por 15 min; acertar zera.
+const LOGIN = "/sign-in/username";
+const loginAttempts = new Attempts({ max: 5, windowMs: 15 * 60_000 });
+const loginKey = (ctx: { body?: unknown }) => String(bodyOf(ctx).username ?? "").replace(/\D/g, "");
+
 function bodyOf(ctx: { body?: unknown }): Record<string, unknown> {
   return ctx.body && typeof ctx.body === "object" ? (ctx.body as Record<string, unknown>) : {};
 }
@@ -128,6 +134,14 @@ export const authCentral = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       try {
+        if (ctx.path === LOGIN && loginAttempts.blocked(loginKey(ctx), Date.now())) {
+          throw new ApiError(
+            429,
+            "too_many_attempts",
+            undefined,
+            "Muitas tentativas com senha errada. Espere 15 minutos e tente de novo.",
+          );
+        }
         if (ctx.path === "/sign-up/email") await prepareRegistration(bodyOf(ctx));
         if (ctx.path === "/update-user") {
           const session = await getSessionFromCtx(ctx).catch(() => null);
@@ -144,6 +158,11 @@ export const authCentral = betterAuth({
     // original mesmo quando o hook lança outro `APIError` (better-auth 1.6.23).
     after: createAuthMiddleware(async (ctx) => {
       const back = ctx.context.returned;
+      if (ctx.path === LOGIN) {
+        if (isAPIError(back)) loginAttempts.count(loginKey(ctx), Date.now());
+        else loginAttempts.reset(loginKey(ctx));
+        return;
+      }
       if (ctx.path !== "/sign-up/email" || !isAPIError(back)) return;
       if (!EXISTING_ACCOUNT_ERRORS.has(String(back.body?.code))) return;
       const cpf = bodyOf(ctx).cpf;

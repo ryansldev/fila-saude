@@ -115,6 +115,8 @@ export const publicUnitSchema = z.object({
   lng: z.number().nullable(),
   /** Atendimentos públicos com inscrição aberta (os mesmos da agenda). */
   appointments: z.number().int().min(0),
+  /** Fuso da unidade: o app mostra datas e horas nele. */
+  timeZone: z.string(),
 });
 export type PublicUnit = z.infer<typeof publicUnitSchema>;
 
@@ -123,7 +125,7 @@ export const publicMunicipalitySchema = z.object({ slug: z.string(), name: z.str
 /** Agenda pública (T3.2): só dados da sessão, nunca de paciente. */
 export const scheduleSessionSchema = z.object({
   id: z.uuid(),
-  unit: z.object({ id: z.uuid(), name: z.string(), neighborhood: z.string() }),
+  unit: z.object({ id: z.uuid(), name: z.string(), neighborhood: z.string(), timeZone: z.string() }),
   service: z.object({ id: z.uuid(), name: z.string() }),
   start: z.iso.datetime(),
   end: z.iso.datetime(),
@@ -203,6 +205,8 @@ export const myEntrySchema = z.object({
   leaveHome: z.boolean(),
   /** RN-CONF-01: alocada à espera da resposta; até quando confirmar. `null` fora disso. */
   confirmationDeadline: z.iso.datetime().nullable(),
+  /** Fuso da unidade: o app mostra datas e horas nele. */
+  timeZone: z.string(),
   /** Serviço da inscrição: uma pessoa só tem uma inscrição ativa por serviço (AD-032). */
   serviceId: z.uuid(),
   /** A pessoa atendida é o dono da conta (e não alguém que ele inscreveu). */

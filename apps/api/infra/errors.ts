@@ -81,7 +81,7 @@ export function handleError(err: unknown, req: FastifyRequest, reply: FastifyRep
     return reply.status(status).send({ error: "invalid_input" });
   }
   req.log.error(err);
-  return reply.status(500).send({ error: "erro_interno" });
+  return reply.status(500).send({ error: "internal_error" });
 }
 
 export function notFound(_req: FastifyRequest, reply: FastifyReply) {

@@ -5,10 +5,12 @@ import {
   holdsSlot,
   INACTIVE_ENTRY_STATES,
   leaving,
+  MAX_PER_ACCOUNT,
   refusalEnds,
 } from "@fila-saude/domain";
 import type { MyEntry, PublicUnit, ScheduleSession, SignUpInput } from "@fila-saude/schemas/queue";
-import { and, asc, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
+import { Attempts } from "infra/auth/attempts";
 import type { AuthenticatedPatient } from "infra/auth/patient-session";
 import { requireService } from "infra/config/services";
 import database from "infra/database";
@@ -30,7 +32,6 @@ const FINAL_STATES = INACTIVE_ENTRY_STATES;
 const SCHEDULE_DAYS = 14;
 // Estados em que o paciente ainda pode desistir (cancelarEntrada no domínio).
 const CANCELLABLE = ["waiting", "awaiting_referral", "allocated", "confirmed", "in_reserve", "in_queue"];
-export const MAX_PER_ACCOUNT = 5;
 
 export async function activeMunicipalities() {
   return database
@@ -41,26 +42,28 @@ export async function activeMunicipalities() {
 }
 
 // T3.2 / RN-AG-01: sessões públicas de agora até 14 dias, com vagas restantes; nada de paciente.
-export async function schedule(db: TenantDb, now: number): Promise<ScheduleSession[]> {
+/** As sessões que a agenda mostra: públicas, com inscrição aberta, de agora até `SCHEDULE_DAYS`. */
+const inSchedule = (now: number) =>
+  and(
+    eq(session.visibility, "public"),
+    inArray(session.state, ["planned", "open"]),
+    gt(session.end, new Date(now)),
+    lt(session.start, new Date(now + SCHEDULE_DAYS * 86400_000)),
+    eq(service.active, true),
+    isNull(unit.archivedAt),
+  );
+
+export async function schedule(db: TenantDb, now: number, unitId?: string): Promise<ScheduleSession[]> {
   const rows = await db
     .select({ s: session, srv: service, u: unit })
     .from(session)
     .innerJoin(service, eq(session.serviceId, service.id))
     .innerJoin(unit, eq(service.unitId, unit.id))
-    .where(
-      and(
-        eq(session.visibility, "public"),
-        inArray(session.state, ["planned", "open"]),
-        gt(session.end, new Date(now)),
-        lt(session.start, new Date(now + SCHEDULE_DAYS * 86400_000)),
-        eq(service.active, true),
-        isNull(unit.archivedAt),
-      ),
-    )
+    .where(and(inSchedule(now), unitId ? eq(unit.id, unitId) : undefined))
     .orderBy(asc(session.start));
   return rows.map(({ s, srv, u }) => ({
     id: s.id,
-    unit: { id: u.id, name: u.name, neighborhood: u.neighborhood },
+    unit: { id: u.id, name: u.name, neighborhood: u.neighborhood, timeZone: u.timeZone },
     service: { id: srv.id, name: srv.name },
     start: s.start.toISOString(),
     end: s.end.toISOString(),
@@ -105,8 +108,14 @@ export async function checkSignUp(
 // Tela 5 / RN-AG-01: as unidades do município (sem as removidas), para o mapa e a lista "perto de você".
 export async function municipalityUnits(db: TenantDb, now: number): Promise<PublicUnit[]> {
   const rows = await db.select().from(unit).where(isNull(unit.archivedAt)).orderBy(asc(unit.name));
-  const byUnit = new Map<string, number>();
-  for (const s of await schedule(db, now)) byUnit.set(s.unit.id, (byUnit.get(s.unit.id) ?? 0) + 1);
+  const counts = await db
+    .select({ unitId: unit.id, n: count() })
+    .from(session)
+    .innerJoin(service, eq(session.serviceId, service.id))
+    .innerJoin(unit, eq(service.unitId, unit.id))
+    .where(inSchedule(now))
+    .groupBy(unit.id);
+  const byUnit = new Map(counts.map((c) => [c.unitId, c.n]));
   return rows.map((u) => ({
     id: u.id,
     name: u.name,
@@ -115,6 +124,7 @@ export async function municipalityUnits(db: TenantDb, now: number): Promise<Publ
     lat: u.lat,
     lng: u.lng,
     appointments: byUnit.get(u.id) ?? 0,
+    timeZone: u.timeZone,
   }));
 }
 
@@ -122,6 +132,9 @@ export async function municipalityUnits(db: TenantDb, now: number): Promise<Publ
  * AD-018: "para mim" usa os dados da conta; "outra pessoa" usa os informados, e o CPF de quem
  * tem conta não entra como "outra pessoa" (a própria conta usa "para mim"; quem tem conta entra pela dela).
  */
+// RN-ID-07: CPFs de outras pessoas que uma conta informa por hora (inscrição, lista e conferência).
+const cpfLookups = new Attempts({ max: 20, windowMs: 3_600_000 });
+
 export async function personFromRequest(
   p: AuthenticatedPatient,
   forWhom: SignUpInput["forWhom"],
@@ -137,6 +150,16 @@ export async function personFromRequest(
   const { name, birthDate, cpf, relationship } = forWhom;
   const digits = cpf ? cpf.replace(/\D/g, "") : null;
   if (digits) {
+    // RN-ID-07: a resposta diz se o CPF tem conta; sem limite, uma conta varreria CPFs (oráculo).
+    const key = `cpf:${p.patientId}`;
+    if (cpfLookups.blocked(key, Date.now()))
+      throw new ApiError(
+        429,
+        "too_many_attempts",
+        undefined,
+        "Muitas pessoas informadas em pouco tempo. Tente de novo mais tarde ou procure a recepção.",
+      );
+    cpfLookups.count(key, Date.now());
     const [owner] = await database.select({ id: patient.id }).from(patient).where(eq(patient.cpf, digits));
     if (owner?.id === p.patientId)
       throw new ApiError(409, "own_account_cpf", undefined, 'Esse é o seu CPF. Para se inscrever, escolha "para mim".');
@@ -162,30 +185,14 @@ export async function signUpPatient(
   const [s] = await db.select({ visibility: session.visibility }).from(session).where(eq(session.id, sessionId));
   if (!s) throw new ApiError(404, "not_found");
   if (s.visibility !== "public") throw new ApiError(409, "private_session");
-  // RN-ID-07 (enxuto): uma conta não lota a sessão com pessoas inventadas.
-  const active = await db
-    .select({ id: entry.id })
-    .from(entry)
-    .where(
-      and(
-        eq(entry.sessionId, sessionId),
-        eq(entry.guardianPatientId, p.patientId),
-        notInArray(entry.state, [...FINAL_STATES]),
-      ),
-    );
-  if (active.length >= MAX_PER_ACCOUNT)
-    throw new ApiError(
-      409,
-      "limit_per_account",
-      undefined,
-      `Uma conta inscreve até ${MAX_PER_ACCOUNT} pessoas por atendimento. Para mais, procure a recepção.`,
-    );
   const person = await personFromRequest(p, data.forWhom);
+  // RN-ID-07 (enxuto): uma conta não lota a sessão com pessoas inventadas; conferido sob a trava.
   const e = await signUp(db, sessionId, {
     person,
     guardianPatientId: p.patientId,
     answers: data.answers,
     now,
+    limitPerAccount: MAX_PER_ACCOUNT,
   });
   return {
     entryId: e.id,
@@ -210,12 +217,20 @@ export async function mine(db: TenantDb, patientId: string, now: number): Promis
       ),
     )
     .orderBy(asc(entry.createdAt));
+  // Um dia por sessão (várias pessoas da conta costumam estar na mesma) e só as estações das chamadas.
+  const sessionIds = [...new Set(rows.flatMap(({ s }) => (s ? [s.id] : [])))];
+  const days = new Map(await Promise.all(sessionIds.map(async (id) => [id, await readDay(db, id)] as const)));
+  const stationIds = [...new Set([...days.values()].flatMap((d) => d?.calls.map((c) => c.stationId) ?? []))];
   const stationNames = new Map(
-    (await db.select({ id: station.id, name: station.name }).from(station)).map((x) => [x.id, x.name]),
+    stationIds.length === 0
+      ? []
+      : (
+          await db.select({ id: station.id, name: station.name }).from(station).where(inArray(station.id, stationIds))
+        ).map((x) => [x.id, x.name]),
   );
   const exit: MyEntry[] = [];
   for (const { e, p, s, srv, u } of rows) {
-    const day = s ? await readDay(db, s.id) : null;
+    const day = s ? (days.get(s.id) ?? null) : null;
     const item = day?.items.find((i) => i.entryId === e.id) ?? null;
     const last = item ? day?.calls.findLast((c) => c.itemId === item.id) : undefined;
     exit.push({
@@ -239,6 +254,7 @@ export async function mine(db: TenantDb, patientId: string, now: number): Promis
           : null,
       pendingChecks: item?.state === "remote" ? item.pendingChecks : [],
       serviceId: srv.id,
+      timeZone: u.timeZone,
       forMe: p.patientId === patientId,
       birthDate: p.birthDate,
       refusalEnds: refusalEnds(e),

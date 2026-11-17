@@ -26,7 +26,7 @@ export const guardianRelationship = pgEnum("guardian_relationship", [
   "family_or_friend",
 ]);
 
-// PD-36: toda entrada aponta para uma `pessoa_local`; INV-01 pelo índice único parcial.
+// PD-36: toda entrada aponta para uma `local_person`; INV-01 pelo índice único parcial.
 export const entry = pgTable(
   "entry",
   {

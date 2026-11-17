@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { ChevronRight, MapPin } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -16,6 +16,8 @@ export default function ChooseMunicipality() {
   // Um toque só: dois toques seguidos não trocam de município duas vezes.
   const [choosing, setChoosing] = useState<string | null>(null);
   const switching = Boolean(s.municipality);
+  // Quem chega sem conta para ver as unidades (de "esqueci a senha") volta para elas depois de escolher.
+  const { next } = useLocalSearchParams<{ next?: string }>();
 
   const fetch = useCallback(
     () =>
@@ -34,7 +36,8 @@ export default function ChooseMunicipality() {
 
   // Volta para onde a pessoa estava (a conta, por exemplo); na primeira escolha, vai para "hoje".
   const follow = () => {
-    if (switching && router.canGoBack()) router.back();
+    if (next === "unidades") router.replace("/unidades");
+    else if (switching && router.canGoBack()) router.back();
     else router.replace("/inicio");
   };
 

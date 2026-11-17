@@ -16,7 +16,7 @@ describe("rotas auditadas", () => {
     const app = Fastify();
     registerRoutes(app);
     app.post("/v1/panel/fake", async () => ({}));
-    app.post("/v1/panel/certa", { config: { action: "criar_unidades_regras_usuarios" } }, async () => ({}));
+    app.post("/v1/panel/right", { config: { action: "create_units_and_rules" } }, async () => ({}));
     app.post("/v1/panel/auth/sign-in", async () => ({}));
     await app.ready();
     expect(listRoutesWithoutAction(app)).toEqual(["POST /v1/panel/fake"]);

@@ -1,4 +1,4 @@
-/** Erro no formato da API (PD-22) mais o status; `sem_conexao` quando a rede falha. */
+/** Erro no formato da API (PD-22) mais o status; `no_connection` quando a rede falha. */
 export class ApiError extends Error {
   readonly status: number;
   readonly error: string;

@@ -53,7 +53,7 @@ function codeByStatus(status: number) {
   if (status === 403) return "no_permission";
   if (status === 404) return "not_found";
   if (status === 429) return "too_many_attempts";
-  if (status >= 500) return "erro_interno";
+  if (status >= 500) return "internal_error";
   return "auth_error";
 }
 

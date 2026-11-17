@@ -20,7 +20,7 @@ export type SessionValidation =
 
 /**
  * Valida a configuração da sessão para o serviço. Erros de campo vêm juntos
- * (`entrada_invalida`); com os campos válidos, serviço regulado só aceita privada.
+ * (`invalid_input`); com os campos válidos, serviço regulado só aceita privada.
  */
 export function validateSession(
   service: {

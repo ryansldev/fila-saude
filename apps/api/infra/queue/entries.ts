@@ -80,12 +80,17 @@ export async function attendedPerson(db: TenantDatabase, p: InformedPerson): Pro
     }
     return { id: existing.id };
   }
+  // Dois pedidos com o mesmo CPF novo ao mesmo tempo (serviços diferentes): o segundo encontra a
+  // pessoa que o primeiro criou e passa pela mesma conferência, em vez de bater no índice único.
   const [fresh] = await db
     .insert(localPerson)
     .values({ name: properName(p.name), birthDate: p.birthDate, cpf: p.cpf, patientId: p.patientId })
+    .onConflictDoNothing()
     .returning({ id: localPerson.id });
-  if (!fresh) throw new Error("pessoa_local não criada");
-  return fresh;
+  if (fresh) return fresh;
+  const created = await personByCpf(db, p);
+  if (!created) throw new Error("pessoa local não criada");
+  return { id: created.id };
 }
 
 export async function insertEntry(

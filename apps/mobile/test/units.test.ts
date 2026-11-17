@@ -22,6 +22,7 @@ const unit = (name: string, lat: number | null, lng: number | null, extra: Parti
     lat,
     lng,
     appointments: 0,
+    timeZone: "America/Sao_Paulo",
     ...extra,
   }) satisfies PublicUnit;
 

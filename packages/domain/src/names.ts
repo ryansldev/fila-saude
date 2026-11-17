@@ -14,3 +14,12 @@ export const properName = (name: string): string =>
 
 /** "ana souza" → "Ana". */
 export const firstName = (name: string): string => properName(parts(name)[0] ?? "");
+
+const comparable = (name: string): string =>
+  name.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Mesmo nome, sem ligar para maiúsculas, acentos e espaços a mais; nome vazio não é igual a nada. */
+export const sameName = (a: string, b: string): boolean => {
+  const na = comparable(a);
+  return na !== "" && na === comparable(b);
+};

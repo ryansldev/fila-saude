@@ -9,8 +9,6 @@ import {
   forMeInService,
   otherPersonAlreadySignedUp,
   RELATIONSHIPS,
-  sameName,
-  samePerson,
   signUpForWhom,
   signUpInSchedule,
   stepOfError,
@@ -39,6 +37,7 @@ const base: MyEntry = {
   forMe: true,
   birthDate: "1990-05-05",
   refusalEnds: false,
+  timeZone: "America/Sao_Paulo",
   canCancel: true,
   stage: null,
   triaged: false,
@@ -98,21 +97,6 @@ describe("uma inscrição ativa por pessoa e serviço (AD-032), decidido antes d
     expect(forMeInService([{ ...base, forMe: false }], DRESSINGS)).toBe(false);
     expect(forMeInService(null, DRESSINGS)).toBe(false);
     expect(forMeInService([base], undefined)).toBe(false);
-  });
-
-  it("mesmo nome: sem diferença de maiúsculas, acentos e espaços", () => {
-    expect(sameName("  João   da Silva ", "joao da silva")).toBe(true);
-    expect(sameName("João Silva", "João Souza")).toBe(false);
-    expect(sameName("", "")).toBe(false);
-  });
-
-  it("mesma pessoa (RN-LE-02): CPF quando os dois têm; senão nome e nascimento", () => {
-    const joao = { name: "João da Silva", birthDate: "2010-01-02", cpf: "529.982.247-25" };
-    expect(samePerson(joao, { ...joao, name: "Outro Nome", cpf: "52998224725" })).toBe(true);
-    expect(samePerson(joao, { ...joao, cpf: "111.444.777-35" })).toBe(false);
-    expect(samePerson(joao, { name: "joao da silva", birthDate: "2010-01-02", cpf: null })).toBe(true);
-    expect(samePerson(joao, { name: "joao da silva", birthDate: "2010-01-03" })).toBe(false);
-    expect(samePerson(joao, { name: "joao da silva", birthDate: "" })).toBe(false);
   });
 
   it("outra pessoa já inscrita no serviço pela conta: nome + nascimento, só entradas ativas que não são do dono", () => {

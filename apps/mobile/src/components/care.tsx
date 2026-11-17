@@ -46,7 +46,11 @@ import { rowFor, tabCount, ticketCardFor } from "@/lib/today";
 
 // "hoje" só quando a sessão é hoje no fuso da unidade; senão, o dia.
 export const when = (en: MyEntry) =>
-  en.session ? (isToday(en.session.start, Date.now()) ? " · hoje" : ` · ${shortDay(en.session.start)}`) : "";
+  en.session
+    ? isToday(en.session.start, Date.now(), en.timeZone)
+      ? " · hoje"
+      : ` · ${shortDay(en.session.start, en.timeZone)}`
+    : "";
 export const context = (en: MyEntry) =>
   `${en.unit} · ${en.service.toLowerCase()}${when(en)}${en.forMe ? "" : ` · para ${properName(en.person)}`}`;
 export const missing = (position: number, minutes: number) =>
@@ -309,7 +313,7 @@ function CareHeader({ en, sit, onOpen }: { en: MyEntry; sit: Situation; onOpen?:
   return (
     <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
       {en.session ? (
-        <DateBlock {...dayParts(en.session.start, now)} tone={closed ? "gray" : r.tone} />
+        <DateBlock {...dayParts(en.session.start, now, en.timeZone)} tone={closed ? "gray" : r.tone} />
       ) : (
         <Avatar Icon={Hourglass} tone={r.tone} />
       )}
@@ -320,7 +324,7 @@ function CareHeader({ en, sit, onOpen }: { en: MyEntry; sit: Situation; onOpen?:
           {en.service.toLowerCase()}
         </Text>
         <Small>
-          {en.session ? `${hour(en.session.start)} às ${hour(en.session.end)} · ` : ""}
+          {en.session ? `${hour(en.session.start, en.timeZone)} às ${hour(en.session.end, en.timeZone)} · ` : ""}
           {en.unit}
           {en.forMe ? "" : ` · para ${properName(en.person)}`}
         </Small>
@@ -682,7 +686,7 @@ export function DayTicketCard({
         ) : (
           <SoftText style={{ textAlign: "center" }}>
             {b.button === "confirm"
-              ? `${en.session ? shortWindow(en.session.start, en.session.end) : ""}`
+              ? `${en.session ? shortWindow(en.session.start, en.session.end, en.timeZone) : ""}`
               : "a senha sai quando a fila abrir."}
           </SoftText>
         )}
@@ -701,8 +705,8 @@ export function DayTicketCard({
   );
 }
 
-const shortWindow = (start: string, end: string) =>
-  `${isToday(start, Date.now()) ? "hoje" : shortDay(start)}, das ${hour(start)} às ${hour(end)}`;
+const shortWindow = (start: string, end: string, timeZone: string) =>
+  `${isToday(start, Date.now(), timeZone) ? "hoje" : shortDay(start, timeZone)}, das ${hour(start, timeZone)} às ${hour(end, timeZone)}`;
 
 /** O corte do bilhete: linha tracejada com dois meios-círculos na cor do fundo. */
 function Perforation() {

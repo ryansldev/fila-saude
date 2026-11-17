@@ -22,6 +22,7 @@ const my = (x: Partial<MyEntry>): MyEntry => ({
   forMe: true,
   birthDate: "1990-01-01",
   refusalEnds: false,
+  timeZone: "America/Sao_Paulo",
   canCancel: true,
   stage: null,
   triaged: false,

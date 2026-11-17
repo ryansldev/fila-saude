@@ -32,6 +32,7 @@ const base: MyEntry = {
   forMe: true,
   birthDate: "1990-05-05",
   refusalEnds: false,
+  timeZone: "America/Sao_Paulo",
   canCancel: true,
   stage: "care",
   triaged: false,
@@ -242,6 +243,11 @@ describe("próximo passo, em uma frase (cartão, revisão 2026-11-14)", () => {
     const signedUp = { ...base, state: "confirmed", ticket: null, itemState: null, session };
     expect(nextStep(signedUp, entrySituation(signedUp, NOW), NOW)).toBe(
       "a fila abre às 14h. até lá, pode esperar em casa.",
+    );
+    // No fuso da unidade: em Manaus (UTC−4) a mesma sessão abre às 13h, não às 14h de Brasília.
+    const manaus = { ...signedUp, timeZone: "America/Manaus" };
+    expect(nextStep(manaus, entrySituation(manaus, NOW), NOW)).toBe(
+      "a fila abre às 13h. até lá, pode esperar em casa.",
     );
     const list = { ...base, state: "waiting", ticket: null, itemState: null };
     expect(nextStep(list, entrySituation(list, NOW), NOW)).toBe("a unidade vai marcar a data e te avisar.");

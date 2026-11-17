@@ -95,8 +95,8 @@ export default function Today() {
             <DayRow en={next.en} sit={next.sit} onOpen={open(next.en.entryId)} />
             <Small>
               {(() => {
-                const p = dayParts(next.en.session.start, Date.now());
-                return `${p.top === "amanhã" ? "amanhã" : `${p.top}, ${p.day} de ${p.month}`}, às ${hour(next.en.session.start)}`;
+                const p = dayParts(next.en.session.start, Date.now(), next.en.timeZone);
+                return `${p.top === "amanhã" ? "amanhã" : `${p.top}, ${p.day} de ${p.month}`}, às ${hour(next.en.session.start, next.en.timeZone)}`;
               })()}
             </Small>
           </View>

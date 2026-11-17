@@ -62,6 +62,7 @@ function SessionCard({ x, unit, mine }: { x: ScheduleSession; unit: string; mine
         service: x.service.name,
         unit,
         start: x.start,
+        timeZone: x.unit.timeZone,
         open: x.state === "open" ? "1" : "0",
       },
     });
@@ -81,7 +82,7 @@ function SessionCard({ x, unit, mine }: { x: ScheduleSession; unit: string; mine
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Clock size={18} color={COLOR.inkMuted} strokeWidth={2.4} />
           <Small>
-            {hour(x.start)} às {hour(x.end)}
+            {hour(x.start, x.unit.timeZone)} às {hour(x.end, x.unit.timeZone)}
           </Small>
         </View>
         {x.professional ? (
@@ -161,19 +162,20 @@ export default function Unit() {
     () =>
       Promise.all([
         s.api.get<PublicUnit[]>(`/v1/municipalities/${s.municipality}/units`),
-        s.api.get<ScheduleSession[]>(`/v1/municipalities/${s.municipality}/schedule`),
-        s.api.get<MyEntry[]>(`/v1/municipalities/${s.municipality}/mine`),
+        s.api.get<ScheduleSession[]>(`/v1/municipalities/${s.municipality}/schedule?unitId=${id}`),
+        // Sem conta (veio de "esqueci a senha"), não há inscrições para mostrar.
+        s.token ? s.api.get<MyEntry[]>(`/v1/municipalities/${s.municipality}/mine`) : Promise.resolve([]),
         s.api.get<UnitService[]>(`/v1/municipalities/${s.municipality}/units/${id}/services`),
       ])
         .then(([us, ag, m, sv]) => {
           setUnitServices(sv);
           setUnit(us.find((u) => u.id === id) ?? "not_found");
-          setSessions(ag.filter((x) => x.unit.id === id).sort((a, b) => a.start.localeCompare(b.start)));
+          setSessions([...ag].sort((a, b) => a.start.localeCompare(b.start)));
           setMine(m);
           setError(null);
         })
         .catch((err) => setError(errorNotice(err, "confira a conexão e tente de novo."))),
-    [s.api, s.municipality, id],
+    [s.api, s.municipality, s.token, id],
   );
   // Volta depois de se inscrever: busca de novo, para o cartão já dizer "inscrito".
   useFocusEffect(
@@ -183,26 +185,29 @@ export default function Unit() {
   );
 
   const back = () => (router.canGoBack() ? router.back() : router.replace("/unidades"));
+  // Datas e horas no fuso da unidade (AM, MT e AC não são o de Brasília).
+  const timeZone = unit && unit !== "not_found" ? unit.timeZone : "America/Sao_Paulo";
   // A faixa: só os dias com atendimento; o escolhido volta ao primeiro se o dia sumir.
   const days = useMemo(
     () =>
       daysWithCare(
         (sessions ?? []).map((x) => x.start),
         Date.now(),
+        timeZone,
       ),
-    [sessions],
+    [sessions, timeZone],
   );
   const [chosen, setChosen] = useState<string | null>(null);
   const day = validDay(chosen, days);
   const [calendar, setCalendar] = useState(false);
   const months = useMemo(() => {
     const withValue = new Set(days.map((d) => d.key));
-    const today = dayKey(new Date().toISOString());
+    const today = dayKey(new Date().toISOString(), timeZone);
     return [...new Set(days.map((d) => d.key.slice(0, 7)))].map((am) => {
       const [a, m] = am.split("-").map(Number);
       return { title: monthYear(`${am}-01`), weeks: monthGrid(a ?? 0, m ?? 1, withValue, today) };
     });
-  }, [days]);
+  }, [days, timeZone]);
 
   if (unit === "not_found")
     return (
@@ -282,7 +287,7 @@ export default function Unit() {
               </Text>
               <DayStrip days={days} current={day} change={setChosen} onOpenCalendar={() => setCalendar(true)} />
               {(sessions ?? [])
-                .filter((x) => dayKey(x.start) === day)
+                .filter((x) => dayKey(x.start, timeZone) === day)
                 .map((x) => (
                   <SessionCard key={x.id} x={x} unit={unit.name} mine={mine} />
                 ))}

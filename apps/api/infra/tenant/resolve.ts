@@ -5,9 +5,9 @@ export type ResolutionEntry = { host: string | undefined; pathSlug: string | und
 export type ResolutionResult = { slug: string } | { error: "no_tenant" | "municipality_mismatch" };
 
 // PD-15: o painel e a TV chegam por `<slug>.<dominioBase>` (Host); o app, por `/v1/municipalities/:slug/…`.
-// Com os dois presentes e diferentes → `municipio_divergente`. No modo `single` (PD-12) o tenant é
+// Com os dois presentes e diferentes → `municipality_mismatch`. No modo `single` (PD-12) o tenant é
 // sempre `fixedSlug` e o Host é ignorado (a VPS do município pode ter qualquer domínio); caminho com
-// outro slug → `sem_tenant`.
+// outro slug → `no_tenant`.
 // Função pura: não consulta o catálogo; existir ou estar ativo é decidido depois (`TenantsPools`).
 export function resolveTenant(entry: ResolutionEntry, config: ResolutionConfig): ResolutionResult {
   const fromPath = entry.pathSlug;

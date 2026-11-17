@@ -70,14 +70,16 @@ export {
   currentRisk,
   destinationByCondition,
   entryPriority,
+  MAX_PER_ACCOUNT,
   pendingAtOpening,
   reactivate,
   refusalEnds,
   refuse,
+  samePerson,
   suggest,
   verificationInEntry,
 } from "./list.ts";
-export { firstName, properName } from "./names.ts";
+export { firstName, properName, sameName } from "./names.ts";
 export type { OrderKey, Risk, SuggestionKey } from "./order.ts";
 export { compareOrder, compareSuggestion } from "./order.ts";
 export type { Action, Cell, MatrixRow, Profile } from "./permissions.ts";

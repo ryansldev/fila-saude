@@ -48,11 +48,11 @@ describe("POST /v1/test/eco", () => {
     expect(await response.json()).toEqual({ error: "test_conflict" });
   });
 
-  it("PD-22: erro desconhecido → 500 erro_interno sem vazar a mensagem", async () => {
+  it("PD-22: erro desconhecido → 500 internal_error sem vazar a mensagem", async () => {
     const response = await post(JSON.stringify({ text: "interno", times: 1 }));
     expect(response.status).toBe(500);
     const text = await response.text();
-    expect(JSON.parse(text)).toEqual({ error: "erro_interno" });
+    expect(JSON.parse(text)).toEqual({ error: "internal_error" });
     expect(text).not.toContain("segredo");
   });
 
