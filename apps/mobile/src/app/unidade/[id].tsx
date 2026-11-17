@@ -26,7 +26,7 @@ import { dayKey, daysWithCare, monthGrid, monthYear, validDay } from "@/lib/days
 import { useSession } from "@/lib/session";
 import { type ServiceWithList, SIGN_UP_PATH, servicesWithList, signUpInSchedule } from "@/lib/sign-ups";
 import { errorNotice } from "@/lib/texts";
-import { directionsLink, kindName } from "@/lib/units";
+import { directionsLink, kindName, postalCode } from "@/lib/units";
 
 const slots = (x: ScheduleSession): { text: string; tone: Tone } =>
   x.remainingSlots === null
@@ -256,7 +256,7 @@ export default function Unit() {
                   {unit.address.street}, {unit.address.number}
                 </BodyText>
                 <SoftText>
-                  {unit.address.neighborhood}, CEP {unit.address.postalCode.replace(/^(\d{5})(\d{3})$/, "$1-$2")}
+                  {unit.address.neighborhood}, CEP {postalCode(unit.address.postalCode)}
                 </SoftText>
               </View>
             </View>

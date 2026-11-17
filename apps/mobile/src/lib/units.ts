@@ -68,14 +68,11 @@ export const kindName = (kind: string) => KINDS[kind as UnitKind] ?? "unidade de
 
 export const appointmentsText = (n: number) => (n === 0 ? "sem vaga agora" : n === 1 ? "1 aberto" : `${n} abertos`);
 
-const postalCode = (c: string) => {
+/** CEP como 01001-000, venha com ou sem máscara. */
+export const postalCode = (c: string) => {
   const d = c.replace(/\D/g, "");
   return d.length === 8 ? `${d.slice(0, 5)}-${d.slice(5)}` : c;
 };
-
-/** "Rua das Flores, 100 · Centro · CEP 01001-000". */
-export const rowAddress = (e: PublicUnit["address"]) =>
-  `${e.street}, ${e.number} · ${e.neighborhood} · CEP ${postalCode(e.postalCode)}`;
 
 /** Abre o app de mapas do celular com a rota até a unidade (pelas coordenadas ou, sem elas, pelo endereço). */
 export function directionsLink(u: PublicUnit, platform: string): string {

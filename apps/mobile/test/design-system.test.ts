@@ -5,10 +5,7 @@ import { describe, expect, it } from "vitest";
 const SRC = path.resolve(__dirname, "../src");
 const KIT = "components/ui.tsx";
 /** Exceções, com o motivo: só o que não é botão. */
-const EXCEPTIONS: Record<string, string> = {
-  "components/map.tsx": "marcadores do mapa não são botões",
-  "components/map.native.tsx": "marcadores do mapa não são botões",
-};
+const EXCEPTIONS: Record<string, string> = {};
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

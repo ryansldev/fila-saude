@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { destinationWithoutAccount, KEY_ONBOARDING, nextStep, previousStep } from "@/lib/onboarding";
+import { destinationWithoutAccount, introButtons, KEY_ONBOARDING, nextStep, previousStep } from "@/lib/onboarding";
 
 describe("onboarding", () => {
   it("usa uma chave própria no armazenamento", () => {
@@ -23,5 +23,16 @@ describe("onboarding", () => {
     expect(previousStep(3)).toBe(2);
     expect(previousStep(1)).toBe(0);
     expect(previousStep(0)).toBe("leave");
+  });
+});
+
+describe('botões do "como funciona"', () => {
+  it("sem conta: continuar ou pular para criar a conta; no fim, criar ou entrar", () => {
+    expect(introButtons(false, false)).toEqual({ main: "continuar", secondary: "pular" });
+    expect(introButtons(true, false)).toEqual({ main: "criar minha conta", secondary: "já tenho conta" });
+  });
+  it("revendo pela conta (já tem conta): só continuar e, no fim, entendi; nada de cadastro", () => {
+    expect(introButtons(false, true)).toEqual({ main: "continuar", secondary: "fechar" });
+    expect(introButtons(true, true)).toEqual({ main: "entendi", secondary: null });
   });
 });

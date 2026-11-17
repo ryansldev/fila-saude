@@ -6,7 +6,7 @@ import {
   distanceKm,
   distanceText,
   kindName,
-  rowAddress,
+  postalCode,
   sortUnits,
   walkingMinutes,
 } from "@/lib/units";
@@ -128,8 +128,10 @@ describe("textos da unidade", () => {
     expect(appointmentsText(3)).toBe("3 abertos");
   });
 
-  it("endereço numa linha, com o CEP formatado", () => {
-    expect(rowAddress(unit("x", 0, 0).address)).toBe("Rua das Flores, 100 · Centro · CEP 01001-000");
+  it("CEP formatado (com ou sem máscara na origem)", () => {
+    expect(postalCode("01001000")).toBe("01001-000");
+    expect(postalCode("01001-000")).toBe("01001-000");
+    expect(postalCode("0100")).toBe("0100");
   });
 });
 

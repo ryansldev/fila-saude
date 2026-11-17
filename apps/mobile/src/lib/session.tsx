@@ -94,16 +94,30 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [token, forgetAccount],
   );
 
+  // Os dados da conta: sem rede ao abrir o app, tenta de novo com espera crescente (5 s, 10 s... até 1 min)
+  // em vez de deixar o "para mim" da inscrição travado até fechar o app.
+  const [accountTry, setAccountTry] = useState(0);
   useEffect(() => {
     if (!token) {
       setAccount(null);
+      setAccountTry(0);
       return;
     }
+    let active = true;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     api
       .get<{ user: { name: string; birthDate: string; cpf: string } } | null>("/v1/auth/get-session")
-      .then((s) => setAccount(s ? { name: s.user.name, birthDate: s.user.birthDate, cpf: s.user.cpf ?? "" } : null))
-      .catch(() => setAccount(null));
-  }, [api, token]);
+      .then((s) => {
+        if (active) setAccount(s ? { name: s.user.name, birthDate: s.user.birthDate, cpf: s.user.cpf ?? "" } : null);
+      })
+      .catch(() => {
+        if (active) retry = setTimeout(() => setAccountTry((n) => n + 1), Math.min(60_000, 5_000 * 2 ** accountTry));
+      });
+    return () => {
+      active = false;
+      if (retry) clearTimeout(retry);
+    };
+  }, [api, token, accountTry]);
 
   // T3.8: a cada login, abertura com conta ou volta dos ajustes com os avisos ligados, o aparelho avisa a
   // conta certa. Só registra: o pedido de permissão vem depois da tela que explica os avisos.

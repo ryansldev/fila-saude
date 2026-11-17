@@ -4,8 +4,10 @@ import {
   passwordRule,
   previousStep,
   REGISTRATION_STEPS,
+  registrationPayload,
   registrationSummary,
   serverErrorStep,
+  serverErrorText,
   stepError,
 } from "@/lib/registration";
 
@@ -65,5 +67,23 @@ describe("cadastro, uma pergunta por tela", () => {
       { step: "phone", label: "celular", value: "(11) 98888-7777" },
       { step: "email", label: "e-mail", value: "joana@exemplo.com" },
     ]);
+  });
+});
+
+describe("recusa do servidor no cadastro", () => {
+  it("o campo diz por que voltou: CPF ou e-mail que já têm conta", () => {
+    expect(serverErrorText("cpf_in_use")).toBe(
+      "este CPF já tem uma conta. entre com ele; se não foi você quem criou, procure a recepção.",
+    );
+    expect(serverErrorText("email_in_use")).toBe("este e-mail já tem uma conta. use outro ou entre com o CPF.");
+    expect(serverErrorText("invalid_cpf")).toBe("CPF inválido.");
+    expect(serverErrorText("outro")).toBeNull();
+  });
+  it("o envio vai com nome e e-mail sem espaços nas pontas e a data em AAAA-MM-DD", () => {
+    expect(registrationPayload({ ...ok, name: " Maria Silva ", email: " m@x.com " })).toMatchObject({
+      name: "Maria Silva",
+      email: "m@x.com",
+      birthDate: "1985-02-10",
+    });
   });
 });

@@ -21,13 +21,27 @@ function regionOf(points: LatLng[]): Region {
 }
 
 /** Mapa de verdade (react-native-maps): Apple Maps no iPhone, Google Maps no Android. */
-export default function UnitsMap({ pins, here, selected, onTapPin, onTapOutside, height = MAP_HEIGHT }: MapProps) {
+export default function UnitsMap({
+  pins: fresh,
+  here,
+  selected,
+  onTapPin,
+  onTapOutside,
+  height = MAP_HEIGHT,
+}: MapProps) {
   const ref = useRef<MapView>(null);
+  // A aba busca as unidades a cada foco e chega um array novo: o mapa só reage quando o conteúdo muda
+  // (sem reenquadrar o zoom da pessoa nem redesenhar os pinos à toa).
+  const pinsKey = fresh.map((x) => `${x.id}:${x.lat}:${x.lng}:${x.open}:${x.name}`).join("|");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `pinsKey` resume o conteúdo dos pinos.
+  const pins = useMemo(() => fresh, [pinsKey]);
+  const hereKey = here ? `${here.lat}:${here.lng}` : "";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `hereKey` resume a posição da pessoa.
   const points = useMemo(() => {
     const p: LatLng[] = pins.map((x) => ({ latitude: x.lat, longitude: x.lng }));
     if (here) p.push({ latitude: here.lat, longitude: here.lng });
     return p;
-  }, [pins, here]);
+  }, [pins, hereKey]);
   const initial = useMemo(() => regionOf(points), [points]);
   // Android: o pino é uma imagem tirada da View; redesenha só logo depois de mudar a escolha, depois congela.
   const [drawing, setDrawing] = useState(true);

@@ -1,9 +1,9 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Bell, CalendarCheck, Check, House, QrCode, Smartphone, Tv } from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import { Text, View } from "react-native";
 import { Badge, Banner, Button, COLOR, FONT, PositionCard, Screen, SoftText, Title } from "@/components/ui";
-import { KEY_ONBOARDING, nextStep, previousStep } from "@/lib/onboarding";
+import { introButtons, KEY_ONBOARDING, nextStep, previousStep } from "@/lib/onboarding";
 import { save } from "@/lib/storage";
 
 /** Moldura da ilustração de cada passo: bloco grande e claro, com o desenho centralizado. */
@@ -193,16 +193,22 @@ const STEPS: { title: string; text: string; Illustration: () => ReactNode; extra
 /** "Conhecer o app": 4 passos curtos, um por tela, antes de criar a conta. */
 export default function Intro() {
   const [step, setStep] = useState(0);
+  // "como funciona" aberto pela conta: a pessoa já tem conta e volta para ela no fim.
+  const review = useLocalSearchParams<{ review?: string }>().review === "1";
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/conta"));
 
   const finish = async (destination: "/cadastro" | "/entrar" = "/cadastro") => {
-    await save(KEY_ONBOARDING, "visto");
+    // Sem conseguir guardar, segue mesmo assim: no pior caso o "como funciona" aparece de novo.
+    await save(KEY_ONBOARDING, "visto").catch(() => {});
     router.push(destination);
   };
   const last = step === STEPS.length - 1;
+  const buttons = introButtons(last, review);
   const proceed = () => {
     const next = nextStep(step, STEPS.length);
-    if (next === "end") void finish();
-    else setStep(next);
+    if (next !== "end") setStep(next);
+    else if (review) leave();
+    else void finish();
   };
   const back = () => {
     const ant = previousStep(step);
@@ -221,12 +227,14 @@ export default function Intro() {
       onBack={back}
       actions={
         <>
-          <Button text={last ? "criar minha conta" : "continuar"} onPress={proceed} />
-          {last ? (
-            <Button variant="text" text="já tenho conta" onPress={() => void finish("/entrar")} />
-          ) : (
-            <Button variant="text" text="pular" onPress={() => void finish()} />
-          )}
+          <Button text={buttons.main} onPress={proceed} />
+          {buttons.secondary ? (
+            <Button
+              variant="text"
+              text={buttons.secondary}
+              onPress={() => (review ? leave() : last ? void finish("/entrar") : void finish())}
+            />
+          ) : null}
         </>
       }
     >

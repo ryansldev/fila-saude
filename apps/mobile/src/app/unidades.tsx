@@ -206,7 +206,8 @@ export default function Units() {
   const chosen = list.find((x) => x.unit.id === selected);
 
   return (
-    <Screen back={false} footer={<PatientTabs current="units" />}>
+    // Sem conta (veio de "esqueci a senha"): sem as abas de quem tem conta, com o voltar para entrar.
+    <Screen back={!s.token} footer={s.token ? <PatientTabs current="units" /> : undefined}>
       <Title>unidades perto de você</Title>
       {error ? (
         <Banner

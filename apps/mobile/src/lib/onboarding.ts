@@ -18,3 +18,12 @@ export function nextStep(current: number, total: number): number | "end" {
 export function previousStep(current: number): number | "leave" {
   return current <= 0 ? "leave" : current - 1;
 }
+
+/**
+ * Os botões do "como funciona". Quem revê pela conta já tem conta: nada de "pular" (que leva ao cadastro)
+ * nem de "criar minha conta" no fim, que trocaria a sessão por uma conta nova.
+ */
+export function introButtons(last: boolean, review: boolean): { main: string; secondary: string | null } {
+  if (review) return last ? { main: "entendi", secondary: null } : { main: "continuar", secondary: "fechar" };
+  return last ? { main: "criar minha conta", secondary: "já tenho conta" } : { main: "continuar", secondary: "pular" };
+}

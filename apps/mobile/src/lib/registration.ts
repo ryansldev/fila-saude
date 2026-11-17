@@ -1,4 +1,5 @@
 import { registrationError } from "@/lib/validation";
+import { dataIso } from "./validation";
 
 /** As telas do cadastro, uma pergunta por tela, e o resumo para conferir antes de criar a conta. */
 export const REGISTRATION_STEPS = ["name", "cpf", "birthDate", "phone", "password", "email", "review"] as const;
@@ -53,3 +54,20 @@ export function registrationSummary(v: RegistrationData) {
     value: v[step].trim(),
   }));
 }
+
+/** O que o campo diz quando o servidor recusa: o motivo, para a pessoa saber o que fazer (app-cadastro). */
+export function serverErrorText(code: string): string | null {
+  if (code === "cpf_in_use")
+    return "este CPF já tem uma conta. entre com ele; se não foi você quem criou, procure a recepção.";
+  if (code === "email_in_use") return "este e-mail já tem uma conta. use outro ou entre com o CPF.";
+  if (code === "invalid_cpf") return "CPF inválido.";
+  return null;
+}
+
+/** O que vai para a API: nome e e-mail sem espaços nas pontas, a data em AAAA-MM-DD. */
+export const registrationPayload = (v: RegistrationData): RegistrationData => ({
+  ...v,
+  name: v.name.trim(),
+  email: v.email.trim(),
+  birthDate: dataIso(v.birthDate),
+});

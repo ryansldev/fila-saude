@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { UnitPin } from "@/components/pin";
-import { COLOR, FONT } from "@/components/ui";
+import { COLOR, FONT, TappableArea } from "@/components/ui";
 import { MAP_HEIGHT, type MapProps } from "./map.types";
 
 // Folga nas bordas: em cima cabe a ponta do pino; embaixo, o aviso de "mapa simplificado".
@@ -27,9 +27,8 @@ export default function UnitsMap({ pins, here, selected, onTapPin, onTapOutside,
   };
 
   return (
-    <Pressable
+    <View
       accessibilityLabel="mapa das unidades"
-      onPress={onTapOutside}
       onLayout={(ev) => setWidth(ev.nativeEvent.layout.width)}
       style={{
         height: height,
@@ -40,6 +39,14 @@ export default function UnitsMap({ pins, here, selected, onTapPin, onTapOutside,
         backgroundColor: "#eef3ee",
       }}
     >
+      {/* Tocar fora dos pinos tira a escolha (por baixo de tudo, do tamanho do mapa). */}
+      <TappableArea
+        label="tirar a escolha do mapa"
+        onPress={() => onTapOutside?.()}
+        style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+      >
+        {null}
+      </TappableArea>
       {/* Ruas de mentira, só para lembrar um mapa. */}
       {[0.22, 0.5, 0.78].map((f) => (
         <View
@@ -88,13 +95,11 @@ export default function UnitsMap({ pins, here, selected, onTapPin, onTapOutside,
         ? pins.map((p) => {
             const sel = p.id === selected;
             return (
-              <Pressable
+              <TappableArea
                 key={p.id}
-                accessibilityRole="button"
-                accessibilityLabel={p.name}
-                accessibilityState={{ selected: sel }}
+                label={p.name}
+                selected={sel}
                 onPress={() => onTapPin(p.id)}
-                hitSlop={8}
                 style={{
                   position: "absolute",
                   ...position(p.lat, p.lng),
@@ -103,7 +108,7 @@ export default function UnitsMap({ pins, here, selected, onTapPin, onTapOutside,
                 }}
               >
                 <UnitPin name={p.name} open={p.open} chosen={sel} />
-              </Pressable>
+              </TappableArea>
             );
           })
         : null}
@@ -119,9 +124,9 @@ export default function UnitsMap({ pins, here, selected, onTapPin, onTapOutside,
         }}
       >
         <Text style={{ fontFamily: FONT.semi, fontSize: 13, color: COLOR.inkMuted }}>
-          mapa simplificado · no celular, o mapa é completo
+          mapa simplificado. no celular, o mapa é completo
         </Text>
       </View>
-    </Pressable>
+    </View>
   );
 }

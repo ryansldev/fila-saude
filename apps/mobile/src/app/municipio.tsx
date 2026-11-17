@@ -56,7 +56,7 @@ export default function ChooseMunicipality() {
   }
 
   return (
-    <Screen back={switching}>
+    <Screen back={switching || next === "unidades"}>
       <Title>{switching ? "trocar de município" : "qual é o seu município?"}</Title>
       <SoftText>você vê as unidades e os atendimentos da cidade que escolher.</SoftText>
       {error ? (

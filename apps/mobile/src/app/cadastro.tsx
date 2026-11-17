@@ -12,13 +12,14 @@ import {
   REGISTRATION_STEPS,
   type RegistrationData,
   type RegistrationStep,
+  registrationPayload,
   registrationSummary,
   serverErrorStep,
+  serverErrorText,
   stepError,
 } from "@/lib/registration";
 import { useSession } from "@/lib/session";
 import { errorMessage } from "@/lib/texts";
-import { dataIso } from "@/lib/validation";
 
 type Question = {
   speech: string;
@@ -135,10 +136,15 @@ export default function Registration() {
       setTried(true);
       return;
     }
+    // O servidor já recusou um campo que não mudou: volta a ele em vez de mandar de novo.
+    if (serverError) {
+      go(serverError.step);
+      return;
+    }
     setSending(true);
     setError(null);
     try {
-      await s.register({ ...v, email: v.email.trim(), birthDate: dataIso(v.birthDate) });
+      await s.register(registrationPayload(v));
       // Pilha nova: o "voltar" não leva de volta ao cadastro, ao login ou ao "conhecer o app".
       if (router.canDismiss()) router.dismissAll();
       router.replace("/");
@@ -149,8 +155,7 @@ export default function Registration() {
         setServerError({
           step: destination,
           code,
-          text:
-            code === "email_in_use" ? "este e-mail já tem uma conta. use outro ou entre com o CPF." : errorMessage(err),
+          text: serverErrorText(code) ?? errorMessage(err),
         });
         setFixing(true);
         go(destination);
