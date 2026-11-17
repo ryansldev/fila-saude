@@ -1,5 +1,6 @@
 "use client";
 
+import { assignmentUnitKey } from "@fila-saude/domain";
 import { assignmentsSchema, staffUserInputSchema } from "@fila-saude/schemas/user";
 import { PlusIcon, XIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -31,7 +32,6 @@ import {
   ROLES,
   type Role,
   registrationProblems,
-  unitErrorKey,
 } from "@/lib/forms/user";
 import { useMe } from "@/lib/session";
 import { useList } from "@/lib/use-list";
@@ -112,7 +112,7 @@ function AssignmentsEditor({
               v.unitId,
               (id) =>
                 change({ ...value, unitLinks: value.unitLinks.map((x, j) => (j === i ? { ...x, unitId: id } : x)) }),
-              errors[unitErrorKey("unitLinks", i)],
+              errors[assignmentUnitKey("unitLinks", i)],
             )}
             <FormField label="Ocupação">
               <Selection
@@ -176,7 +176,7 @@ function AssignmentsEditor({
                       ...value,
                       roles: value.roles.map((x, j) => (j === i ? { ...x, unitId: id || null } : x)),
                     }),
-                  errors[unitErrorKey("roles", i)],
+                  errors[assignmentUnitKey("roles", i)],
                 )
               ) : (
                 <span className="pb-2 text-sm text-slate-500">Vale para todo o município</span>

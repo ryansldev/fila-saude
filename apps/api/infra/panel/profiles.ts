@@ -1,5 +1,5 @@
 import { type Assignments, type Profile, rolesOf } from "@fila-saude/domain";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { unitLink, userRole } from "infra/database/municipal/schema/staff";
 import type { TenantDatabase } from "infra/database/tenants";
 
@@ -20,6 +20,25 @@ export async function userAssignments(db: TenantDatabase, userId: string): Promi
     .where(eq(userRole.userId, userId))
     .orderBy(asc(userRole.grantedAt), asc(userRole.role));
   return { unitLinks, roles };
+}
+
+/** As atribuições de várias pessoas em duas consultas (a tela Equipe lista todo o município). */
+export async function assignmentsOf(db: TenantDatabase, userIds: string[]): Promise<Map<string, Assignments>> {
+  const byUser = new Map<string, Assignments>(userIds.map((id) => [id, { unitLinks: [], roles: [] }]));
+  if (userIds.length === 0) return byUser;
+  const links = await db
+    .select({ userId: unitLink.userId, unitId: unitLink.unitId, occupation: unitLink.occupation })
+    .from(unitLink)
+    .where(inArray(unitLink.userId, userIds))
+    .orderBy(asc(unitLink.grantedAt), asc(unitLink.occupation));
+  const roles = await db
+    .select({ userId: userRole.userId, role: userRole.role, unitId: userRole.unitId })
+    .from(userRole)
+    .where(inArray(userRole.userId, userIds))
+    .orderBy(asc(userRole.grantedAt), asc(userRole.role));
+  for (const { userId, ...v } of links) byUser.get(userId)?.unitLinks.push(v);
+  for (const { userId, ...f } of roles) byUser.get(userId)?.roles.push(f);
+  return byUser;
 }
 
 // Acrescenta atribuições (as repetidas são ignoradas).

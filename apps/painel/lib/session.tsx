@@ -52,8 +52,8 @@ export type LoginState = { state: "idle" } | { state: "sending" } | { state: "er
 function classifySignIn(e: unknown): LoginError {
   if (e instanceof ApiError) {
     if (e.status === 423 || e.status === 429 || e.error === "blocked") return "blocked";
-    // 422: o plugin username recusa o formato do login (ex.: com espaço): para quem digita, é login errado.
-    if (e.status === 401 || e.status === 422) return "credentials";
+    // 400 no campo login: o plugin username recusou o formato (ex.: com espaço); para quem digita, é login errado.
+    if (e.status === 401 || (e.status === 400 && e.error === "invalid_input")) return "credentials";
   }
   return "network";
 }

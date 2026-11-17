@@ -58,14 +58,18 @@ export function rolesOf(a: Assignments): ScopedProfile[] {
   ];
 }
 
+/** A chave do erro da unidade de uma linha: o caminho do campo no schema (o editor da equipe lê esta). */
+export const assignmentUnitKey = (list: "unitLinks" | "roles", index: number) => `${list}.${index}.unitId`;
+
 /** Erros de forma: ao menos uma atribuição; função do município sem unidade, da unidade com unidade. */
 export function staffProblems(a: Assignments): Record<string, string> {
   if (a.unitLinks.length === 0 && a.roles.length === 0) return { _: "Informe ao menos uma ocupação ou função." };
   const errors: Record<string, string> = {};
   a.roles.forEach((f, i) => {
     const fromMunicipality = ROLES[f.role].scope === "municipality";
-    if (fromMunicipality && f.unitId !== null) errors[`funcoes.${i}.unidadeId`] = "Função do município, sem unidade.";
-    if (!fromMunicipality && f.unitId === null) errors[`funcoes.${i}.unidadeId`] = "Escolha a unidade.";
+    if (fromMunicipality && f.unitId !== null)
+      errors[assignmentUnitKey("roles", i)] = "Função do município, sem unidade.";
+    if (!fromMunicipality && f.unitId === null) errors[assignmentUnitKey("roles", i)] = "Escolha a unidade.";
   });
   return errors;
 }

@@ -58,4 +58,10 @@ describe("envSchema", () => {
     expect(envSchema.safeParse({ ...base, TENANT_MODE: "multi" }).success).toBe(true);
     expect(envSchema.safeParse(base).success).toBe(true);
   });
+
+  it("PD-12: TENANT_SLUG sobrando no modo multi é recusado (a varredura atenderia só esse município)", () => {
+    const r = envSchema.safeParse({ ...base, TENANT_MODE: "multi", TENANT_SLUG: "pref-a" });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]?.path).toEqual(["TENANT_SLUG"]);
+  });
 });

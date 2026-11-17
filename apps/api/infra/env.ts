@@ -42,7 +42,12 @@ const envFields = z.object({
 // PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido e
 // TENANT_DATABASE_URL o boot falha.
 export const envSchema = envFields.superRefine((values, ctx) => {
-  if (values.TENANT_MODE !== "single") return;
+  if (values.TENANT_MODE !== "single") {
+    // No modo multi um TENANT_SLUG esquecido no ambiente faria a varredura atender só esse município.
+    if (values.TENANT_SLUG)
+      ctx.addIssue({ code: "custom", path: ["TENANT_SLUG"], message: "TENANT_SLUG só vale com TENANT_MODE=single" });
+    return;
+  }
   if (!values.TENANT_SLUG) {
     ctx.addIssue({
       code: "custom",

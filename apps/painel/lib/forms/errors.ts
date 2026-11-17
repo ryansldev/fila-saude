@@ -29,7 +29,7 @@ const MESSAGES: Record<string, string | ((e: ApiError) => string)> = {
   remove_self: "Você não pode remover você mesmo da equipe.",
   station_has_call: "Há paciente chamado em uma estação. Finalize ou marque 'não compareceu' antes de encerrar.",
   reason_required: "Escreva o motivo.",
-  station_in_use: "A estação está em uma sessão planejada ou aberta. Tire-a dessas sessões antes de remover.",
+  station_in_use: "A estação está em uma sessão planejada ou aberta. Tire-a dessas sessões antes.",
   session_closed: "Nenhuma sessão aberta para isso agora.",
   none_eligible: "Ninguém aguardando na unidade.",
   invalid_code: "Código não encontrado ou vencido. Confira o código que aparece na TV.",

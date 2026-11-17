@@ -107,7 +107,7 @@ describe("TenantPools", () => {
     // Suspenso, o pool do tenant é encerrado na hora.
     expect(active?.db.$client.ended).toBe(true);
   });
-  it("pool: conexão derrubada no banco do tenant não derruba o processo e o próximo obter reconecta", async () => {
+  it("pool: conexão ociosa derrubada não derruba o processo nem o pool (quem já tinha o pool segue usando)", async () => {
     const { slug } = await orchestrator.createMunicipality();
     const errors: string[] = [];
     const pools = newPools({ register: (message) => errors.push(message) });
@@ -122,10 +122,11 @@ describe("TenantPools", () => {
     for (let i = 0; i < 50 && errors.length === 0; i++) await new Promise((r) => setTimeout(r, 20));
 
     expect(errors).toEqual([expect.stringContaining(slug)]);
+    // O pg já descartou só o cliente que caiu: o mesmo pool atende quem o segurava e quem chega.
+    const held = await before?.db.execute<{ one: number }>("select 1 as one");
+    expect(held?.rows[0]?.one).toBe(1);
     const after = await pools.get(slug);
-    expect(after?.db).not.toBe(before?.db);
-    const result = await after?.db.execute<{ one: number }>("select 1 as one");
-    expect(result?.rows[0]?.one).toBe(1);
+    expect(after?.db).toBe(before?.db);
   });
 
   it("pool: encerrar fecha todos mesmo quando um pool.end() falha", async () => {

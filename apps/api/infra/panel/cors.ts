@@ -12,7 +12,9 @@ export function panelCors(app: FastifyInstance) {
     if (!origin) return;
     const allowed = allowedOrigin(origin, req.headers.host, {
       template: env.PANEL_ORIGIN_TEMPLATE,
+      mode: env.TENANT_MODE,
       domainBase: env.TENANT_BASE_DOMAIN,
+      ...(env.TENANT_MODE === "single" && env.TENANT_SLUG ? { fixedSlug: env.TENANT_SLUG } : {}),
     });
     if (allowed) {
       reply.header("access-control-allow-origin", origin);

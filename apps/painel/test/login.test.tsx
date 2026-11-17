@@ -72,9 +72,9 @@ describe("login", () => {
     await waitFor(() => expect(navigateOk).toHaveBeenCalledWith("/equipe"));
   });
 
-  it("login com formato inválido (422 do better-auth) é credencial errada, não falha de rede", async () => {
+  it("login com formato inválido (a API responde 400 no campo login) é credencial errada, não falha de rede", async () => {
     const format = apiWithLogin(async () => {
-      throw new ApiError(422, "INVALID_USERNAME");
+      throw new ApiError(400, "invalid_input", undefined, { login: ["invalid"] });
     });
     build(format);
     fillAndSend();

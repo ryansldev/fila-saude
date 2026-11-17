@@ -175,4 +175,23 @@ describe("createTenant", () => {
     expect(rows[0]).toMatchObject({ status: "active", migrationVersion: LAST_MUNICIPAL });
     expect(await tenantTables(dbName)).toContain("local_person");
   });
+
+  it("PD-14: retomada respeita a referência gravada (env:VAR), não o template", async () => {
+    const slug = orchestrator.uniqueSlug();
+    const elsewhere = `${databaseForSlug(slug)}x`; // o banco que a referência aponta, com outro nome
+    const variable = `TEST_DB_${slug.toUpperCase().replace(/-/g, "_")}`;
+    process.env[variable] = env.TENANT_DATABASE_URL_TEMPLATE.replace("{database}", elsewhere);
+    try {
+      await database
+        .insert(municipality)
+        .values({ slug, name: "Por env", uf: "MG", databaseRef: `env:${variable}`, status: "creating" });
+      await createTenant({ slug, name: "Por env", uf: "MG" }, deps);
+      expect(await tenantTables(elsewhere)).toContain("local_person");
+    } finally {
+      delete process.env[variable];
+      await connected(env.DATABASE_URL, (c) =>
+        c.query(`drop database if exists ${escapeIdentifier(elsewhere)} with (force)`),
+      );
+    }
+  });
 });

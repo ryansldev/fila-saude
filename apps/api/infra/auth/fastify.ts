@@ -59,7 +59,11 @@ function codeByStatus(status: number) {
 
 // PD-22: erro do próprio better-auth (`{ code, message }` ou corpo vazio) vira `{ erro, campos? }`
 // com o status da tabela acima. Os erros dos hooks da Fila Saúde já saem no formato e passam como vieram.
-function translateAuthError(status: number, text: string): Translation {
+// O plugin username guarda o CPF no app do paciente e o login no painel: o erro vai no campo de cada um.
+const USERNAME_CODES = new Set(["INVALID_USERNAME", "USERNAME_TOO_SHORT", "USERNAME_TOO_LONG"]);
+export type UsernameField = "cpf" | "login";
+
+function translateAuthError(status: number, text: string, usernameField: UsernameField = "cpf"): Translation {
   let body: unknown = null;
   try {
     body = text ? JSON.parse(text) : null;
@@ -68,6 +72,8 @@ function translateAuthError(status: number, text: string): Translation {
   }
   if (body && typeof body === "object" && "error" in body) return { status, body: body as BodyPd22 };
   const code = (body as { code?: unknown } | null)?.code;
+  if (usernameField === "login" && typeof code === "string" && USERNAME_CODES.has(code))
+    return invalidEntry("login", "invalid_login");
   const translation = typeof code === "string" ? TRANSLATIONS[code] : undefined;
   return translation ?? { status, body: { error: codeByStatus(status) } };
 }
@@ -78,7 +84,7 @@ export function buildAuth(
   app: FastifyInstance,
   prefix: string,
   getAuth: (req: FastifyRequest) => Auth,
-  options: { preHandler?: (req: FastifyRequest) => Promise<void> } = {},
+  options: { preHandler?: (req: FastifyRequest) => Promise<void>; usernameField?: UsernameField } = {},
 ) {
   app.route({
     method: ["GET", "POST"],
@@ -96,7 +102,7 @@ export function buildAuth(
 
       const text = await answer.text();
       if (answer.status >= 400) {
-        const { status, body } = translateAuthError(answer.status, text);
+        const { status, body } = translateAuthError(answer.status, text, options.usernameField);
         reply.status(status);
         reply.header("content-type", "application/json; charset=utf-8");
         return reply.send(body);

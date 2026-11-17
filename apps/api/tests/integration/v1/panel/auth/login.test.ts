@@ -36,6 +36,12 @@ describe("POST /v1/panel/auth/sign-in/username", () => {
     expect(me.status).toBe(401);
   });
 
+  it("login fora do formato → 400 no campo login (não no cpf, que é do paciente)", async () => {
+    const r = await enter(a, "a b", "senha-forte-1");
+    expect(r.status).toBe(400);
+    expect(await r.json()).toMatchObject({ error: "invalid_input", fields: { login: [expect.any(String)] } });
+  });
+
   it("senha errada → 401 invalid_credentials", async () => {
     const r = await enter(a, "gestor", "errada-123");
     expect(r.status).toBe(401);

@@ -33,10 +33,10 @@ describe("equipe (ocupação, funções e papéis)", () => {
   it("escopo: SMS e regulação são do município; gerente e agendar, de uma unidade; ninguém sem atribuição", () => {
     expect(staffProblems({ unitLinks: [], roles: [] })).toEqual({ _: "Informe ao menos uma ocupação ou função." });
     expect(staffProblems({ unitLinks: [], roles: [{ role: "unit_manager", unitId: null }] })).toEqual({
-      "funcoes.0.unidadeId": "Escolha a unidade.",
+      "roles.0.unitId": "Escolha a unidade.",
     });
     expect(staffProblems({ unitLinks: [], roles: [{ role: "sms_management", unitId: U1 }] })).toEqual({
-      "funcoes.0.unidadeId": "Função do município, sem unidade.",
+      "roles.0.unitId": "Função do município, sem unidade.",
     });
     expect(staffProblems({ unitLinks: [{ unitId: U1, occupation: "reception" }], roles: [] })).toEqual({});
   });

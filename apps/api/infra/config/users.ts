@@ -1,6 +1,6 @@
-import { type Assignments, canRegister, staffProblems } from "@fila-saude/domain";
+import { type Assignments, assignmentUnitKey, canRegister, staffProblems } from "@fila-saude/domain";
 import type { AssignmentsInput, StaffUser, StaffUserInput } from "@fila-saude/schemas/user";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { createStaffUser } from "infra/auth/panel";
 import { panelAccount, panelSession, staffUser } from "infra/database/municipal/schema/auth";
 import { userRole } from "infra/database/municipal/schema/staff";
@@ -8,7 +8,7 @@ import { unit } from "infra/database/municipal/schema/unit";
 import type { TenantDatabase } from "infra/database/tenants";
 import { ApiError } from "infra/errors";
 import { type ActionContext, runAction } from "infra/panel/action";
-import { grantAssignments, replaceAssignments, userAssignments } from "infra/panel/profiles";
+import { assignmentsOf, grantAssignments, replaceAssignments, userAssignments } from "infra/panel/profiles";
 import { STAFF } from "./common";
 
 const MANAGER_CAVEAT = "da própria unidade, sem função de gestão";
@@ -32,10 +32,10 @@ async function validateAssignments(db: TenantDatabase, a: AssignmentsInput): Pro
       ).map((u) => u.id),
     );
     a.unitLinks.forEach((v, i) => {
-      if (!found.has(v.unitId)) fields[`vinculos.${i}.unidadeId`] = ["unidade não encontrada"];
+      if (!found.has(v.unitId)) fields[assignmentUnitKey("unitLinks", i)] = ["unidade não encontrada"];
     });
     a.roles.forEach((f, i) => {
-      if (f.unitId && !found.has(f.unitId)) fields[`funcoes.${i}.unidadeId`] = ["unidade não encontrada"];
+      if (f.unitId && !found.has(f.unitId)) fields[assignmentUnitKey("roles", i)] = ["unidade não encontrada"];
     });
   }
   if (Object.keys(fields).length > 0) throw new ApiError(400, "invalid_input", fields);
@@ -93,14 +93,26 @@ export async function listUsers(ctx: ActionContext): Promise<StaffUser[]> {
     .from(staffUser)
     .where(isNull(staffUser.removedAt))
     .orderBy(asc(staffUser.createdAt));
-  const all = await Promise.all(users.map((u) => userWithAssignments(ctx.db, u.id)));
+  const assignments = await assignmentsOf(
+    ctx.db,
+    users.map((u) => u.id),
+  );
+  const all: StaffUser[] = users.map((u) => ({
+    id: u.id,
+    login: u.username ?? "",
+    name: u.name,
+    ...(assignments.get(u.id) ?? { unitLinks: [], roles: [] }),
+  }));
   if (sms) return all;
   return all.filter(
     (u) => u.unitLinks.some((v) => manages.has(v.unitId)) || u.roles.some((f) => manages.has(f.unitId)),
   );
 }
 
+// Tira a Gestão SMS de alguém só se sobrar outra. A trava de transação põe em fila as remoções
+// simultâneas: sem ela, os dois últimos gestores removendo um ao outro veriam dois cada um.
 async function requireAnotherManager(db: TenantDatabase) {
+  await db.execute(sql`select pg_advisory_xact_lock(hashtext('fila-saude:last-manager'))`);
   const sms = await db
     .selectDistinct({ id: userRole.userId })
     .from(userRole)

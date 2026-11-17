@@ -131,5 +131,5 @@ export {
   ticketOf,
 } from "./session.ts";
 export type { Assignments, Occupation, Role, ScopedProfile, ScopedRole, UnitLink } from "./staff.ts";
-export { canRegister, OCCUPATIONS, ROLES, rolesOf, staffProblems } from "./staff.ts";
+export { assignmentUnitKey, canRegister, OCCUPATIONS, ROLES, rolesOf, staffProblems } from "./staff.ts";
 export { ageAt, eve, instantToLocal, localToInstant, sameDay } from "./time.ts";

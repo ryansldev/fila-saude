@@ -118,11 +118,9 @@ export class TenantsPools implements TenantSource {
       db: drizzle(pool, { schema: schemaMunicipal }),
     };
     // Cliente ocioso que cai (banco reiniciado, conexão derrubada) emite 'error' no pool; sem ouvinte,
-    // isso derrubaria o processo inteiro. Registra e tira o pool do LRU: o próximo `obter` cria outro.
-    pool.on("error", (error) => {
-      this.register(`conexão do pool de ${slug} caiu`, error);
-      if (this.pools.peek(slug) === tenant) this.pools.delete(slug);
-    });
+    // isso derrubaria o processo inteiro. O pg já descarta só esse cliente e o pool segue servindo:
+    // encerrar o pool aqui quebraria as requisições em andamento que o seguram. Só registra.
+    pool.on("error", (error) => this.register(`conexão do pool de ${slug} caiu`, error));
     this.pools.set(slug, tenant);
     return tenant;
   }

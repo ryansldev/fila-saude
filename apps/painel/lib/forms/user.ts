@@ -45,6 +45,3 @@ export function assignmentsSummary(a: Assignments, unitName: (id: string | null)
     ...a.roles.map((f) => `${ROLES[f.role].label}${f.unitId ? ` · ${unitName(f.unitId)}` : ""}`),
   ].join("; ");
 }
-
-/** Onde aparece o erro da unidade de uma linha do editor: o caminho do campo no schema. */
-export const unitErrorKey = (list: "unitLinks" | "roles", index: number) => `${list}.${index}.unitId`;

@@ -1,5 +1,5 @@
 import type { Station, StationEdit, StationInput } from "@fila-saude/schemas/station";
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import { service } from "infra/database/municipal/schema/service";
 import { session, sessionStation } from "infra/database/municipal/schema/session";
 import { station, stationService } from "infra/database/municipal/schema/station";
@@ -68,6 +68,27 @@ export async function editStation(ctx: ActionContext, id: string, data: StationE
     }
     if (data.services) {
       await validateServices(tx, current.unitId, current.stage, data.services);
+      // Como no arquivar: sessão planejada ou aberta de um serviço tirado ficaria sem quem chame.
+      const kept = data.services;
+      const [inUse] = await tx
+        .select({ id: session.id })
+        .from(sessionStation)
+        .innerJoin(session, eq(sessionStation.sessionId, session.id))
+        .where(
+          and(
+            eq(sessionStation.stationId, id),
+            inArray(session.state, ["planned", "open"]),
+            kept.length > 0 ? notInArray(session.serviceId, kept) : undefined,
+          ),
+        )
+        .limit(1);
+      if (inUse)
+        throw new ApiError(
+          409,
+          "station_in_use",
+          undefined,
+          "A estação está em uma sessão planejada ou aberta deste serviço. Tire-a dessas sessões antes.",
+        );
       await tx.delete(stationService).where(eq(stationService.stationId, id));
       await tx.insert(stationService).values(data.services.map((serviceId) => ({ stationId: id, serviceId })));
     }

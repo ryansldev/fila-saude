@@ -4,6 +4,7 @@ import { createStaffUser } from "infra/auth/panel";
 import type { Db } from "infra/database";
 import { municipality } from "infra/database/central/schema/municipality";
 import { createDatabaseIfMissing } from "infra/database/create-database";
+import { databaseUrl } from "infra/database/database-url";
 import { migrateDatabase } from "infra/database/migrate";
 import { staffUser } from "infra/database/municipal/schema/auth";
 import { schemaMunicipal, type TenantDb } from "infra/database/tenants";
@@ -68,11 +69,14 @@ export async function createTenant(
       throw new ApiError(409, "municipality_exists");
     }
 
-    const url = template.replace("{database}", database);
+    // A referência gravada manda (PD-14): retomar uma linha com `env:VAR` migra o banco que VAR aponta,
+    // o mesmo em que o TenantsPools vai conectar.
+    const url = databaseUrl(row.databaseRef, { template });
+    const target = decodeURIComponent(new URL(url).pathname.slice(1)) || database;
 
     // Passo 2: `CREATE DATABASE` não roda em transação; vai por um cliente próprio, fora do pool do central,
     // para não disputar conexão com a transação que segura a linha.
-    await createDatabaseIfMissing(url, database);
+    await createDatabaseIfMissing(url, target);
 
     // Passo 3: o migrador guarda o estado no próprio banco; migrar de novo não refaz nada.
     const { version } = await migrateDatabase(url, "municipal");

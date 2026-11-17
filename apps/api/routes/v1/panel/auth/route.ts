@@ -16,6 +16,6 @@ export default async function (app: FastifyInstance) {
       const t = tenantOf(req);
       return tenantAuth(t.slug, t.db);
     },
-    { preHandler: app.requireTenant },
+    { preHandler: app.requireTenant, usernameField: "login" },
   );
 }

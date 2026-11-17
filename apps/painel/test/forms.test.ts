@@ -1,3 +1,4 @@
+import { assignmentUnitKey } from "@fila-saude/domain";
 import { serviceInputSchema } from "@fila-saude/schemas/service";
 import { assignmentsSchema, staffUserInputSchema } from "@fila-saude/schemas/user";
 import { describe, expect, it } from "vitest";
@@ -16,7 +17,7 @@ import {
 } from "@/lib/forms/session";
 import { servicesForStage } from "@/lib/forms/station";
 import { configForSending, inheritedField } from "@/lib/forms/unit";
-import { assignableUnits, grantableRoles, registrationProblems, unitErrorKey } from "@/lib/forms/user";
+import { assignableUnits, grantableRoles, registrationProblems } from "@/lib/forms/user";
 import { panelMenu } from "@/lib/navigation";
 
 describe("erros da API nos formulários", () => {
@@ -92,7 +93,7 @@ describe("equipe", () => {
       _: "Informe ao menos uma ocupação ou função.",
     });
     expect(registrationProblems(sms, { unitLinks: [], roles: [{ role: "unit_manager", unitId: null }] })).toEqual({
-      "funcoes.0.unidadeId": "Escolha a unidade.",
+      "roles.0.unitId": "Escolha a unidade.",
     });
     expect(registrationProblems(sms, { unitLinks: [{ unitId: "u1", occupation: "nurse" }], roles: [] })).toEqual({});
   });
@@ -256,7 +257,7 @@ describe("unidade de um vínculo ou função", () => {
       roles: [{ role: "scheduler", unitId: "x" }],
     });
     expect(Object.keys(e?.fields ?? {})).toEqual(
-      expect.arrayContaining([unitErrorKey("unitLinks", 0), unitErrorKey("roles", 0)]),
+      expect.arrayContaining([assignmentUnitKey("unitLinks", 0), assignmentUnitKey("roles", 0)]),
     );
   });
 });

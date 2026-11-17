@@ -66,4 +66,23 @@ describe("estações", () => {
     const list = await request("GET", `/v1/panel/units/${unitId}/stations`, admin);
     expect(list.body.map((x: { id: string }) => x.id)).not.toContain(e.id);
   });
+  it("não tira da estação um serviço que tem sessão planejada ou aberta com ela (ficaria sem quem chame)", async () => {
+    const st = (await create({ name: "Consultório 9", stage: "care", services: [withTriage, withoutTriage] })).body.id;
+    const start = Date.now() + 2 * 86400_000;
+    const s = await request("POST", `/v1/panel/units/${unitId}/sessions`, admin, {
+      serviceId: withoutTriage,
+      start: new Date(start).toISOString(),
+      end: new Date(start + 3600_000).toISOString(),
+      slots: 5,
+      visibility: "public",
+      waivesPreRegistration: false,
+      professional: null,
+      stations: [st],
+    });
+    expect(s.status).toBe(201);
+    const edit = (services: string[]) => request("PATCH", `/v1/panel/stations/${st}`, admin, { services });
+    expect(await edit([withTriage])).toMatchObject({ status: 409, body: { error: "station_in_use" } });
+    // Tirar outro serviço (sem sessão com a estação) continua valendo.
+    expect((await edit([withoutTriage])).status).toBe(200);
+  });
 });

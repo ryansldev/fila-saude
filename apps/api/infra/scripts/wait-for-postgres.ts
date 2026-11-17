@@ -12,7 +12,8 @@ function checkPostgres() {
   function handleReturn(_error: Error | null, stdout: string) {
     if (stdout.search("accepting connections") === -1) {
       process.stdout.write(".");
-      checkPostgres();
+      // Com o contêiner parado, o `docker exec` falha na hora: sem a pausa, abriria processos sem parar.
+      setTimeout(checkPostgres, 500);
       return;
     }
 
