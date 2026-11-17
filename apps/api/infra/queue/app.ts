@@ -2,6 +2,7 @@ import {
   cancelEntry,
   estimate,
   fillFromReserve,
+  holdsSlot,
   INACTIVE_ENTRY_STATES,
   leaving,
   refusalEnds,
@@ -276,8 +277,6 @@ export async function patientLeaving(db: TenantDb, patientId: string, entryId: s
   });
 }
 
-const WITH_SLOT = ["allocated", "confirmed", "in_queue"];
-
 // RN-CANC-01..03: "Não vou poder ir", antes ou no dia, só pela conta responsável. Quem tinha vaga a
 // libera (e o primeiro da reserva entra, RN-PUB-02); quem cancela perde o lugar.
 export async function cancelPatient(db: TenantDb, patientId: string, entryId: string, now: number) {
@@ -302,8 +301,7 @@ export async function cancelPatient(db: TenantDb, patientId: string, entryId: st
   return inSession(db, row.sessionId, async (c) => {
     const e = c.entries.find((x) => x.id === entryId);
     if (!e) throw new ApiError(409, "forbidden_transition");
-    const withSlot = WITH_SLOT.includes(e.state);
-    const r = cancelEntry(e, withSlot ? c.session : null, c.day, { service: c.service }, now);
+    const r = cancelEntry(e, holdsSlot(e) ? c.session : null, c.day, { service: c.service }, now);
     if (!r.ok) throw new ApiError(409, r.error);
     const laterSession = r.state.session ?? c.session;
     const entries = c.entries.map((x) => (x.id === entryId ? r.state.entry : x));

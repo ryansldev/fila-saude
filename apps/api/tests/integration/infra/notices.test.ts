@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { notice } from "infra/database/municipal/schema/notice";
 import { type Sending, sweepMunicipality } from "infra/notices/sweep";
 import { readDay } from "infra/queue/day";
@@ -69,8 +69,15 @@ describe("avisos por push (T3.8, T2.4)", () => {
     }
   });
 
-  it("chamar grava 'sua vez' na mesma transação, com senha e sala e sem dado clínico (RN-NOT-01)", async () => {
+  it("abrir a sessão avisa cada inscrito com conta que ele está na fila remota (tv-e-avisos)", async () => {
     await c.request("POST", `/v1/panel/sessions/${c.sessionId}/open`, c.admin);
+    for (const n of ["Ana", "Bruno", "Carla", "Davi"]) expect(await patientOf(n)).toEqual(["queue_opened"]);
+    const [opened] = (await notices()).filter((a) => a.patientId === accounts.Ana?.patientId);
+    expect(opened?.title).toMatch(/^a fila de hoje abriu/);
+    expect(opened?.body).toMatch(/senha C-00\d/);
+  });
+
+  it("chamar grava 'sua vez' na mesma transação, com senha e sala e sem dado clínico (RN-NOT-01)", async () => {
     for (const n of ["Ana", "Bruno"]) {
       await c.request("POST", `/v1/panel/sessions/${c.sessionId}/attendance`, reception, {
         entryId: entries[n],
@@ -78,7 +85,7 @@ describe("avisos por push (T3.8, T2.4)", () => {
       });
     }
     await c.request("POST", `/v1/panel/stations/${c.e1}/call`, c.nurse, {});
-    const [a] = await notices();
+    const [a] = (await notices()).filter((x) => x.kind === "your_turn");
     expect(a).toMatchObject({ kind: "your_turn", patientId: accounts.Ana?.patientId, state: "pending" });
     expect(a?.title).toMatch(/sua vez/);
     expect(`${a?.title} ${a?.body}`).toMatch(/C-001/);
@@ -89,12 +96,17 @@ describe("avisos por push (T3.8, T2.4)", () => {
     await c.request("POST", `/v1/panel/stations/${c.e2}/call`, c.nurse, {});
     const e = sender();
     await sweepMunicipality(db(), Date.now(), e.send);
-    expect(await patientOf("Carla")).toEqual(["come_now"]);
-    expect(await patientOf("Davi")).toEqual(["leave_home"]);
+    expect(await patientOf("Carla")).toEqual(["queue_opened", "come_now"]);
+    expect(await patientOf("Davi")).toEqual(["queue_opened", "leave_home"]);
     // A tela do app concorda com o push: "hora de sair de casa".
     const mine = await app("GET", `/v1/municipalities/${c.slug}/mine`, accounts.Davi?.cookie);
     expect(mine.body[0]).toMatchObject({ leaveHome: true });
-    expect(e.sent.map((x) => x.for).sort()).toEqual(["ExponentPushToken[Ana]", "ExponentPushToken[Carla]"]);
+    expect(e.sent.map((x) => `${x.data.kind}:${x.for}`).sort()).toEqual([
+      "come_now:ExponentPushToken[Carla]",
+      "queue_opened:ExponentPushToken[Ana]",
+      "queue_opened:ExponentPushToken[Carla]",
+      "your_turn:ExponentPushToken[Ana]",
+    ]);
     const byKind = Object.fromEntries((await notices()).map((a) => [`${a.kind}:${a.patientId}`, a.state]));
     expect(byKind[`your_turn:${accounts.Bruno?.patientId}`]).toBe("no_device");
     expect(byKind[`your_turn:${accounts.Ana?.patientId}`]).toBe("sent");
@@ -102,7 +114,7 @@ describe("avisos por push (T3.8, T2.4)", () => {
     const other = sender();
     await sweepMunicipality(db(), Date.now(), other.send);
     expect(other.sent).toEqual([]);
-    expect((await notices()).length).toBe(4);
+    expect((await notices()).length).toBe(8); // 4 da abertura + sua vez (2), venha agora, saia de casa
   });
 
   it("AD-057: a varredura grava a hora do 'venha agora' no dia; o prazo de chegada conta dela", async () => {
@@ -113,7 +125,7 @@ describe("avisos por push (T3.8, T2.4)", () => {
 
   it("'você foi pulado' com nova tentativa quando o envio falha", async () => {
     await c.request("POST", `/v1/panel/stations/${c.e1}/no-show`, c.nurse, {});
-    expect(await patientOf("Ana")).toEqual(["your_turn", "skipped"]);
+    expect(await patientOf("Ana")).toEqual(["queue_opened", "your_turn", "skipped"]);
     const now = Date.now();
     await sweepMunicipality(db(), now, sender(true).send);
     const [skip] = (await notices()).filter((a) => a.kind === "skipped");
@@ -131,5 +143,36 @@ describe("avisos por push (T3.8, T2.4)", () => {
       .from(notice)
       .where(eq(notice.id, skip?.id as string));
     expect(sent?.state).toBe("sent");
+  });
+  it("o envio acontece fora da transação: durante o envio o aviso não fica travado, e sai uma vez só", async () => {
+    const [mine] = await db()
+      .insert(notice)
+      .values({
+        key: `teste:${Date.now()}`,
+        patientId: accounts.Ana?.patientId as string,
+        kind: "test",
+        title: "t",
+        body: "b",
+      })
+      .returning({ id: notice.id });
+    let lockedDuringSend: boolean | null = null;
+    const sent: Sending[] = [];
+    await sweepMunicipality(db(), Date.now(), async (list) => {
+      sent.push(...list);
+      lockedDuringSend = await db()
+        .transaction(async (tx) => {
+          await tx.execute(sql`select id from notice where id = ${mine?.id} for update nowait`);
+          return false;
+        })
+        .catch(() => true);
+      return list.map(() => ({ ok: true as const }));
+    });
+    expect(lockedDuringSend).toBe(false);
+    expect(sent.filter((x) => x.title === "t")).toHaveLength(1);
+    const [row] = await db()
+      .select()
+      .from(notice)
+      .where(eq(notice.id, mine?.id as string));
+    expect(row).toMatchObject({ state: "sent", attempts: 1 });
   });
 });

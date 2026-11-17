@@ -8,7 +8,7 @@ import { Logo } from "@/components/logo";
 import { Bubble, DrLino } from "@/components/ui/dr-lino";
 import { EntryQr } from "@/components/ui/entry-qr";
 import { useCurrentUnit } from "@/lib/current-unit";
-import { speechWithoutSession } from "@/lib/qr";
+import { qrVisible, speechWithoutSession } from "@/lib/qr";
 import { useMe } from "@/lib/session";
 import { useQuery } from "@/lib/use-query";
 
@@ -27,7 +27,7 @@ export default function PatientQr() {
   const { current, unit } = useCurrentUnit(["verify_and_mark_attendance", "open_cancel_close_session"]);
   const qr = useQuery<UnitQr>(current ? `/v1/panel/units/${current}/qr` : null, 5_000);
   const today = useQuery<TodaySummary[]>(current ? "/v1/panel/units/today" : null, 60_000);
-  const valid = qr.detail?.content && qr.detail.expiresAt && Date.parse(qr.detail.expiresAt) > Date.now() && !qr.error;
+  const valid = qrVisible(qr.detail, qr.error);
   const next = today.detail?.find((h) => h.unitId === current)?.nextOpening ?? null;
   const speech = valid
     ? "chegou? que bom! leia o código com a câmera do celular."

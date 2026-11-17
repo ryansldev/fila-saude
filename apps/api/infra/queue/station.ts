@@ -8,6 +8,7 @@ import {
   finish,
   firstName,
   noShow,
+  OPERATE_CAVEAT_STAGE,
   type QueueItem,
   type Result,
   type RiskLevel,
@@ -44,10 +45,8 @@ export const OPERATE: Action = "operate_calls";
 type StationRow = Awaited<ReturnType<typeof requireStation>>;
 
 // PD-46: as ressalvas de `operate_calls` (texto da matriz) são a etapa da estação.
-const caveatsOf = (e: StationRow): Caveats => ({
-  "acolhimento na triagem": () => e.stage === "triage",
-  atendimento: () => e.stage === "care",
-});
+const caveatsOf = (e: StationRow): Caveats =>
+  Object.fromEntries(Object.entries(OPERATE_CAVEAT_STAGE).map(([caveat, stage]) => [caveat, () => e.stage === stage]));
 
 async function openSession(db: TenantDatabase, stationId: string) {
   const [row] = await db
@@ -177,6 +176,8 @@ export async function commandInStation(
 ): Promise<StationOperation> {
   const { confirmedRisk, refer } = body;
   const e = await requireStation(ctx.db, stationId);
+  // A auditoria diz sobre quem o comando caiu (`before`) e quem ficou chamado depois (`after`).
+  let before: string | null = null;
   return runAction(
     ctx,
     {
@@ -184,7 +185,7 @@ export async function commandInStation(
       target: { kind: "station", id: stationId },
       unitId: e.unitId,
       caveats: caveatsOf(e),
-      data: (r) => ({ command, ticket: r.called?.ticket ?? null }),
+      data: (r) => ({ command, before, after: r.called?.ticket ?? null }),
     },
     async (tx) => {
       const s = await openSession(tx, stationId);
@@ -194,6 +195,7 @@ export async function commandInStation(
         // H3: na triagem, quem sai do chamado sai classificado (só o enfermeiro confirma, AD-056).
         const closes = command === "call" || command === "finish";
         const called = c.day.stations.find((x) => x.id === stationId)?.calledItemId;
+        before = c.day.items.find((i) => i.id === called)?.ticket ?? null;
         if (e.stage === "triage" && closes && called && confirmedRisk === undefined) {
           throw new ApiError(422, "classify_risk", undefined, "Escolha a cor da classificação de risco.");
         }

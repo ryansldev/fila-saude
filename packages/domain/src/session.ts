@@ -178,7 +178,10 @@ export function open(day: SessionDay, entries: Entry[], now: number): Result<{ d
     const r = byQueue(nextDay, updated, itemState, now);
     nextDay = r.day;
     nextEntries = swap(nextEntries, updated);
-    events.push(...r.events);
+    // A senha que nasce na abertura vira o aviso "a fila de hoje abriu" (tv-e-avisos).
+    events.push(
+      ...r.events.map((ev) => (ev.kind === "ticket_issued" ? { ...ev, data: { ...ev.data, onOpening: true } } : ev)),
+    );
   }
   return ok({ day: nextDay, entries: nextEntries }, events);
 }

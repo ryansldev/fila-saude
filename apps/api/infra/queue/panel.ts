@@ -150,7 +150,13 @@ export async function openDaySession(ctx: ActionContext, sessionId: string): Pro
           ctx.now,
         );
         if (!r.ok) throw new ApiError(409, r.error);
-        return { day: r.state.day, session: r.state.session, entries: r.state.entries, result: r.state.day };
+        return {
+          day: r.state.day,
+          session: r.state.session,
+          entries: r.state.entries,
+          events: r.events,
+          result: r.state.day,
+        };
       });
       return forQueue(tx, sessionId, day);
     },
@@ -303,9 +309,14 @@ export async function todayQueue(ctx: ActionContext, unitId: string): Promise<To
   const stationName = new Map(today.stations.map((e) => [e.id, e.name]));
   const sessions: TodayQueue["sessions"] = [];
   const items: TodayQueue["items"] = [];
-  for (const s of today.sessions) {
-    const day = await readDay(ctx.db, s.id);
-    const queue = await forQueue(ctx.db, s.id, day);
+  // As sessões são independentes: lidas em paralelo (a tela consulta a cada poucos segundos).
+  const loaded = await Promise.all(
+    today.sessions.map(async (s) => {
+      const day = await readDay(ctx.db, s.id);
+      return { s, day, queue: await forQueue(ctx.db, s.id, day) };
+    }),
+  );
+  for (const { s, day, queue } of loaded) {
     const inStates = (states: ItemState[]) => queue.items.filter((i) => states.includes(i.state)).length;
     sessions.push({
       ...s,

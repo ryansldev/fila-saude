@@ -425,6 +425,10 @@ export function giveUp(
 /** Estados em que a entrada ocupa uma vaga da sessão (INV-02); "Na reserva" não ocupa. */
 const WITH_SLOT: EntryState[] = ["allocated", "confirmed", "in_queue"];
 
+/** RN-CANC-01: a entrada ocupa vaga da sessão (inclusive a vaga segura de quem aguarda a requisição). */
+export const holdsSlot = (e: Pick<Entry, "state" | "sessionId">): boolean =>
+  WITH_SLOT.includes(e.state) || (e.state === "awaiting_referral" && e.sessionId !== null);
+
 /**
  * RN-CANC-01/02/03: o paciente cancela ("Não vou poder ir") a entrada não remanejada (remanejada
  * usa `desistir`). Na lista (aguardando, aguardando encaminhamento) ou na reserva, só cancela;
@@ -443,7 +447,7 @@ export function cancelEntry(
   const { service } = cmd;
   if (entry.reassigned !== null || service.id !== entry.serviceId) return failure("forbidden_transition");
   const regulated = service.mode === "regulated";
-  const withSlot = WITH_SLOT.includes(entry.state) || (entry.state === "awaiting_referral" && entry.sessionId !== null);
+  const withSlot = holdsSlot(entry);
   if (withSlot ? session === null || entry.sessionId !== session.id : session !== null) {
     return failure("forbidden_transition");
   }

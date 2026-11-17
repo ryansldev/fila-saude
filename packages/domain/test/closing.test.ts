@@ -7,6 +7,7 @@ import {
   close,
   entryOutcome,
   giveUp,
+  holdsSlot,
   noShowHolder,
   type Origin,
   otherDate,
@@ -716,5 +717,17 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
       entryOutcome(first(["ana"]), item(d, "ana"));
       cancelEntry(inQueueAna, sessionSlots({ taken: 1 }), dayWith(["ana"]), { service: FREE }, T);
     }).not.toThrow();
+  });
+});
+
+describe("holdsSlot", () => {
+  it("RN-CANC-01: alocada, confirmada, na fila e a vaga segura (aguardando requisição com sessão) ocupam vaga", () => {
+    const e = (state: Entry["state"], sessionId: string | null = "s1") => ({ state, sessionId });
+    expect(holdsSlot(e("allocated"))).toBe(true);
+    expect(holdsSlot(e("in_queue"))).toBe(true);
+    expect(holdsSlot(e("awaiting_referral"))).toBe(true);
+    expect(holdsSlot(e("awaiting_referral", null))).toBe(false);
+    expect(holdsSlot(e("waiting", null))).toBe(false);
+    expect(holdsSlot(e("in_reserve"))).toBe(false);
   });
 });

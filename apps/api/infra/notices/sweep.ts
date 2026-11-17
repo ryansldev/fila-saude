@@ -1,4 +1,5 @@
 import { comeNowNotices, leaveHomeNotices } from "@fila-saude/domain";
+import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import database from "infra/database";
 import { pushDevice } from "infra/database/central/schema/push";
@@ -17,7 +18,7 @@ const BATCH = 100;
 
 // RN-ETA-03 / RN-ETA-06: avisos que dependem do tempo; o domínio marca no dia o "saia de casa" e
 // o "venha agora" (com a hora, AD-057), e a chave da outbox impede o envio repetido. Uma varredura por município de cada vez.
-async function generateTimeNotices(db: TenantDb, now: number): Promise<void> {
+async function generateTimeNotices(db: TenantDb, now: number, onError: (error: unknown) => void): Promise<void> {
   const open = await db.select({ id: session.id }).from(session).where(eq(session.state, "open"));
   // Uma transação por sessão: uma sessão com problema não derruba os avisos das outras nem
   // segura a trava de todas até o fim.
@@ -42,17 +43,24 @@ async function generateTimeNotices(db: TenantDb, now: number): Promise<void> {
           return { day: leave.day, events, result: null };
         });
       })
-      .catch(() => {
-        // Segue para a próxima sessão; o erro volta na próxima rodada se persistir.
+      .catch((error) => {
+        // Segue para a próxima sessão, mas registra: sem o aviso, o prazo de chegada nunca começa (AD-057).
+        onError(error);
       });
   }
 }
 
 // T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "no_device";
 // falha volta com espera crescente (2, 4, 8, 16 min) até desistir.
+// Outbox: uma transação curta reserva o lote (empurra a próxima tentativa por `CLAIM_MS`, para nenhuma
+// outra rodada pegá-lo), o envio à Expo acontece fora de transação e outra transação curta grava o
+// resultado. Nenhuma trava fica aberta durante a chamada HTTP; se o processo cair depois do envio,
+// o aviso volta só quando a reserva vence (no máximo um envio a mais, não um a cada rodada).
+const CLAIM_MS = 5 * 60_000;
+
 async function sendPending(db: TenantDb, now: number, send: Sender): Promise<void> {
-  await db.transaction(async (tx) => {
-    const pending = await tx
+  const pending = await db.transaction(async (tx) => {
+    const rows = await tx
       .select()
       .from(notice)
       .where(
@@ -64,41 +72,50 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
       .orderBy(asc(notice.createdAt))
       .limit(BATCH)
       .for("update", { skipLocked: true });
-    if (pending.length === 0) return;
-    const accounts = [...new Set(pending.map((a) => a.patientId))];
-    const devices = await database
-      .select({ patientId: pushDevice.patientId, token: pushDevice.token })
-      .from(pushDevice)
-      .where(inArray(pushDevice.patientId, accounts));
-
-    const sendings: { noticeId: string; sending: Sending }[] = [];
-    for (const a of pending) {
-      for (const d of devices.filter((x) => x.patientId === a.patientId)) {
-        sendings.push({
-          noticeId: a.id,
-          sending: {
-            for: d.token,
-            title: a.title,
-            body: a.body,
-            data: { kind: a.kind, entryId: a.entryId ?? "" },
-          },
-        });
-      }
+    if (rows.length > 0) {
+      await tx
+        .update(notice)
+        .set({ nextAttemptAt: new Date(Math.max(now, Date.now()) + CLAIM_MS) })
+        .where(
+          inArray(
+            notice.id,
+            rows.map((r) => r.id),
+          ),
+        );
     }
-    const results = sendings.length > 0 ? await send(sendings.map((e) => e.sending)) : [];
-    const invalid = sendings.filter((_, i) => {
-      const r = results[i];
-      return r && !r.ok && r.invalidToken;
-    });
-    if (invalid.length > 0) {
-      await database.delete(pushDevice).where(
-        inArray(
-          pushDevice.token,
-          invalid.map((e) => e.sending.for),
-        ),
-      );
-    }
+    return rows;
+  });
+  if (pending.length === 0) return;
 
+  const accounts = [...new Set(pending.map((a) => a.patientId))];
+  const devices = await database
+    .select({ patientId: pushDevice.patientId, token: pushDevice.token })
+    .from(pushDevice)
+    .where(inArray(pushDevice.patientId, accounts));
+  const sendings: { noticeId: string; sending: Sending }[] = [];
+  for (const a of pending) {
+    for (const d of devices.filter((x) => x.patientId === a.patientId)) {
+      sendings.push({
+        noticeId: a.id,
+        sending: { for: d.token, title: a.title, body: a.body, data: { kind: a.kind, entryId: a.entryId ?? "" } },
+      });
+    }
+  }
+  const results = sendings.length > 0 ? await send(sendings.map((e) => e.sending)) : [];
+  const invalid = sendings.filter((_, i) => {
+    const r = results[i];
+    return r && !r.ok && r.invalidToken;
+  });
+  if (invalid.length > 0) {
+    await database.delete(pushDevice).where(
+      inArray(
+        pushDevice.token,
+        invalid.map((e) => e.sending.for),
+      ),
+    );
+  }
+
+  await db.transaction(async (tx) => {
     for (const a of pending) {
       const mine = sendings.map((e, i) => ({ ...e, r: results[i] })).filter((e) => e.noticeId === a.id);
       if (mine.length === 0) {
@@ -127,14 +144,30 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
   });
 }
 
-export async function sweepMunicipality(db: TenantDb, now: number, send: Sender): Promise<void> {
-  await generateTimeNotices(db, now);
+export async function sweepMunicipality(
+  db: TenantDb,
+  now: number,
+  send: Sender,
+  onError: (error: unknown) => void = () => {},
+): Promise<void> {
+  await generateTimeNotices(db, now, onError);
   await sendPending(db, now, send);
 }
 
 const EXPO_URL = "https://exp.host/--/api/v2/push/send";
 
 type ExpoTicket = { status: "ok" | "error"; message?: string; details?: { error?: string } };
+
+/** A mensagem da Expo: pelo canal Android da fila (importância máxima), para a chamada aparecer em destaque. */
+export const expoMessage = (e: Sending) => ({
+  to: e.for,
+  title: e.title,
+  body: e.body,
+  data: e.data,
+  sound: "default",
+  priority: "high",
+  channelId: PUSH_CHANNEL,
+});
 
 /** Envio pelo serviço de push da Expo, em lotes de 100 (limite da Expo). */
 export const expoSender: Sender = async (list) => {
@@ -145,16 +178,7 @@ export const expoSender: Sender = async (list) => {
       const r = await fetch(EXPO_URL, {
         method: "POST",
         headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(
-          batch.map((e) => ({
-            to: e.for,
-            title: e.title,
-            body: e.body,
-            data: e.data,
-            sound: "default",
-            priority: "high",
-          })),
-        ),
+        body: JSON.stringify(batch.map(expoMessage)),
       });
       const body = (await r.json().catch(() => null)) as { data?: ExpoTicket[] } | null;
       if (!r.ok || !body?.data) {
@@ -195,7 +219,7 @@ export function startSweep(
     try {
       for (const slug of await slugs()) {
         const db = await database(slug);
-        if (db) await sweepMunicipality(db, Date.now(), send).catch((e) => log(e, slug));
+        if (db) await sweepMunicipality(db, Date.now(), send, (e) => log(e, slug)).catch((e) => log(e, slug));
       }
     } catch (e) {
       log(e, "*");

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { type Action, can, cellText, conditions, MATRIX, type Profile } from "../src/permissions.ts";
+import {
+  type Action,
+  can,
+  cellText,
+  conditions,
+  MATRIX,
+  OPERATE_CAVEAT_STAGE,
+  type Profile,
+} from "../src/permissions.ts";
 import { canGivePriority } from "../src/priority.ts";
 import { MATRIX_PROFILES, readMatrix } from "./specs-tables.ts";
 
@@ -74,5 +82,17 @@ describe("permissoes (RN-PERF)", () => {
     expect(conditions(["unit_manager"], "register_staff")).toEqual(["da própria unidade, sem função de gestão"]);
     expect(can(["unit_manager"], "create_units_and_rules")).toBe(false);
     expect(can(["sms_regulation"], "register_regulated")).toBe(true);
+  });
+});
+
+describe("ressalvas de operar a estação (PD-46)", () => {
+  it("toda ressalva de operate_calls na matriz tem a etapa da estação", () => {
+    const row = MATRIX.find((r) => r.action === "operate_calls");
+    const caveats = Object.values(row?.profiles ?? {}).flatMap((c) =>
+      typeof c === "object" && "caveat" in c ? [c.caveat] : [],
+    );
+    expect(caveats.length).toBeGreaterThan(0);
+    for (const c of caveats) expect(OPERATE_CAVEAT_STAGE[c], c).toBeDefined();
+    expect(OPERATE_CAVEAT_STAGE).toEqual({ "acolhimento na triagem": "triage", atendimento: "care" });
   });
 });

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Bubble, DrLino } from "@/components/ui/dr-lino";
 import { EntryQr } from "@/components/ui/entry-qr";
 import { useCurrentUnit } from "@/lib/current-unit";
+import { qrVisible } from "@/lib/qr";
 import { useQuery } from "@/lib/use-query";
 
 const STEPS = [
@@ -29,7 +30,7 @@ const STEPS = [
 export default function StaffEntryQr() {
   const { current, error: unitError } = useCurrentUnit(["verify_and_mark_attendance", "open_cancel_close_session"]);
   const qr = useQuery<UnitQr>(current ? `/v1/panel/units/${current}/qr` : null, 5_000);
-  const valid = qr.detail?.content && qr.detail.expiresAt && Date.parse(qr.detail.expiresAt) > Date.now() && !qr.error;
+  const valid = qrVisible(qr.detail, qr.error);
 
   return (
     <div className="flex w-full flex-col gap-5">

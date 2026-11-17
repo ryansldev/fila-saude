@@ -53,3 +53,13 @@ export function speechWithoutSession(nextOpening: string | null, timeZone: strin
   if (!nextOpening) return "hoje não tem atendimento por aqui.";
   return `a fila abre às ${instantToLocal(Date.parse(nextOpening), timeZone).slice(11, 16)}.`;
 }
+
+/**
+ * RN-PRES-01: mostra o QR quando a API mandou um código e a última consulta deu certo. A API só manda
+ * código com sessão aberta e a tela consulta de novo a cada 5 s; comparar a validade com o relógio do
+ * computador esconderia o QR num balcão com o relógio adiantado.
+ */
+export const qrVisible = (
+  detail: { content: string | null; expiresAt?: string | null } | null,
+  error: string | null,
+): boolean => Boolean(detail?.content) && !error;

@@ -2,9 +2,6 @@ import { createHash, randomBytes, randomInt } from "node:crypto";
 import type { TvRecord, TvState, UnitTv } from "@fila-saude/schemas/tv";
 import { and, eq, gt, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { CONFIGURE, requireUnit } from "infra/config/common";
-import { service } from "infra/database/municipal/schema/service";
-import { session } from "infra/database/municipal/schema/session";
-import { sessionDay } from "infra/database/municipal/schema/session-day";
 import { station } from "infra/database/municipal/schema/station";
 import { tv } from "infra/database/municipal/schema/tv";
 import { unit } from "infra/database/municipal/schema/unit";
@@ -12,7 +9,7 @@ import type { TenantDatabase, TenantDb } from "infra/database/tenants";
 import { ApiError } from "infra/errors";
 import { type ActionContext, runAction } from "infra/panel/action";
 import { unitConfig } from "infra/queue/day";
-import { qrContent } from "infra/queue/qr";
+import { qrFromOpen, unitOpen } from "infra/queue/qr";
 
 const CODE_VALIDITY_MS = 15 * 60_000;
 const ONLINE_MS = 60_000;
@@ -113,12 +110,7 @@ export async function tvScreen(db: TenantDb, slug: string, token: string | null,
   const [u] = await db.select().from(unit).where(eq(unit.id, t.unitId));
   if (!u || u.archivedAt) throw new ApiError(401, "tv_not_paired");
 
-  const open = await db
-    .select({ service: service.name, day: sessionDay.day })
-    .from(session)
-    .innerJoin(service, eq(session.serviceId, service.id))
-    .innerJoin(sessionDay, eq(sessionDay.sessionId, session.id))
-    .where(and(eq(service.unitId, u.id), eq(session.state, "open")));
+  const open = await unitOpen(db, u.id);
   const stationIds = [...new Set(open.flatMap(({ day }) => day.calls.map((c) => c.stationId)))];
   const names = new Map(
     stationIds.length === 0
@@ -152,7 +144,7 @@ export async function tvScreen(db: TenantDb, slug: string, token: string | null,
     byService.set(name, current);
   }
 
-  const qr = await qrContent(db, slug, u.id, now);
+  const qr = await qrFromOpen(open, slug, u.id, now);
   return {
     state: "paired",
     unit: { id: u.id, name: u.name },

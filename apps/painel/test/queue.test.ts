@@ -94,6 +94,8 @@ describe("estação: só as que o perfil opera (PD-46), revisão 2026-11-13", ()
     ]);
     expect(stationsItOperates(ests, [{ profile: "nurse", unitId: "u1" }], "u1").map((e) => e.id)).toEqual(["t1", "a1"]);
     expect(stationsItOperates(ests, [{ profile: "nurse", unitId: "u2" }], "u1")).toEqual([]);
+    // Médico, dentista, eMulti: perfil "care", ressalva "atendimento" da matriz.
+    expect(stationsItOperates(ests, [{ profile: "care", unitId: "u1" }], "u1").map((e) => e.id)).toEqual(["a1"]);
   });
 });
 

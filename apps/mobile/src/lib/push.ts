@@ -1,3 +1,4 @@
+import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
@@ -40,7 +41,7 @@ export async function noticeState(): Promise<NoticeState> {
 
 const createChannel = async () => {
   if (Platform.OS !== "android") return;
-  await Notifications.setNotificationChannelAsync("fila", {
+  await Notifications.setNotificationChannelAsync(PUSH_CHANNEL, {
     name: "fila",
     importance: Notifications.AndroidImportance.MAX,
     sound: "default",

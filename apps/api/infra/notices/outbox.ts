@@ -38,6 +38,15 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
         body,
       };
     }
+    case "ticket_issued":
+      // Só a senha que nasce na abertura da sessão: quem entra depois já vê a senha no app.
+      if (!d.onOpening) return null;
+      return {
+        kind: "queue_opened",
+        key: `fila_aberta:${item}`,
+        title: "a fila de hoje abriu",
+        body: `você está na fila da ${ctx.unit}, senha ${ctx.ticket}. fique em casa: avisamos a hora de sair.`,
+      };
     case "leave_home":
       return {
         kind: "leave_home",

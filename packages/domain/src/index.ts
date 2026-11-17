@@ -16,6 +16,7 @@ export {
   close,
   entryOutcome,
   giveUp,
+  holdsSlot,
   noShowHolder,
   otherDate,
   registerContingency,
@@ -80,7 +81,7 @@ export { firstName, properName } from "./names.ts";
 export type { OrderKey, Risk, SuggestionKey } from "./order.ts";
 export { compareOrder, compareSuggestion } from "./order.ts";
 export type { Action, Cell, MatrixRow, Profile } from "./permissions.ts";
-export { can, cellText, conditions, MATRIX, PROFILES } from "./permissions.ts";
+export { can, cellText, conditions, MATRIX, OPERATE_CAVEAT_STAGE, PROFILES } from "./permissions.ts";
 export type { GivePriorityContext, Group, LegalPriority } from "./priority.ts";
 export {
   canGivePriority,

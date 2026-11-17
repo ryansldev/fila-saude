@@ -239,6 +239,15 @@ export function can(profiles: Profile[], action: Action): boolean {
  * "livre" se algum perfil tem ✓ simples; senão as ressalvas/textos dos perfis que têm a ação
  * (a checar por quem chama); `null` se nenhum perfil tem a ação.
  */
+/**
+ * PD-46: as ressalvas de `operate_calls` (texto da matriz) dizem em que etapa a pessoa opera a estação.
+ * A API confere a etapa da estação por elas; o painel mostra só as estações que a pessoa pode operar.
+ */
+export const OPERATE_CAVEAT_STAGE: Readonly<Record<string, "triage" | "care">> = {
+  "acolhimento na triagem": "triage",
+  atendimento: "care",
+};
+
 export function conditions(profiles: Profile[], action: Action): "free" | string[] | null {
   const row = MATRIX.find((l) => l.action === action);
   if (row === undefined) return null;

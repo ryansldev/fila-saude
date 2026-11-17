@@ -1,4 +1,12 @@
-import { type Action, can, conditions, instantToLocal, type Profile, type SessionState } from "@fila-saude/domain";
+import {
+  type Action,
+  can,
+  conditions,
+  instantToLocal,
+  OPERATE_CAVEAT_STAGE,
+  type Profile,
+  type SessionState,
+} from "@fila-saude/domain";
 import type { Relationship } from "@fila-saude/schemas/queue";
 import type { UserProfile } from "@/lib/navigation";
 
@@ -72,11 +80,6 @@ export function documentText(d: { birthDate: string; cpf: string | null }): stri
   return `nasc. ${day}/${m}/${a} · ${d.cpf ? `CPF ${d.cpf}` : "sem CPF"}`;
 }
 
-const CAVEAT_STAGE: Record<string, "triage" | "care"> = {
-  "acolhimento na triagem": "triage",
-  care: "care",
-};
-
 /** PD-46: as estações da unidade que o perfil pode operar (a API recusaria as outras com 403). */
 export function stationsItOperates<E extends { stage: "triage" | "care" }>(
   stations: E[],
@@ -87,7 +90,7 @@ export function stationsItOperates<E extends { stage: "triage" | "care" }>(
   const c = conditions(valid, "operate_calls");
   if (c === null) return [];
   if (c === "free") return stations;
-  const stages = new Set(c.map((r) => CAVEAT_STAGE[r]));
+  const stages = new Set(c.map((r) => OPERATE_CAVEAT_STAGE[r]));
   return stations.filter((e) => stages.has(e.stage));
 }
 

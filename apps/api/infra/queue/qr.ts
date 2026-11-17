@@ -17,7 +17,8 @@ import { inSession } from "./day";
 // Quem cuida da tela do QR na recepção (até a TV pareada da fatia 2).
 const QR_ACTIONS: Action[] = ["verify_and_mark_attendance", "open_cancel_close_session"];
 
-async function unitOpen(db: TenantDatabase, unitId: string) {
+/** As sessões abertas da unidade com o dia e o segredo do QR (a TV e a tela do QR leem daqui). */
+export async function unitOpen(db: TenantDatabase, unitId: string) {
   return db
     .select({ id: session.id, service: service.name, secret: sessionDay.qrSecret, day: sessionDay.day })
     .from(session)
@@ -31,7 +32,17 @@ const intervalOf = (open: Awaited<ReturnType<typeof unitOpen>>) => (open[0]?.day
 // RN-PRES-01: um link com o token de cada sessão aberta; o app abre direto pela câmera do celular.
 // Sem checar quem pede: a tela do QR no painel e a TV pareada (RN-TV-02) checam antes.
 export async function qrContent(db: TenantDatabase, slug: string, unitId: string, now: number): Promise<UnitQr> {
-  const open = (await unitOpen(db, unitId)).filter((s) => s.secret !== null);
+  return qrFromOpen(await unitOpen(db, unitId), slug, unitId, now);
+}
+
+/** O QR a partir das sessões abertas já lidas (a TV não lê os dias duas vezes). */
+export async function qrFromOpen(
+  rows: Awaited<ReturnType<typeof unitOpen>>,
+  slug: string,
+  unitId: string,
+  now: number,
+): Promise<UnitQr> {
+  const open = rows.filter((s) => s.secret !== null);
   const interval = intervalOf(open);
   if (open.length === 0) return { content: null, intervalSeconds: interval / 1000, expiresAt: null, sessions: [] };
   const tokens = await Promise.all(open.map((s) => tokenQr(s.secret as string, now, interval)));

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
-import { speechWithoutSession, styledQr } from "@/lib/qr";
+import { qrVisible, speechWithoutSession, styledQr } from "@/lib/qr";
 
 const require = createRequire(import.meta.url);
 const sharp = require("sharp");
@@ -44,5 +44,15 @@ describe("tela do paciente sem sessão aberta", () => {
   it("o Dr. Lino diz quando a fila abre, ou que hoje não tem", () => {
     expect(speechWithoutSession("2026-11-16T16:00:00.000Z", "America/Sao_Paulo")).toBe("a fila abre às 13:00.");
     expect(speechWithoutSession(null, "America/Sao_Paulo")).toBe("hoje não tem atendimento por aqui.");
+  });
+});
+
+describe("QR na tela", () => {
+  it("aparece com conteúdo da API e sem erro, sem comparar com o relógio do computador (que pode estar adiantado)", () => {
+    const past = new Date(Date.now() - 60_000).toISOString();
+    expect(qrVisible({ content: "filasaude://check-in?t=a", expiresAt: past }, null)).toBe(true);
+    expect(qrVisible({ content: null, expiresAt: null }, null)).toBe(false);
+    expect(qrVisible({ content: "filasaude://check-in?t=a", expiresAt: past }, "Sem conexão")).toBe(false);
+    expect(qrVisible(null, null)).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
+import { audit } from "infra/database/municipal/schema/audit";
 import { entry } from "infra/database/municipal/schema/entry";
 import orchestrator from "tests/orchestrator";
 import { loggedInUser, occupation } from "tests/panel";
@@ -62,8 +63,18 @@ describe("estação de chamada (T3.7)", () => {
     const r = await op(c.e1, c.nurse, "recall");
     expect(r.status).toBe(200);
     const calledE1 = r.body.called.name as string;
+    const ticketE1 = r.body.called.ticket as string;
     const skip = await op(c.e1, c.nurse, "no-show");
     expect(skip.body.called).toBeNull();
+    // A auditoria guarda sobre quem foi o "não compareceu" (antes) e quem ficou chamado (depois).
+    const [logged] = await orchestrator
+      .municipalityDatabase(c.slug)
+      .select({ data: audit.data })
+      .from(audit)
+      .where(and(eq(audit.targetKind, "station"), eq(audit.targetId, c.e1)))
+      .orderBy(desc(audit.at))
+      .limit(1);
+    expect(logged?.data).toMatchObject({ command: "no-show", before: ticketE1, after: null });
     const end = await op(c.e2, c.nurse, "finish");
     expect(end.body.called).toBeNull();
     const nameE2 = calledE1 === "Ana" ? "Bruno" : "Ana";
