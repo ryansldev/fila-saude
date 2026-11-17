@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { Check } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { NoticeBanner, useMyQueue, YourTurn } from "@/components/care";
 import {
@@ -31,6 +31,12 @@ export default function QueueScreen() {
   const f = useMyQueue();
   const [worsened, setWorsened] = useState(false);
   const item = f.list.find((x) => x.en.entryId === entryId);
+  // "meus sintomas pioraram" vale para esta ida à unidade: some ao sair ou ao abrir outro atendimento.
+  const inUnit = item?.en.itemState === "present";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `entryId` e `inUnit` são os gatilhos.
+  useEffect(() => {
+    setWorsened(false);
+  }, [entryId, inUnit]);
 
   if (f.turn && f.turn.entryId === entryId) {
     return <YourTurn ticket={f.turn.ticket} station={f.turn.station} close={f.turn.dismiss} />;

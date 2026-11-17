@@ -20,7 +20,7 @@ import {
   undoShowedUp,
 } from "@fila-saude/domain";
 import type { StationCommand, StationOperation } from "@fila-saude/schemas/queue";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { requireStation } from "infra/config/stations";
 import { entry } from "infra/database/municipal/schema/entry";
 import { service } from "infra/database/municipal/schema/service";
@@ -38,11 +38,6 @@ const UNCOLORED_TARGET_MIN = 30;
 
 const targetTime = (i: QueueItem): number =>
   i.confirmedUrgency || i.attendedInStages.includes("triage") ? TARGET_TIME_MIN[i.risk] : UNCOLORED_TARGET_MIN;
-
-async function priorityOf(db: TenantDatabase, entryId: string): Promise<string[]> {
-  const [e] = await db.select({ p: entry.priority }).from(entry).where(eq(entry.id, entryId));
-  return e?.p.groups ?? [];
-}
 
 export const OPERATE: Action = "operate_calls";
 
@@ -66,14 +61,13 @@ async function openSession(db: TenantDatabase, stationId: string) {
   return row ?? null;
 }
 
-// RN-RISCO-01/06: a ficha que a triagem precisa para classificar; só na estação de triagem.
-async function triageForm(db: TenantDatabase, entryId: string) {
-  const [e] = await db
-    .select({ c: entry.classification, p: entry.priority })
-    .from(entry)
-    .where(inArray(entry.id, [entryId]));
-  if (!e) return undefined;
-  return { suggestedRisk: e.c.level, rule: e.c.rule, support: e.c.support, priority: e.p.groups };
+// A prioridade de quem está chamado e, na triagem, a ficha para classificar (RN-RISCO-01/06): uma leitura só.
+async function calledData(db: TenantDatabase, entryId: string, triage: boolean) {
+  const [e] = await db.select({ c: entry.classification, p: entry.priority }).from(entry).where(eq(entry.id, entryId));
+  const priority = e?.p.groups ?? [];
+  if (!triage) return { priority };
+  const form = e && { suggestedRisk: e.c.level, rule: e.c.rule, support: e.c.support, priority };
+  return { priority, triage: form };
 }
 
 async function build(
@@ -116,8 +110,7 @@ async function build(
             calledAt: new Date(last ? last.at : now).toISOString(),
             toleranceExceeded: toleranceExceeded(day, e.id, now),
             showedUpAt: came === null ? null : new Date(came).toISOString(),
-            priority: await priorityOf(db, item.entryId),
-            ...(e.stage === "triage" ? { triage: await triageForm(db, item.entryId) } : {}),
+            ...(await calledData(db, item.entryId, e.stage === "triage")),
           }
         : null,
     waiting: queue.length,

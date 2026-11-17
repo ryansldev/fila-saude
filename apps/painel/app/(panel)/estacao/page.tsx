@@ -40,8 +40,9 @@ export default function Station() {
   // Cor escolhida na triagem para quem está chamado; volta a nada a cada novo chamado.
   const [color, setColor] = useState<ApiRiskLevel | null>(null);
   const calledId = op.detail?.called?.itemId ?? null;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `calledId` é o gatilho (um novo chamado limpa a cor).
   useEffect(() => {
-    if (calledId !== undefined) setColor(null);
+    setColor(null);
   }, [calledId]);
 
   // PD-46: só as estações que o perfil opera nesta unidade.

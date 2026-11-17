@@ -14,7 +14,7 @@ export type TriageColor = {
 
 /**
  * AD-058: as cinco cores do Sistema Manchester de Classificação de Risco, da mais grave para a
- * mais leve. Vermelho encaminha à emergência e tira da fila (H2).
+ * mais leve. Vermelho põe a pessoa em 1º lugar no atendimento; encaminhar à emergência é uma ação à parte (AD-059).
  */
 export const TRIAGE_COLORS: TriageColor[] = [
   {
@@ -67,8 +67,9 @@ export const levelColor = (level: ApiRiskLevel): TriageColor =>
   TRIAGE_COLORS.find((c) => c.level === level) ?? (TRIAGE_COLORS[4] as TriageColor);
 
 /** H3: com alguém chamado na triagem, fechar o chamado pede a cor. */
-export const needsClassify = (stage: "triage" | "care", hasCalled: boolean, chosen: ApiRiskLevel | null): boolean =>
-  stage === "triage" && hasCalled && chosen === null;
+/** Na triagem, com a ficha na tela, a cor é obrigatória para finalizar (H3). */
+export const needsClassify = (stage: "triage" | "care", hasForm: boolean, chosen: ApiRiskLevel | null): boolean =>
+  stage === "triage" && hasForm && chosen === null;
 
 const GROUPS: Record<string, string> = {
   elderly: "60 anos ou mais",

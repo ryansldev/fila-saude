@@ -144,23 +144,25 @@ function closeCalled(
   const events: Event[] = [
     { kind: "attended", ...base(day, item, station.id), data: { stage: item.stage, nextStage, at: now } },
   ];
-  if (emergency) {
-    events.push({ kind: "referred_to_emergency", ...base(day, item, station.id), data: { stage: item.stage } });
-  }
-  const free = withStation(day, station.id, { calledItemId: null });
-  if (nextStage === null) {
-    return { day: withItem(free, { ...item, state: "done_in_stage", attendedInStages }), events };
-  }
-  let triaged: QueueItem = { ...item, stage: nextStage, attendedInStages, leftAt: null };
+  // O risco confirmado fica no item do dia, inclusive de quem é encaminhado: o dia e a entrada concordam.
+  // A API grava entry.confirmedRisk (INV-07: só agendador ou triagem).
+  const confirmed: QueueItem =
+    confirmedRisk === undefined ? item : { ...item, risk: confirmedRisk, confirmedUrgency: isUrgent(confirmedRisk) };
   if (confirmedRisk !== undefined) {
-    triaged = { ...triaged, risk: confirmedRisk, confirmedUrgency: isUrgent(confirmedRisk) };
-    // A API grava entrada.riscoConfirmado (INV-07: só agendador ou triagem).
     events.push({
       kind: "risk_confirmed",
       ...base(day, item, station.id),
       data: { level: confirmedRisk, stage: item.stage },
     });
   }
+  if (emergency) {
+    events.push({ kind: "referred_to_emergency", ...base(day, item, station.id), data: { stage: item.stage } });
+  }
+  const free = withStation(day, station.id, { calledItemId: null });
+  if (nextStage === null) {
+    return { day: withItem(free, { ...confirmed, state: "done_in_stage", attendedInStages }), events };
+  }
+  let triaged: QueueItem = { ...confirmed, stage: nextStage, attendedInStages, leftAt: null };
   // RN-TRI-04 (2026-11-13): o atendimento é uma fila nova. Quem sai da triagem recebe o próximo
   // número e entra atrás de quem já estava no atendimento, dentro do seu nível de risco e prioridade;
   // sem janela protegida e sem regra de atraso (a pessoa estava na unidade). A senha não muda.

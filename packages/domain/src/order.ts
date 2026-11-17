@@ -32,14 +32,19 @@ const signal = (n: number): number => (n < 0 ? -1 : n > 0 ? 1 : 0);
 /** Maior vem antes: negativo quando `a` precede `b`. */
 const largestFirst = (a: number, b: number): number => signal(b - a);
 
+/**
+ * Risco e prioridade legal na ordem do município. Entre urgências confirmadas pela triagem, o risco vem
+ * sempre antes (AD-058/AD-059: vermelho em 1º, laranja antes de amarelo); a prioridade legal só desempata.
+ */
 function criteria(
-  a: { risk: Risk; priority: LegalPriority },
-  b: { risk: Risk; priority: LegalPriority },
+  a: { confirmedUrgency: boolean; risk: Risk; priority: LegalPriority },
+  b: { confirmedUrgency: boolean; risk: Risk; priority: LegalPriority },
   municipalityOrder: MunicipalityOrder,
 ): number {
   const risk = largestFirst(RISK_WEIGHT[a.risk], RISK_WEIGHT[b.risk]);
   const legal = largestFirst(rankPriority(a.priority), rankPriority(b.priority));
-  return municipalityOrder === "risk" ? risk || legal : legal || risk;
+  const riskFirst = municipalityOrder === "risk" || (a.confirmedUrgency && b.confirmedUrgency);
+  return riskFirst ? risk || legal : legal || risk;
 }
 
 /** Ordem total: urgência confirmada, risco e prioridade (na ordem do município), número. */

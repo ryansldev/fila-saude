@@ -198,7 +198,8 @@ function Called({
 }: Props & { called: NonNullable<StationOperation["called"]>; triage: boolean }) {
   const phase = calledPhase(called);
   const form = called.triage;
-  const noShow = needsClassify(op.station.stage, true, color);
+  // Sem a ficha da triagem não há cores na tela: a cor não pode travar o finalizar.
+  const needsColor = needsClassify(op.station.stage, Boolean(form), color);
   return (
     <>
       <section
@@ -322,15 +323,20 @@ function Called({
                 >
                   Encaminhar à emergência
                 </Button>
-              ) : noShow ? (
+              ) : needsColor ? (
                 <p className="text-sm text-slate-600">Escolha a cor para finalizar.</p>
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="text" icon={PauseIcon} disabled={sending || noShow} onClick={() => onCommand("finish")}>
+              <Button
+                variant="text"
+                icon={PauseIcon}
+                disabled={sending || needsColor}
+                onClick={() => onCommand("finish")}
+              >
                 só finalizar
               </Button>
-              <Button icon={CheckIcon} disabled={sending || noShow} onClick={() => onCommand("call")}>
+              <Button icon={CheckIcon} disabled={sending || needsColor} onClick={() => onCommand("call")}>
                 Finalizar e chamar o próximo
               </Button>
             </div>

@@ -244,8 +244,8 @@ export async function mine(db: TenantDb, patientId: string, now: number): Promis
       canCancel: e.reassigned === null && CANCELLABLE.includes(e.state) && item?.state !== "called",
       stage: item?.stage ?? null,
       triaged: Boolean(item?.attendedInStages.includes("triage")),
-      // AD-059: só quem a triagem encaminhou fica "atendido" na triagem; vermelho atendido aqui segue.
-      referred: item?.stage === "triage" && item.state === "done_in_stage",
+      // AD-059: encaminhado = atendido na triagem com o vermelho confirmado; vermelho atendido aqui segue.
+      referred: item?.stage === "triage" && item.state === "done_in_stage" && item.risk === "emergency",
       confirmationDeadline:
         e.state === "allocated" && s && e.allocatedAt
           ? new Date(

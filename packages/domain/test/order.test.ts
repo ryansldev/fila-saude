@@ -92,6 +92,19 @@ describe("compareOrder", () => {
   });
 });
 
+describe("urgência confirmada pela triagem (AD-058, AD-059)", () => {
+  it("vermelho em 1º e laranja antes de amarelo, mesmo com o município em prioridade legal antes", () => {
+    const red = key({ confirmedUrgency: true, risk: "emergency", number: 9 });
+    const orange80 = key({ confirmedUrgency: true, risk: "very_urgent", priority: withValue("elderly80"), number: 1 });
+    const yellowPregnant = key({ confirmedUrgency: true, risk: "urgent", priority: withValue("pregnant"), number: 2 });
+    const orange = key({ confirmedUrgency: true, risk: "very_urgent", number: 3 });
+    expect(compareOrder(red, orange80, "priority")).toBeLessThan(0);
+    expect(compareOrder(orange, yellowPregnant, "priority")).toBeLessThan(0);
+    // Mesmo risco confirmado: a prioridade legal desempata.
+    expect(compareOrder(orange80, orange, "priority")).toBeLessThan(0);
+  });
+});
+
 describe("compareSuggestion", () => {
   it("RN-AL-02: urgência, remanejados, depois risco e prioridade, depois data", () => {
     const urgent = sug({ id: "u", confirmedUrgency: true, originalEntryDate: 1 });

@@ -73,7 +73,8 @@ elegiveis = entradas da etapa, com presenca = PRESENTE,
 ordem (RN-ORD), aplicada a qualquer conjunto de entradas:
   1. urgencia confirmada primeiro
   2 e 3, na ordem configurada pelo municipio
-     (padrao: risco antes; alternativa: prioridade legal antes):
+     (padrao: risco antes; alternativa: prioridade legal antes;
+      entre urgencias confirmadas, risco sempre antes: AD-058, AD-059):
      - nivel de risco vigente: urgente > atencao > rotina
        vigente = confirmado, se houver; senao, sugerido
      - prioridade legal: com prioridade > sem;

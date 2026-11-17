@@ -10,13 +10,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 let c: Awaited<ReturnType<typeof queueScenario>>;
 let t1: string;
 let davi: Awaited<ReturnType<typeof orchestrator.loginPatient>>;
+let reception: string;
 const entries: Record<string, string> = {};
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
   c = await queueScenario({ triage: true });
   t1 = c.t1 as string;
-  const reception = (await loggedInUser(c.slug, c.manager, "reception", occupation(c.unitId, "reception"))).cookie;
+  reception = (await loggedInUser(c.slug, c.manager, "reception", occupation(c.unitId, "reception"))).cookie;
   const answers = {
     Ana: { ...ROUTINE, alarms: ["self_harm" as const] },
     Bruno: { ...ROUTINE, reason: "new" as const, severity: "moderate" as const },
@@ -125,5 +126,20 @@ describe("triagem (T6.1, fatia 3)", () => {
       referred: false,
     });
     expect(await savedRisk("Davi")).toEqual({ r: "very_urgent", state: "in_queue" });
+  });
+  it("app: quem a triagem encaminhou à emergência aparece como 'encaminhado'", async () => {
+    const eva = await orchestrator.loginPatient(orchestrator.registrationData({ name: "Eva" }));
+    const signup = (await fromApp("POST", `/v1/municipalities/${c.slug}/sessions/${c.sessionId}/sign-ups`, eva.cookie, {
+      forWhom: { kind: "me" },
+      answers: ROUTINE,
+    })) as { entryId: string };
+    await c.request("POST", `/v1/panel/sessions/${c.sessionId}/attendance`, reception, {
+      entryId: signup.entryId,
+      result: "matches",
+    });
+    await cmd(t1, "call");
+    expect((await cmd(t1, "finish", { confirmedRisk: "emergency", refer: true })).status).toBe(200);
+    const mine = (await fromApp("GET", `/v1/municipalities/${c.slug}/mine`, eva.cookie)) as MyEntry[];
+    expect(mine[0]).toMatchObject({ referred: true, triaged: true });
   });
 });

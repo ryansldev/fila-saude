@@ -500,9 +500,15 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
       T + 5 * MIN,
     );
     const d = apply(r);
-    expect(item(d, "caio")).toMatchObject({ stage: "triage", state: "done_in_stage" });
+    // O dia e a entrada concordam: o item guarda o vermelho confirmado (não o risco sugerido).
+    expect(item(d, "caio")).toMatchObject({
+      stage: "triage",
+      state: "done_in_stage",
+      risk: "emergency",
+      confirmedUrgency: true,
+    });
     expect(order(d)).toEqual(["ana", "joao"]);
-    expect(r.ok && r.events.map((e) => e.kind)).toEqual(["attended", "referred_to_emergency"]);
+    expect(r.ok && r.events.map((e) => e.kind)).toEqual(["attended", "risk_confirmed", "referred_to_emergency"]);
     const viaCall = apply(
       callNext(inRoom(caioInTriage(), "t1"), { stationId: "t1", confirmedRisk: "emergency", refer: true }, T + 5 * MIN),
     );
