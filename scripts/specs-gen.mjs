@@ -10,55 +10,55 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
-  MATRIZ,
-  TRANSICOES_ENTRADA,
-  TRANSICOES_ITEM,
-  TRANSICOES_SESSAO,
-  textoDaCelula,
+  cellText,
+  ENTRY_TRANSITIONS,
+  ITEM_TRANSITIONS,
+  MATRIX,
+  SESSION_TRANSITIONS,
 } from "../packages/domain/src/index.ts";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 export const SPECS_DIR = join(ROOT, ".specs/specs");
 
-const TRANSICOES = { entrada: TRANSICOES_ENTRADA, item: TRANSICOES_ITEM, sessao: TRANSICOES_SESSAO };
+const TRANSITIONS = { entry: ENTRY_TRANSITIONS, item: ITEM_TRANSITIONS, session: SESSION_TRANSITIONS };
 
-const ROTULOS = {
-  entrada: {
-    aguardando_encaminhamento: "Aguardando encaminhamento",
-    aguardando: "Aguardando",
-    alocada: "Alocada",
-    confirmada: "Confirmada",
-    na_reserva: "Na reserva",
-    na_fila: "Na fila",
-    remanejada: "Remanejada",
-    arquivada: "Arquivada",
-    concluida: "Concluída",
-    cancelada: "Cancelada",
-    encerrada_sem_atendimento: "Encerrada sem atendimento",
+const LABELS = {
+  entry: {
+    awaiting_referral: "Aguardando encaminhamento",
+    waiting: "Aguardando",
+    allocated: "Alocada",
+    confirmed: "Confirmada",
+    in_reserve: "Na reserva",
+    in_queue: "Na fila",
+    reassigned: "Remanejada",
+    archived: "Arquivada",
+    completed: "Concluída",
+    cancelled: "Cancelada",
+    closed_without_care: "Encerrada sem atendimento",
   },
   item: {
-    remoto: "Remoto",
-    presente: "Presente",
-    chamado: "Chamado",
-    atendido_na_etapa: "Atendido na etapa",
-    saiu_da_fila: "Saiu da fila",
-    remanejado: "Remanejado",
+    remote: "Remoto",
+    present: "Presente",
+    called: "Chamado",
+    done_in_stage: "Atendido na etapa",
+    left_queue: "Saiu da fila",
+    reassigned: "Remanejado",
   },
-  sessao: { planejada: "Planejada", aberta: "Aberta", cancelada: "Cancelada", encerrada: "Encerrada" },
+  session: { planned: "Planejada", open: "Aberta", cancelled: "Cancelada", closed: "Encerrada" },
 };
 
-const PERFIS = [
-  "paciente",
-  "gestao_sms",
-  "regulacao_sms",
-  "gerente_ubs",
-  "agendar",
-  "recepcao",
-  "enfermeiro",
-  "tecnico_enfermagem",
-  "atendimento",
+const PROFILES = [
+  "patient",
+  "sms_management",
+  "sms_regulation",
+  "unit_manager",
+  "scheduler",
+  "reception",
+  "nurse",
+  "nursing_technician",
+  "care",
 ];
-const CABECALHO_MATRIZ = [
+const MATRIX_HEADER = [
   "Ação",
   "Paciente",
   "Gestão SMS",
@@ -71,152 +71,158 @@ const CABECALHO_MATRIZ = [
   "Atendimento",
 ];
 
-const linhaTabela = (celulas) => `| ${celulas.join(" | ")} |`;
-const separador = (n) => linhaTabela(Array(n).fill("---"));
+const tableRow = (cells) => `| ${cells.join(" | ")} |`;
+const separator = (n) => tableRow(Array(n).fill("---"));
 
-function rotulo(maquina, estado) {
-  const r = ROTULOS[maquina][estado];
-  if (!r) throw new Error(`estado sem rótulo (${maquina}): ${estado}`);
+function label(machine, state) {
+  const r = LABELS[machine][state];
+  if (!r) throw new Error(`estado sem rótulo (${machine}): ${state}`);
   return r;
 }
 
-function celulaDe(maquina, t) {
-  if (t.textoDe) return t.textoDe;
+function cellOf(machine, t) {
+  if (t.textOf) return t.textOf;
   if (t.de === "—") return "—";
-  return t.qualificador ? `${rotulo(maquina, t.de)} (${t.qualificador})` : rotulo(maquina, t.de);
+  return t.qualifier ? `${label(machine, t.de)} (${t.qualifier})` : label(machine, t.de);
 }
 
-function celulaPara(maquina, t) {
-  if (t.para.startsWith("(")) return `(${t.paraQualificador ?? t.para.slice(1, -1)})`;
-  return t.paraQualificador ? `${rotulo(maquina, t.para)} (${t.paraQualificador})` : rotulo(maquina, t.para);
+function cellFor(machine, t) {
+  if (t.for.startsWith("(")) return `(${t.forQualifier ?? t.for.slice(1, -1)})`;
+  return t.forQualifier ? `${label(machine, t.for)} (${t.forQualifier})` : label(machine, t.for);
 }
 
-/** Tabela de transições: linhas seguidas com o mesmo `textoDe` (e o resto igual) viram uma linha só. */
-function tabelaContratos(spec, maquinas) {
-  const condicao = maquinas.length === 1 && maquinas[0] === "sessao" ? "Quem / condição" : "Condição";
-  const linhas = [linhaTabela(["De", "Evento", condicao, "Para", "Efeitos"]), separador(5)];
-  let anterior = null;
-  for (const maquina of maquinas) {
-    const dados = TRANSICOES[maquina];
-    if (!dados) throw new Error(`máquina desconhecida: ${maquina}`);
-    for (const t of dados.filter((x) => x.spec === spec)) {
-      const resto = [t.evento, t.condicao, celulaPara(maquina, t), t.efeitos];
-      const chave = t.textoDe ? JSON.stringify([maquina, t.textoDe, ...resto]) : null;
-      if (chave !== null && chave === anterior) continue;
-      anterior = chave;
-      linhas.push(linhaTabela([celulaDe(maquina, t), ...resto]));
+// The specs stay in Portuguese: their markers name the machines as "entrada", "item" and "sessao".
+const MACHINE_FROM_MARKER = { entrada: "entry", item: "item", sessao: "session" };
+
+/** Tabela de transições: linhas seguidas com o mesmo `textOf` (e o resto igual) viram uma linha só. */
+function contractTable(spec, machines) {
+  const condition = machines.length === 1 && machines[0] === "session" ? "Quem / condição" : "Condição";
+  const rows = [tableRow(["De", "Evento", condition, "Para", "Efeitos"]), separator(5)];
+  let previous = null;
+  for (const machine of machines) {
+    const data = TRANSITIONS[machine];
+    if (!data) throw new Error(`máquina desconhecida: ${machine}`);
+    for (const t of data.filter((x) => x.spec === spec)) {
+      const rest = [t.event, t.condition, cellFor(machine, t), t.effects];
+      const key = t.textOf ? JSON.stringify([machine, t.textOf, ...rest]) : null;
+      if (key !== null && key === previous) continue;
+      previous = key;
+      rows.push(tableRow([cellOf(machine, t), ...rest]));
     }
   }
-  return linhas;
+  return rows;
 }
 
-function tabelaPermissoes() {
+function permissionTable() {
   return [
-    linhaTabela(CABECALHO_MATRIZ),
-    separador(CABECALHO_MATRIZ.length),
-    ...MATRIZ.map((l) => linhaTabela([l.texto, ...PERFIS.map((p) => textoDaCelula(l.perfis[p]))])),
+    tableRow(MATRIX_HEADER),
+    separator(MATRIX_HEADER.length),
+    ...MATRIX.map((l) => tableRow([l.text, ...PROFILES.map((p) => cellText(l.profiles[p]))])),
   ];
 }
 
-function conteudo(nome) {
-  if (nome === "permissoes") return tabelaPermissoes();
-  const m = nome.match(/^contratos:([a-z-]+):([a-z,]+)$/);
-  if (!m) throw new Error(`marcador desconhecido: ${nome}`);
-  return tabelaContratos(m[1], m[2].split(","));
+function content(name) {
+  if (name === "permissoes") return permissionTable();
+  const m = name.match(/^contratos:([a-z-]+):([a-z,]+)$/);
+  if (!m) throw new Error(`marcador desconhecido: ${name}`);
+  return contractTable(
+    m[1],
+    m[2].split(",").map((x) => MACHINE_FROM_MARKER[x] ?? x),
+  );
 }
 
-const ABRE = /^<!-- gerado: (.+?) -->$/;
-const FECHA = "<!-- /gerado -->";
-const TABELA_MANUAL = /^\|\s*(De\s*\|\s*Evento|Ação\s*\|\s*Paciente)\s*\|/;
+const OPENS = /^<!-- gerado: (.+?) -->$/;
+const CLOSES = "<!-- /gerado -->";
+const TABLE_MANUAL = /^\|\s*(De\s*\|\s*Evento|Ação\s*\|\s*Paciente)\s*\|/;
 
 /** Regera os blocos de um texto. Devolve o texto novo, os blocos encontrados e os problemas. */
-export function processar(texto) {
-  const entrada = texto.split("\n");
-  const saida = [];
-  const blocos = [];
-  const problemas = [];
-  for (let i = 0; i < entrada.length; i++) {
-    const linha = entrada[i];
-    const abre = linha.match(ABRE);
-    if (!abre) {
-      if (TABELA_MANUAL.test(linha)) problemas.push(`tabela na linha ${i + 1} está fora dos marcadores`);
-      saida.push(linha);
+export function processText(text) {
+  const entry = text.split("\n");
+  const exit = [];
+  const blocks = [];
+  const problems = [];
+  for (let i = 0; i < entry.length; i++) {
+    const row = entry[i];
+    const opens = row.match(OPENS);
+    if (!opens) {
+      if (TABLE_MANUAL.test(row)) problems.push(`tabela na linha ${i + 1} está fora dos marcadores`);
+      exit.push(row);
       continue;
     }
-    const fim = entrada.indexOf(FECHA, i + 1);
-    if (fim < 0) {
-      problemas.push(`marcador "${abre[1]}" sem ${FECHA}`);
-      saida.push(linha);
+    const end = entry.indexOf(CLOSES, i + 1);
+    if (end < 0) {
+      problems.push(`marcador "${opens[1]}" sem ${CLOSES}`);
+      exit.push(row);
       continue;
     }
-    let gerado;
+    let generated;
     try {
-      gerado = conteudo(abre[1]);
+      generated = content(opens[1]);
     } catch (e) {
-      problemas.push(e.message);
-      saida.push(...entrada.slice(i, fim + 1));
-      i = fim;
+      problems.push(e.message);
+      exit.push(...entry.slice(i, end + 1));
+      i = end;
       continue;
     }
-    const atual = entrada.slice(i + 1, fim);
-    blocos.push({ nome: abre[1], desatualizado: atual.join("\n") !== gerado.join("\n") });
-    saida.push(linha, ...gerado, FECHA);
-    i = fim;
+    const current = entry.slice(i + 1, end);
+    blocks.push({ name: opens[1], outdated: current.join("\n") !== generated.join("\n") });
+    exit.push(row, ...generated, CLOSES);
+    i = end;
   }
-  return { texto: saida.join("\n"), blocos, problemas };
+  return { text: exit.join("\n"), blocks, problems };
 }
 
-function arquivosMd(dir) {
-  return readdirSync(dir).flatMap((nome) => {
-    const p = join(dir, nome);
-    if (statSync(p).isDirectory()) return arquivosMd(p);
-    return nome.endsWith(".md") ? [p] : [];
+function filesMd(dir) {
+  return readdirSync(dir).flatMap((name) => {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) return filesMd(p);
+    return name.endsWith(".md") ? [p] : [];
   });
 }
 
 /** Linhas de dados que nenhum bloco publica (ex.: um marcador apagado). */
-function naoPublicados(nomes) {
+function notPublished(names) {
   const cobertos = new Set(
-    nomes.flatMap((n) => {
+    names.flatMap((n) => {
       const m = n.match(/^contratos:([a-z-]+):([a-z,]+)$/);
-      return m ? m[2].split(",").map((maq) => `${m[1]}:${maq}`) : [];
+      return m ? m[2].split(",").map((machine) => `${m[1]}:${MACHINE_FROM_MARKER[machine] ?? machine}`) : [];
     }),
   );
-  const faltam = new Set();
-  for (const [maquina, dados] of Object.entries(TRANSICOES)) {
-    for (const t of dados) if (!cobertos.has(`${t.spec}:${maquina}`)) faltam.add(`contratos:${t.spec}:${maquina}`);
+  const missing = new Set();
+  for (const [machine, data] of Object.entries(TRANSITIONS)) {
+    for (const t of data) if (!cobertos.has(`${t.spec}:${machine}`)) missing.add(`contratos:${t.spec}:${machine}`);
   }
-  if (!nomes.includes("permissoes")) faltam.add("permissoes");
-  return [...faltam];
+  if (!names.includes("permissoes")) missing.add("permissoes");
+  return [...missing];
 }
 
 /** Gera (ou, com `checar`, só confere) os blocos de todas as specs em `dir`. Devolve os erros. */
-export function rodar(dir = SPECS_DIR, { checar = false } = {}) {
-  const erros = [];
-  const nomes = [];
-  for (const arquivo of arquivosMd(dir)) {
-    const rel = relative(dir, arquivo);
-    const original = readFileSync(arquivo, "utf8");
-    const { texto, blocos, problemas } = processar(original);
-    for (const p of problemas) erros.push(`${rel}: ${p}`);
-    for (const b of blocos) {
-      if (nomes.includes(b.nome)) erros.push(`${rel}: bloco ${b.nome} repetido`);
-      nomes.push(b.nome);
-      if (checar && b.desatualizado) erros.push(`${rel}: bloco ${b.nome} desatualizado (rode npm run specs:gen)`);
+export function run(dir = SPECS_DIR, { check = false } = {}) {
+  const errors = [];
+  const names = [];
+  for (const file of filesMd(dir)) {
+    const rel = relative(dir, file);
+    const original = readFileSync(file, "utf8");
+    const { text, blocks, problems } = processText(original);
+    for (const p of problems) errors.push(`${rel}: ${p}`);
+    for (const b of blocks) {
+      if (names.includes(b.name)) errors.push(`${rel}: bloco ${b.name} repetido`);
+      names.push(b.name);
+      if (check && b.outdated) errors.push(`${rel}: bloco ${b.name} desatualizado (rode npm run specs:gen)`);
     }
-    if (!checar && texto !== original) writeFileSync(arquivo, texto);
+    if (!check && text !== original) writeFileSync(file, text);
   }
-  for (const n of naoPublicados(nomes)) erros.push(`nenhum bloco publica ${n}`);
-  return erros;
+  for (const n of notPublished(names)) errors.push(`nenhum bloco publica ${n}`);
+  return errors;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const args = process.argv.slice(2);
   const iDir = args.indexOf("--dir");
   const dir = iDir >= 0 ? args[iDir + 1] : SPECS_DIR;
-  const checar = args.includes("--check");
-  const erros = rodar(dir, { checar });
-  for (const e of erros) console.log(`ERRO: ${e}`);
-  if (!erros.length) console.log(checar ? "tabelas geradas em dia" : "tabelas geradas");
-  process.exit(erros.length ? 1 : 0);
+  const check = args.includes("--check");
+  const errors = run(dir, { check });
+  for (const e of errors) console.log(`ERRO: ${e}`);
+  if (!errors.length) console.log(check ? "tabelas geradas em dia" : "tabelas geradas");
+  process.exit(errors.length ? 1 : 0);
 }

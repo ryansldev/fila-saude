@@ -1,1 +1,0 @@
-ALTER TABLE "entrada" ADD COLUMN "relacao_responsavel" text;

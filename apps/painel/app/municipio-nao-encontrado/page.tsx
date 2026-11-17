@@ -3,7 +3,7 @@ import { Logo } from "@/components/logo";
 
 export const metadata: Metadata = { title: "Município não encontrado" };
 
-export default function MunicipioNaoEncontrado() {
+export default function MunicipalityNotFound() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
       <Logo className="size-14 text-primary" />

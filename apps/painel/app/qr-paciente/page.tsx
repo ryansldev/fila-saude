@@ -1,37 +1,37 @@
 "use client";
 
-import type { QrDaUnidade } from "@fila-saude/schemas/fila";
-import type { ResumoDeHoje } from "@fila-saude/schemas/unidade";
+import type { UnitQr } from "@fila-saude/schemas/queue";
+import type { TodaySummary } from "@fila-saude/schemas/unit";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Logo } from "@/components/logo";
-import { Balao, DrLino } from "@/components/ui/dr-lino";
-import { QrDeEntrada } from "@/components/ui/qr-de-entrada";
-import { falaSemSessao } from "@/lib/qr";
-import { useEu } from "@/lib/sessao";
-import { useUnidadeAtual } from "@/lib/unidade-atual";
-import { useConsulta } from "@/lib/use-consulta";
+import { Bubble, DrLino } from "@/components/ui/dr-lino";
+import { EntryQr } from "@/components/ui/entry-qr";
+import { useCurrentUnit } from "@/lib/current-unit";
+import { speechWithoutSession } from "@/lib/qr";
+import { useMe } from "@/lib/session";
+import { useQuery } from "@/lib/use-query";
 
-const PASSOS = ["abra a câmera do celular", "aponte para o código ao lado", "pronto! fique de olho na TV"];
+const STEPS = ["abra a câmera do celular", "aponte para o código ao lado", "pronto! fique de olho na TV"];
 
 /**
  * QR de entrada, a tela do paciente (tela cheia, no monitor do balcão): o código grande, o Dr. Lino
  * falando com quem chega e os 3 passos. Aberta pela equipe, com a sessão dela; fundo sempre branco.
  */
-export default function QrDoPaciente() {
+export default function PatientQr() {
   const router = useRouter();
-  const eu = useEu();
+  const me = useMe();
   useEffect(() => {
-    if (eu.estado === "anonimo") router.replace("/login");
-  }, [eu.estado, router]);
-  const { atual, unidade } = useUnidadeAtual(["conferir_e_marcar_presenca", "abrir_cancelar_encerrar_sessao"]);
-  const qr = useConsulta<QrDaUnidade>(atual ? `/v1/painel/unidades/${atual}/qr` : null, 5_000);
-  const hoje = useConsulta<ResumoDeHoje[]>(atual ? "/v1/painel/unidades/hoje" : null, 60_000);
-  const valido = qr.dado?.conteudo && qr.dado.expiraEm && Date.parse(qr.dado.expiraEm) > Date.now() && !qr.erro;
-  const proxima = hoje.dado?.find((h) => h.unidadeId === atual)?.proximaAbertura ?? null;
-  const fala = valido
+    if (me.state === "anonymous") router.replace("/login");
+  }, [me.state, router]);
+  const { current, unit } = useCurrentUnit(["verify_and_mark_attendance", "open_cancel_close_session"]);
+  const qr = useQuery<UnitQr>(current ? `/v1/panel/units/${current}/qr` : null, 5_000);
+  const today = useQuery<TodaySummary[]>(current ? "/v1/panel/units/today" : null, 60_000);
+  const valid = qr.detail?.content && qr.detail.expiresAt && Date.parse(qr.detail.expiresAt) > Date.now() && !qr.error;
+  const next = today.detail?.find((h) => h.unitId === current)?.nextOpening ?? null;
+  const speech = valid
     ? "chegou? que bom! leia o código com a câmera do celular."
-    : falaSemSessao(proxima, unidade?.fuso ?? "America/Sao_Paulo");
+    : speechWithoutSession(next, unit?.timeZone ?? "America/Sao_Paulo");
 
   return (
     <main className="relative flex min-h-screen flex-col bg-white px-[5vw] pt-[2.4vw] pb-[4vw] text-[#111313]">
@@ -40,12 +40,12 @@ export default function QrDoPaciente() {
           <Logo className="size-[1.6vw] text-primary" />
           fila saúde
         </span>
-        {unidade ? (
+        {unit ? (
           <span className="text-right text-[1.02vw] font-extrabold text-[#0c2e4e]">
-            {unidade.nome}
-            {unidade.endereco ? (
+            {unit.name}
+            {unit.address ? (
               <span className="block text-[0.8em] font-semibold text-slate-500">
-                {unidade.endereco.logradouro}, {unidade.endereco.numero} — {unidade.endereco.bairro}
+                {unit.address.street}, {unit.address.number} — {unit.address.neighborhood}
               </span>
             ) : null}
           </span>
@@ -53,24 +53,24 @@ export default function QrDoPaciente() {
       </header>
       <div className="grid flex-1 grid-cols-[30%_1fr] items-center gap-x-[4%] pt-[4vw]">
         <div>
-          {valido && qr.dado?.conteudo ? (
-            <QrDeEntrada
-              conteudo={qr.dado.conteudo}
-              expiraEm={qr.dado.expiraEm}
-              intervaloSegundos={qr.dado.intervaloSegundos}
+          {valid && qr.detail?.content ? (
+            <EntryQr
+              content={qr.detail.content}
+              expiresAt={qr.detail.expiresAt}
+              intervalSeconds={qr.detail.intervalSeconds}
             />
           ) : null}
         </div>
         <div className="grid grid-cols-[27%_1fr] items-center gap-x-[4%]">
           <DrLino />
           <div className="flex flex-col gap-[1.5vw]">
-            <Balao className="text-[1.5vw] leading-tight">{fala}</Balao>
-            {valido ? (
+            <Bubble className="text-[1.5vw] leading-tight">{speech}</Bubble>
+            {valid ? (
               <>
                 <ol className="flex flex-col gap-[1.1vw]">
-                  {PASSOS.map((p, i) => (
+                  {STEPS.map((p, i) => (
                     <li key={p} className="flex items-center gap-[0.7vw] text-[1.2vw] font-bold text-[#1f2d36]">
-                      <span className="flex size-[1.8vw] shrink-0 items-center justify-center rounded-full border-b-[3px] border-[var(--ds-acao-sombra)] bg-[var(--ds-acao)] text-[0.85em] font-black text-white">
+                      <span className="flex size-[1.8vw] shrink-0 items-center justify-center rounded-full border-b-[3px] border-[var(--ds-action-shadow)] bg-[var(--ds-action)] text-[0.85em] font-black text-white">
                         {i + 1}
                       </span>
                       {p}
@@ -78,12 +78,12 @@ export default function QrDoPaciente() {
                   ))}
                 </ol>
                 <div className="flex flex-wrap gap-2">
-                  {qr.dado?.sessoes.map((s) => (
+                  {qr.detail?.sessions.map((s) => (
                     <span
                       key={s.id}
                       className="rounded-full bg-[#eaf5f9] px-[1vw] py-[0.2vw] text-[0.95vw] font-extrabold text-[#185b9a]"
                     >
-                      {s.servico.toLowerCase()}
+                      {s.service.toLowerCase()}
                     </span>
                   ))}
                 </div>

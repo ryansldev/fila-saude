@@ -3,210 +3,218 @@ import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { LRUCache } from "lru-cache";
 import { Pool } from "pg";
 import env from "../env";
-import { municipio } from "./central/schema/municipio";
+import { municipality } from "./central/schema/municipality";
+import { databaseUrl } from "./database-url";
 import type { Db } from "./index";
-import * as auditoria from "./municipal/schema/auditoria";
+import * as audit from "./municipal/schema/audit";
 import * as auth from "./municipal/schema/auth";
-import * as aviso from "./municipal/schema/aviso";
-import * as diaSessao from "./municipal/schema/dia-sessao";
-import * as entrada from "./municipal/schema/entrada";
-import * as equipe from "./municipal/schema/equipe";
-import * as estacao from "./municipal/schema/estacao";
-import * as pessoaLocal from "./municipal/schema/pessoa-local";
-import * as servico from "./municipal/schema/servico";
-import * as sessao from "./municipal/schema/sessao";
+import * as entry from "./municipal/schema/entry";
+import * as localPerson from "./municipal/schema/local-person";
+import * as notice from "./municipal/schema/notice";
+import * as service from "./municipal/schema/service";
+import * as session from "./municipal/schema/session";
+import * as sessionDay from "./municipal/schema/session-day";
+import * as staff from "./municipal/schema/staff";
+import * as station from "./municipal/schema/station";
 import * as tv from "./municipal/schema/tv";
-import * as unidade from "./municipal/schema/unidade";
-import { urlDoBanco } from "./url-do-banco";
+import * as unit from "./municipal/schema/unit";
 
-export { urlDoBanco } from "./url-do-banco";
+export { databaseUrl } from "./database-url";
 
 export const schemaMunicipal = {
-  ...pessoaLocal,
-  ...unidade,
-  ...servico,
-  ...estacao,
-  ...sessao,
-  ...entrada,
-  ...diaSessao,
+  ...localPerson,
+  ...unit,
+  ...service,
+  ...station,
+  ...session,
+  ...entry,
+  ...sessionDay,
   ...auth,
-  ...equipe,
-  ...auditoria,
+  ...staff,
+  ...audit,
   ...tv,
-  ...aviso,
+  ...notice,
 };
 
-export type DbDoTenant = NodePgDatabase<typeof schemaMunicipal> & { $client: Pool };
-export type TxDoTenant = Parameters<Parameters<DbDoTenant["transaction"]>[0]>[0];
+export type TenantDb = NodePgDatabase<typeof schemaMunicipal> & { $client: Pool };
+export type TenantTx = Parameters<Parameters<TenantDb["transaction"]>[0]>[0];
 /** Banco ou transação do tenant: as funções de infra aceitam os dois. */
-export type BancoDoTenant = DbDoTenant | TxDoTenant;
+export type TenantDatabase = TenantDb | TenantTx;
 
-// `municipioId` é o id do município no central; null no modo single (PD-12), que não lê o central.
-export type Tenant = { slug: string; municipioId: string | null; fuso: string; db: DbDoTenant };
+// `municipalityId` é o id do município no central; null no modo single (PD-12), que não lê o central.
+export type Tenant = { slug: string; municipalityId: string | null; timeZone: string; db: TenantDb };
 
 // O que o plugin do tenant precisa: dado o slug resolvido, o tenant ativo (ou null) e o encerramento.
-export interface FonteDosTenants {
-  obter(slug: string): Promise<Tenant | null>;
-  encerrar(): Promise<void>;
+export interface TenantSource {
+  get(slug: string): Promise<Tenant | null>;
+  close(): Promise<void>;
 }
 
-type LinhaDoCatalogo = { id: string; fuso: string; bancoRef: string; status: "criando" | "ativo" | "suspenso" };
+type CatalogRow = { id: string; timeZone: string; databaseRef: string; status: "creating" | "active" | "suspended" };
 
 // `false` marca "slug sem município" no cache (o LRUCache não guarda null/undefined).
-type EntradaDoCatalogo = LinhaDoCatalogo | false;
+type CatalogEntry = CatalogRow | false;
 
-export type OpcoesDosPools = {
+export type PoolsOptions = {
   max: number;
-  conexoesPorTenant: number;
+  connectionsByTenant: number;
   central: Db;
-  ttlCatalogoMs: number;
+  ttlCatalogMs: number;
   // Padrão: TENANT_DATABASE_URL_TEMPLATE e process.env (PD-14).
   template?: string;
   env?: Record<string, string | undefined>;
   // Padrão: console.error. Recebe falhas de conexão e de encerramento dos pools.
-  registrar?: (mensagem: string, erro: unknown) => void;
+  register?: (message: string, error: unknown) => void;
 };
 
 // T1.7 / PD-03 / PD-14: um pool `pg` (e uma instância Drizzle) por município, num LRU de no máximo `max`.
 // O tenant menos usado sai quando chega o `max + 1`-ésimo, e o pool dele é encerrado (`pool.end()`).
-// O catálogo (slug → linha de `municipio`) fica em cache por `ttlCatalogoMs`: suspender um município
-// passa a valer depois desse prazo. Com `ttlCatalogoMs` 0 o central é consultado a cada `obter`.
-export class PoolsDosTenants implements FonteDosTenants {
-  private readonly opcoes: OpcoesDosPools;
+// O catálogo (slug → linha de `municipio`) fica em cache por `ttlCatalogMs`: suspender um município
+// passa a valer depois desse prazo. Com `ttlCatalogMs` 0 o central é consultado a cada `obter`.
+export class TenantsPools implements TenantSource {
+  private readonly options: PoolsOptions;
   private readonly pools: LRUCache<string, Tenant>;
-  private readonly catalogo: LRUCache<string, EntradaDoCatalogo> | null;
-  private readonly encerrando = new Set<Promise<void>>();
+  private readonly catalog: LRUCache<string, CatalogEntry> | null;
+  private readonly closing = new Set<Promise<void>>();
 
-  constructor(opcoes: OpcoesDosPools) {
-    this.opcoes = opcoes;
+  constructor(options: PoolsOptions) {
+    this.options = options;
     this.pools = new LRUCache<string, Tenant>({
-      max: opcoes.max,
+      max: options.max,
       dispose: (tenant) => {
         // Um end() que falha só é registrado: não vira rejeição solta nem impede os outros de fechar.
-        const fim = tenant.db.$client
+        const end = tenant.db.$client
           .end()
-          .catch((erro) => this.registrar(`falha ao encerrar o pool de ${tenant.slug}`, erro))
-          .finally(() => this.encerrando.delete(fim));
-        this.encerrando.add(fim);
+          .catch((error) => this.register(`falha ao encerrar o pool de ${tenant.slug}`, error))
+          .finally(() => this.closing.delete(end));
+        this.closing.add(end);
       },
     });
-    this.catalogo =
-      opcoes.ttlCatalogoMs > 0
-        ? new LRUCache<string, EntradaDoCatalogo>({ max: 10_000, ttl: opcoes.ttlCatalogoMs })
-        : null;
+    this.catalog =
+      options.ttlCatalogMs > 0 ? new LRUCache<string, CatalogEntry>({ max: 10_000, ttl: options.ttlCatalogMs }) : null;
   }
 
-  async obter(slug: string): Promise<Tenant | null> {
-    const linha = await this.buscarNoCatalogo(slug);
-    if (linha?.status !== "ativo") {
+  async get(slug: string): Promise<Tenant | null> {
+    const row = await this.fetchCatalog(slug);
+    if (row?.status !== "active") {
       // Município suspenso (ou que sumiu) não mantém conexão aberta.
       this.pools.delete(slug);
       return null;
     }
 
-    const existente = this.pools.get(slug);
-    if (existente && existente.municipioId === linha.id) return existente;
+    const existing = this.pools.get(slug);
+    if (existing && existing.municipalityId === row.id) return existing;
 
     // Daqui até o `set` nada é assíncrono: duas chamadas simultâneas não criam dois pools.
-    const url = urlDoBanco(linha.bancoRef, {
-      template: this.opcoes.template ?? env.TENANT_DATABASE_URL_TEMPLATE,
-      env: this.opcoes.env ?? process.env,
+    const url = databaseUrl(row.databaseRef, {
+      template: this.options.template ?? env.TENANT_DATABASE_URL_TEMPLATE,
+      env: this.options.env ?? process.env,
     });
-    const pool = new Pool({ connectionString: url, max: this.opcoes.conexoesPorTenant });
+    const pool = new Pool({ connectionString: url, max: this.options.connectionsByTenant });
     const tenant: Tenant = {
       slug,
-      municipioId: linha.id,
-      fuso: linha.fuso,
+      municipalityId: row.id,
+      timeZone: row.timeZone,
       db: drizzle(pool, { schema: schemaMunicipal }),
     };
     // Cliente ocioso que cai (banco reiniciado, conexão derrubada) emite 'error' no pool; sem ouvinte,
     // isso derrubaria o processo inteiro. Registra e tira o pool do LRU: o próximo `obter` cria outro.
-    pool.on("error", (erro) => {
-      this.registrar(`conexão do pool de ${slug} caiu`, erro);
+    pool.on("error", (error) => {
+      this.register(`conexão do pool de ${slug} caiu`, error);
       if (this.pools.peek(slug) === tenant) this.pools.delete(slug);
     });
     this.pools.set(slug, tenant);
     return tenant;
   }
 
-  async encerrar(): Promise<void> {
+  async close(): Promise<void> {
     this.pools.clear();
-    this.catalogo?.clear();
-    await Promise.allSettled([...this.encerrando]);
+    this.catalog?.clear();
+    await Promise.allSettled([...this.closing]);
   }
 
-  private registrar(mensagem: string, erro: unknown) {
-    (this.opcoes.registrar ?? console.error)(mensagem, erro);
+  private register(message: string, error: unknown) {
+    (this.options.register ?? console.error)(message, error);
   }
 
-  private async buscarNoCatalogo(slug: string): Promise<LinhaDoCatalogo | null> {
-    const emCache = this.catalogo?.get(slug);
-    if (emCache !== undefined) return emCache || null;
+  private async fetchCatalog(slug: string): Promise<CatalogRow | null> {
+    const inCache = this.catalog?.get(slug);
+    if (inCache !== undefined) return inCache || null;
 
-    const [linha] = await this.opcoes.central
-      .select({ id: municipio.id, fuso: municipio.fuso, bancoRef: municipio.bancoRef, status: municipio.status })
-      .from(municipio)
-      .where(eq(municipio.slug, slug));
-    this.catalogo?.set(slug, linha ?? false);
-    return linha ?? null;
+    const [row] = await this.options.central
+      .select({
+        id: municipality.id,
+        timeZone: municipality.timeZone,
+        databaseRef: municipality.databaseRef,
+        status: municipality.status,
+      })
+      .from(municipality)
+      .where(eq(municipality.slug, slug));
+    this.catalog?.set(slug, row ?? false);
+    return row ?? null;
   }
 }
 
-export type OpcoesDaFonte = OpcoesDosPools & {
-  modo: "multi" | "single";
+export type SourceOptions = PoolsOptions & {
+  mode: "multi" | "single";
   // Só no modo single (PD-12): o município fixo, a URL do banco dele e o fuso.
-  slugFixo?: string;
-  urlFixa?: string;
-  fuso: string;
+  fixedSlug?: string;
+  fixedUrl?: string;
+  timeZone: string;
 };
 
-// PD-12 / PD-15: modo multi lê o catálogo do central; modo single atende só `slugFixo`, no banco
-// `urlFixa`, sem nunca consultar o central (a VPS do município pode nem alcançá-lo).
-export function fonteDosTenants(opcoes: OpcoesDaFonte): FonteDosTenants {
-  if (opcoes.modo === "multi") return new PoolsDosTenants(opcoes);
-  if (!opcoes.slugFixo || !opcoes.urlFixa) {
+// PD-12 / PD-15: modo multi lê o catálogo do central; modo single atende só `fixedSlug`, no banco
+// `fixedUrl`, sem nunca consultar o central (a VPS do município pode nem alcançá-lo).
+export function tenantSource(options: SourceOptions): TenantSource {
+  if (options.mode === "multi") return new TenantsPools(options);
+  if (!options.fixedSlug || !options.fixedUrl) {
     throw new Error("modo single exige TENANT_SLUG e TENANT_DATABASE_URL");
   }
-  return new TenantFixo({
-    slug: opcoes.slugFixo,
-    url: opcoes.urlFixa,
-    fuso: opcoes.fuso,
-    conexoes: opcoes.conexoesPorTenant,
-    registrar: opcoes.registrar ?? console.error,
+  return new FixedTenant({
+    slug: options.fixedSlug,
+    url: options.fixedUrl,
+    timeZone: options.timeZone,
+    connections: options.connectionsByTenant,
+    register: options.register ?? console.error,
   });
 }
 
 // PD-12: o único município de uma VPS em modo single. O pool é criado na primeira requisição e só
-// encerrado com o app; `municipioId` fica null porque o id mora no central, que não é consultado.
-export class TenantFixo implements FonteDosTenants {
+// encerrado com o app; `municipalityId` fica null porque o id mora no central, que não é consultado.
+export class FixedTenant implements TenantSource {
   private tenant: Tenant | null = null;
 
   constructor(
-    private readonly opcoes: {
+    private readonly options: {
       slug: string;
       url: string;
-      fuso: string;
-      conexoes: number;
-      registrar: (mensagem: string, erro: unknown) => void;
+      timeZone: string;
+      connections: number;
+      register: (message: string, error: unknown) => void;
     },
   ) {}
 
-  async obter(slug: string): Promise<Tenant | null> {
-    if (slug !== this.opcoes.slug) return null;
+  async get(slug: string): Promise<Tenant | null> {
+    if (slug !== this.options.slug) return null;
     if (this.tenant) return this.tenant;
 
-    const pool = new Pool({ connectionString: this.opcoes.url, max: this.opcoes.conexoes });
+    const pool = new Pool({ connectionString: this.options.url, max: this.options.connections });
     // Sem ouvinte, um cliente ocioso que cai derrubaria o processo; o pool se recompõe sozinho.
-    pool.on("error", (erro) => this.opcoes.registrar(`conexão do pool de ${slug} caiu`, erro));
-    this.tenant = { slug, municipioId: null, fuso: this.opcoes.fuso, db: drizzle(pool, { schema: schemaMunicipal }) };
+    pool.on("error", (error) => this.options.register(`conexão do pool de ${slug} caiu`, error));
+    this.tenant = {
+      slug,
+      municipalityId: null,
+      timeZone: this.options.timeZone,
+      db: drizzle(pool, { schema: schemaMunicipal }),
+    };
     return this.tenant;
   }
 
-  async encerrar(): Promise<void> {
+  async close(): Promise<void> {
     const tenant = this.tenant;
     this.tenant = null;
     await tenant?.db.$client
       .end()
-      .catch((erro) => this.opcoes.registrar(`falha ao encerrar o pool de ${tenant.slug}`, erro));
+      .catch((error) => this.options.register(`falha ao encerrar o pool de ${tenant.slug}`, error));
   }
 }

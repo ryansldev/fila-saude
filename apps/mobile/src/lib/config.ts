@@ -6,4 +6,4 @@
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3333";
 
 /** PD-33: a tela da vez consulta a cada ~3 s (o SSE entra depois no lugar). */
-export const INTERVALO_DA_CONSULTA_MS = 3_000;
+export const QUERY_INTERVAL_MS = 3_000;

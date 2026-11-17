@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Nunito } from "next/font/google";
 import "./globals.css";
-import { ProvedorApi } from "@/components/provedor-api";
+import { ApiClientProvider } from "@/components/api-provider";
 import { cn } from "@/lib/utils";
 
 const geist = Geist({
@@ -31,7 +31,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={cn("h-full antialiased font-sans", geist.variable, nunito.variable)}>
       <body className="min-h-full flex flex-col bg-white">
-        <ProvedorApi>{children}</ProvedorApi>
+        <ApiClientProvider>{children}</ApiClientProvider>
       </body>
     </html>
   );

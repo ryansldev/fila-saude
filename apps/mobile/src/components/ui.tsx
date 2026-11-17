@@ -1,13 +1,5 @@
 import { BottomSheet, BottomSheetView } from "@expo/ui/community/bottom-sheet";
-import {
-  COR,
-  estiloDoBotao,
-  FONTE,
-  LINO_SVG,
-  OPACIDADE_DESATIVADO,
-  type TamanhoApp,
-  type Variante,
-} from "@fila-saude/design";
+import { type AppSize, buttonStyle, COLOR, DISABLED_OPACITY, FONT, LINO_SVG, type Variant } from "@fila-saude/design";
 import { router } from "expo-router";
 import {
   Bell,
@@ -45,32 +37,32 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Path, SvgXml } from "react-native-svg";
-import { diaPorExtenso } from "@/lib/dias";
+import { longDay } from "@/lib/days";
 
 // Tokens do design system "Fila Saúde" (artifact do app do paciente).
-export { COR, FONTE };
+export { COLOR, FONT };
 
 export function Logo({
-  tamanho = 28,
-  cor = COR.primary500,
-  miolo = "#ffffff",
+  size = 28,
+  color = COLOR.primary500,
+  core = "#ffffff",
 }: {
-  tamanho?: number;
-  cor?: string;
-  miolo?: string;
+  size?: number;
+  color?: string;
+  core?: string;
 }) {
   return (
-    <Svg width={tamanho} height={tamanho} viewBox="0 0 64 64" accessibilityElementsHidden>
+    <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityElementsHidden>
       <Path
-        fill={cor}
+        fill={color}
         d="M5.127 23.609C6.564 36.242 20.52 48.093 29.33 54.212a4.673 4.673 0 0 0 5.34 0c8.81-6.119 22.767-17.97 24.203-30.603C60.863 6.099 38.967 3.972 32 13.977 25.033 3.972 3.137 6.1 5.127 23.61Z"
       />
       <Path
-        fill={miolo}
+        fill={core}
         d="M28.704 21.09a2.583 2.583 0 0 1 2.583-2.584h2.583a2.583 2.583 0 0 1 2.583 2.583v20.665a2.583 2.583 0 0 1-2.583 2.583h-2.583a2.583 2.583 0 0 1-2.583-2.583V21.09Z"
       />
       <Path
-        fill={miolo}
+        fill={core}
         d="M19.663 30.13a2.583 2.583 0 0 1 2.583-2.583H42.91a2.583 2.583 0 0 1 2.583 2.583v2.583a2.583 2.583 0 0 1-2.583 2.583H22.246a2.583 2.583 0 0 1-2.583-2.583V30.13Z"
       />
     </Svg>
@@ -79,13 +71,13 @@ export function Logo({
 
 /**
  * O mascote só aparece sobre branco (o jaleco é transparente).
- * `moldura`: o cantinho branco ao redor; desliga quando o fundo da tela já é branco (fala do Dr.).
+ * `frame`: o cantinho branco ao redor; desliga quando o fundo da tela já é branco (fala do Dr.).
  */
-export function Mascote({ tamanho = 200, moldura = true }: { tamanho?: number; moldura?: boolean }) {
-  const desenho = <SvgXml xml={LINO_SVG} width={tamanho} height={tamanho} accessibilityLabel="mascote do fila saúde" />;
-  if (!moldura) return desenho;
+export function Mascot({ size = 200, frame = true }: { size?: number; frame?: boolean }) {
+  const drawing = <SvgXml xml={LINO_SVG} width={size} height={size} accessibilityLabel="mascote do fila saúde" />;
+  if (!frame) return drawing;
   return (
-    <View style={{ alignSelf: "center", backgroundColor: COR.surface, padding: 8, borderRadius: 16 }}>{desenho}</View>
+    <View style={{ alignSelf: "center", backgroundColor: COLOR.surface, padding: 8, borderRadius: 16 }}>{drawing}</View>
   );
 }
 
@@ -93,15 +85,15 @@ export function Mascote({ tamanho = 200, moldura = true }: { tamanho?: number; m
  * O Dr. Lino pequeno com a fala num balão suave (azul bem claro, sem borda, pontinha para ele): as
  * perguntas do cadastro e o "entrar". Ocupa pouco, para o teclado não cobrir o campo.
  */
-export function BalaoDoLino({ texto }: { texto: string }) {
+export function LinoBubble({ text }: { text: string }) {
   return (
     <View
       accessibilityRole="summary"
-      accessibilityLabel={`dr. lino: ${texto}`}
+      accessibilityLabel={`dr. lino: ${text}`}
       style={{ flexDirection: "row", alignItems: "flex-end", gap: 4 }}
     >
-      <View style={{ backgroundColor: COR.surface }}>
-        <Mascote tamanho={96} moldura={false} />
+      <View style={{ backgroundColor: COLOR.surface }}>
+        <Mascot size={96} frame={false} />
       </View>
       <View style={{ flex: 1, marginBottom: 18 }}>
         <View
@@ -113,7 +105,7 @@ export function BalaoDoLino({ texto }: { texto: string }) {
             paddingVertical: 12,
           }}
         >
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 18, lineHeight: 25, color: COR.primary900 }}>{texto}</Text>
+          <Text style={{ fontFamily: FONT.extra, fontSize: 18, lineHeight: 25, color: COLOR.primary900 }}>{text}</Text>
         </View>
       </View>
     </View>
@@ -121,20 +113,20 @@ export function BalaoDoLino({ texto }: { texto: string }) {
 }
 
 /** O sininho do topo: com o ponto amarelo, os avisos estão desligados. Tocar abre a tela dos avisos. */
-export function Sininho({ desligado, onPress }: { desligado: boolean; onPress: () => void }) {
+export function BellButton({ off, onPress }: { off: boolean; onPress: () => void }) {
   return (
-    <AreaTocavel
-      rotulo={desligado ? "avisos desligados. tocar para ver" : "avisos ligados. tocar para ver"}
+    <TappableArea
+      label={off ? "avisos desligados. tocar para ver" : "avisos ligados. tocar para ver"}
       onPress={onPress}
       style={(pressed) => ({
         padding: 9,
         marginRight: -9,
         borderRadius: 999,
-        backgroundColor: pressed ? COR.surfaceMuted : "transparent",
+        backgroundColor: pressed ? COLOR.surfaceMuted : "transparent",
       })}
     >
-      <Bell size={22} color={COR.ink} strokeWidth={2} />
-      {desligado ? (
+      <Bell size={22} color={COLOR.ink} strokeWidth={2} />
+      {off ? (
         <View
           style={{
             position: "absolute",
@@ -143,42 +135,42 @@ export function Sininho({ desligado, onPress }: { desligado: boolean; onPress: (
             width: 10,
             height: 10,
             borderRadius: 999,
-            backgroundColor: COR.amarelo,
+            backgroundColor: COLOR.yellow,
             borderWidth: 2,
-            borderColor: COR.surface,
+            borderColor: COLOR.surface,
           }}
         />
       ) : null}
-    </AreaTocavel>
+    </TappableArea>
   );
 }
 
-const ContextoDoTopo = createContext<ReactNode>(null);
+const TopContext = createContext<ReactNode>(null);
 
 /** O que fica à direita do topo em todas as telas (o sininho dos avisos): posto uma vez, na raiz do app. */
-export const DireitaDoTopo = ContextoDoTopo.Provider;
+export const HeaderRight = TopContext.Provider;
 
 /** Topo das telas: seta à esquerda quando dá para voltar; depois o logo e "fila saúde"; à direita, o sininho. */
-export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?: (() => void) | undefined }) {
-  const direita = useContext(ContextoDoTopo);
-  const aoPressionar = aoVoltar ?? (voltar && router.canGoBack() ? () => router.back() : undefined);
+export function Top({ back = false, onBack }: { back?: boolean; onBack?: (() => void) | undefined }) {
+  const right = useContext(TopContext);
+  const onPress = onBack ?? (back && router.canGoBack() ? () => router.back() : undefined);
   return (
-    <View style={e.topo}>
-      {aoPressionar ? (
+    <View style={e.top}>
+      {onPress ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="voltar"
-          onPress={aoPressionar}
+          onPress={onPress}
           hitSlop={12}
           style={({ pressed }) => [{ padding: 4, marginLeft: -4, borderRadius: 999 }, pressed && { opacity: 0.5 }]}
         >
-          <ChevronLeft size={32} color={COR.ink} strokeWidth={2.5} />
+          <ChevronLeft size={32} color={COLOR.ink} strokeWidth={2.5} />
         </Pressable>
       ) : null}
       <Logo />
-      <Text style={e.marca}>fila saúde</Text>
+      <Text style={e.brand}>fila saúde</Text>
       <View style={{ flex: 1 }} />
-      {direita}
+      {right}
     </View>
   );
 }
@@ -187,24 +179,16 @@ export function Topo({ voltar = false, aoVoltar }: { voltar?: boolean; aoVoltar?
  * Mensagem do Dr., como no protótipo (lesson-say): personagem à esquerda, balão na altura do peito,
  * pontinha apontando para ele. Tudo sobre branco por causa do jaleco.
  */
-export function FalaDoDr({
-  cumprimento,
-  nome,
-  texto,
-}: {
-  cumprimento: string;
-  nome?: string | undefined;
-  texto: string;
-}) {
-  const titulo = nome ? `${cumprimento}, ${nome}!` : `${cumprimento}!`;
+export function DoctorSpeech({ greeting, name, text }: { greeting: string; name?: string | undefined; text: string }) {
+  const title = name ? `${greeting}, ${name}!` : `${greeting}!`;
   return (
     <View
       accessibilityRole="summary"
-      accessibilityLabel={`dr.: ${titulo} ${texto}`}
+      accessibilityLabel={`dr.: ${title} ${text}`}
       style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 4 }}
     >
       <View style={{ width: 96, alignItems: "center" }}>
-        <Mascote tamanho={92} moldura={false} />
+        <Mascot size={92} frame={false} />
       </View>
       <View style={{ flex: 1, flexDirection: "row", alignItems: "center" }}>
         <View
@@ -213,10 +197,10 @@ export function FalaDoDr({
             width: 14,
             height: 14,
             marginRight: -8,
-            backgroundColor: COR.surface,
+            backgroundColor: COLOR.surface,
             borderLeftWidth: 2,
             borderBottomWidth: 2,
-            borderColor: COR.linha,
+            borderColor: COLOR.line,
             transform: [{ rotate: "45deg" }],
             zIndex: 1,
           }}
@@ -231,138 +215,138 @@ export function FalaDoDr({
             borderTopLeftRadius: 6,
             borderWidth: 2,
             borderBottomWidth: 4,
-            borderColor: COR.linha,
-            backgroundColor: COR.surface,
+            borderColor: COLOR.line,
+            backgroundColor: COLOR.surface,
           }}
         >
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>{titulo}</Text>
-          <Text style={{ fontFamily: FONTE.semi, fontSize: 16, lineHeight: 24, color: COR.inkMuted }}>{texto}</Text>
+          <Text style={{ fontFamily: FONT.extra, fontSize: 20, lineHeight: 26, color: COLOR.ink }}>{title}</Text>
+          <Text style={{ fontFamily: FONT.semi, fontSize: 16, lineHeight: 24, color: COLOR.inkMuted }}>{text}</Text>
         </View>
       </View>
     </View>
   );
 }
 
-export function Tela({
+export function Screen({
   children,
-  topo = true,
-  voltar = true,
-  rodape,
-  acoes,
-  progresso,
-  fundo = COR.surface,
-  aoVoltar,
-  aoFechar,
+  top = true,
+  back = true,
+  footer,
+  actions,
+  progress,
+  background = COLOR.surface,
+  onBack,
+  onClose,
 }: {
   children: ReactNode;
-  topo?: boolean;
-  voltar?: boolean;
+  top?: boolean;
+  back?: boolean;
   /** Fluxo de vários passos: "voltar" vai ao passo anterior em vez de sair (e perder o que foi digitado). */
-  aoVoltar?: () => void;
+  onBack?: () => void;
   /** O X da barra de progresso, quando ele sai do fluxo em vez de voltar um passo. */
-  aoFechar?: () => void;
-  rodape?: ReactNode;
+  onClose?: () => void;
+  footer?: ReactNode;
   /** Botões da tela, sempre fixos embaixo e alinhados (principal em cima, secundário embaixo). */
-  acoes?: ReactNode;
+  actions?: ReactNode;
   /** Fluxos: barra de progresso no lugar do topo com a marca. */
-  progresso?: { atual: number; total: number };
-  fundo?: string;
+  progress?: { current: number; total: number };
+  background?: string;
 }) {
-  // Botão "voltar" do Android: com `aoVoltar`, vai ao passo anterior em vez de sair da tela.
-  const voltarRef = useRef(aoVoltar);
-  voltarRef.current = aoVoltar;
-  const temAoVoltar = Boolean(aoVoltar);
+  // Botão "voltar" do Android: com `onBack`, vai ao passo anterior em vez de sair da tela.
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+  const hasOnBack = Boolean(onBack);
   useEffect(() => {
-    if (!temAoVoltar) return;
+    if (!hasOnBack) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (!voltarRef.current) return false;
-      voltarRef.current();
+      if (!onBackRef.current) return false;
+      onBackRef.current();
       return true;
     });
     return () => sub.remove();
-  }, [temAoVoltar]);
+  }, [hasOnBack]);
   // Android edge-to-edge não redimensiona a janela com o teclado: sem o "padding" ele cobre o rodapé.
   return (
-    <SafeAreaView style={[e.tela, { backgroundColor: fundo }]} edges={["top", "bottom"]}>
-      {progresso ? (
-        <BarraDeProgresso
-          atual={progresso.atual}
-          total={progresso.total}
-          aoFechar={aoFechar ?? aoVoltar ?? (router.canGoBack() ? () => router.back() : undefined)}
+    <SafeAreaView style={[e.screen, { backgroundColor: background }]} edges={["top", "bottom"]}>
+      {progress ? (
+        <ProgressBar
+          current={progress.current}
+          total={progress.total}
+          onClose={onClose ?? onBack ?? (router.canGoBack() ? () => router.back() : undefined)}
         />
-      ) : topo ? (
-        <Topo voltar={voltar} aoVoltar={aoVoltar} />
+      ) : top ? (
+        <Top back={back} onBack={onBack} />
       ) : null}
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={e.scr} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
           {children}
         </ScrollView>
-        {acoes ? <View style={e.rodape}>{acoes}</View> : null}
-        {rodape}
+        {actions ? <View style={e.footer}>{actions}</View> : null}
+        {footer}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 /** Enquanto busca: logo e roda girando, para não parecer tela travada. */
-export function Carregando({ texto, cheia = false }: { texto?: string; cheia?: boolean }) {
+export function Loading({ text, full = false }: { text?: string; full?: boolean }) {
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel={texto ?? "carregando"}
-      style={[{ alignItems: "center", justifyContent: "center", gap: 16, paddingVertical: 32 }, cheia && e.cheia]}
+      accessibilityLabel={text ?? "carregando"}
+      style={[{ alignItems: "center", justifyContent: "center", gap: 16, paddingVertical: 32 }, full && e.full]}
     >
-      {cheia ? <Logo tamanho={64} /> : null}
-      <ActivityIndicator size="large" color={COR.action} />
-      {texto ? <Text style={[e.pm, { textAlign: "center" }]}>{texto}</Text> : null}
+      {full ? <Logo size={64} /> : null}
+      <ActivityIndicator size="large" color={COLOR.action} />
+      {text ? <Text style={[e.pm, { textAlign: "center" }]}>{text}</Text> : null}
     </View>
   );
 }
 
 /** Gaveta nativa que sobe de baixo (confirmações, escolhas): o gesto que o paciente já conhece do celular. */
-export function Gaveta({
-  aberta,
-  fechar,
-  travada = false,
+export function Sheet({
+  open,
+  close,
+  locked = false,
   children,
 }: {
-  aberta: boolean;
-  fechar: () => void;
+  open: boolean;
+  close: () => void;
   /** Enquanto algo está sendo enviado, o gesto de puxar para baixo não fecha. */
-  travada?: boolean;
+  locked?: boolean;
   children: ReactNode;
 }) {
   return (
     <BottomSheet
-      index={aberta ? 0 : -1}
-      enablePanDownToClose={!travada}
-      onClose={fechar}
-      backgroundStyle={{ backgroundColor: COR.surface }}
+      index={open ? 0 : -1}
+      enablePanDownToClose={!locked}
+      onClose={close}
+      backgroundStyle={{ backgroundColor: COLOR.surface }}
     >
-      <BottomSheetView style={e.gaveta}>{children}</BottomSheetView>
+      <BottomSheetView style={e.sheet}>{children}</BottomSheetView>
     </BottomSheet>
   );
 }
 
-export const Espaco = () => <View style={{ flex: 1, minHeight: 8 }} />;
+export const Space = () => <View style={{ flex: 1, minHeight: 8 }} />;
 
-export function Titulo({ children, style }: { children: ReactNode; style?: TextStyle }) {
+export function Title({ children, style }: { children: ReactNode; style?: TextStyle }) {
   return (
     <Text accessibilityRole="header" style={[e.h1, style]}>
       {children}
     </Text>
   );
 }
-export const Texto = ({ children, style }: { children: ReactNode; style?: TextStyle }) => (
+export const BodyText = ({ children, style }: { children: ReactNode; style?: TextStyle }) => (
   <Text style={[e.p, style]}>{children}</Text>
 );
-export const TextoSuave = ({ children, style }: { children: ReactNode; style?: TextStyle }) => (
+export const SoftText = ({ children, style }: { children: ReactNode; style?: TextStyle }) => (
   <Text style={[e.pm, style]}>{children}</Text>
 );
-export const Pequeno = ({ children, style }: { children: ReactNode; style?: TextStyle }) => (
+export const Small = ({ children, style }: { children: ReactNode; style?: TextStyle }) => (
   <Text style={[e.small, style]}>{children}</Text>
 );
-export const Progresso = ({ children }: { children: ReactNode }) => <Text style={e.prog}>{children}</Text>;
+export const Progress = ({ children }: { children: ReactNode }) => <Text style={e.prog}>{children}</Text>;
 
 /**
  * O botão do design system (Duolingo): um componente para todas as ações do app. Cores e medidas
@@ -370,71 +354,71 @@ export const Progresso = ({ children }: { children: ReactNode }) => <Text style=
  * "afunda" ao tocar. Variações: principal (uma por área), secundario, sucesso, perigo (só
  * emergência), perigoContorno (recusar, sair), texto e textoPerigo (baixo peso), branco.
  */
-export function Botao({
-  texto,
+export function Button({
+  text,
   onPress,
-  variante = "principal",
-  tamanho = "padrao",
-  icone: Icone,
-  carregando = false,
-  desativado = false,
+  variant = "primary",
+  size = "default",
+  icon: Icon,
+  loading = false,
+  disabled = false,
 }: {
-  texto: string;
+  text: string;
   onPress: () => void;
-  variante?: Variante;
-  tamanho?: TamanhoApp;
-  icone?: LucideIcon | undefined;
-  carregando?: boolean;
-  desativado?: boolean;
+  variant?: Variant;
+  size?: AppSize;
+  icon?: LucideIcon | undefined;
+  loading?: boolean;
+  disabled?: boolean;
 }) {
-  const c = estiloDoBotao("app", variante, tamanho);
-  const bloqueado = desativado || carregando;
-  const plano = c.relevo === 0;
+  const c = buttonStyle("app", variant, size);
+  const blocked = disabled || loading;
+  const plan = c.relief === 0;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={texto}
-      accessibilityState={{ disabled: bloqueado, busy: carregando }}
-      disabled={bloqueado}
+      accessibilityLabel={text}
+      accessibilityState={{ disabled: blocked, busy: loading }}
+      disabled={blocked}
       onPress={onPress}
       style={({ pressed }) => [
         {
-          minHeight: c.altura,
-          borderRadius: c.raio,
-          borderWidth: plano ? 0 : 2,
+          minHeight: c.height,
+          borderRadius: c.radius,
+          borderWidth: plan ? 0 : 2,
           paddingHorizontal: c.paddingX,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: c.fundo,
-          borderColor: c.borda,
-          borderBottomColor: c.sombra,
-          borderBottomWidth: plano ? 0 : desativado ? 2 : pressed ? c.relevoTocado : c.relevo,
-          marginTop: pressed && !plano && !desativado ? c.desce : 0,
-          opacity: desativado ? OPACIDADE_DESATIVADO : plano && pressed ? 0.6 : 1,
+          backgroundColor: c.background,
+          borderColor: c.border,
+          borderBottomColor: c.shadow,
+          borderBottomWidth: plan ? 0 : disabled ? 2 : pressed ? c.pressedRelief : c.relief,
+          marginTop: pressed && !plan && !disabled ? c.pressDepth : 0,
+          opacity: disabled ? DISABLED_OPACITY : plan && pressed ? 0.6 : 1,
         },
       ]}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10, maxWidth: "100%" }}>
-        {carregando ? (
-          <ActivityIndicator color={c.texto} />
-        ) : Icone ? (
-          <Icone size={c.fonteTamanho + 4} color={c.texto} strokeWidth={2.5} />
+        {loading ? (
+          <ActivityIndicator color={c.text} />
+        ) : Icon ? (
+          <Icon size={c.fontSize + 4} color={c.text} strokeWidth={2.5} />
         ) : null}
         <Text
-          numberOfLines={plano ? 2 : 1}
+          numberOfLines={plan ? 2 : 1}
           ellipsizeMode="tail"
           style={{
             flexShrink: 1,
             textAlign: "center",
-            fontFamily: c.fontePeso === 800 ? FONTE.extra : FONTE.bold,
-            fontSize: c.fonteTamanho,
-            lineHeight: c.fonteTamanho + 6,
+            fontFamily: c.fontWeight === 800 ? FONT.extra : FONT.bold,
+            fontSize: c.fontSize,
+            lineHeight: c.fontSize + 6,
             letterSpacing: 0.2,
-            color: c.texto,
-            textDecorationLine: plano ? "underline" : "none",
+            color: c.text,
+            textDecorationLine: plan ? "underline" : "none",
           }}
         >
-          {carregando ? "aguarde…" : texto}
+          {loading ? "aguarde…" : text}
         </Text>
       </View>
     </Pressable>
@@ -442,52 +426,52 @@ export function Botao({
 }
 
 /** Botão de ligar (192, 188): um `Botao` que abre o discador. */
-export const BotaoLigar = ({
-  texto,
-  numero,
-  variante = "principal",
+export const CallButton = ({
+  text,
+  number,
+  variant = "primary",
 }: {
-  texto: string;
-  numero: string;
-  variante?: Variante;
-}) => <Botao texto={texto} variante={variante} onPress={() => void Linking.openURL(`tel:${numero}`)} />;
+  text: string;
+  number: string;
+  variant?: Variant;
+}) => <Button text={text} variant={variant} onPress={() => void Linking.openURL(`tel:${number}`)} />;
 
 /**
  * Área tocável do kit, para o que não tem cara de botão (cartão que abre a fila, linha de menu,
  * cartão de município). A aparência vem de quem usa: `style` e `children` podem depender de `pressed`.
  */
-export function AreaTocavel({
-  rotulo,
-  dica,
+export function TappableArea({
+  label,
+  hint,
   onPress,
-  papel = "button",
-  ocupado = false,
-  desativado = false,
-  selecionado,
+  role = "button",
+  busy = false,
+  disabled = false,
+  selected,
   style,
   children,
 }: {
-  rotulo: string;
-  dica?: string | undefined;
+  label: string;
+  hint?: string | undefined;
   onPress: () => void;
-  papel?: "button" | "link";
-  ocupado?: boolean;
-  desativado?: boolean;
-  selecionado?: boolean | undefined;
+  role?: "button" | "link";
+  busy?: boolean;
+  disabled?: boolean;
+  selected?: boolean | undefined;
   style?: ViewStyle | ((pressed: boolean) => ViewStyle) | undefined;
   children: ReactNode | ((pressed: boolean) => ReactNode);
 }) {
   return (
     <Pressable
-      accessibilityRole={papel}
-      accessibilityLabel={rotulo}
-      accessibilityHint={dica}
+      accessibilityRole={role}
+      accessibilityLabel={label}
+      accessibilityHint={hint}
       accessibilityState={{
-        busy: ocupado,
-        disabled: desativado,
-        ...(selecionado === undefined ? {} : { selected: selecionado }),
+        busy: busy,
+        disabled: disabled,
+        ...(selected === undefined ? {} : { selected: selected }),
       }}
-      disabled={desativado || ocupado}
+      disabled={disabled || busy}
       onPress={onPress}
       style={({ pressed }) => (typeof style === "function" ? style(pressed) : style)}
     >
@@ -497,42 +481,42 @@ export function AreaTocavel({
 }
 
 /** Abas lado a lado, como o seletor do Duolingo: a escolhida fica cheia, com relevo. */
-export function Segmentado<T extends string>({
-  opcoes,
-  atual,
-  mudar,
+export function Segmented<T extends string>({
+  options,
+  current,
+  change,
 }: {
-  opcoes: { id: T; rotulo: string }[];
-  atual: T;
-  mudar: (id: T) => void;
+  options: { id: T; label: string }[];
+  current: T;
+  change: (id: T) => void;
 }) {
   return (
     <View
       accessibilityRole="tablist"
-      style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 16, backgroundColor: COR.surfaceMuted }}
+      style={{ flexDirection: "row", gap: 6, padding: 4, borderRadius: 16, backgroundColor: COLOR.surfaceMuted }}
     >
-      {opcoes.map((o) => {
-        const ativa = atual === o.id;
+      {options.map((o) => {
+        const active = current === o.id;
         return (
           <Pressable
             key={o.id}
             accessibilityRole="tab"
-            accessibilityState={{ selected: ativa }}
-            onPress={() => mudar(o.id)}
+            accessibilityState={{ selected: active }}
+            onPress={() => change(o.id)}
             style={{
               flex: 1,
               minHeight: 48,
               alignItems: "center",
               justifyContent: "center",
               borderRadius: 12,
-              backgroundColor: ativa ? COR.surface : "transparent",
-              borderWidth: ativa ? 2 : 0,
-              borderBottomWidth: ativa ? 4 : 0,
-              borderColor: COR.linha,
+              backgroundColor: active ? COLOR.surface : "transparent",
+              borderWidth: active ? 2 : 0,
+              borderBottomWidth: active ? 4 : 0,
+              borderColor: COLOR.line,
             }}
           >
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 17, color: ativa ? COR.action : COR.inkMuted }}>
-              {o.rotulo}
+            <Text style={{ fontFamily: FONT.extra, fontSize: 17, color: active ? COLOR.action : COLOR.inkMuted }}>
+              {o.label}
             </Text>
           </Pressable>
         );
@@ -541,47 +525,47 @@ export function Segmentado<T extends string>({
   );
 }
 
-export function Campo({
-  rotulo,
-  erro,
-  direita,
-  dica,
+export function Field({
+  label,
+  error,
+  right,
+  hint,
   ...props
-}: { rotulo: string; erro?: string | undefined; direita?: ReactNode; dica?: string | undefined } & TextInputProps) {
-  const [foco, setFoco] = useState(false);
+}: { label: string; error?: string | undefined; right?: ReactNode; hint?: string | undefined } & TextInputProps) {
+  const [focus, setFocus] = useState(false);
   return (
     <View style={{ gap: 8 }}>
-      <Text style={e.rotulo}>{rotulo}</Text>
+      <Text style={e.label}>{label}</Text>
       <View style={{ justifyContent: "center" }}>
         <TextInput
-          accessibilityLabel={rotulo}
-          accessibilityHint={erro}
+          accessibilityLabel={label}
+          accessibilityHint={error}
           placeholderTextColor="#9aa3a5"
           style={[
-            e.campo,
-            direita ? { paddingRight: 56 } : null,
-            foco && { borderColor: COR.action, backgroundColor: COR.surface },
-            erro ? { borderColor: COR.dangerInk, backgroundColor: COR.dangerBg } : null,
+            e.field,
+            right ? { paddingRight: 56 } : null,
+            focus && { borderColor: COLOR.action, backgroundColor: COLOR.surface },
+            error ? { borderColor: COLOR.dangerInk, backgroundColor: COLOR.dangerBg } : null,
           ]}
           {...props}
           onFocus={(ev) => {
-            setFoco(true);
+            setFocus(true);
             props.onFocus?.(ev);
           }}
           onBlur={(ev) => {
-            setFoco(false);
+            setFocus(false);
             props.onBlur?.(ev);
           }}
         />
-        {direita ? <View style={{ position: "absolute", right: 6 }}>{direita}</View> : null}
+        {right ? <View style={{ position: "absolute", right: 6 }}>{right}</View> : null}
       </View>
-      {dica && !erro ? (
-        <Text style={{ fontFamily: FONTE.semi, fontSize: 15, lineHeight: 21, color: COR.inkMuted }}>{dica}</Text>
+      {hint && !error ? (
+        <Text style={{ fontFamily: FONT.semi, fontSize: 15, lineHeight: 21, color: COLOR.inkMuted }}>{hint}</Text>
       ) : null}
-      {erro ? (
+      {error ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <CircleAlert size={18} color={COR.dangerInk} strokeWidth={2.4} />
-          <Text style={{ flex: 1, fontFamily: FONTE.bold, fontSize: 16, color: COR.dangerInk }}>{erro}</Text>
+          <CircleAlert size={18} color={COLOR.dangerInk} strokeWidth={2.4} />
+          <Text style={{ flex: 1, fontFamily: FONT.bold, fontSize: 16, color: COLOR.dangerInk }}>{error}</Text>
         </View>
       ) : null}
     </View>
@@ -589,20 +573,24 @@ export function Campo({
 }
 
 /** Senha com o olho dentro do campo: digitar no celular sem ver o que digitou trava muita gente. */
-export function CampoSenha({ rotulo, erro, ...props }: { rotulo: string; erro?: string | undefined } & TextInputProps) {
-  const [ver, setVer] = useState(false);
-  const Olho = ver ? EyeOff : Eye;
+export function PasswordField({
+  label,
+  error,
+  ...props
+}: { label: string; error?: string | undefined } & TextInputProps) {
+  const [see, setSee] = useState(false);
+  const EyeIcon = see ? EyeOff : Eye;
   return (
-    <Campo
-      rotulo={rotulo}
-      erro={erro}
-      secureTextEntry={!ver}
+    <Field
+      label={label}
+      error={error}
+      secureTextEntry={!see}
       autoCapitalize="none"
       autoCorrect={false}
-      direita={
-        <AreaTocavel
-          rotulo={ver ? "esconder a senha" : "mostrar a senha"}
-          onPress={() => setVer(!ver)}
+      right={
+        <TappableArea
+          label={see ? "esconder a senha" : "mostrar a senha"}
+          onPress={() => setSee(!see)}
           style={(pressed) => ({
             width: 44,
             height: 44,
@@ -612,8 +600,8 @@ export function CampoSenha({ rotulo, erro, ...props }: { rotulo: string; erro?: 
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Olho size={24} color={COR.action} strokeWidth={2.4} />
-        </AreaTocavel>
+          <EyeIcon size={24} color={COLOR.action} strokeWidth={2.4} />
+        </TappableArea>
       }
       {...props}
     />
@@ -621,80 +609,80 @@ export function CampoSenha({ rotulo, erro, ...props }: { rotulo: string; erro?: 
 }
 
 /** Opção do questionário: quadrado = várias; redondo = uma só. */
-export function Opcao({
-  texto,
-  marcada,
+export function Option({
+  text,
+  checked,
   onPress,
-  unica = false,
+  single = false,
 }: {
-  texto: string;
-  marcada: boolean;
+  text: string;
+  checked: boolean;
   onPress: () => void;
-  unica?: boolean;
+  single?: boolean;
 }) {
   return (
     <Pressable
-      accessibilityRole={unica ? "radio" : "checkbox"}
-      accessibilityState={{ checked: marcada }}
+      accessibilityRole={single ? "radio" : "checkbox"}
+      accessibilityState={{ checked: checked }}
       onPress={onPress}
-      style={[e.opt, marcada && { borderColor: COR.action, backgroundColor: COR.primary50 }]}
+      style={[e.opt, checked && { borderColor: COLOR.action, backgroundColor: COLOR.primary50 }]}
     >
       <View
         style={[
           e.box,
-          unica && { borderRadius: 999 },
-          marcada && { backgroundColor: COR.action, borderColor: COR.action },
+          single && { borderRadius: 999 },
+          checked && { backgroundColor: COLOR.action, borderColor: COLOR.action },
         ]}
       >
-        {marcada ? <Check size={18} color="#ffffff" strokeWidth={3.5} /> : null}
+        {checked ? <Check size={18} color="#ffffff" strokeWidth={3.5} /> : null}
       </View>
-      <Text style={e.textoOpt}>{texto}</Text>
+      <Text style={e.textOpt}>{text}</Text>
     </Pressable>
   );
 }
 
-type TipoFaixa = "aviso" | "info" | "perigo" | "ok";
-const FAIXA: Record<TipoFaixa, { fundo: string; cor: string; Icone: LucideIcon }> = {
-  aviso: { fundo: COR.warningBg, cor: COR.warningInk, Icone: TriangleAlert },
-  info: { fundo: COR.primary50, cor: COR.actionPressed, Icone: Info },
-  perigo: { fundo: COR.dangerBg, cor: COR.dangerInk, Icone: CircleAlert },
-  ok: { fundo: COR.successBg, cor: COR.successInk, Icone: CircleCheck },
+type BannerKind = "notice" | "info" | "danger" | "ok";
+const BANNER: Record<BannerKind, { background: string; color: string; Icon: LucideIcon }> = {
+  notice: { background: COLOR.warningBg, color: COLOR.warningInk, Icon: TriangleAlert },
+  info: { background: COLOR.primary50, color: COLOR.actionPressed, Icon: Info },
+  danger: { background: COLOR.dangerBg, color: COLOR.dangerInk, Icon: CircleAlert },
+  ok: { background: COLOR.successBg, color: COLOR.successInk, Icon: CircleCheck },
 };
 
 /** Faixa de aviso do design: ícone, título forte, texto e, quando há o que fazer, um botão. */
-export function Faixa({
-  tipo,
-  titulo,
-  texto,
-  grande = false,
-  acao,
+export function Banner({
+  kind,
+  title,
+  text,
+  large = false,
+  action,
   style,
 }: {
-  tipo: TipoFaixa;
-  titulo: string;
-  texto?: string | undefined;
-  grande?: boolean;
-  acao?: { texto: string; onPress: () => void; carregando?: boolean } | undefined;
+  kind: BannerKind;
+  title: string;
+  text?: string | undefined;
+  large?: boolean;
+  action?: { text: string; onPress: () => void; loading?: boolean } | undefined;
   style?: ViewStyle;
 }) {
-  const { fundo, cor, Icone } = FAIXA[tipo];
+  const { background, color, Icon } = BANNER[kind];
   return (
     <View
-      accessibilityRole={tipo === "perigo" || tipo === "aviso" ? "alert" : "summary"}
-      style={[e.faixa, { backgroundColor: fundo }, grande && { paddingVertical: 20 }, style]}
+      accessibilityRole={kind === "danger" || kind === "notice" ? "alert" : "summary"}
+      style={[e.banner, { backgroundColor: background }, large && { paddingVertical: 20 }, style]}
     >
-      <Icone size={grande ? 30 : 26} color={cor} strokeWidth={2.5} style={{ marginTop: grande ? 0 : 1 }} />
+      <Icon size={large ? 30 : 26} color={color} strokeWidth={2.5} style={{ marginTop: large ? 0 : 1 }} />
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[e.ft, { color: cor }, grande && { fontSize: 24, lineHeight: 30 }]}>{titulo}</Text>
-        {texto ? <Text style={[e.fs, { color: cor }]}>{texto}</Text> : null}
-        {acao ? (
+        <Text style={[e.ft, { color: color }, large && { fontSize: 24, lineHeight: 30 }]}>{title}</Text>
+        {text ? <Text style={[e.fs, { color: color }]}>{text}</Text> : null}
+        {action ? (
           <View style={{ marginTop: 10, alignSelf: "flex-start" }}>
-            <Botao
-              texto={acao.texto}
-              onPress={acao.onPress}
-              variante="secundario"
-              tamanho="medio"
-              carregando={acao.carregando ?? false}
+            <Button
+              text={action.text}
+              onPress={action.onPress}
+              variant="secondary"
+              size="medium"
+              loading={action.loading ?? false}
             />
           </View>
         ) : null}
@@ -703,80 +691,88 @@ export function Faixa({
   );
 }
 
-export function Cartao({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[e.card, style]}>{children}</View>;
 }
 
 /** Cartão inteiro tocável, com a seta e o que acontece ao tocar: na lista, cada item não vira um botão azul. */
-export function CartaoTocavel({ children, acao, onPress }: { children: ReactNode; acao: string; onPress: () => void }) {
+export function TappableCard({
+  children,
+  action,
+  onPress,
+}: {
+  children: ReactNode;
+  action: string;
+  onPress: () => void;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint={acao}
+      accessibilityHint={action}
       onPress={onPress}
       style={({ pressed }) => [
         e.card,
         { flexDirection: "row", alignItems: "center", gap: 12 },
-        pressed && { backgroundColor: COR.primary50, borderColor: COR.action },
+        pressed && { backgroundColor: COLOR.primary50, borderColor: COLOR.action },
       ]}
     >
       <View style={{ flex: 1, gap: 4 }}>
         {children}
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, color: COR.action, marginTop: 4 }}>
-          {acao}
+        <Text style={{ fontFamily: FONT.extra, fontSize: 18, lineHeight: 24, color: COLOR.action, marginTop: 4 }}>
+          {action}
         </Text>
       </View>
-      <ChevronRight size={28} color={COR.action} strokeWidth={2.5} />
+      <ChevronRight size={28} color={COLOR.action} strokeWidth={2.5} />
     </Pressable>
   );
 }
 
 /** Cartão da posição: o maior texto da tela. */
-export function CartaoPosicao({ contexto, posicao, detalhe }: { contexto: string; posicao: number; detalhe?: string }) {
+export function PositionCard({ context, position, detail }: { context: string; position: number; detail?: string }) {
   return (
-    <View style={e.pos} accessibilityLabel={`você é o ${posicao}º da fila`}>
-      <Pequeno>{contexto}</Pequeno>
-      <Text style={e.num}>{posicao}º</Text>
-      <Text style={[e.p, { fontFamily: FONTE.bold }]}>da fila</Text>
-      {detalhe ? <Pequeno>{detalhe}</Pequeno> : null}
+    <View style={e.after} accessibilityLabel={`você é o ${position}º da fila`}>
+      <Small>{context}</Small>
+      <Text style={e.num}>{position}º</Text>
+      <Text style={[e.p, { fontFamily: FONT.bold }]}>da fila</Text>
+      {detail ? <Small>{detail}</Small> : null}
     </View>
   );
 }
 
 /** Abas de baixo: minha fila e unidades. */
-export type AbaDoApp = "hoje" | "atendimentos" | "unidades" | "conta";
+export type AppTab = "today" | "appointments" | "units" | "account";
 
-const ABAS: {
-  id: AbaDoApp;
-  rotulo: string;
-  destino: "/inicio" | "/atendimentos" | "/unidades" | "/conta";
-  Icone: LucideIcon;
+const TABS: {
+  id: AppTab;
+  label: string;
+  destination: "/inicio" | "/atendimentos" | "/unidades" | "/conta";
+  Icon: LucideIcon;
 }[] = [
-  { id: "hoje", rotulo: "hoje", destino: "/inicio", Icone: House },
-  { id: "atendimentos", rotulo: "atendimentos", destino: "/atendimentos", Icone: CalendarDays },
-  { id: "unidades", rotulo: "unidades", destino: "/unidades", Icone: MapPin },
-  { id: "conta", rotulo: "conta", destino: "/conta", Icone: CircleUserRound },
+  { id: "today", label: "hoje", destination: "/inicio", Icon: House },
+  { id: "appointments", label: "atendimentos", destination: "/atendimentos", Icon: CalendarDays },
+  { id: "units", label: "unidades", destination: "/unidades", Icon: MapPin },
+  { id: "account", label: "conta", destination: "/conta", Icon: CircleUserRound },
 ];
 
 /** Abas de baixo, como em apps de governo e no Duolingo: ícone grande, rótulo curto, a atual em destaque. */
-export function Abas({ atual, contagem = {} }: { atual: AbaDoApp; contagem?: Partial<Record<AbaDoApp, number>> }) {
+export function Tabs({ current, count = {} }: { current: AppTab; count?: Partial<Record<AppTab, number>> }) {
   return (
-    <View style={e.abas} accessibilityRole="tablist">
-      {ABAS.map(({ id, rotulo, destino, Icone }) => {
-        const ativa = atual === id;
-        const cor = ativa ? COR.action : COR.inkMuted;
+    <View style={e.tabs} accessibilityRole="tablist">
+      {TABS.map(({ id, label, destination, Icon }) => {
+        const active = current === id;
+        const color = active ? COLOR.action : COLOR.inkMuted;
         return (
           <Pressable
             key={id}
             accessibilityRole="tab"
-            accessibilityLabel={contagem[id] ? `${rotulo}, ${contagem[id]}` : rotulo}
-            accessibilityState={{ selected: ativa }}
-            onPress={() => !ativa && router.replace(destino)}
+            accessibilityLabel={count[id] ? `${label}, ${count[id]}` : label}
+            accessibilityState={{ selected: active }}
+            onPress={() => !active && router.replace(destination)}
             style={e.tab}
           >
-            <View style={[e.pilulaTab, ativa && { backgroundColor: COR.primary50 }]}>
-              <Icone size={26} color={cor} strokeWidth={ativa ? 2.75 : 2.25} />
-              {contagem[id] ? (
+            <View style={[e.pillTab, active && { backgroundColor: COLOR.primary50 }]}>
+              <Icon size={26} color={color} strokeWidth={active ? 2.75 : 2.25} />
+              {count[id] ? (
                 <View
                   style={{
                     position: "absolute",
@@ -785,17 +781,17 @@ export function Abas({ atual, contagem = {} }: { atual: AbaDoApp; contagem?: Par
                     minWidth: 20,
                     paddingHorizontal: 5,
                     borderRadius: 999,
-                    backgroundColor: COR.action,
+                    backgroundColor: COLOR.action,
                     alignItems: "center",
                   }}
                 >
-                  <Text style={{ fontFamily: FONTE.extra, fontSize: 12, lineHeight: 18, color: "#ffffff" }}>
-                    {contagem[id]}
+                  <Text style={{ fontFamily: FONT.extra, fontSize: 12, lineHeight: 18, color: "#ffffff" }}>
+                    {count[id]}
                   </Text>
                 </View>
               ) : null}
             </View>
-            <Text style={[e.textoTab, { color: cor }, ativa && { fontFamily: FONTE.extra }]}>{rotulo}</Text>
+            <Text style={[e.textTab, { color: color }, active && { fontFamily: FONT.extra }]}>{label}</Text>
           </Pressable>
         );
       })}
@@ -806,21 +802,21 @@ export function Abas({ atual, contagem = {} }: { atual: AbaDoApp; contagem?: Par
 // --- Peças do redesenho de 2026-11-14 (inspiração: apps de hábito como o Duolingo) ---
 
 /** Barra de progresso grossa no topo dos fluxos (onboarding, cadastro, questionário). */
-export function BarraDeProgresso({ atual, total, aoFechar }: { atual: number; total: number; aoFechar?: () => void }) {
-  const fracao = Math.max(0, Math.min(1, atual / total));
+export function ProgressBar({ current, total, onClose }: { current: number; total: number; onClose?: () => void }) {
+  const fraction = Math.max(0, Math.min(1, current / total));
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 8 }}>
-      {aoFechar ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="voltar" onPress={aoFechar} hitSlop={12}>
-          <X size={28} color={COR.inkMuted} strokeWidth={2.75} />
+      {onClose ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="voltar" onPress={onClose} hitSlop={12}>
+          <X size={28} color={COLOR.inkMuted} strokeWidth={2.75} />
         </Pressable>
       ) : null}
       <View
         accessibilityRole="progressbar"
-        accessibilityValue={{ min: 0, max: total, now: atual }}
-        style={{ flex: 1, height: 16, borderRadius: 999, backgroundColor: COR.linha, overflow: "hidden" }}
+        accessibilityValue={{ min: 0, max: total, now: current }}
+        style={{ flex: 1, height: 16, borderRadius: 999, backgroundColor: COLOR.line, overflow: "hidden" }}
       >
-        <View style={{ width: `${fracao * 100}%`, height: "100%", borderRadius: 999, backgroundColor: COR.action }}>
+        <View style={{ width: `${fraction * 100}%`, height: "100%", borderRadius: 999, backgroundColor: COLOR.action }}>
           <View
             style={{ height: 5, marginHorizontal: 8, marginTop: 3, borderRadius: 999, backgroundColor: "#ffffff55" }}
           />
@@ -830,20 +826,18 @@ export function BarraDeProgresso({ atual, total, aoFechar }: { atual: number; to
   );
 }
 
-const TOM: Record<
-  "azul" | "verde" | "amarelo" | "cinza" | "vermelho",
-  { fundo: string; texto: string; ponto: string }
-> = {
-  azul: { fundo: COR.primary50, texto: COR.actionPressed, ponto: COR.action },
-  verde: { fundo: COR.successBg, texto: COR.successInk, ponto: COR.verde },
-  amarelo: { fundo: COR.warningBg, texto: COR.warningInk, ponto: COR.amarelo },
-  cinza: { fundo: COR.surfaceMuted, texto: COR.inkMuted, ponto: "#9aa3a5" },
-  vermelho: { fundo: COR.dangerBg, texto: COR.dangerInk, ponto: COR.dangerInk },
-};
+const TONE: Record<"blue" | "green" | "yellow" | "gray" | "red", { background: string; text: string; point: string }> =
+  {
+    blue: { background: COLOR.primary50, text: COLOR.actionPressed, point: COLOR.action },
+    green: { background: COLOR.successBg, text: COLOR.successInk, point: COLOR.green },
+    yellow: { background: COLOR.warningBg, text: COLOR.warningInk, point: COLOR.yellow },
+    gray: { background: COLOR.surfaceMuted, text: COLOR.inkMuted, point: "#9aa3a5" },
+    red: { background: COLOR.dangerBg, text: COLOR.dangerInk, point: COLOR.dangerInk },
+  };
 
 /** Selo da situação: só o texto, na cor do tom (a cor nunca é o único sinal). */
-export function Selo({ texto, tom }: { texto: string; tom: keyof typeof TOM }) {
-  const t = TOM[tom];
+export function Badge({ text, tone }: { text: string; tone: keyof typeof TONE }) {
+  const t = TONE[tone];
   return (
     <View
       style={{
@@ -851,21 +845,31 @@ export function Selo({ texto, tom }: { texto: string; tom: keyof typeof TOM }) {
         paddingHorizontal: 10,
         paddingVertical: 3,
         borderRadius: 999,
-        backgroundColor: t.fundo,
+        backgroundColor: t.background,
       }}
     >
-      <Text style={{ fontFamily: FONTE.bold, fontSize: 14, lineHeight: 18, color: t.texto }}>{texto}</Text>
+      <Text style={{ fontFamily: FONT.bold, fontSize: 14, lineHeight: 18, color: t.text }}>{text}</Text>
     </View>
   );
 }
 
-export type Tom = keyof typeof TOM;
-export const corDoTom = (tom: Tom) => TOM[tom];
+export type Tone = keyof typeof TONE;
+export const toneColor = (tone: Tone) => TONE[tone];
 
 /** Bloco de data à esquerda dos cartões de lista (como o pedido no iFood): bate o olho e vê o dia. */
-export function BlocoData({ topo, dia, mes, tom = "azul" }: { topo: string; dia: string; mes: string; tom?: Tom }) {
-  const t = TOM[tom];
-  const hoje = topo === "hoje";
+export function DateBlock({
+  top,
+  day,
+  month,
+  tone = "blue",
+}: {
+  top: string;
+  day: string;
+  month: string;
+  tone?: Tone;
+}) {
+  const t = TONE[tone];
+  const today = top === "today";
   return (
     <View
       accessibilityElementsHidden
@@ -875,25 +879,25 @@ export function BlocoData({ topo, dia, mes, tom = "azul" }: { topo: string; dia:
         paddingVertical: 8,
         borderRadius: 16,
         alignItems: "center",
-        backgroundColor: hoje ? t.ponto : t.fundo,
+        backgroundColor: today ? t.point : t.background,
       }}
     >
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 14, lineHeight: 18, color: hoje ? "#ffffff" : t.texto }}>
-        {topo}
+      <Text style={{ fontFamily: FONT.extra, fontSize: 14, lineHeight: 18, color: today ? "#ffffff" : t.text }}>
+        {top}
       </Text>
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 30, lineHeight: 34, color: hoje ? "#ffffff" : COR.ink }}>
-        {dia}
+      <Text style={{ fontFamily: FONT.extra, fontSize: 30, lineHeight: 34, color: today ? "#ffffff" : COLOR.ink }}>
+        {day}
       </Text>
-      <Text style={{ fontFamily: FONTE.bold, fontSize: 14, lineHeight: 18, color: hoje ? "#ffffff" : t.texto }}>
-        {mes}
+      <Text style={{ fontFamily: FONT.bold, fontSize: 14, lineHeight: 18, color: today ? "#ffffff" : t.text }}>
+        {month}
       </Text>
     </View>
   );
 }
 
 /** Ícone num quadrado colorido, à esquerda das linhas de lista (unidade, serviço). */
-export function Avatar({ Icone, tom = "azul" }: { Icone: LucideIcon; tom?: Tom }) {
-  const t = TOM[tom];
+export function Avatar({ Icon, tone = "blue" }: { Icon: LucideIcon; tone?: Tone }) {
+  const t = TONE[tone];
   return (
     <View
       style={{
@@ -902,10 +906,10 @@ export function Avatar({ Icone, tom = "azul" }: { Icone: LucideIcon; tom?: Tom }
         borderRadius: 16,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: t.fundo,
+        backgroundColor: t.background,
       }}
     >
-      <Icone size={28} color={t.ponto} strokeWidth={2.4} />
+      <Icon size={28} color={t.point} strokeWidth={2.4} />
     </View>
   );
 }
@@ -914,38 +918,38 @@ export function Avatar({ Icone, tom = "azul" }: { Icone: LucideIcon; tom?: Tom }
  * Linha de lista tocável (como uma loja no iFood): algo à esquerda, o conteúdo e a seta. O que acontece
  * ao tocar vai para o leitor de tela; na tela, a seta basta.
  */
-export function LinhaTocavel({
-  esquerda,
+export function TappableRow({
+  left,
   children,
-  acao,
+  action,
   onPress,
 }: {
-  esquerda: ReactNode;
+  left: ReactNode;
   children: ReactNode;
-  acao: string;
+  action: string;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityHint={acao}
+      accessibilityHint={action}
       onPress={onPress}
       style={({ pressed }) => [
         e.card,
         { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14, paddingHorizontal: 14 },
-        pressed && { backgroundColor: COR.primary50, borderColor: COR.action },
+        pressed && { backgroundColor: COLOR.primary50, borderColor: COLOR.action },
       ]}
     >
-      {esquerda}
+      {left}
       <View style={{ flex: 1, gap: 4 }}>{children}</View>
-      <ChevronRight size={26} color={COR.inkMuted} strokeWidth={2.5} />
+      <ChevronRight size={26} color={COLOR.inkMuted} strokeWidth={2.5} />
     </Pressable>
   );
 }
 
 /** Pílula com ícone (vagas, inscrito, horário): a cor nunca é o único sinal, o texto vem junto. */
-export function Pilula({ texto, tom = "cinza", Icone }: { texto: string; tom?: Tom; Icone?: LucideIcon }) {
-  const t = TOM[tom];
+export function Pill({ text, tone = "gray", Icon }: { text: string; tone?: Tone; Icon?: LucideIcon }) {
+  const t = TONE[tone];
   return (
     <View
       style={{
@@ -956,101 +960,99 @@ export function Pilula({ texto, tom = "cinza", Icone }: { texto: string; tom?: T
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 999,
-        backgroundColor: t.fundo,
+        backgroundColor: t.background,
       }}
     >
-      {Icone ? <Icone size={15} color={t.texto} strokeWidth={2.5} /> : null}
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 14, lineHeight: 18, color: t.texto }}>{texto}</Text>
+      {Icon ? <Icon size={15} color={t.text} strokeWidth={2.5} /> : null}
+      <Text style={{ fontFamily: FONT.extra, fontSize: 14, lineHeight: 18, color: t.text }}>{text}</Text>
     </View>
   );
 }
 
-const LARGURA_DO_DIA = 64;
-const VAO_DOS_DIAS = 8;
+const DAY_WIDTH = 64;
+const DAY_GAP = 8;
 
 /**
  * A faixa de dias da unidade: só os dias com atendimento, todos do mesmo tamanho, que rolam para o lado.
  * Embaixo do título, o mês e o ano do primeiro dia visível; no fim, o botão do calendário (com mais de
  * um dia).
  */
-export function FaixaDeDias({
-  dias,
-  atual,
-  mudar,
-  aoAbrirCalendario,
+export function DayStrip({
+  days,
+  current,
+  change,
+  onOpenCalendar,
 }: {
-  dias: { chave: string; topo: string; dia: string; mesAno: string }[];
-  atual: string | null;
-  mudar: (chave: string) => void;
-  aoAbrirCalendario: () => void;
+  days: { key: string; top: string; day: string; monthYear: string }[];
+  current: string | null;
+  change: (key: string) => void;
+  onOpenCalendar: () => void;
 }) {
-  const [primeiro, setPrimeiro] = useState(0);
-  const mesAno = dias[Math.min(primeiro, dias.length - 1)]?.mesAno ?? "";
+  const [first, setFirst] = useState(0);
+  const monthYear = days[Math.min(first, days.length - 1)]?.monthYear ?? "";
   return (
     <View style={{ gap: 10 }}>
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 16, lineHeight: 20, color: COR.action, marginTop: -8 }}>
-        {mesAno}
+      <Text style={{ fontFamily: FONT.extra, fontSize: 16, lineHeight: 20, color: COLOR.action, marginTop: -8 }}>
+        {monthYear}
       </Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={{ marginHorizontal: -16, flexGrow: 0 }}
-        contentContainerStyle={{ gap: VAO_DOS_DIAS, paddingHorizontal: 16 }}
+        contentContainerStyle={{ gap: DAY_GAP, paddingHorizontal: 16 }}
         scrollEventThrottle={64}
-        onScroll={(ev) =>
-          setPrimeiro(Math.max(0, Math.round(ev.nativeEvent.contentOffset.x / (LARGURA_DO_DIA + VAO_DOS_DIAS))))
-        }
+        onScroll={(ev) => setFirst(Math.max(0, Math.round(ev.nativeEvent.contentOffset.x / (DAY_WIDTH + DAY_GAP))))}
       >
-        {dias.map((d) => {
-          const escolhido = d.chave === atual;
+        {days.map((d) => {
+          const chosen = d.key === current;
           return (
-            <AreaTocavel
-              key={d.chave}
-              rotulo={`${d.topo}, ${d.dia}`}
-              selecionado={escolhido}
-              onPress={() => mudar(d.chave)}
+            <TappableArea
+              key={d.key}
+              label={`${d.top}, ${d.day}`}
+              selected={chosen}
+              onPress={() => change(d.key)}
               style={(pressed) => ({
-                width: LARGURA_DO_DIA,
+                width: DAY_WIDTH,
                 paddingVertical: 8,
                 alignItems: "center",
                 borderRadius: 16,
                 borderWidth: 2,
-                borderBottomWidth: escolhido || pressed ? 2 : 4,
-                marginTop: !escolhido && pressed ? 2 : 0,
-                borderColor: escolhido ? COR.action : COR.linha,
-                borderBottomColor: escolhido ? COR.acaoSombra : COR.linha,
-                backgroundColor: escolhido ? COR.action : COR.surface,
+                borderBottomWidth: chosen || pressed ? 2 : 4,
+                marginTop: !chosen && pressed ? 2 : 0,
+                borderColor: chosen ? COLOR.action : COLOR.line,
+                borderBottomColor: chosen ? COLOR.actionShadow : COLOR.line,
+                backgroundColor: chosen ? COLOR.action : COLOR.surface,
               })}
             >
               <Text
                 style={{
-                  fontFamily: FONTE.extra,
+                  fontFamily: FONT.extra,
                   fontSize: 13,
                   lineHeight: 17,
-                  color: escolhido ? "#cfe2f6" : COR.inkMuted,
+                  color: chosen ? "#cfe2f6" : COLOR.inkMuted,
                 }}
               >
-                {d.topo}
+                {d.top}
               </Text>
               <Text
                 style={{
-                  fontFamily: FONTE.extra,
+                  fontFamily: FONT.extra,
                   fontSize: 24,
                   lineHeight: 30,
-                  color: escolhido ? "#ffffff" : COR.ink,
+                  color: chosen ? "#ffffff" : COLOR.ink,
                 }}
               >
-                {d.dia}
+                {d.day}
               </Text>
-            </AreaTocavel>
+            </TappableArea>
           );
         })}
-        {dias.length > 1 ? (
-          <AreaTocavel
-            rotulo="abrir o calendário"
-            onPress={aoAbrirCalendario}
+        {days.length > 1 ? (
+          <TappableArea
+            label="abrir o calendário"
+            onPress={onOpenCalendar}
             style={(pressed) => ({
-              width: LARGURA_DO_DIA,
+              width: DAY_WIDTH,
               paddingVertical: 8,
               alignItems: "center",
               justifyContent: "center",
@@ -1060,37 +1062,39 @@ export function FaixaDeDias({
               borderBottomWidth: pressed ? 2 : 4,
               marginTop: pressed ? 2 : 0,
               borderColor: "#cfe2f6",
-              backgroundColor: COR.surface,
+              backgroundColor: COLOR.surface,
             })}
           >
-            <CalendarDays size={22} color={COR.action} strokeWidth={2.4} />
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 11, lineHeight: 14, color: COR.action }}>calendário</Text>
-          </AreaTocavel>
+            <CalendarDays size={22} color={COLOR.action} strokeWidth={2.4} />
+            <Text style={{ fontFamily: FONT.extra, fontSize: 11, lineHeight: 14, color: COLOR.action }}>
+              calendário
+            </Text>
+          </TappableArea>
         ) : null}
       </ScrollView>
     </View>
   );
 }
 
-const SEMANA_CURTA = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const SHORT_WEEK = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 /** Seta do calendário: um quadrado com contorno, como o botão secundário. */
-function SetaDoMes({
-  rotulo,
-  Icone,
+function MonthArrow({
+  label,
+  Icon,
   onPress,
-  desativado,
+  disabled,
 }: {
-  rotulo: string;
-  Icone: LucideIcon;
+  label: string;
+  Icon: LucideIcon;
   onPress: () => void;
-  desativado: boolean;
+  disabled: boolean;
 }) {
   return (
-    <AreaTocavel
-      rotulo={rotulo}
+    <TappableArea
+      label={label}
       onPress={onPress}
-      desativado={desativado}
+      disabled={disabled}
       style={(pressed) => ({
         width: 44,
         height: 44,
@@ -1099,13 +1103,13 @@ function SetaDoMes({
         borderRadius: 14,
         borderWidth: 2,
         borderBottomWidth: pressed ? 2 : 4,
-        borderColor: COR.linha,
-        backgroundColor: COR.surface,
-        opacity: desativado ? OPACIDADE_DESATIVADO : 1,
+        borderColor: COLOR.line,
+        backgroundColor: COLOR.surface,
+        opacity: disabled ? DISABLED_OPACITY : 1,
       })}
     >
-      <Icone size={22} color={COR.action} strokeWidth={2.6} />
-    </AreaTocavel>
+      <Icon size={22} color={COLOR.action} strokeWidth={2.6} />
+    </TappableArea>
   );
 }
 
@@ -1113,187 +1117,189 @@ function SetaDoMes({
  * O mês numa gaveta: os dias com atendimento azuis e tocáveis, os outros apagados, hoje com contorno
  * tracejado; o botão confirma o dia escolhido.
  */
-export function CalendarioDoMes({
-  aberta,
-  fechar,
-  meses,
-  atual,
-  aoEscolher,
+export function MonthCalendar({
+  open,
+  close,
+  months,
+  current,
+  onChoose,
 }: {
-  aberta: boolean;
-  fechar: () => void;
-  /** Os meses com atendimento, em ordem: `titulo` ("novembro de 2026") e a grade de `gradeDoMes`. */
-  meses: {
-    titulo: string;
-    semanas: ({ chave: string; dia: number; tem: boolean; hoje: boolean } | null)[][];
+  open: boolean;
+  close: () => void;
+  /** Os meses com atendimento, em ordem: `title` ("novembro de 2026") e a grade de `monthGrid`. */
+  months: {
+    title: string;
+    weeks: ({ key: string; day: number; has: boolean; today: boolean } | null)[][];
   }[];
-  atual: string | null;
-  aoEscolher: (chave: string) => void;
+  current: string | null;
+  onChoose: (key: string) => void;
 }) {
-  const [escolha, setEscolha] = useState(atual);
-  const [indice, setIndice] = useState(0);
+  const [choice, setChoice] = useState(current);
+  const [index, setIndex] = useState(0);
   useEffect(() => {
-    if (!aberta) return;
-    setEscolha(atual);
-    const i = meses.findIndex((m) => m.semanas.flat().some((c) => c?.chave === atual));
-    setIndice(Math.max(0, i));
-  }, [aberta, atual, meses]);
-  const mes = meses[indice];
+    if (!open) return;
+    setChoice(current);
+    const i = months.findIndex((m) => m.weeks.flat().some((c) => c?.key === current));
+    setIndex(Math.max(0, i));
+  }, [open, current, months]);
+  const month = months[index];
   return (
-    <Gaveta aberta={aberta} fechar={fechar}>
-      {mes ? (
+    <Sheet open={open} close={close}>
+      {month ? (
         <>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>{mes.titulo}</Text>
+            <Text style={{ fontFamily: FONT.extra, fontSize: 20, lineHeight: 26, color: COLOR.ink }}>
+              {month.title}
+            </Text>
             <View style={{ flexDirection: "row", gap: 8 }}>
-              <SetaDoMes
-                rotulo="mês anterior"
-                Icone={ChevronLeft}
-                desativado={indice === 0}
-                onPress={() => setIndice(indice - 1)}
+              <MonthArrow
+                label="mês anterior"
+                Icon={ChevronLeft}
+                disabled={index === 0}
+                onPress={() => setIndex(index - 1)}
               />
-              <SetaDoMes
-                rotulo="próximo mês"
-                Icone={ChevronRight}
-                desativado={indice >= meses.length - 1}
-                onPress={() => setIndice(indice + 1)}
+              <MonthArrow
+                label="próximo mês"
+                Icon={ChevronRight}
+                disabled={index >= months.length - 1}
+                onPress={() => setIndex(index + 1)}
               />
             </View>
           </View>
           <View style={{ gap: 4 }}>
             <View style={{ flexDirection: "row" }}>
-              {SEMANA_CURTA.map((d) => (
+              {SHORT_WEEK.map((d) => (
                 <Text
                   key={d}
-                  style={{ flex: 1, textAlign: "center", fontFamily: FONTE.extra, fontSize: 13, color: "#8a9496" }}
+                  style={{ flex: 1, textAlign: "center", fontFamily: FONT.extra, fontSize: 13, color: "#8a9496" }}
                 >
                   {d.charAt(0)}
                 </Text>
               ))}
             </View>
-            {mes.semanas.map((semana, s) => (
+            {month.weeks.map((week, s) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: a semana é a posição na grade do mês.
               <View key={s} style={{ flexDirection: "row", gap: 4 }}>
-                {semana.map((c, i) => {
+                {week.map((c, i) => {
                   // biome-ignore lint/suspicious/noArrayIndexKey: dia vazio antes ou depois do mês.
                   if (!c) return <View key={`v${i}`} style={{ flex: 1, height: 44 }} />;
-                  const marcado = c.chave === escolha;
-                  const caixa: ViewStyle = {
+                  const checked = c.key === choice;
+                  const box: ViewStyle = {
                     flex: 1,
                     height: 44,
                     alignItems: "center",
                     justifyContent: "center",
                     borderRadius: 12,
-                    ...(c.hoje ? { borderWidth: 2, borderStyle: "dashed", borderColor: "#9cc4ea" } : {}),
+                    ...(c.today ? { borderWidth: 2, borderStyle: "dashed", borderColor: "#9cc4ea" } : {}),
                   };
-                  const numero = (cor: string) => (
-                    <Text style={{ fontFamily: FONTE.extra, fontSize: 16, color: cor }}>{c.dia}</Text>
+                  const number = (color: string) => (
+                    <Text style={{ fontFamily: FONT.extra, fontSize: 16, color: color }}>{c.day}</Text>
                   );
-                  if (!c.tem)
+                  if (!c.has)
                     return (
-                      <View key={c.chave} style={caixa}>
-                        {numero("#b9c2c4")}
+                      <View key={c.key} style={box}>
+                        {number("#b9c2c4")}
                       </View>
                     );
                   return (
-                    <AreaTocavel
-                      key={c.chave}
-                      rotulo={`dia ${c.dia}, tem atendimento`}
-                      selecionado={marcado}
-                      onPress={() => setEscolha(c.chave)}
+                    <TappableArea
+                      key={c.key}
+                      label={`dia ${c.day}, tem atendimento`}
+                      selected={checked}
+                      onPress={() => setChoice(c.key)}
                       style={{
-                        ...caixa,
+                        ...box,
                         borderWidth: 2,
                         borderStyle: "solid",
                         borderBottomWidth: 3,
-                        borderColor: marcado ? COR.acaoSombra : "#cfe2f6",
-                        backgroundColor: marcado ? COR.action : COR.primary50,
+                        borderColor: checked ? COLOR.actionShadow : "#cfe2f6",
+                        backgroundColor: checked ? COLOR.action : COLOR.primary50,
                       }}
                     >
-                      {numero(marcado ? "#ffffff" : COR.ink)}
-                    </AreaTocavel>
+                      {number(checked ? "#ffffff" : COLOR.ink)}
+                    </TappableArea>
                   );
                 })}
               </View>
             ))}
           </View>
-          <Botao
-            texto={escolha ? `ver ${diaPorExtenso(escolha)}` : "escolha um dia"}
-            desativado={!escolha}
+          <Button
+            text={choice ? `ver ${longDay(choice)}` : "escolha um dia"}
+            disabled={!choice}
             onPress={() => {
-              if (!escolha) return;
-              aoEscolher(escolha);
-              fechar();
+              if (!choice) return;
+              onChoose(choice);
+              close();
             }}
           />
         </>
       ) : null}
-    </Gaveta>
+    </Sheet>
   );
 }
 
-const ETAPAS = ["inscrição", "fila", "unidade", "sala"];
+const STAGES = ["inscrição", "fila", "unidade", "sala"];
 
 /**
  * A trilha do atendimento: inscrição → fila → unidade → sala. As feitas ganham ✓, a atual fica
  * em destaque; assim a pessoa vê se já está na fila de verdade.
  */
-export function Trilha({ etapa, pendente = false }: { etapa: number; pendente?: boolean }) {
+export function Track({ stage, pending = false }: { stage: number; pending?: boolean }) {
   // `pendente`: a etapa atual ainda não começou (ex.: inscrito com a fila fechada) e fica cinza.
-  const corAtual = pendente ? "#9aa3a5" : COR.action;
+  const currentColor = pending ? "#9aa3a5" : COLOR.action;
   return (
     <View
-      accessibilityLabel={`etapa ${Math.min(etapa + 1, ETAPAS.length)} de ${ETAPAS.length}: ${ETAPAS[Math.min(etapa, 3)]}`}
+      accessibilityLabel={`etapa ${Math.min(stage + 1, STAGES.length)} de ${STAGES.length}: ${STAGES[Math.min(stage, 3)]}`}
       style={{ flexDirection: "row", alignItems: "flex-start" }}
     >
-      {ETAPAS.map((nome, i) => {
-        const feita = i < etapa;
-        const atual = i === etapa;
+      {STAGES.map((name, i) => {
+        const done = i < stage;
+        const current = i === stage;
         return (
-          <View key={nome} style={{ flex: 1, alignItems: "center", gap: 6 }}>
+          <View key={name} style={{ flex: 1, alignItems: "center", gap: 6 }}>
             <View style={{ flexDirection: "row", alignItems: "center", alignSelf: "stretch", height: 34 }}>
               <View
                 style={{
                   flex: 1,
                   height: 4,
                   backgroundColor:
-                    i === 0 ? "transparent" : i < etapa || (i === etapa && !pendente) ? COR.action : COR.linha,
+                    i === 0 ? "transparent" : i < stage || (i === stage && !pending) ? COLOR.action : COLOR.line,
                 }}
               />
               <View
                 style={{
-                  width: atual ? 34 : 28,
-                  height: atual ? 34 : 28,
+                  width: current ? 34 : 28,
+                  height: current ? 34 : 28,
                   borderRadius: 999,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: feita ? COR.action : atual ? COR.surface : COR.linha,
-                  borderWidth: atual ? 4 : 0,
-                  borderColor: corAtual,
-                  borderStyle: atual && pendente ? "dashed" : "solid",
+                  backgroundColor: done ? COLOR.action : current ? COLOR.surface : COLOR.line,
+                  borderWidth: current ? 4 : 0,
+                  borderColor: currentColor,
+                  borderStyle: current && pending ? "dashed" : "solid",
                 }}
               >
-                {feita ? <Check size={16} color="#ffffff" strokeWidth={3.5} /> : null}
-                {atual && !pendente ? (
-                  <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: COR.action }} />
+                {done ? <Check size={16} color="#ffffff" strokeWidth={3.5} /> : null}
+                {current && !pending ? (
+                  <View style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: COLOR.action }} />
                 ) : null}
               </View>
               <View
                 style={{
                   flex: 1,
                   height: 4,
-                  backgroundColor: i === ETAPAS.length - 1 ? "transparent" : i < etapa ? COR.action : COR.linha,
+                  backgroundColor: i === STAGES.length - 1 ? "transparent" : i < stage ? COLOR.action : COLOR.line,
                 }}
               />
             </View>
             <Text
               style={{
-                fontFamily: atual ? FONTE.extra : FONTE.semi,
+                fontFamily: current ? FONT.extra : FONT.semi,
                 fontSize: 14,
-                color: atual ? corAtual : feita ? COR.ink : COR.inkMuted,
+                color: current ? currentColor : done ? COLOR.ink : COLOR.inkMuted,
               }}
             >
-              {nome}
+              {name}
             </Text>
           </View>
         );
@@ -1303,44 +1309,44 @@ export function Trilha({ etapa, pendente = false }: { etapa: number; pendente?: 
 }
 
 export const e = StyleSheet.create({
-  rodape: {
+  footer: {
     gap: 10,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 12,
     borderTopWidth: 2,
-    borderTopColor: COR.surfaceMuted,
-    backgroundColor: COR.surface,
+    borderTopColor: COLOR.surfaceMuted,
+    backgroundColor: COLOR.surface,
   },
-  tela: { flex: 1 },
-  topo: {
+  screen: { flex: 1 },
+  top: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COR.surfaceMuted,
+    borderBottomColor: COLOR.surfaceMuted,
     minHeight: 56,
   },
-  marca: { fontFamily: FONTE.extra, fontSize: 20, color: COR.ink, letterSpacing: -0.3 },
+  brand: { fontFamily: FONT.extra, fontSize: 20, color: COLOR.ink, letterSpacing: -0.3 },
   scr: { flexGrow: 1, gap: 16, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 20 },
-  h1: { fontFamily: FONTE.extra, fontSize: 28, lineHeight: 34, color: COR.ink },
-  p: { fontFamily: FONTE.regular, fontSize: 18, lineHeight: 28, color: COR.ink },
-  pm: { fontFamily: FONTE.regular, fontSize: 18, lineHeight: 28, color: COR.inkMuted },
-  small: { fontFamily: FONTE.semi, fontSize: 15, lineHeight: 22, color: COR.inkMuted },
-  prog: { fontFamily: FONTE.bold, fontSize: 15, color: COR.inkMuted },
-  rotulo: { fontFamily: FONTE.bold, fontSize: 16, color: COR.ink },
-  campo: {
+  h1: { fontFamily: FONT.extra, fontSize: 28, lineHeight: 34, color: COLOR.ink },
+  p: { fontFamily: FONT.regular, fontSize: 18, lineHeight: 28, color: COLOR.ink },
+  pm: { fontFamily: FONT.regular, fontSize: 18, lineHeight: 28, color: COLOR.inkMuted },
+  small: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 22, color: COLOR.inkMuted },
+  prog: { fontFamily: FONT.bold, fontSize: 15, color: COLOR.inkMuted },
+  label: { fontFamily: FONT.bold, fontSize: 16, color: COLOR.ink },
+  field: {
     minHeight: 58,
     borderRadius: 14,
     borderWidth: 2,
-    borderColor: COR.linha,
-    backgroundColor: COR.campoFundo,
+    borderColor: COLOR.line,
+    backgroundColor: COLOR.fieldBackground,
     paddingHorizontal: 16,
-    fontFamily: FONTE.semi,
+    fontFamily: FONT.semi,
     fontSize: 20,
-    color: COR.ink,
+    color: COLOR.ink,
   },
   opt: {
     flexDirection: "row",
@@ -1352,50 +1358,50 @@ export const e = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderBottomWidth: 4,
-    borderColor: COR.linha,
-    backgroundColor: COR.surface,
+    borderColor: COLOR.line,
+    backgroundColor: COLOR.surface,
   },
   box: {
     width: 24,
     height: 24,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: COR.inkMuted,
+    borderColor: COLOR.inkMuted,
     alignItems: "center",
     justifyContent: "center",
   },
-  textoOpt: { flex: 1, fontFamily: FONTE.bold, fontSize: 18, lineHeight: 24, color: COR.ink },
-  faixa: { flexDirection: "row", gap: 12, alignItems: "flex-start", padding: 16, borderRadius: 16 },
-  ft: { fontFamily: FONTE.extra, fontSize: 18, lineHeight: 26 },
-  fs: { fontFamily: FONTE.semi, fontSize: 16, lineHeight: 24 },
+  textOpt: { flex: 1, fontFamily: FONT.bold, fontSize: 18, lineHeight: 24, color: COLOR.ink },
+  banner: { flexDirection: "row", gap: 12, alignItems: "flex-start", padding: 16, borderRadius: 16 },
+  ft: { fontFamily: FONT.extra, fontSize: 18, lineHeight: 26 },
+  fs: { fontFamily: FONT.semi, fontSize: 16, lineHeight: 24 },
   card: {
     gap: 4,
     padding: 18,
     borderRadius: 20,
     borderWidth: 2,
     borderBottomWidth: 4,
-    borderColor: COR.linha,
-    backgroundColor: COR.surface,
+    borderColor: COLOR.line,
+    backgroundColor: COLOR.surface,
   },
-  pos: {
+  after: {
     gap: 2,
     paddingHorizontal: 16,
     paddingVertical: 20,
     borderRadius: 20,
-    backgroundColor: COR.primary50,
+    backgroundColor: COLOR.primary50,
   },
-  num: { fontFamily: FONTE.extra, fontSize: 64, lineHeight: 68, color: COR.primary500 },
+  num: { fontFamily: FONT.extra, fontSize: 64, lineHeight: 68, color: COLOR.primary500 },
   chip: {
     alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: COR.surfaceMuted,
+    backgroundColor: COLOR.surfaceMuted,
   },
-  abas: { flexDirection: "row", borderTopWidth: 1, borderTopColor: COR.border, backgroundColor: COR.surface },
+  tabs: { flexDirection: "row", borderTopWidth: 1, borderTopColor: COLOR.border, backgroundColor: COLOR.surface },
   tab: { flex: 1, minHeight: 72, alignItems: "center", justifyContent: "center", gap: 2, paddingVertical: 8 },
-  pilulaTab: { paddingHorizontal: 20, paddingVertical: 4, borderRadius: 999 },
-  textoTab: { fontFamily: FONTE.bold, fontSize: 13, lineHeight: 18 },
-  cheia: { flex: 1, backgroundColor: COR.surface },
-  gaveta: { gap: 16, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
+  pillTab: { paddingHorizontal: 20, paddingVertical: 4, borderRadius: 999 },
+  textTab: { fontFamily: FONT.bold, fontSize: 13, lineHeight: 18 },
+  full: { flex: 1, backgroundColor: COLOR.surface },
+  sheet: { gap: 16, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32 },
 });

@@ -1,15 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormularioDeLogin } from "@/components/formulario-login";
+import { LoginForm } from "@/components/login-form";
 import { Logo } from "@/components/logo";
 
 /** Uma chamada como a TV da sala de espera mostra: o momento que o sistema existe para organizar. */
-function ChamadaDeExemplo() {
-  const ultimas = [
-    { senha: "C-011", destino: "consultório 1" },
-    { senha: "V-004", destino: "sala de procedimentos" },
-    { senha: "C-010", destino: "triagem" },
+function ExampleCall() {
+  const last = [
+    { password: "C-011", destination: "consultório 1" },
+    { password: "V-004", destination: "sala de procedimentos" },
+    { password: "C-010", destination: "triagem" },
   ];
   return (
     <div aria-hidden className="w-full max-w-md select-none">
@@ -19,10 +19,10 @@ function ChamadaDeExemplo() {
         <p className="mt-1 text-2xl font-bold text-slate-600">consultório 3</p>
       </div>
       <ul className="mt-5 flex flex-col gap-2 px-2">
-        {ultimas.map((c) => (
-          <li key={c.senha} className="flex items-baseline justify-between text-white/80">
-            <span className="font-mono text-xl font-bold text-white">{c.senha}</span>
-            <span className="text-base">{c.destino}</span>
+        {last.map((c) => (
+          <li key={c.password} className="flex items-baseline justify-between text-white/80">
+            <span className="font-mono text-xl font-bold text-white">{c.password}</span>
+            <span className="text-base">{c.destination}</span>
           </li>
         ))}
       </ul>
@@ -44,7 +44,7 @@ export default function Login() {
             <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Entrar no painel</h1>
             <p className="text-slate-500">Para a equipe das unidades e da secretaria de saúde.</p>
           </div>
-          <FormularioDeLogin navegar={(href) => router.push(href)} />
+          <LoginForm navigate={(href) => router.push(href)} />
           <p className="text-sm text-slate-500">
             Esqueceu a senha ou o login? Peça a quem cadastra a equipe da sua unidade.
           </p>
@@ -61,7 +61,7 @@ export default function Login() {
           </p>
         </div>
         <div className="relative w-full max-w-md">
-          <ChamadaDeExemplo />
+          <ExampleCall />
         </div>
       </section>
     </main>

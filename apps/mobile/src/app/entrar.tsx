@@ -1,96 +1,96 @@
-import { mascararCpf } from "@fila-saude/schemas/mascaras";
+import { maskCpf } from "@fila-saude/schemas/masks";
 import { router, useLocalSearchParams } from "expo-router";
 import { IdCard, KeyRound } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import {
-  BalaoDoLino,
-  Botao,
-  Campo,
-  CampoSenha,
-  COR,
-  Faixa,
-  FalaDoDr,
-  FONTE,
-  Gaveta,
-  Tela,
-  TextoSuave,
+  Banner,
+  Button,
+  COLOR,
+  DoctorSpeech,
+  Field,
+  FONT,
+  LinoBubble,
+  PasswordField,
+  Screen,
+  Sheet,
+  SoftText,
 } from "@/components/ui";
-import { useSessao } from "@/lib/sessao";
-import { mensagemDoErro } from "@/lib/textos";
-import { faltaNoLogin } from "@/lib/validacao";
+import { useSession } from "@/lib/session";
+import { errorMessage } from "@/lib/texts";
+import { missingInLogin } from "@/lib/validation";
 
 /** Entrar: o Dr. Lino recebe quem volta; o que falta é dito no próprio campo. */
-export default function Entrar() {
-  const s = useSessao();
+export default function SignIn() {
+  const s = useSession();
   // Vindo do cadastro com "entrar com este CPF", o CPF já vem preenchido.
   const params = useLocalSearchParams<{ cpf?: string }>();
-  const [cpf, setCpf] = useState(params.cpf ? mascararCpf(params.cpf) : "");
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-  const [tentou, setTentou] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [esqueci, setEsqueci] = useState(false);
+  const [cpf, setCpf] = useState(params.cpf ? maskCpf(params.cpf) : "");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [forgot, setForgot] = useState(false);
   // CPF errado ou campo vazio é apontado no campo, antes de ir ao servidor (e gastar uma tentativa).
-  const falta = tentou ? faltaNoLogin(cpf, senha) : {};
+  const noShow = tried ? missingInLogin(cpf, password) : {};
 
-  async function enviar() {
-    setTentou(true);
-    const f = faltaNoLogin(cpf, senha);
-    if (f.cpf || f.senha || enviando) return;
-    setEnviando(true);
-    setErro(null);
+  async function send() {
+    setTried(true);
+    const f = missingInLogin(cpf, password);
+    if (f.cpf || f.password || sending) return;
+    setSending(true);
+    setError(null);
     try {
-      await s.entrar(cpf, senha);
+      await s.signIn(cpf, password);
       // Pilha nova: o "voltar" não leva de volta ao cadastro, ao login ou ao "conhecer o app".
       if (router.canDismiss()) router.dismissAll();
       router.replace("/");
     } catch (err) {
-      setErro(mensagemDoErro(err));
+      setError(errorMessage(err));
     } finally {
-      setEnviando(false);
+      setSending(false);
     }
   }
 
   return (
-    <Tela
-      acoes={
+    <Screen
+      actions={
         <>
-          <Botao texto="entrar" onPress={enviar} carregando={enviando} />
-          <Botao variante="texto" texto="ainda não tenho conta" onPress={() => router.replace("/cadastro")} />
+          <Button text="entrar" onPress={send} loading={sending} />
+          <Button variant="text" text="ainda não tenho conta" onPress={() => router.replace("/cadastro")} />
         </>
       }
-      rodape={
-        <Gaveta aberta={esqueci} fechar={() => setEsqueci(false)}>
-          <FalaDoDr cumprimento="sem problema" texto="a recepção da sua unidade troca a senha para você." />
+      footer={
+        <Sheet open={forgot} close={() => setForgot(false)}>
+          <DoctorSpeech greeting="sem problema" text="a recepção da sua unidade troca a senha para você." />
           <View style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
-            <IdCard size={24} color={COR.action} strokeWidth={2.3} style={{ marginTop: 2 }} />
+            <IdCard size={24} color={COLOR.action} strokeWidth={2.3} style={{ marginTop: 2 }} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: FONTE.extra, fontSize: 17, lineHeight: 24, color: COR.ink }}>
+              <Text style={{ fontFamily: FONT.extra, fontSize: 17, lineHeight: 24, color: COLOR.ink }}>
                 leve um documento com foto
               </Text>
-              <TextoSuave style={{ fontSize: 16, lineHeight: 22 }}>RG, CNH ou outro com o seu CPF.</TextoSuave>
+              <SoftText style={{ fontSize: 16, lineHeight: 22 }}>RG, CNH ou outro com o seu CPF.</SoftText>
             </View>
           </View>
-          <Botao
-            texto="ver as unidades perto de mim"
+          <Button
+            text="ver as unidades perto de mim"
             onPress={() => {
-              setEsqueci(false);
+              setForgot(false);
               router.push("/unidades");
             }}
           />
-          <Botao variante="texto" texto="voltar para entrar" onPress={() => setEsqueci(false)} />
-        </Gaveta>
+          <Button variant="text" text="voltar para entrar" onPress={() => setForgot(false)} />
+        </Sheet>
       }
     >
-      <BalaoDoLino texto="que bom te ver de novo! entre com o seu CPF e a senha." />
-      <Campo
-        rotulo="CPF"
+      <LinoBubble text="que bom te ver de novo! entre com o seu CPF e a senha." />
+      <Field
+        label="CPF"
         value={cpf}
-        erro={falta.cpf}
+        error={noShow.cpf}
         onChangeText={(t) => {
-          setCpf(mascararCpf(t));
-          setErro(null);
+          setCpf(maskCpf(t));
+          setError(null);
         }}
         keyboardType="number-pad"
         placeholder="000.000.000-00"
@@ -98,28 +98,22 @@ export default function Entrar() {
         autoComplete="username"
         textContentType="username"
       />
-      <CampoSenha
-        rotulo="senha"
-        value={senha}
-        erro={falta.senha}
+      <PasswordField
+        label="senha"
+        value={password}
+        error={noShow.password}
         onChangeText={(t) => {
-          setSenha(t);
-          setErro(null);
+          setPassword(t);
+          setError(null);
         }}
         autoComplete="current-password"
-        onSubmitEditing={() => void enviar()}
+        onSubmitEditing={() => void send()}
         returnKeyType="go"
       />
       <View style={{ alignItems: "flex-end", marginTop: -8 }}>
-        <Botao
-          variante="texto"
-          tamanho="medio"
-          icone={KeyRound}
-          texto="esqueci a senha"
-          onPress={() => setEsqueci(true)}
-        />
+        <Button variant="text" size="medium" icon={KeyRound} text="esqueci a senha" onPress={() => setForgot(true)} />
       </View>
-      {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
-    </Tela>
+      {error ? <Banner kind="danger" title={error} /> : null}
+    </Screen>
   );
 }

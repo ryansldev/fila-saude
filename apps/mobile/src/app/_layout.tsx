@@ -8,21 +8,21 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { SininhoDosAvisos } from "@/components/atendimento";
-import { Carregando, DireitaDoTopo } from "@/components/ui";
-import { ProvedorDeSessao } from "@/lib/sessao";
+import { NoticeBell } from "@/components/care";
+import { HeaderRight, Loading } from "@/components/ui";
+import { SessionProvider } from "@/lib/session";
 
-export default function Raiz() {
-  const [prontas] = useFonts({ Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold });
-  if (!prontas) return <Carregando cheia />;
+export default function Root() {
+  const [ready] = useFonts({ Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold });
+  if (!ready) return <Loading full />;
   return (
     <SafeAreaProvider>
-      <ProvedorDeSessao>
-        <DireitaDoTopo value={<SininhoDosAvisos />}>
+      <SessionProvider>
+        <HeaderRight value={<NoticeBell />}>
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#ffffff" } }} />
-        </DireitaDoTopo>
-      </ProvedorDeSessao>
+        </HeaderRight>
+      </SessionProvider>
     </SafeAreaProvider>
   );
 }

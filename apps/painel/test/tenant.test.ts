@@ -1,78 +1,76 @@
 import { describe, expect, it } from "vitest";
-import { destinoDoProxy, slugDoHost, urlDaApi } from "@/lib/tenant";
+import { apiUrl, hostSlug, proxyDestination } from "@/lib/tenant";
 
-describe("slugDoHost", () => {
+describe("hostSlug", () => {
   it("PD-09: subdomínio com porta → slug", () => {
-    expect(slugDoHost("pref-a.localhost:3000", "localhost")).toBe("pref-a");
+    expect(hostSlug("pref-a.localhost:3000", "localhost")).toBe("pref-a");
   });
 
   it("PD-09: subdomínio sem porta → slug", () => {
-    expect(slugDoHost("pref-a.filasaude.com.br", "filasaude.com.br")).toBe("pref-a");
+    expect(hostSlug("pref-a.filasaude.com.br", "filasaude.com.br")).toBe("pref-a");
   });
 
   it("PD-09: host em maiúsculas é normalizado", () => {
-    expect(slugDoHost("Pref-A.LocalHost:3000", "localhost")).toBe("pref-a");
+    expect(hostSlug("Pref-A.LocalHost:3000", "localhost")).toBe("pref-a");
   });
 
   it("PD-09: domínio raiz, com e sem porta → null", () => {
-    expect(slugDoHost("localhost:3000", "localhost")).toBeNull();
-    expect(slugDoHost("localhost", "localhost")).toBeNull();
-    expect(slugDoHost("filasaude.com.br", "filasaude.com.br")).toBeNull();
+    expect(hostSlug("localhost:3000", "localhost")).toBeNull();
+    expect(hostSlug("localhost", "localhost")).toBeNull();
+    expect(hostSlug("filasaude.com.br", "filasaude.com.br")).toBeNull();
   });
 
   it("PD-09: subdomínio duplo → null", () => {
-    expect(slugDoHost("a.b.localhost:3000", "localhost")).toBeNull();
-    expect(slugDoHost("a.b.filasaude.com.br", "filasaude.com.br")).toBeNull();
+    expect(hostSlug("a.b.localhost:3000", "localhost")).toBeNull();
+    expect(hostSlug("a.b.filasaude.com.br", "filasaude.com.br")).toBeNull();
   });
 
   it("PD-09: host de outro domínio → null", () => {
-    expect(slugDoHost("pref-a.outro.com", "filasaude.com.br")).toBeNull();
-    expect(slugDoHost("pref-alocalhost:3000", "localhost")).toBeNull();
+    expect(hostSlug("pref-a.outro.com", "filasaude.com.br")).toBeNull();
+    expect(hostSlug("pref-alocalhost:3000", "localhost")).toBeNull();
   });
 
   it("PD-09: host vazio ou rótulo inválido → null", () => {
-    expect(slugDoHost("", "localhost")).toBeNull();
-    expect(slugDoHost(".localhost:3000", "localhost")).toBeNull();
-    expect(slugDoHost("pref_a.localhost", "localhost")).toBeNull();
+    expect(hostSlug("", "localhost")).toBeNull();
+    expect(hostSlug(".localhost:3000", "localhost")).toBeNull();
+    expect(hostSlug("pref_a.localhost", "localhost")).toBeNull();
   });
 
   it("PD-09: slug segue a regra da API (3 a 30 caracteres, começa com letra, sem hífen no fim)", () => {
-    expect(slugDoHost("abc.localhost", "localhost")).toBe("abc");
-    expect(slugDoHost("ab.localhost", "localhost")).toBeNull();
-    expect(slugDoHost("a.localhost", "localhost")).toBeNull();
-    expect(slugDoHost("1abc.localhost", "localhost")).toBeNull();
-    expect(slugDoHost("-abc.localhost", "localhost")).toBeNull();
-    expect(slugDoHost("abc-.localhost", "localhost")).toBeNull();
-    expect(slugDoHost(`${"a".repeat(30)}.localhost`, "localhost")).toBe("a".repeat(30));
-    expect(slugDoHost(`${"a".repeat(31)}.localhost`, "localhost")).toBeNull();
+    expect(hostSlug("abc.localhost", "localhost")).toBe("abc");
+    expect(hostSlug("ab.localhost", "localhost")).toBeNull();
+    expect(hostSlug("a.localhost", "localhost")).toBeNull();
+    expect(hostSlug("1abc.localhost", "localhost")).toBeNull();
+    expect(hostSlug("-abc.localhost", "localhost")).toBeNull();
+    expect(hostSlug("abc-.localhost", "localhost")).toBeNull();
+    expect(hostSlug(`${"a".repeat(30)}.localhost`, "localhost")).toBe("a".repeat(30));
+    expect(hostSlug(`${"a".repeat(31)}.localhost`, "localhost")).toBeNull();
   });
 });
 
-describe("urlDaApi", () => {
+describe("apiUrl", () => {
   it("PD-24: em dev (porta configurada) chama o mesmo host na porta da API", () => {
-    expect(urlDaApi({ protocol: "http:", hostname: "pref-a.localhost" }, { NEXT_PUBLIC_API_PORTA: "3333" })).toBe(
+    expect(apiUrl({ protocol: "http:", hostname: "pref-a.localhost" }, { NEXT_PUBLIC_API_PORT: "3333" })).toBe(
       "http://pref-a.localhost:3333",
     );
   });
 
   it("PD-24: em produção (sem porta) usa a mesma origem", () => {
-    expect(urlDaApi({ protocol: "https:", hostname: "pref-a.filasaude.com.br" }, {})).toBe("");
-    expect(urlDaApi({ protocol: "https:", hostname: "pref-a.filasaude.com.br" }, { NEXT_PUBLIC_API_PORTA: "" })).toBe(
-      "",
-    );
+    expect(apiUrl({ protocol: "https:", hostname: "pref-a.filasaude.com.br" }, {})).toBe("");
+    expect(apiUrl({ protocol: "https:", hostname: "pref-a.filasaude.com.br" }, { NEXT_PUBLIC_API_PORT: "" })).toBe("");
   });
 });
 
-describe("destinoDoProxy", () => {
+describe("proxyDestination", () => {
   it("PD-09: sem slug no host → página de município não encontrado", () => {
-    expect(destinoDoProxy("localhost:3000", "localhost")).toEqual({ tipo: "municipio_nao_encontrado" });
+    expect(proxyDestination("localhost:3000", "localhost")).toEqual({ kind: "municipality_not_found" });
   });
 
   it("PD-09: com slug → segue com o slug", () => {
-    expect(destinoDoProxy("pref-a.localhost:3000", "localhost")).toEqual({ tipo: "segue", slug: "pref-a" });
+    expect(proxyDestination("pref-a.localhost:3000", "localhost")).toEqual({ kind: "continues", slug: "pref-a" });
   });
 
   it("PD-09: sem Host → município não encontrado", () => {
-    expect(destinoDoProxy(null, "localhost")).toEqual({ tipo: "municipio_nao_encontrado" });
+    expect(proxyDestination(null, "localhost")).toEqual({ kind: "municipality_not_found" });
   });
 });

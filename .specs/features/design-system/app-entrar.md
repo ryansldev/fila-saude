@@ -34,5 +34,5 @@ A tela que recebe quem volta, no mesmo tom das boas-vindas, com cada dúvida res
 
 ## Restrições
 
-- TDD na validação (`src/lib/validacao.ts`): o que falta em cada campo.
+- TDD na validação (`src/lib/validation.ts`): o que falta em cada campo.
 - Botões do kit; nenhum `<Pressable` fora de `src/components/ui.tsx`; o Dr. Lino sempre sobre fundo branco.

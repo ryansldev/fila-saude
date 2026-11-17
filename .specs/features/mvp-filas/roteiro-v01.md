@@ -76,7 +76,7 @@ Para o push chegar no celular é preciso um projeto EAS e um build de desenvolvi
 | 6 | Médica | Painel → Estação | Entrar como `medica` (ou a enfermeira), "Consultório 1 · Atendimento", "Chamar próximo" | Só quem já passou pela triagem é chamado; sem cores nesta tela |
 | 7 | Paciente | App → Minha fila | Presente, tocar "meus sintomas pioraram" | Faixa vermelha: avisar a recepção ou a enfermagem, e o botão "ligar 192" |
 
-**Ainda não executado** no navegador nem no celular. Conferido por teste de integração (`tests/integration/v1/painel/estacoes/triagem.test.ts`: passos 3–6 pelas mesmas rotas) e pelos testes do painel e do app.
+**Ainda não executado** no navegador nem no celular. Conferido por teste de integração (`tests/integration/v1/panel/stations/triage.test.ts`: passos 3–6 pelas mesmas rotas) e pelos testes do painel e do app.
 
 ## Tela da fila no app (2026-11-14)
 
@@ -104,7 +104,7 @@ O seed põe Ana, Bruno, Carla (urgente sugerida) e José (sem app) na lista da *
 | 8 | Dois agendadores | Agendamento, mesma sessão com uma vaga | "Alocar" ao mesmo tempo | Um aloca; o outro vê "A sessão não tem mais vaga. A lista foi atualizada." e a lista nova |
 | 9 | Paciente | App → cartão de quem está na lista | "minha situação mudou: responder de novo" | O questionário sem "para quem"; urgente sobe a pessoa e acende o alerta do agendador |
 
-**Tela de Agendamento refeita no design system (2026-11-16, caminho A).** **Executado por HTTP** (2026-11-16, de novo depois do design system, script contra `npm run dev` com o seed): passos 1–7 pelas mesmas rotas; o passo 8 é coberto pelo teste com dois escritores (`tests/integration/v1/painel/agendamento/agendamento.test.ts`). A página `/agendamento` responde no Next. **Falta** o clique no navegador e no celular.
+**Tela de Agendamento refeita no design system (2026-11-16, caminho A).** **Executado por HTTP** (2026-11-16, de novo depois do design system, script contra `npm run dev` com o seed): passos 1–7 pelas mesmas rotas; o passo 8 é coberto pelo teste com dois escritores (`tests/integration/v1/panel/scheduling/scheduling.test.ts`). A página `/agendamento` responde no Next. **Falta** o clique no navegador e no celular.
 
 ## Fila do dia refeita (design system, 2026-11-16)
 

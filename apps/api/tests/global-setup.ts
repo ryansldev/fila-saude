@@ -4,21 +4,21 @@ export default async function setup() {
   process.env.NODE_ENV ??= "test";
 
   const { default: env } = await import("../infra/env");
-  const { criarBancoSeNaoExiste } = await import("../infra/database/criar-banco");
-  const { migrarBanco } = await import("../infra/database/migrar");
+  const { createDatabaseIfMissing } = await import("../infra/database/create-database");
+  const { migrateDatabase } = await import("../infra/database/migrate");
   const { Client, escapeIdentifier } = await import("pg");
 
-  await criarBancoSeNaoExiste(env.DATABASE_URL, env.POSTGRES_DB);
+  await createDatabaseIfMissing(env.DATABASE_URL, env.POSTGRES_DB);
 
-  const servidor = new URL(env.DATABASE_URL);
-  servidor.pathname = "/postgres";
-  const admin = new Client({ connectionString: servidor.toString() });
+  const server = new URL(env.DATABASE_URL);
+  server.pathname = "/postgres";
+  const admin = new Client({ connectionString: server.toString() });
   await admin.connect();
   try {
-    const sobras = await admin.query<{ datname: string }>(
+    const leftovers = await admin.query<{ datname: string }>(
       "select datname from pg_database where datname like 'fila\\_t\\_%'",
     );
-    for (const { datname } of sobras.rows) {
+    for (const { datname } of leftovers.rows) {
       await admin.query(`drop database if exists ${escapeIdentifier(datname)} with (force)`);
     }
   } finally {
@@ -26,5 +26,5 @@ export default async function setup() {
   }
 
   // O mesmo runner do `db:migrate` (PD-16), então o conjunto central passa por ele em toda execução.
-  await migrarBanco(env.DATABASE_URL, "central");
+  await migrateDatabase(env.DATABASE_URL, "central");
 }

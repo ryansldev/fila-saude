@@ -2,53 +2,51 @@ import { router } from "expo-router";
 import { Bell, DoorOpen, House, type LucideIcon, Megaphone } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
-import { Botao, COR, FONTE, Tela, TextoSuave, Titulo } from "@/components/ui";
-import { telaDosAvisos } from "@/lib/avisos";
-import { useSessao } from "@/lib/sessao";
+import { Button, COLOR, FONT, Screen, SoftText, Title } from "@/components/ui";
+import { noticeScreen } from "@/lib/notices";
+import { useSession } from "@/lib/session";
 
-const EXEMPLOS: { texto: string; Icone: LucideIcon; fundo: string; cor: string }[] = [
-  { texto: "hora de sair de casa", Icone: House, fundo: COR.warningBg, cor: COR.warningInk },
-  { texto: "venha agora", Icone: DoorOpen, fundo: COR.primary50, cor: COR.action },
-  { texto: "é a sua vez!", Icone: Megaphone, fundo: COR.successBg, cor: COR.successInk },
+const EXAMPLES: { text: string; Icon: LucideIcon; background: string; color: string }[] = [
+  { text: "hora de sair de casa", Icon: House, background: COLOR.warningBg, color: COLOR.warningInk },
+  { text: "venha agora", Icon: DoorOpen, background: COLOR.primary50, color: COLOR.action },
+  { text: "é a sua vez!", Icon: Megaphone, background: COLOR.successBg, color: COLOR.successInk },
 ];
 
 /**
  * Tela 3 do design: por que os avisos importam, antes do pedido do celular (que quase não volta a aparecer).
  * Pelo sininho do topo, a mesma tela mostra como estão os avisos e volta para onde a pessoa estava.
  */
-export default function Avisos() {
-  const s = useSessao();
-  const [ligando, setLigando] = useState(false);
-  const peloSininho = router.canGoBack();
-  const seguir = () => (peloSininho ? router.back() : router.replace("/"));
-  const t = telaDosAvisos(s.avisos ?? { tipo: "perguntar" });
+export default function Notices() {
+  const s = useSession();
+  const [turningOn, setTurningOn] = useState(false);
+  const byBell = router.canGoBack();
+  const follow = () => (byBell ? router.back() : router.replace("/"));
+  const t = noticeScreen(s.notices ?? { kind: "ask" });
 
   return (
-    <Tela
-      topo={false}
-      acoes={
+    <Screen
+      top={false}
+      actions={
         <>
-          {t.dica ? (
-            <TextoSuave style={{ textAlign: "center", fontSize: 16, lineHeight: 22 }}>{t.dica}</TextoSuave>
-          ) : null}
-          {t.botao ? (
-            <Botao
-              texto={t.botao}
-              carregando={ligando}
+          {t.hint ? <SoftText style={{ textAlign: "center", fontSize: 16, lineHeight: 22 }}>{t.hint}</SoftText> : null}
+          {t.button ? (
+            <Button
+              text={t.button}
+              loading={turningOn}
               onPress={async () => {
-                setLigando(true);
-                await s.ligarAvisos();
-                setLigando(false);
-                seguir();
+                setTurningOn(true);
+                await s.turnOnNotices();
+                setTurningOn(false);
+                follow();
               }}
             />
           ) : null}
-          <Botao
-            variante={t.botao ? "texto" : "principal"}
-            texto={t.botao ? "agora não" : "voltar"}
+          <Button
+            variant={t.button ? "text" : "primary"}
+            text={t.button ? "agora não" : "voltar"}
             onPress={async () => {
-              if (t.botao) await s.pularAvisos();
-              seguir();
+              if (t.button) await s.skipNotices();
+              follow();
             }}
           />
         </>
@@ -57,14 +55,14 @@ export default function Avisos() {
       <View
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={{ borderRadius: 28, backgroundColor: COR.surfaceMuted, padding: 20, gap: 12, alignItems: "center" }}
+        style={{ borderRadius: 28, backgroundColor: COLOR.surfaceMuted, padding: 20, gap: 12, alignItems: "center" }}
       >
-        <View style={{ padding: 18, borderRadius: 999, backgroundColor: COR.amarelo, marginBottom: 4 }}>
+        <View style={{ padding: 18, borderRadius: 999, backgroundColor: COLOR.yellow, marginBottom: 4 }}>
           <Bell size={44} color="#ffffff" strokeWidth={2.75} />
         </View>
-        {EXEMPLOS.map(({ texto, Icone, fundo, cor }) => (
+        {EXAMPLES.map(({ text, Icon, background, color }) => (
           <View
-            key={texto}
+            key={text}
             style={{
               alignSelf: "stretch",
               flexDirection: "row",
@@ -75,24 +73,24 @@ export default function Avisos() {
               borderRadius: 18,
               borderWidth: 2,
               borderBottomWidth: 4,
-              borderColor: COR.linha,
-              backgroundColor: COR.surface,
+              borderColor: COLOR.line,
+              backgroundColor: COLOR.surface,
             }}
           >
-            <View style={{ padding: 8, borderRadius: 12, backgroundColor: fundo }}>
-              <Icone size={24} color={cor} strokeWidth={2.5} />
+            <View style={{ padding: 8, borderRadius: 12, backgroundColor: background }}>
+              <Icon size={24} color={color} strokeWidth={2.5} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, color: COR.ink }}>{texto}</Text>
-              <Text style={{ fontFamily: FONTE.semi, fontSize: 14, color: COR.inkMuted }}>fila saúde · agora</Text>
+              <Text style={{ fontFamily: FONT.extra, fontSize: 18, lineHeight: 24, color: COLOR.ink }}>{text}</Text>
+              <Text style={{ fontFamily: FONT.semi, fontSize: 14, color: COLOR.inkMuted }}>fila saúde · agora</Text>
             </View>
           </View>
         ))}
       </View>
       <View style={{ gap: 8 }}>
-        <Titulo style={{ fontSize: 30, lineHeight: 36 }}>{t.titulo}</Titulo>
-        <TextoSuave style={{ fontSize: 20, lineHeight: 30 }}>{t.texto}</TextoSuave>
+        <Title style={{ fontSize: 30, lineHeight: 36 }}>{t.title}</Title>
+        <SoftText style={{ fontSize: 20, lineHeight: 30 }}>{t.text}</SoftText>
       </View>
-    </Tela>
+    </Screen>
   );
 }

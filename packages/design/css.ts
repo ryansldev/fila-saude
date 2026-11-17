@@ -1,22 +1,22 @@
-import { estiloDoBotao, type TamanhoPainel, VARIANTES } from "./botao.ts";
-import { COR, OPACIDADE_DESATIVADO } from "./tokens.ts";
+import { buttonStyle, type PanelSize, VARIANTS } from "./button.ts";
+import { COLOR, DISABLED_OPACITY } from "./tokens.ts";
 
-const TAMANHOS: TamanhoPainel[] = ["padrao", "compacto", "icone"];
+const SIZES: PanelSize[] = ["default", "compact", "icon"];
 
 /**
  * O CSS do painel, gerado dos mesmos tokens do app: variáveis de cor e as classes `.ds-btn-*`.
  * Não editar `tokens.css` à mão: `npm run design:gen`.
  */
-export function gerarCss(): string {
+export function generateCss(): string {
   const l: string[] = [
     "/* Gerado por packages/design (npm run design:gen). Não edite à mão. */",
     ":root {",
-    `  --ds-acao: ${COR.action};`,
-    `  --ds-acao-pressionado: ${COR.actionPressed};`,
-    `  --ds-acao-sombra: ${COR.acaoSombra};`,
-    `  --ds-linha: ${COR.linha};`,
-    `  --ds-perigo: ${COR.dangerInk};`,
-    `  --ds-sucesso: ${COR.verde};`,
+    `  --ds-action: ${COLOR.action};`,
+    `  --ds-action-pressed: ${COLOR.actionPressed};`,
+    `  --ds-action-shadow: ${COLOR.actionShadow};`,
+    `  --ds-line: ${COLOR.line};`,
+    `  --ds-danger: ${COLOR.dangerInk};`,
+    `  --ds-success: ${COLOR.green};`,
     "}",
     // Na camada components do Tailwind: os utilitários de layout passados em className (largura,
     // margem, tamanho do botão da TV) vencem; CSS fora de camada venceria tudo.
@@ -27,28 +27,28 @@ export function gerarCss(): string {
     "  border-style: solid; border-width: 2px; cursor: pointer; user-select: none;",
     "  transition: transform 60ms, border-bottom-width 60ms, background-color 120ms;",
     "}",
-    ".ds-btn:focus-visible { outline: 3px solid var(--ds-acao); outline-offset: 2px; }",
+    ".ds-btn:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 2px; }",
     ".ds-btn > span { overflow: hidden; text-overflow: ellipsis; }",
   ];
-  for (const v of VARIANTES) {
-    const e = estiloDoBotao("painel", v, "padrao");
+  for (const v of VARIANTS) {
+    const e = buttonStyle("panel", v, "default");
     l.push(
-      `.ds-btn-${v} { background: ${e.fundo}; border-color: ${e.borda}; border-bottom-color: ${e.sombra}; color: ${e.texto}; font-weight: ${e.fontePeso}; }`,
+      `.ds-btn-${v} { background: ${e.background}; border-color: ${e.border}; border-bottom-color: ${e.shadow}; color: ${e.text}; font-weight: ${e.fontWeight}; }`,
     );
-    if (e.relevo === 0) l.push(`.ds-btn-${v} { border-bottom-width: 2px !important; transform: none !important; }`);
-    if (v === "texto" || v === "textoPerigo")
+    if (e.relief === 0) l.push(`.ds-btn-${v} { border-bottom-width: 2px !important; transform: none !important; }`);
+    if (v === "text" || v === "dangerText")
       l.push(`.ds-btn-${v} { text-decoration: underline; text-underline-offset: 3px; }`);
   }
-  for (const t of TAMANHOS) {
-    const e = estiloDoBotao("painel", "principal", t);
-    const largura = t === "icone" ? ` width: ${e.altura}px;` : "";
+  for (const t of SIZES) {
+    const e = buttonStyle("panel", "primary", t);
+    const width = t === "icon" ? ` width: ${e.height}px;` : "";
     l.push(
-      `.ds-btn-${t} { min-height: ${e.altura}px; border-radius: ${e.raio}px; font-size: ${e.fonteTamanho}px; padding: 0 ${e.paddingX}px; border-bottom-width: ${Math.max(e.relevo, 2)}px;${largura} }`,
-      `.ds-btn-${t}:active:not(:disabled) { border-bottom-width: ${Math.max(e.relevoTocado, 2)}px; transform: translateY(${e.desce}px); }`,
+      `.ds-btn-${t} { min-height: ${e.height}px; border-radius: ${e.radius}px; font-size: ${e.fontSize}px; padding: 0 ${e.paddingX}px; border-bottom-width: ${Math.max(e.relief, 2)}px;${width} }`,
+      `.ds-btn-${t}:active:not(:disabled) { border-bottom-width: ${Math.max(e.pressedRelief, 2)}px; transform: translateY(${e.pressDepth}px); }`,
     );
   }
   l.push(
-    `.ds-btn:disabled { opacity: ${OPACIDADE_DESATIVADO}; cursor: not-allowed; border-bottom-width: 2px; transform: none; }`,
+    `.ds-btn:disabled { opacity: ${DISABLED_OPACITY}; cursor: not-allowed; border-bottom-width: 2px; transform: none; }`,
   );
   l.push("}");
   return `${l.join("\n")}\n`;

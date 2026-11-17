@@ -1,283 +1,282 @@
-import { mascararCpf, mascararData, mascararTelefone } from "@fila-saude/schemas/mascaras";
+import { maskCpf, maskData, maskPhone } from "@fila-saude/schemas/masks";
 import { router } from "expo-router";
 import { Check, Circle } from "lucide-react-native";
 import { useState } from "react";
 import { type KeyboardTypeOptions, Text, View } from "react-native";
-import { BalaoDoLino, Botao, Campo, CampoSenha, Cartao, COR, Faixa, FONTE, Tela } from "@/components/ui";
-import { ErroDaApi } from "@/lib/api";
+import { Banner, Button, Card, COLOR, Field, FONT, LinoBubble, PasswordField, Screen } from "@/components/ui";
+import { ApiError } from "@/lib/api";
 import {
-  type DadosDoCadastro,
-  erroDoPasso,
-  PASSOS_DO_CADASTRO,
-  type PassoDoCadastro,
-  passoAnterior,
-  passoDoErroDoServidor,
-  proximoPasso,
-  regraDaSenha,
-  resumoDoCadastro,
-} from "@/lib/cadastro";
-import { useSessao } from "@/lib/sessao";
-import { mensagemDoErro } from "@/lib/textos";
-import { dataIso } from "@/lib/validacao";
+  nextStep,
+  passwordRule,
+  previousStep,
+  REGISTRATION_STEPS,
+  type RegistrationData,
+  type RegistrationStep,
+  registrationSummary,
+  serverErrorStep,
+  stepError,
+} from "@/lib/registration";
+import { useSession } from "@/lib/session";
+import { errorMessage } from "@/lib/texts";
+import { dataIso } from "@/lib/validation";
 
-type Pergunta = {
-  fala: string;
-  rotulo: string;
-  dica?: string;
-  mascara?: (t: string) => string;
-  teclado?: KeyboardTypeOptions;
+type Question = {
+  speech: string;
+  label: string;
+  hint?: string;
+  mask?: (t: string) => string;
+  keyboard?: KeyboardTypeOptions;
   max?: number;
-  exemplo?: string;
-  extra?: Partial<React.ComponentProps<typeof Campo>>;
+  example?: string;
+  extra?: Partial<React.ComponentProps<typeof Field>>;
 };
 
-const PERGUNTAS: Record<Exclude<PassoDoCadastro, "confira" | "senha">, Pergunta> = {
-  nome: {
-    fala: "oi! vamos criar a sua conta. qual é o seu nome completo?",
-    rotulo: "nome completo",
+const QUESTIONS: Record<Exclude<RegistrationStep, "review" | "password">, Question> = {
+  name: {
+    speech: "oi! vamos criar a sua conta. qual é o seu nome completo?",
+    label: "nome completo",
     extra: { autoComplete: "name", autoCapitalize: "words" },
   },
   cpf: {
-    fala: "e o seu CPF?",
-    rotulo: "CPF",
-    dica: "só para te identificar na unidade.",
-    mascara: mascararCpf,
-    teclado: "number-pad",
+    speech: "e o seu CPF?",
+    label: "CPF",
+    hint: "só para te identificar na unidade.",
+    mask: maskCpf,
+    keyboard: "number-pad",
     max: 14,
-    exemplo: "000.000.000-00",
+    example: "000.000.000-00",
   },
-  nascimento: {
-    fala: "quando você nasceu?",
-    rotulo: "data de nascimento",
-    mascara: mascararData,
-    teclado: "number-pad",
+  birthDate: {
+    speech: "quando você nasceu?",
+    label: "data de nascimento",
+    mask: maskData,
+    keyboard: "number-pad",
     max: 10,
-    exemplo: "dd/mm/aaaa",
+    example: "dd/mm/aaaa",
     extra: { autoComplete: "birthdate-full" },
   },
-  telefone: {
-    fala: "qual é o seu celular?",
-    rotulo: "celular",
-    dica: "com DDD. a unidade usa se precisar falar com você.",
-    mascara: mascararTelefone,
-    teclado: "phone-pad",
+  phone: {
+    speech: "qual é o seu celular?",
+    label: "celular",
+    hint: "com DDD. a unidade usa se precisar falar com você.",
+    mask: maskPhone,
+    keyboard: "phone-pad",
     max: 15,
-    exemplo: "(00) 00000-0000",
+    example: "(00) 00000-0000",
     extra: { autoComplete: "tel", textContentType: "telephoneNumber" },
   },
   email: {
-    fala: "e o seu e-mail?",
-    rotulo: "e-mail",
-    dica: "para avisos da sua conta.",
-    teclado: "email-address",
-    exemplo: "seu@email.com",
+    speech: "e o seu e-mail?",
+    label: "e-mail",
+    hint: "para avisos da sua conta.",
+    keyboard: "email-address",
+    example: "seu@email.com",
     extra: { autoComplete: "email", textContentType: "emailAddress", autoCorrect: false, autoCapitalize: "none" },
   },
 };
 
 /** Criar conta: o Dr. Lino pergunta uma coisa por tela; no fim, confira e crie. */
-export default function Cadastro() {
-  const s = useSessao();
-  const [passo, setPasso] = useState<PassoDoCadastro>("nome");
-  const [corrigindo, setCorrigindo] = useState(false);
-  const [v, setV] = useState<DadosDoCadastro>({
-    nome: "",
+export default function Registration() {
+  const s = useSession();
+  const [step, setStep] = useState<RegistrationStep>("name");
+  const [fixing, setFixing] = useState(false);
+  const [v, setV] = useState<RegistrationData>({
+    name: "",
     cpf: "",
     email: "",
-    telefone: "",
-    nascimento: "",
-    senha: "",
+    phone: "",
+    birthDate: "",
+    password: "",
   });
-  const [tentou, setTentou] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Recusa do servidor que é de um campo (CPF ou e-mail já com conta): aparece embaixo dele.
-  const [erroDoServidor, setErroDoServidor] = useState<{
-    passo: "cpf" | "email";
-    texto: string;
-    codigo: string;
+  const [serverError, setServerError] = useState<{
+    step: "cpf" | "email";
+    text: string;
+    code: string;
   } | null>(null);
-  const [enviando, setEnviando] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const ir = (p: PassoDoCadastro) => {
-    setPasso(p);
-    setTentou(false);
-    setErro(null);
+  const go = (p: RegistrationStep) => {
+    setStep(p);
+    setTried(false);
+    setError(null);
   };
-  const sair = () => (router.canGoBack() ? router.back() : router.replace("/boas-vindas"));
-  const voltar = () => {
-    const anterior = corrigindo ? "confira" : passoAnterior(passo);
-    if (anterior === null) sair();
+  const leave = () => (router.canGoBack() ? router.back() : router.replace("/boas-vindas"));
+  const back = () => {
+    const previous = fixing ? "review" : previousStep(step);
+    if (previous === null) leave();
     else {
-      if (anterior === "confira") setCorrigindo(false);
-      ir(anterior);
+      if (previous === "review") setFixing(false);
+      go(previous);
     }
   };
-  const mudar = (k: keyof DadosDoCadastro) => (t: string) => {
+  const change = (k: keyof RegistrationData) => (t: string) => {
     setV({ ...v, [k]: t });
-    if (erroDoServidor?.passo === k) setErroDoServidor(null);
+    if (serverError?.step === k) setServerError(null);
   };
-  const erroDaTela =
-    erroDoServidor?.passo === passo ? erroDoServidor.texto : tentou ? erroDoPasso(passo, v) : undefined;
+  const screenError = serverError?.step === step ? serverError.text : tried ? stepError(step, v) : undefined;
 
-  function continuar() {
-    setTentou(true);
-    if (erroDoPasso(passo, v) || erroDoServidor?.passo === passo) return;
-    const proximo = proximoPasso(passo, corrigindo);
-    if (proximo === "confira") setCorrigindo(false);
-    ir(proximo);
+  function proceed() {
+    setTried(true);
+    if (stepError(step, v) || serverError?.step === step) return;
+    const next = nextStep(step, fixing);
+    if (next === "review") setFixing(false);
+    go(next);
   }
 
-  async function criar() {
-    if (enviando) return;
+  async function create() {
+    if (sending) return;
     // Algo inválido (não deveria chegar aqui): volta à primeira tela com erro.
-    const comErro = PASSOS_DO_CADASTRO.find((p) => erroDoPasso(p, v));
-    if (comErro) {
-      ir(comErro);
-      setTentou(true);
+    const withError = REGISTRATION_STEPS.find((p) => stepError(p, v));
+    if (withError) {
+      go(withError);
+      setTried(true);
       return;
     }
-    setEnviando(true);
-    setErro(null);
+    setSending(true);
+    setError(null);
     try {
-      await s.cadastrar({ ...v, email: v.email.trim(), nascimento: dataIso(v.nascimento) });
+      await s.register({ ...v, email: v.email.trim(), birthDate: dataIso(v.birthDate) });
       // Pilha nova: o "voltar" não leva de volta ao cadastro, ao login ou ao "conhecer o app".
       if (router.canDismiss()) router.dismissAll();
       router.replace("/");
     } catch (err) {
-      const codigo = (err instanceof ErroDaApi ? err.erro : (err as { erro?: string }).erro) ?? "";
-      const destino = passoDoErroDoServidor(codigo);
-      if (destino) {
-        setErroDoServidor({
-          passo: destino,
-          codigo,
-          texto:
-            codigo === "email_em_uso"
-              ? "este e-mail já tem uma conta. use outro ou entre com o CPF."
-              : mensagemDoErro(err),
+      const code = (err instanceof ApiError ? err.error : (err as { error?: string }).error) ?? "";
+      const destination = serverErrorStep(code);
+      if (destination) {
+        setServerError({
+          step: destination,
+          code,
+          text:
+            code === "email_in_use" ? "este e-mail já tem uma conta. use outro ou entre com o CPF." : errorMessage(err),
         });
-        setCorrigindo(true);
-        ir(destino);
-      } else setErro(mensagemDoErro(err));
+        setFixing(true);
+        go(destination);
+      } else setError(errorMessage(err));
     } finally {
-      setEnviando(false);
+      setSending(false);
     }
   }
 
-  const progresso = { atual: PASSOS_DO_CADASTRO.indexOf(passo) + 1, total: PASSOS_DO_CADASTRO.length };
+  const progress = { current: REGISTRATION_STEPS.indexOf(step) + 1, total: REGISTRATION_STEPS.length };
 
-  if (passo === "confira")
+  if (step === "review")
     return (
-      <Tela
-        progresso={progresso}
-        aoVoltar={voltar}
-        aoFechar={sair}
-        acoes={<Botao texto="criar conta" onPress={criar} carregando={enviando} />}
+      <Screen
+        progress={progress}
+        onBack={back}
+        onClose={leave}
+        actions={<Button text="criar conta" onPress={create} loading={sending} />}
       >
-        <BalaoDoLino texto="confira os seus dados." />
-        <Cartao style={{ gap: 0, paddingVertical: 6 }}>
-          {resumoDoCadastro(v).map((l, i) => (
+        <LinoBubble text="confira os seus dados." />
+        <Card style={{ gap: 0, paddingVertical: 6 }}>
+          {registrationSummary(v).map((l, i) => (
             <View
-              key={l.passo}
+              key={l.step}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 8,
                 paddingVertical: 8,
                 borderTopWidth: i === 0 ? 0 : 1,
-                borderColor: COR.linha,
+                borderColor: COLOR.line,
               }}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: FONTE.bold, fontSize: 14, color: COR.inkMuted }}>{l.rotulo}</Text>
-                <Text style={{ fontFamily: FONTE.extra, fontSize: 18, lineHeight: 24, color: COR.ink }}>{l.valor}</Text>
+                <Text style={{ fontFamily: FONT.bold, fontSize: 14, color: COLOR.inkMuted }}>{l.label}</Text>
+                <Text style={{ fontFamily: FONT.extra, fontSize: 18, lineHeight: 24, color: COLOR.ink }}>
+                  {l.value}
+                </Text>
               </View>
-              <Botao
-                variante="texto"
-                tamanho="medio"
-                texto="corrigir"
+              <Button
+                variant="text"
+                size="medium"
+                text="corrigir"
                 onPress={() => {
-                  setCorrigindo(true);
-                  ir(l.passo);
+                  setFixing(true);
+                  go(l.step);
                 }}
               />
             </View>
           ))}
-        </Cartao>
-        {erro ? <Faixa tipo="perigo" titulo={erro} /> : null}
-      </Tela>
+        </Card>
+        {error ? <Banner kind="danger" title={error} /> : null}
+      </Screen>
     );
 
-  const acoes = (
+  const actions = (
     <>
-      <Botao texto="continuar" onPress={continuar} />
-      {passo === "nome" && !corrigindo ? (
-        <Botao variante="texto" texto="já tenho conta" onPress={() => router.replace("/entrar")} />
+      <Button text="continuar" onPress={proceed} />
+      {step === "name" && !fixing ? (
+        <Button variant="text" text="já tenho conta" onPress={() => router.replace("/entrar")} />
       ) : null}
-      {erroDoServidor?.passo === "cpf" && passo === "cpf" && erroDoServidor.codigo === "cpf_em_uso" ? (
-        <Botao
-          variante="secundario"
-          texto="entrar com este CPF"
+      {serverError?.step === "cpf" && step === "cpf" && serverError.code === "cpf_in_use" ? (
+        <Button
+          variant="secondary"
+          text="entrar com este CPF"
           onPress={() => router.replace({ pathname: "/entrar", params: { cpf: v.cpf } })}
         />
       ) : null}
     </>
   );
 
-  if (passo === "senha") {
-    const regra = regraDaSenha(v.senha);
-    const Marca = regra.oitoCaracteres ? Check : Circle;
+  if (step === "password") {
+    const rule = passwordRule(v.password);
+    const Brand = rule.eightCharacters ? Check : Circle;
     return (
-      <Tela progresso={progresso} aoVoltar={voltar} aoFechar={sair} acoes={acoes}>
-        <BalaoDoLino texto="crie uma senha para entrar no app." />
-        <CampoSenha
+      <Screen progress={progress} onBack={back} onClose={leave} actions={actions}>
+        <LinoBubble text="crie uma senha para entrar no app." />
+        <PasswordField
           key="senha"
-          rotulo="senha"
-          erro={erroDaTela}
-          value={v.senha}
-          onChangeText={mudar("senha")}
+          label="senha"
+          error={screenError}
+          value={v.password}
+          onChangeText={change("password")}
           autoComplete="new-password"
           autoFocus
-          onSubmitEditing={continuar}
+          onSubmitEditing={proceed}
         />
         <View
-          accessibilityLabel={`pelo menos 8 caracteres${regra.oitoCaracteres ? ", ok" : ""}`}
+          accessibilityLabel={`pelo menos 8 caracteres${rule.eightCharacters ? ", ok" : ""}`}
           style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
         >
-          <Marca size={18} color={regra.oitoCaracteres ? COR.successInk : "#9aa3a5"} strokeWidth={2.6} />
+          <Brand size={18} color={rule.eightCharacters ? COLOR.successInk : "#9aa3a5"} strokeWidth={2.6} />
           <Text
             style={{
-              fontFamily: FONTE.bold,
+              fontFamily: FONT.bold,
               fontSize: 16,
-              color: regra.oitoCaracteres ? COR.successInk : COR.inkMuted,
+              color: rule.eightCharacters ? COLOR.successInk : COLOR.inkMuted,
             }}
           >
             pelo menos 8 caracteres
           </Text>
         </View>
-      </Tela>
+      </Screen>
     );
   }
 
-  const q = PERGUNTAS[passo];
-  const valor = v[passo];
+  const q = QUESTIONS[step];
+  const value = v[step];
   return (
-    <Tela progresso={progresso} aoVoltar={voltar} aoFechar={sair} acoes={acoes}>
-      <BalaoDoLino texto={q.fala} />
-      <Campo
-        key={passo}
-        rotulo={q.rotulo}
-        dica={q.dica}
-        erro={erroDaTela}
-        value={valor}
-        onChangeText={(t) => mudar(passo)(q.mascara ? q.mascara(t) : t)}
-        keyboardType={q.teclado}
+    <Screen progress={progress} onBack={back} onClose={leave} actions={actions}>
+      <LinoBubble text={q.speech} />
+      <Field
+        key={step}
+        label={q.label}
+        hint={q.hint}
+        error={screenError}
+        value={value}
+        onChangeText={(t) => change(step)(q.mask ? q.mask(t) : t)}
+        keyboardType={q.keyboard}
         maxLength={q.max}
-        placeholder={q.exemplo}
+        placeholder={q.example}
         autoFocus
         returnKeyType="next"
-        onSubmitEditing={continuar}
+        onSubmitEditing={proceed}
         {...q.extra}
       />
-    </Tela>
+    </Screen>
   );
 }

@@ -1,6 +1,6 @@
 import database, { pool } from "infra/database";
-import { criarBancoSeNaoExiste } from "infra/database/criar-banco";
-import { migrarTodos } from "infra/database/migrar";
+import { createDatabaseIfMissing } from "infra/database/create-database";
+import { migrateAll } from "infra/database/migrate";
 import env from "infra/env";
 
 // T1.7 / PD-16: `npm run db:migrate` cria o banco central se faltar, migra o central e depois cada
@@ -8,9 +8,9 @@ import env from "infra/env";
 async function main() {
   try {
     // O pool do central só conecta na primeira consulta, então criar o banco antes basta.
-    await criarBancoSeNaoExiste(env.DATABASE_URL, new URL(env.DATABASE_URL).pathname.slice(1));
+    await createDatabaseIfMissing(env.DATABASE_URL, new URL(env.DATABASE_URL).pathname.slice(1));
 
-    const { central, tenants } = await migrarTodos({
+    const { central, tenants } = await migrateAll({
       central: database,
       urlCentral: env.DATABASE_URL,
       template: env.TENANT_DATABASE_URL_TEMPLATE,
@@ -18,8 +18,8 @@ async function main() {
 
     console.log(`central: ${central}`);
     for (const t of tenants) {
-      if (t.ok) console.log(`${t.slug}: ${t.versao}`);
-      else console.error(`${t.slug}: erro: ${t.erro}`);
+      if (t.ok) console.log(`${t.slug}: ${t.version}`);
+      else console.error(`${t.slug}: erro: ${t.error}`);
     }
     return tenants.some((t) => !t.ok) ? 1 : 0;
   } finally {

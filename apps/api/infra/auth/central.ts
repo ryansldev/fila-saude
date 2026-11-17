@@ -1,111 +1,104 @@
-import { cadastroPacienteSchema } from "@fila-saude/schemas/auth";
-import { cpfValido } from "@fila-saude/schemas/cpf";
+import { patientRegistrationSchema } from "@fila-saude/schemas/auth";
+import { validCpf } from "@fila-saude/schemas/cpf";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { bearer, username } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import database, { schemaCentral } from "infra/database";
-import { paciente } from "infra/database/central/schema/auth";
+import { patient } from "infra/database/central/schema/auth";
 import env from "infra/env";
-import { corpoDoErro, ErroApi, validar } from "infra/erros";
+import { ApiError, errorBody, validate } from "infra/errors";
 
 // RN-ID-02: texto exato da orientação ao paciente quando o CPF já tem conta.
-export const MENSAGEM_CPF_EM_USO = "Procure a recepção da sua unidade para contestar.";
+export const CPF_IN_USE_MESSAGE = "Procure a recepção da sua unidade para contestar.";
 
 // Campos que o app nunca muda: o CPF é a identidade da conta (RN-ID-02) e a verificação só a
 // recepção marca (RN-ID-05).
-const CAMPOS_IMUTAVEIS = [
+const IMMUTABLE_FIELDS = [
   "username",
   "displayUsername",
   "cpf",
-  "verificadoEm",
-  "verificadoMetodo",
-  "verificadoMunicipio",
+  "verifiedAt",
+  "verificationMethod",
+  "verifiedMunicipality",
 ] as const;
 
 // PD-23: o que o paciente pode trocar no próprio cadastro, com as mesmas regras do sign-up.
-const atualizacaoPacienteSchema = cadastroPacienteSchema
-  .pick({ nome: true, telefone: true, nascimento: true })
-  .partial();
+const patientUpdateSchema = patientRegistrationSchema.pick({ name: true, phone: true, birthDate: true }).partial();
 
 // Erros do sign-up que, com o CPF já gravado por outra requisição, significam "CPF em uso".
-const ERROS_DE_CONTA_EXISTENTE = new Set([
+const EXISTING_ACCOUNT_ERRORS = new Set([
   "FAILED_TO_CREATE_USER",
   "USER_ALREADY_EXISTS",
   "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL",
   "USERNAME_IS_ALREADY_TAKEN",
 ]);
 
-async function cpfEmUso(cpf: string) {
-  const linhas = await database.select({ id: paciente.id }).from(paciente).where(eq(paciente.cpf, cpf)).limit(1);
-  return linhas.length > 0;
+async function cpfInUse(cpf: string) {
+  const rows = await database.select({ id: patient.id }).from(patient).where(eq(patient.cpf, cpf)).limit(1);
+  return rows.length > 0;
 }
 
-function erroCpfEmUso() {
-  return new ErroApi(409, "cpf_em_uso", undefined, MENSAGEM_CPF_EM_USO);
+function cpfInUseError() {
+  return new ApiError(409, "cpf_in_use", undefined, CPF_IN_USE_MESSAGE);
 }
 
 // O corpo da requisição é o mesmo objeto que o endpoint lê; trocá-lo no lugar é o que o próprio
 // plugin username faz. Assim o que o cliente mandou a mais (ex.: `verificadoEm`) some.
-function substituirCorpo(corpo: Record<string, unknown>, novo: Record<string, unknown>) {
-  for (const chave of Object.keys(corpo)) delete corpo[chave];
-  Object.assign(corpo, novo);
+function replaceBody(body: Record<string, unknown>, fresh: Record<string, unknown>) {
+  for (const key of Object.keys(body)) delete body[key];
+  Object.assign(body, fresh);
 }
 
 // RN-ID-01 / RN-ID-02 / PD-23: valida o cadastro no contrato em português e o traduz para o
 // formato do better-auth (`name`, `email`, `password`, `username`).
-async function prepararCadastro(corpo: Record<string, unknown>) {
-  if (typeof corpo.cpf !== "string" || !cpfValido(corpo.cpf)) throw new ErroApi(400, "cpf_invalido");
-  const dados = validar(cadastroPacienteSchema, corpo);
-  if (await cpfEmUso(dados.cpf)) throw erroCpfEmUso();
-  substituirCorpo(corpo, {
-    name: dados.nome,
-    email: dados.email,
-    password: dados.senha,
-    username: dados.cpf,
-    cpf: dados.cpf,
-    nascimento: dados.nascimento,
-    telefone: dados.telefone,
+async function prepareRegistration(body: Record<string, unknown>) {
+  if (typeof body.cpf !== "string" || !validCpf(body.cpf)) throw new ApiError(400, "invalid_cpf");
+  const data = validate(patientRegistrationSchema, body);
+  if (await cpfInUse(data.cpf)) throw cpfInUseError();
+  replaceBody(body, {
+    name: data.name,
+    email: data.email,
+    password: data.password,
+    username: data.cpf,
+    cpf: data.cpf,
+    birthDate: data.birthDate,
+    phone: data.phone,
   });
 }
 
-function prepararAtualizacao(corpo: Record<string, unknown>, verificada: boolean) {
-  const campos: Record<string, string[]> = {};
-  for (const chave of CAMPOS_IMUTAVEIS) if (chave in corpo) campos[chave] = ["campo_imutavel"];
-  if (Object.keys(campos).length > 0) throw new ErroApi(400, "entrada_invalida", campos);
-  // O better-auth grava `name`; o contrato é `nome`. Os dois passam pela mesma validação.
-  const entrada = { ...corpo };
-  if ("name" in entrada && !("nome" in entrada)) entrada.nome = entrada.name;
-  const editaveis = Object.fromEntries(
-    Object.entries(entrada).filter(([chave]) => chave in atualizacaoPacienteSchema.shape),
-  );
-  const dados = validar(atualizacaoPacienteSchema, editaveis);
+function prepareUpdate(body: Record<string, unknown>, verified: boolean) {
+  const fields: Record<string, string[]> = {};
+  for (const key of IMMUTABLE_FIELDS) if (key in body) fields[key] = ["immutable_field"];
+  if (Object.keys(fields).length > 0) throw new ApiError(400, "invalid_input", fields);
+  const editable = Object.fromEntries(Object.entries(body).filter(([key]) => key in patientUpdateSchema.shape));
+  const data = validate(patientUpdateSchema, editable);
   // RN-ID-05: a data de nascimento foi conferida no documento; mudar daria prioridade de idoso sem conferência.
-  if (verificada && dados.nascimento !== undefined) {
-    throw new ErroApi(
+  if (verified && data.birthDate !== undefined) {
+    throw new ApiError(
       409,
-      "nascimento_verificado",
+      "birth_date_verified",
       undefined,
       "A data de nascimento foi conferida na recepção. Para corrigir, procure a recepção.",
     );
   }
   // Só os campos editáveis seguem, já normalizados (o resto do corpo some).
-  substituirCorpo(corpo, {
-    ...(dados.nome !== undefined ? { name: dados.nome } : {}),
-    ...(dados.telefone !== undefined ? { telefone: dados.telefone } : {}),
-    ...(dados.nascimento !== undefined ? { nascimento: dados.nascimento } : {}),
+  replaceBody(body, {
+    ...(data.name !== undefined ? { name: data.name } : {}),
+    ...(data.phone !== undefined ? { phone: data.phone } : {}),
+    ...(data.birthDate !== undefined ? { birthDate: data.birthDate } : {}),
   });
 }
 
 // O better-auth responde direto, sem passar pelo handler de erros do Fastify: o `ErroApi` vira um
 // `APIError` com o corpo já no formato da PD-22.
-function comoErroDoAuth(err: unknown): unknown {
+function authAsError(err: unknown): unknown {
   // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
-  return err instanceof ErroApi ? new APIError(err.status as 400, corpoDoErro(err)) : err;
+  return err instanceof ApiError ? new APIError(err.status as 400, errorBody(err)) : err;
 }
 
-function corpoDe(ctx: { body?: unknown }): Record<string, unknown> {
+function bodyOf(ctx: { body?: unknown }): Record<string, unknown> {
   return ctx.body && typeof ctx.body === "object" ? (ctx.body as Record<string, unknown>) : {};
 }
 
@@ -116,33 +109,33 @@ export const authCentral = betterAuth({
   baseURL: env.CENTRAL_URL,
   database: drizzleAdapter(database, { provider: "pg", schema: schemaCentral }),
   user: {
-    modelName: "paciente",
+    modelName: "patient",
     additionalFields: {
       cpf: { type: "string", required: true, input: true },
-      nascimento: { type: "string", required: true, input: true },
-      telefone: { type: "string", required: true, input: true },
+      birthDate: { type: "string", required: true, input: true },
+      phone: { type: "string", required: true, input: true },
       // RN-ID-05: a conta nasce não verificada; só a recepção marca (nunca o cliente).
-      verificadoEm: { type: "date", required: false, input: false },
-      verificadoMetodo: { type: "string", required: false, input: false },
-      verificadoMunicipio: { type: "string", required: false, input: false },
+      verifiedAt: { type: "date", required: false, input: false },
+      verificationMethod: { type: "string", required: false, input: false },
+      verifiedMunicipality: { type: "string", required: false, input: false },
     },
   },
   emailAndPassword: { enabled: true, minPasswordLength: 8 },
   // Responderia sem login se um CPF tem conta (oráculo de CPF): fica 404.
   disabledPaths: ["/is-username-available"],
   // bearer: o app nativo guarda o token e o manda em Authorization (sem cookie, sem Origin).
-  plugins: [username({ usernameValidator: cpfValido, minUsernameLength: 11, maxUsernameLength: 11 }), bearer()],
+  plugins: [username({ usernameValidator: validCpf, minUsernameLength: 11, maxUsernameLength: 11 }), bearer()],
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       try {
-        if (ctx.path === "/sign-up/email") await prepararCadastro(corpoDe(ctx));
+        if (ctx.path === "/sign-up/email") await prepareRegistration(bodyOf(ctx));
         if (ctx.path === "/update-user") {
-          const sessao = await getSessionFromCtx(ctx).catch(() => null);
-          const verificada = Boolean((sessao?.user as { verificadoEm?: Date | null } | undefined)?.verificadoEm);
-          prepararAtualizacao(corpoDe(ctx), verificada);
+          const session = await getSessionFromCtx(ctx).catch(() => null);
+          const verified = Boolean((session?.user as { verifiedAt?: Date | null } | undefined)?.verifiedAt);
+          prepareUpdate(bodyOf(ctx), verified);
         }
       } catch (err) {
-        throw comoErroDoAuth(err);
+        throw authAsError(err);
       }
     }),
     // RN-ID-02: dois cadastros simultâneos passam pela checagem acima; o UNIQUE de `cpf`/`username`
@@ -150,14 +143,14 @@ export const authCentral = betterAuth({
     // Volta um `Response` pronto porque, num hook `after`, o better-auth mantém o status do erro
     // original mesmo quando o hook lança outro `APIError` (better-auth 1.6.23).
     after: createAuthMiddleware(async (ctx) => {
-      const retorno = ctx.context.returned;
-      if (ctx.path !== "/sign-up/email" || !isAPIError(retorno)) return;
-      if (!ERROS_DE_CONTA_EXISTENTE.has(String(retorno.body?.code))) return;
-      const cpf = corpoDe(ctx).cpf;
-      if (typeof cpf !== "string" || !(await cpfEmUso(cpf))) return;
-      const erro = erroCpfEmUso();
-      return new Response(JSON.stringify(corpoDoErro(erro)), {
-        status: erro.status,
+      const back = ctx.context.returned;
+      if (ctx.path !== "/sign-up/email" || !isAPIError(back)) return;
+      if (!EXISTING_ACCOUNT_ERRORS.has(String(back.body?.code))) return;
+      const cpf = bodyOf(ctx).cpf;
+      if (typeof cpf !== "string" || !(await cpfInUse(cpf))) return;
+      const error = cpfInUseError();
+      return new Response(JSON.stringify(errorBody(error)), {
+        status: error.status,
         headers: { "content-type": "application/json" },
       });
     }),

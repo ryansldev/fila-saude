@@ -1,18 +1,18 @@
 import { randomInt, randomUUID } from "node:crypto";
-import type { Atribuicoes } from "@fila-saude/domain";
+import type { Assignments } from "@fila-saude/domain";
 import retry from "async-retry";
 import { inArray, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
-import { criarUsuarioPainel } from "infra/auth/painel";
+import { createStaffUser } from "infra/auth/panel";
 import database from "infra/database";
-import { municipio } from "infra/database/central/schema/municipio";
-import { unidade } from "infra/database/municipal/schema/unidade";
-import { type DbDoTenant, schemaMunicipal } from "infra/database/tenants";
+import { municipality } from "infra/database/central/schema/municipality";
+import { unit } from "infra/database/municipal/schema/unit";
+import { schemaMunicipal, type TenantDb } from "infra/database/tenants";
 import env from "infra/env";
-import { origemDoPainel } from "infra/painel/origem";
-import { concederAtribuicoes } from "infra/painel/perfis";
-import { criarTenant, type DadosDoTenant } from "infra/tenant/criar";
-import { bancoDoSlug } from "infra/tenant/slug";
+import { panelOrigin } from "infra/panel/origin";
+import { grantAssignments } from "infra/panel/profiles";
+import { createTenant, type TenantData } from "infra/tenant/create";
+import { databaseForSlug } from "infra/tenant/slug";
 import webserver from "infra/webserver";
 import { escapeIdentifier, Pool } from "pg";
 
@@ -37,234 +37,238 @@ async function waitForAllServices() {
 
 // Limpa os dados do central sem mexer no schema: as migrations já foram aplicadas pelo global-setup.
 async function clearDatabase() {
-  const tabelas = await database.execute<{ tablename: string }>(
+  const tables = await database.execute<{ tablename: string }>(
     sql`select tablename from pg_tables where schemaname = 'public'`,
   );
-  if (tabelas.rows.length === 0) return;
+  if (tables.rows.length === 0) return;
 
-  const lista = sql.join(
-    tabelas.rows.map((linha) => sql.identifier(linha.tablename)),
+  const list = sql.join(
+    tables.rows.map((row) => sql.identifier(row.tablename)),
     sql`, `,
   );
-  await database.execute(sql`truncate table ${lista} cascade`);
+  await database.execute(sql`truncate table ${list} cascade`);
 }
 
 // PD-19: slugs gerados por este arquivo de teste; `derrubarMunicipios()` derruba o banco e a linha de cada um.
-const slugsDoArquivo = new Set<string>();
-let contadorDeSlugs = 0;
+const fileSlugs = new Set<string>();
+let slugsCounter = 0;
 
-// `t<timestamp36><n>`: único entre arquivos e execuções, sempre válido para `validarSlug`.
-function slugUnico() {
-  contadorDeSlugs += 1;
-  const slug = `t${Date.now().toString(36)}${contadorDeSlugs}`;
-  slugsDoArquivo.add(slug);
+// `t<timestamp36><n>`: único entre arquivos e execuções, sempre válido para `validateSlug`.
+function uniqueSlug() {
+  slugsCounter += 1;
+  const slug = `t${Date.now().toString(36)}${slugsCounter}`;
+  fileSlugs.add(slug);
   return slug;
 }
 
-export const SENHA_GESTOR = "gestor-senha-1";
+export const MANAGER_PASSWORD = "gestor-senha-1";
 
 // Cria o município no processo do Vitest, no mesmo Postgres que o servidor usa. Sempre com o gestor
-// `gestor` (senha `SENHA_GESTOR`), salvo `gestor: null`.
-async function criarMunicipio(opcoes: Partial<DadosDoTenant> = {}) {
-  const slug = opcoes.slug ?? slugUnico();
-  slugsDoArquivo.add(slug);
-  const gestor =
-    opcoes.gestor === undefined ? { login: "gestor", nome: "Gestora", senha: SENHA_GESTOR } : opcoes.gestor;
-  const { municipioId, gestorId } = await criarTenant(
-    { nome: `Município ${slug}`, uf: "SP", ...opcoes, slug, ...(gestor ? { gestor } : {}) },
+// `gestor` (senha `MANAGER_PASSWORD`), salvo `gestor: null`.
+async function createMunicipality(options: Partial<TenantData> = {}) {
+  const slug = options.slug ?? uniqueSlug();
+  fileSlugs.add(slug);
+  const manager =
+    options.manager === undefined ? { login: "gestor", name: "Gestora", password: MANAGER_PASSWORD } : options.manager;
+  const { municipalityId, managerId } = await createTenant(
+    { name: `Município ${slug}`, uf: "SP", ...options, slug, ...(manager ? { manager } : {}) },
     { central: database, template: env.TENANT_DATABASE_URL_TEMPLATE },
   );
-  return { municipioId, slug, banco: bancoDoSlug(slug), gestorId: gestorId ?? null };
+  return { municipalityId, slug, database: databaseForSlug(slug), managerId: managerId ?? null };
 }
 
 // Banco do município no processo do Vitest (infra sem rota e preparação de dados).
-const bancos = new Map<string, DbDoTenant>();
-function bancoDoMunicipio(slug: string): DbDoTenant {
-  const existente = bancos.get(slug);
-  if (existente) return existente;
+const databases = new Map<string, TenantDb>();
+function municipalityDatabase(slug: string): TenantDb {
+  const existing = databases.get(slug);
+  if (existing) return existing;
   const pool = new Pool({
-    connectionString: env.TENANT_DATABASE_URL_TEMPLATE.replace("{banco}", bancoDoSlug(slug)),
+    connectionString: env.TENANT_DATABASE_URL_TEMPLATE.replace("{database}", databaseForSlug(slug)),
     max: 3,
   });
   pool.on("error", () => {});
-  const db = drizzle(pool, { schema: schemaMunicipal }) as DbDoTenant;
-  bancos.set(slug, db);
+  const db = drizzle(pool, { schema: schemaMunicipal }) as TenantDb;
+  databases.set(slug, db);
   return db;
 }
 
-function esquecerBanco(slug: string) {
-  bancos.delete(slug);
+function forgetDatabase(slug: string) {
+  databases.delete(slug);
 }
 
-async function criarUsuarioComPerfis(slug: string, login: string, atribuicoes: Atribuicoes, senha = "senha-forte-1") {
-  const db = bancoDoMunicipio(slug);
-  const { id } = await criarUsuarioPainel(db, { login, nome: login, senha });
-  await concederAtribuicoes(db, id, atribuicoes, null);
-  return { id, login, senha };
+async function createUserWithProfiles(
+  slug: string,
+  login: string,
+  assignments: Assignments,
+  password = "senha-forte-1",
+) {
+  const db = municipalityDatabase(slug);
+  const { id } = await createStaffUser(db, { login, name: login, password });
+  await grantAssignments(db, id, assignments, null);
+  return { id, login, password };
 }
 
 // Só para testes que precisam de uma unidade antes das rotas de unidade.
-async function criarUnidadeDireto(slug: string, nome = "UBS Teste") {
-  const [linha] = await bancoDoMunicipio(slug)
-    .insert(unidade)
+async function createDirectUnit(slug: string, name = "UBS Teste") {
+  const [row] = await municipalityDatabase(slug)
+    .insert(unit)
     .values({
-      nome,
-      cep: "01001000",
-      logradouro: "Rua A",
-      numero: "1",
-      bairro: "Centro",
+      name,
+      postalCode: "01001000",
+      street: "Rua A",
+      number: "1",
+      neighborhood: "Centro",
       lat: -23.5,
       lng: -46.6,
-      fuso: "America/Sao_Paulo",
+      timeZone: "America/Sao_Paulo",
     })
-    .returning({ id: unidade.id });
-  if (!linha) throw new Error("unidade não criada");
-  return linha.id;
+    .returning({ id: unit.id });
+  if (!row) throw new Error("unidade não criada");
+  return row.id;
 }
 
 // Login no painel do município pela rota real; devolve o cabeçalho `cookie`.
-async function loginPainel(slug: string, login: string, senha: string) {
-  const resposta = await fetch(`${origemDoTenant(slug)}/v1/painel/auth/sign-in/username`, {
+async function loginStaff(slug: string, login: string, password: string) {
+  const answer = await fetch(`${tenantOrigin(slug)}/v1/panel/auth/sign-in/username`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: origemDoPainel(slug) },
-    body: JSON.stringify({ username: login, password: senha }),
+    headers: { "content-type": "application/json", origin: panelOrigin(slug) },
+    body: JSON.stringify({ username: login, password: password }),
   });
-  if (resposta.status !== 200)
-    throw new Error(`login ${login} em ${slug}: ${resposta.status} ${await resposta.text()}`);
-  return cookiesDe(resposta);
+  if (answer.status !== 200) throw new Error(`login ${login} em ${slug}: ${answer.status} ${await answer.text()}`);
+  return cookiesOf(answer);
 }
 
-async function loginGestor(slug: string) {
-  return loginPainel(slug, "gestor", SENHA_GESTOR);
+async function loginManager(slug: string) {
+  return loginStaff(slug, "gestor", MANAGER_PASSWORD);
 }
 
 // biome-ignore lint/suspicious/noExplicitAny: corpo de resposta nos testes, conferido por cada asserção.
-export type RespostaJson = { status: number; corpo: any; headers: Headers };
+export type AnswerJson = { status: number; body: any; headers: Headers };
 
 // Requisição ao painel do município (Host do tenant, origem do painel).
-async function pedirPainel(
+async function panelRequest(
   slug: string,
-  metodo: string,
-  caminho: string,
-  opcoes: { cookie?: string; corpo?: unknown } = {},
-): Promise<RespostaJson> {
-  const headers: Record<string, string> = { origin: origemDoPainel(slug) };
-  if (opcoes.cookie) headers.cookie = opcoes.cookie;
-  if (opcoes.corpo !== undefined) headers["content-type"] = "application/json";
-  const resposta = await fetch(`${origemDoTenant(slug)}${caminho}`, {
-    method: metodo,
+  method: string,
+  path: string,
+  options: { cookie?: string; body?: unknown } = {},
+): Promise<AnswerJson> {
+  const headers: Record<string, string> = { origin: panelOrigin(slug) };
+  if (options.cookie) headers.cookie = options.cookie;
+  if (options.body !== undefined) headers["content-type"] = "application/json";
+  const answer = await fetch(`${tenantOrigin(slug)}${path}`, {
+    method: method,
     headers,
-    ...(opcoes.corpo !== undefined ? { body: JSON.stringify(opcoes.corpo) } : {}),
+    ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
-  const texto = await resposta.text();
-  return { status: resposta.status, corpo: texto ? JSON.parse(texto) : undefined, headers: resposta.headers };
+  const text = await answer.text();
+  return { status: answer.status, body: text ? JSON.parse(text) : undefined, headers: answer.headers };
 }
 
 // Paciente cadastrado e logado na central; devolve o cookie e o id.
-async function loginPaciente(dados = dadosDeCadastro()) {
-  const cadastro = await cadastrarPaciente(dados);
-  if (cadastro.status !== 200) throw new Error(`cadastro: ${cadastro.status} ${await cadastro.text()}`);
-  const corpo = (await cadastro.json()) as { user: { id: string } };
-  return { cookie: cookiesDe(cadastro), pacienteId: corpo.user.id, dados };
+async function loginPatient(data = registrationData()) {
+  const registration = await registerPatient(data);
+  if (registration.status !== 200) throw new Error(`cadastro: ${registration.status} ${await registration.text()}`);
+  const body = (await registration.json()) as { user: { id: string } };
+  return { cookie: cookiesOf(registration), patientId: body.user.id, data };
 }
 
-async function derrubarMunicipios() {
-  const slugs = [...slugsDoArquivo];
-  slugsDoArquivo.clear();
+async function dropMunicipalities() {
+  const slugs = [...fileSlugs];
+  fileSlugs.clear();
   for (const slug of slugs) {
-    const db = bancos.get(slug);
-    bancos.delete(slug);
+    const db = databases.get(slug);
+    databases.delete(slug);
     await db?.$client.end().catch(() => {});
   }
   for (const slug of slugs) {
-    await database.execute(sql.raw(`drop database if exists ${escapeIdentifier(bancoDoSlug(slug))} with (force)`));
+    await database.execute(sql.raw(`drop database if exists ${escapeIdentifier(databaseForSlug(slug))} with (force)`));
   }
   if (slugs.length > 0) {
-    await database.delete(municipio).where(inArray(municipio.slug, slugs));
+    await database.delete(municipality).where(inArray(municipality.slug, slugs));
   }
 }
 
 // PD-15: origem do painel do município `slug` (`http://<slug>.localhost:3333` em teste).
-function origemDoTenant(slug: string) {
+function tenantOrigin(slug: string) {
   const url = new URL(webserver.origin);
   url.hostname = `${slug}.${env.TENANT_BASE_DOMAIN}`;
   return url.origin;
 }
 
 // CPF válido: 9 dígitos aleatórios mais os verificadores (o banco de teste guarda contas entre execuções).
-function gerarCpf() {
+function generateCpf() {
   const base = String(randomInt(1_000_000_000)).padStart(9, "0");
-  const digitos = [...base].map(Number);
+  const digits = [...base].map(Number);
   // Nove dígitos iguais dariam um CPF inválido por definição; troca o último.
-  if (digitos.every((d) => d === digitos[0])) digitos[8] = ((digitos[8] ?? 0) + 1) % 10;
-  for (const peso of [10, 11]) {
-    const soma = digitos.reduce((acc, d, i) => acc + d * (peso - i), 0);
-    const resto = (soma * 10) % 11;
-    digitos.push(resto === 10 ? 0 : resto);
+  if (digits.every((d) => d === digits[0])) digits[8] = ((digits[8] ?? 0) + 1) % 10;
+  for (const weight of [10, 11]) {
+    const sum = digits.reduce((acc, d, i) => acc + d * (weight - i), 0);
+    const rest = (sum * 10) % 11;
+    digits.push(rest === 10 ? 0 : rest);
   }
-  return digitos.join("");
+  return digits.join("");
 }
 
-export type DadosDoCadastro = {
+export type RegistrationData = {
   cpf: string;
-  nome: string;
+  name: string;
   email: string;
-  telefone: string;
-  nascimento: string;
-  senha: string;
+  phone: string;
+  birthDate: string;
+  password: string;
 };
 
 // RN-ID-01 / PD-23: dados válidos de cadastro, com CPF e e-mail únicos.
-function dadosDeCadastro(opcoes: Partial<DadosDoCadastro> = {}): DadosDoCadastro {
-  const cpf = opcoes.cpf ?? gerarCpf();
+function registrationData(options: Partial<RegistrationData> = {}): RegistrationData {
+  const cpf = options.cpf ?? generateCpf();
   return {
     cpf,
-    nome: "Ana da Silva",
+    name: "Ana da Silva",
     email: `paciente-${randomUUID()}@exemplo.com.br`,
-    telefone: "(11) 98765-4321",
-    nascimento: "1990-05-17",
-    senha: "senha-forte-1",
-    ...opcoes,
+    phone: "(11) 98765-4321",
+    birthDate: "1990-05-17",
+    password: "senha-forte-1",
+    ...options,
   };
 }
 
 // Cadastra o paciente pela rota real da central (`POST /v1/auth/sign-up/email`). `corpo` vai como veio,
 // para os testes mandarem campos a mais ou a menos.
-async function cadastrarPaciente(corpo: Record<string, unknown> = dadosDeCadastro()) {
+async function registerPatient(body: Record<string, unknown> = registrationData()) {
   return fetch(`${webserver.origin}/v1/auth/sign-up/email`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: webserver.origin },
-    body: JSON.stringify(corpo),
+    body: JSON.stringify(body),
   });
 }
 
 // Converte os `set-cookie` de uma resposta no cabeçalho `cookie` da próxima requisição.
-function cookiesDe(resposta: Response) {
-  return resposta.headers
+function cookiesOf(answer: Response) {
+  return answer.headers
     .getSetCookie()
     .map((cookie) => cookie.split(";")[0])
     .join("; ");
 }
 
-const orquestrator = {
+const orchestrator = {
   waitForAllServices,
   clearDatabase,
-  slugUnico,
-  criarMunicipio,
-  derrubarMunicipios,
-  origemDoTenant,
-  gerarCpf,
-  dadosDeCadastro,
-  cadastrarPaciente,
-  cookiesDe,
-  bancoDoMunicipio,
-  esquecerBanco,
-  criarUsuarioComPerfis,
-  criarUnidadeDireto,
-  loginPainel,
-  loginGestor,
-  pedirPainel,
-  loginPaciente,
+  uniqueSlug,
+  createMunicipality,
+  dropMunicipalities,
+  tenantOrigin,
+  generateCpf,
+  registrationData,
+  registerPatient,
+  cookiesOf,
+  municipalityDatabase,
+  forgetDatabase,
+  createUserWithProfiles,
+  createDirectUnit,
+  loginStaff,
+  loginManager,
+  panelRequest,
+  loginPatient,
 };
 
-export default orquestrator;
+export default orchestrator;

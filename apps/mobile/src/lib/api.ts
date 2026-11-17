@@ -1,129 +1,127 @@
 /** Erro no formato da API (PD-22) mais o status; `sem_conexao` quando a rede falha. */
-export class ErroDaApi extends Error {
+export class ApiError extends Error {
   readonly status: number;
-  readonly erro: string;
-  readonly mensagem: string | undefined;
+  readonly error: string;
+  readonly userMessage: string | undefined;
 
-  constructor(status: number, erro: string, mensagem?: string) {
-    super(mensagem ?? erro);
+  constructor(status: number, error: string, message?: string) {
+    super(message ?? error);
     this.name = "ErroDaApi";
     this.status = status;
-    this.erro = erro;
-    this.mensagem = mensagem;
+    this.error = error;
+    this.userMessage = message;
   }
 }
 
 export type Api = {
-  get<T = unknown>(caminho: string): Promise<T>;
-  post<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
-  put<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
-  del<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
+  get<T = unknown>(path: string): Promise<T>;
+  post<T = unknown>(path: string, body?: unknown): Promise<T>;
+  put<T = unknown>(path: string, body?: unknown): Promise<T>;
+  del<T = unknown>(path: string, body?: unknown): Promise<T>;
 };
 
-async function lerCorpo(r: Response): Promise<Record<string, unknown> | undefined> {
-  const texto = await r.text();
-  if (!texto) return undefined;
+async function readBody(r: Response): Promise<Record<string, unknown> | undefined> {
+  const text = await r.text();
+  if (!text) return undefined;
   try {
-    return JSON.parse(texto) as Record<string, unknown>;
+    return JSON.parse(text) as Record<string, unknown>;
   } catch {
     return undefined;
   }
 }
 
-async function pedirBruto(
+async function requestRaw(
   fetcher: typeof fetch,
   url: string,
-  metodo: "GET" | "POST" | "PUT" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "DELETE",
   token: string | null,
-  corpo?: unknown,
-): Promise<{ resposta: Response; dados: Record<string, unknown> | undefined }> {
+  body?: unknown,
+): Promise<{ answer: Response; data: Record<string, unknown> | undefined }> {
   const headers: Record<string, string> = { accept: "application/json" };
   if (token) headers.authorization = `Bearer ${token}`;
-  if (corpo !== undefined) headers["content-type"] = "application/json";
-  let resposta: Response;
+  if (body !== undefined) headers["content-type"] = "application/json";
+  let answer: Response;
   try {
-    resposta = await fetcher(url, {
-      method: metodo,
+    answer = await fetcher(url, {
+      method: method,
       headers,
       // A conta vai só no token: o fetch do React Native reenviaria o cookie de uma sessão anterior, e o
       // better-auth recusa (403) pedido com cookie e sem Origin confiável.
       credentials: "omit",
-      ...(corpo !== undefined ? { body: JSON.stringify(corpo) } : {}),
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
   } catch {
-    throw new ErroDaApi(0, "sem_conexao");
+    throw new ApiError(0, "no_connection");
   }
-  const dados = await lerCorpo(resposta);
-  if (!resposta.ok) {
-    const erro = typeof dados?.erro === "string" ? dados.erro : "resposta_invalida";
-    const mensagem = typeof dados?.mensagem === "string" ? dados.mensagem : undefined;
-    throw new ErroDaApi(resposta.status, erro, mensagem);
+  const data = await readBody(answer);
+  if (!answer.ok) {
+    const error = typeof data?.error === "string" ? data.error : "invalid_response";
+    const message = typeof data?.message === "string" ? data.message : undefined;
+    throw new ApiError(answer.status, error, message);
   }
-  return { resposta, dados };
+  return { answer, data };
 }
 
 /** Cliente das rotas do município e do catálogo: o token da conta vai em Authorization (PD-34). */
-export function criarApi(
+export function createApi(
   base: string,
   token: () => Promise<string | null>,
   fetcher: typeof fetch = fetch,
-  aoExpirar?: () => void,
+  onExpire?: () => void,
 ): Api {
-  const pedir = async (url: string, metodo: "GET" | "POST" | "PUT" | "DELETE", corpo?: unknown) => {
+  const request = async (url: string, method: "GET" | "POST" | "PUT" | "DELETE", body?: unknown) => {
     try {
-      return await pedirBruto(fetcher, url, metodo, await token(), corpo);
+      return await requestRaw(fetcher, url, method, await token(), body);
     } catch (err) {
       // Token vencido ou revogado: o app volta ao login em vez de repetir 401 a cada consulta.
-      if (err instanceof ErroDaApi && err.status === 401) aoExpirar?.();
+      if (err instanceof ApiError && err.status === 401) onExpire?.();
       throw err;
     }
   };
   return {
-    get: async <T>(caminho: string) => (await pedir(`${base}${caminho}`, "GET")).dados as T,
-    post: async <T>(caminho: string, corpo?: unknown) =>
-      (await pedir(`${base}${caminho}`, "POST", corpo ?? {})).dados as T,
-    put: async <T>(caminho: string, corpo?: unknown) =>
-      (await pedir(`${base}${caminho}`, "PUT", corpo ?? {})).dados as T,
-    del: async <T>(caminho: string, corpo?: unknown) => (await pedir(`${base}${caminho}`, "DELETE", corpo)).dados as T,
+    get: async <T>(path: string) => (await request(`${base}${path}`, "GET")).data as T,
+    post: async <T>(path: string, body?: unknown) => (await request(`${base}${path}`, "POST", body ?? {})).data as T,
+    put: async <T>(path: string, body?: unknown) => (await request(`${base}${path}`, "PUT", body ?? {})).data as T,
+    del: async <T>(path: string, body?: unknown) => (await request(`${base}${path}`, "DELETE", body)).data as T,
   };
 }
 
-const soDigitos = (s: string) => s.replace(/\D/g, "");
+const onlyDigits = (s: string) => s.replace(/\D/g, "");
 
-function tokenDe(r: Response): string {
+function tokenOf(r: Response): string {
   const t = r.headers.get("set-auth-token");
-  if (!t) throw new ErroDaApi(r.status, "resposta_invalida");
+  if (!t) throw new ApiError(r.status, "invalid_response");
   return t;
 }
 
 /** Login na central com CPF e senha (RN-ID-01); devolve o token. */
-export async function entrar(base: string, cpf: string, senha: string, fetcher: typeof fetch = fetch) {
+export async function signIn(base: string, cpf: string, password: string, fetcher: typeof fetch = fetch) {
   try {
-    const { resposta } = await pedirBruto(fetcher, `${base}/v1/auth/sign-in/username`, "POST", null, {
-      username: soDigitos(cpf),
-      password: senha,
+    const { answer } = await requestRaw(fetcher, `${base}/v1/auth/sign-in/username`, "POST", null, {
+      username: onlyDigits(cpf),
+      password: password,
     });
-    return tokenDe(resposta);
+    return tokenOf(answer);
   } catch (e) {
-    if (e instanceof ErroDaApi && (e.status === 401 || e.status === 400)) throw new ErroDaApi(e.status, "credenciais");
+    if (e instanceof ApiError && (e.status === 401 || e.status === 400)) throw new ApiError(e.status, "credentials");
     throw e;
   }
 }
 
-export type DadosDoCadastro = {
-  nome: string;
+export type RegistrationData = {
+  name: string;
   cpf: string;
   email: string;
-  telefone: string;
-  nascimento: string;
-  senha: string;
+  phone: string;
+  birthDate: string;
+  password: string;
 };
 
 /** Cadastro na central (RN-ID-01, PD-23); devolve o token da conta nova. */
-export async function cadastrar(base: string, dados: DadosDoCadastro, fetcher: typeof fetch = fetch) {
-  const { resposta } = await pedirBruto(fetcher, `${base}/v1/auth/sign-up/email`, "POST", null, {
-    ...dados,
-    cpf: soDigitos(dados.cpf),
+export async function register(base: string, data: RegistrationData, fetcher: typeof fetch = fetch) {
+  const { answer } = await requestRaw(fetcher, `${base}/v1/auth/sign-up/email`, "POST", null, {
+    ...data,
+    cpf: onlyDigits(data.cpf),
   });
-  return tokenDe(resposta);
+  return tokenOf(answer);
 }

@@ -1,7 +1,7 @@
 import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 // PD-39: auth do painel no banco do tenant, com nomes que não se confundem com `sessao` (atendimento).
-export const usuarioPainel = pgTable("usuario_painel", {
+export const staffUser = pgTable("staff_user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -10,7 +10,7 @@ export const usuarioPainel = pgTable("usuario_painel", {
   username: text("username").unique(),
   displayUsername: text("display_username"),
   // Pessoa removida da equipe: sem senha, sessões nem atribuições; o registro fica pela auditoria.
-  removidoEm: timestamp("removido_em", { withTimezone: true }),
+  removedAt: timestamp("removed_at", { withTimezone: true }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -18,8 +18,8 @@ export const usuarioPainel = pgTable("usuario_painel", {
     .notNull(),
 });
 
-export const sessaoPainel = pgTable(
-  "sessao_painel",
+export const panelSession = pgTable(
+  "panel_session",
   {
     id: text("id").primaryKey(),
     expiresAt: timestamp("expires_at").notNull(),
@@ -32,20 +32,20 @@ export const sessaoPainel = pgTable(
     userAgent: text("user_agent"),
     userId: text("user_id")
       .notNull()
-      .references(() => usuarioPainel.id, { onDelete: "cascade" }),
+      .references(() => staffUser.id, { onDelete: "cascade" }),
   },
-  (t) => [index("sessao_painel_user_idx").on(t.userId)],
+  (t) => [index("panel_session_user_idx").on(t.userId)],
 );
 
-export const contaPainel = pgTable(
-  "conta_painel",
+export const panelAccount = pgTable(
+  "panel_account",
   {
     id: text("id").primaryKey(),
     accountId: text("account_id").notNull(),
     providerId: text("provider_id").notNull(),
     userId: text("user_id")
       .notNull()
-      .references(() => usuarioPainel.id, { onDelete: "cascade" }),
+      .references(() => staffUser.id, { onDelete: "cascade" }),
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
@@ -58,10 +58,10 @@ export const contaPainel = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (t) => [index("conta_painel_user_idx").on(t.userId)],
+  (t) => [index("panel_account_user_idx").on(t.userId)],
 );
 
-export const verificacaoPainel = pgTable("verificacao_painel", {
+export const staffVerification = pgTable("staff_verification", {
   id: text("id").primaryKey(),
   identifier: text("identifier").notNull(),
   value: text("value").notNull(),

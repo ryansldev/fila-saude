@@ -1,12 +1,12 @@
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { paciente } from "./auth";
+import { patient } from "./auth";
 
 // T3.8: token de push (Expo) de cada aparelho da conta; um aparelho pertence a uma conta por vez.
-export const dispositivoPush = pgTable("dispositivo_push", {
+export const pushDevice = pgTable("push_device", {
   id: uuid("id").primaryKey().defaultRandom(),
-  pacienteId: text("paciente_id")
+  patientId: text("patient_id")
     .notNull()
-    .references(() => paciente.id, { onDelete: "cascade" }),
+    .references(() => patient.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),
-  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -76,7 +76,7 @@
 ## Mudanças por camada
 
 - **design:** o SVG do Dr. Lino passa para `packages/design` (o app e o painel usam o mesmo); o app passa a importar de lá.
-- **API:** `GET /v1/painel/unidades/hoje` → para cada unidade que a pessoa vê: `{ unidadeId, abertas: number, proximaAbertura: iso | null }`.
+- **API:** `GET /v1/panel/units/today` → para cada unidade que a pessoa vê: `{ unidadeId, abertas: number, proximaAbertura: iso | null }`.
 - **painel:** contexto da unidade no layout (`ProvedorDaUnidade`; `useUnidadeAtual` passa a lê-lo); componentes `CartaoDaUnidade` (menu) e `TrocaDeUnidade` (painel lateral); `QrDeEntrada` (o QR estilizado) no kit; `DrLino` (mascote em fundo branco com balão) no kit; telas `/qr` e `/qr/paciente`; a TV usa o QR novo.
 
 ## Restrições

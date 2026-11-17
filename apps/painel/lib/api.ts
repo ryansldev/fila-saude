@@ -1,88 +1,88 @@
-import { erroSchema } from "@fila-saude/schemas/erros";
+import { errorSchema } from "@fila-saude/schemas/errors";
 
 /** Erro no formato único da API (PD-22): `{ erro, mensagem?, campos? }` mais o status HTTP. */
-export class ErroDaApi extends Error {
+export class ApiError extends Error {
   readonly status: number;
-  readonly erro: string;
-  readonly mensagem?: string;
-  readonly campos?: Record<string, string[]>;
-  readonly dados?: Record<string, unknown>;
+  readonly error: string;
+  readonly userMessage?: string;
+  readonly fields?: Record<string, string[]>;
+  readonly data?: Record<string, unknown>;
 
   constructor(
     status: number,
-    erro: string,
-    mensagem?: string,
-    campos?: Record<string, string[]>,
-    dados?: Record<string, unknown>,
+    error: string,
+    message?: string,
+    fields?: Record<string, string[]>,
+    data?: Record<string, unknown>,
   ) {
-    super(mensagem ?? erro);
+    super(message ?? error);
     this.name = "ErroDaApi";
     this.status = status;
-    this.erro = erro;
-    if (mensagem !== undefined) this.mensagem = mensagem;
-    if (campos !== undefined) this.campos = campos;
-    if (dados !== undefined) this.dados = dados;
+    this.error = error;
+    if (message !== undefined) this.userMessage = message;
+    if (fields !== undefined) this.fields = fields;
+    if (data !== undefined) this.data = data;
   }
 }
 
 export type Api = {
-  get<T = unknown>(caminho: string): Promise<T>;
-  post<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
-  patch<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
-  put<T = unknown>(caminho: string, corpo?: unknown): Promise<T>;
-  del<T = unknown>(caminho: string): Promise<T>;
+  get<T = unknown>(path: string): Promise<T>;
+  post<T = unknown>(path: string, body?: unknown): Promise<T>;
+  patch<T = unknown>(path: string, body?: unknown): Promise<T>;
+  put<T = unknown>(path: string, body?: unknown): Promise<T>;
+  del<T = unknown>(path: string): Promise<T>;
 };
 
-type Metodo = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+type Method = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
-const NAO_JSON = Symbol("nao_json");
+const NOT_JSON = Symbol("nao_json");
 
-async function lerJson(resposta: Response): Promise<unknown> {
-  const texto = await resposta.text();
-  if (!texto) return undefined;
+async function readJson(answer: Response): Promise<unknown> {
+  const text = await answer.text();
+  if (!text) return undefined;
   try {
-    return JSON.parse(texto);
+    return JSON.parse(text);
   } catch {
-    return NAO_JSON;
+    return NOT_JSON;
   }
 }
 
 /** Cliente da API do painel: cookie da sessão sempre (`credentials: "include"`), JSON na ida e na volta. */
-export function criarApi(base: string, fetcher: typeof fetch = fetch, aoExpirar?: () => void): Api {
-  async function pedir<T>(metodo: Metodo, caminho: string, corpo?: unknown): Promise<T> {
-    const init: RequestInit = { method: metodo, credentials: "include", headers: { accept: "application/json" } };
-    if (corpo !== undefined) {
+export function createApi(base: string, fetcher: typeof fetch = fetch, onExpire?: () => void): Api {
+  async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
+    const init: RequestInit = { method: method, credentials: "include", headers: { accept: "application/json" } };
+    if (body !== undefined) {
       init.headers = { accept: "application/json", "content-type": "application/json" };
-      init.body = JSON.stringify(corpo);
+      init.body = JSON.stringify(body);
     }
 
-    let resposta: Response;
+    let answer: Response;
     try {
-      resposta = await fetcher(`${base}${caminho}`, init);
+      answer = await fetcher(`${base}${path}`, init);
     } catch {
-      throw new ErroDaApi(0, "sem_conexao");
+      throw new ApiError(0, "no_connection");
     }
 
-    const dados = await lerJson(resposta);
-    if (resposta.ok && dados === NAO_JSON) throw new ErroDaApi(resposta.status, "resposta_invalida");
-    if (!resposta.ok) {
-      const corpo = erroSchema.safeParse(dados);
+    const data = await readJson(answer);
+    if (answer.ok && data === NOT_JSON) throw new ApiError(answer.status, "invalid_response");
+    if (!answer.ok) {
+      const body = errorSchema.safeParse(data);
       // Sessão vencida: avisa uma vez para o painel voltar ao login (senão as consultas repetem 401).
-      if (resposta.status === 401) aoExpirar?.();
-      if (corpo.success) {
-        const { erro, mensagem, campos, dados: extra } = corpo.data;
-        throw new ErroDaApi(resposta.status, erro, mensagem, campos, extra);
+      if (answer.status === 401) onExpire?.();
+      if (body.success) {
+        const { error, message, fields, data: extra } = body.data;
+        throw new ApiError(answer.status, error, message, fields, extra);
       }
-      throw new ErroDaApi(resposta.status, "resposta_invalida");
+      throw new ApiError(answer.status, "invalid_response");
     }
-    return dados as T;
+    return data as T;
   }
 
   return {
-    get: (caminho) => pedir("GET", caminho),
-    post: (caminho, corpo) => pedir("POST", caminho, corpo),
-    patch: (caminho, corpo) => pedir("PATCH", caminho, corpo),
-    put: (caminho, corpo) => pedir("PUT", caminho, corpo),
-    del: (caminho) => pedir("DELETE", caminho),
+    get: (path) => request("GET", path),
+    post: (path, body) => request("POST", path, body),
+    patch: (path, body) => request("PATCH", path, body),
+    put: (path, body) => request("PUT", path, body),
+    del: (path) => request("DELETE", path),
   };
 }

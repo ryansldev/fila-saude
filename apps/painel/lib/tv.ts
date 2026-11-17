@@ -1,50 +1,54 @@
-import type { ChamadaNaTv } from "@fila-saude/schemas/tv";
+import type { CallInTv } from "@fila-saude/schemas/tv";
 
 /** RN-TV-07: o que já foi visto, o que espera para ser anunciado e o anúncio em destaque. */
-export type Anuncios = {
-  iniciado: boolean;
-  vistas: string[];
-  fila: ChamadaNaTv[];
-  atual: { chamada: ChamadaNaTv; ate: number } | null;
+export type Announcements = {
+  started: boolean;
+  seen: string[];
+  queue: CallInTv[];
+  current: { call: CallInTv; until: number } | null;
 };
 
-export const ANUNCIOS_VAZIOS: Anuncios = { iniciado: false, vistas: [], fila: [], atual: null };
+export const EMPTY_ANNOUNCEMENTS: Announcements = { started: false, seen: [], queue: [], current: null };
 
-const LIMITE_DE_VISTAS = 50;
+const SEEN_LIMIT = 50;
 
 /**
  * Junta as chamadas da última leitura. Na primeira, só guarda o histórico (não anuncia o que já passou).
  * As novas entram na fila da mais antiga para a mais nova; rechamar gera uma chamada nova (outro horário).
  */
-export function receberChamadas(
-  e: Anuncios,
-  chamadas: ChamadaNaTv[],
-  agora = Number.POSITIVE_INFINITY,
-  maxAtrasoMs = Number.POSITIVE_INFINITY,
-): Anuncios {
-  const ids = chamadas.map((c) => c.id);
-  if (!e.iniciado) return { ...e, iniciado: true, vistas: ids };
-  const novas = chamadas.filter((c) => !e.vistas.includes(c.id)).sort((a, b) => a.em.localeCompare(b.em));
-  if (novas.length === 0) return e;
+export function receiveCalls(
+  e: Announcements,
+  calls: CallInTv[],
+  now = Number.POSITIVE_INFINITY,
+  maxDelayMs = Number.POSITIVE_INFINITY,
+): Announcements {
+  const ids = calls.map((c) => c.id);
+  if (!e.started) return { ...e, started: true, seen: ids };
+  const fresh = calls.filter((c) => !e.seen.includes(c.id)).sort((a, b) => a.at.localeCompare(b.at));
+  if (fresh.length === 0) return e;
   // Depois de uma queda, as chamadas que passaram há muito tempo só vão para o histórico.
-  const recentes = novas.filter((c) => agora - Date.parse(c.em) <= maxAtrasoMs);
+  const recent = fresh.filter((c) => now - Date.parse(c.at) <= maxDelayMs);
   return {
     ...e,
-    vistas: [...novas.map((c) => c.id), ...e.vistas].slice(0, LIMITE_DE_VISTAS),
-    fila: [...e.fila, ...recentes],
+    seen: [...fresh.map((c) => c.id), ...e.seen].slice(0, SEEN_LIMIT),
+    queue: [...e.queue, ...recent],
   };
 }
 
 /** "Últimas chamadas": as já anunciadas (nem na fila de anúncios, nem a do destaque). */
-export function ultimasAnunciadas(e: Anuncios, chamadas: ChamadaNaTv[]): ChamadaNaTv[] {
-  const pendentes = new Set([...e.fila.map((c) => c.id), ...(e.atual ? [e.atual.chamada.id] : [])]);
-  return chamadas.filter((c) => !pendentes.has(c.id));
+export function lastAnnounced(e: Announcements, calls: CallInTv[]): CallInTv[] {
+  const pending = new Set([...e.queue.map((c) => c.id), ...(e.current ? [e.current.call.id] : [])]);
+  return calls.filter((c) => !pending.has(c.id));
 }
 
-/** Cada anúncio fica `destaqueMs` em destaque; ao trocar, a TV toca o aviso (RN-TV-04). */
-export function avancarAnuncios(e: Anuncios, agora: number, destaqueMs: number): { estado: Anuncios; tocar: boolean } {
-  if (e.atual && agora < e.atual.ate) return { estado: e, tocar: false };
-  const [proxima, ...resto] = e.fila;
-  if (!proxima) return { estado: e.atual ? { ...e, atual: null } : e, tocar: false };
-  return { estado: { ...e, fila: resto, atual: { chamada: proxima, ate: agora + destaqueMs } }, tocar: true };
+/** Cada anúncio fica `highlightMs` em destaque; ao trocar, a TV toca o aviso (RN-TV-04). */
+export function advanceAnnouncements(
+  e: Announcements,
+  now: number,
+  highlightMs: number,
+): { state: Announcements; tap: boolean } {
+  if (e.current && now < e.current.until) return { state: e, tap: false };
+  const [next, ...rest] = e.queue;
+  if (!next) return { state: e.current ? { ...e, current: null } : e, tap: false };
+  return { state: { ...e, queue: rest, current: { call: next, until: now + highlightMs } }, tap: true };
 }

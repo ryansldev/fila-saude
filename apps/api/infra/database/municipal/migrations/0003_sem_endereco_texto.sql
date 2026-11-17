@@ -1,1 +1,0 @@
-ALTER TABLE "unidade" DROP COLUMN "endereco";

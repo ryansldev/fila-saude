@@ -1,18 +1,18 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
-import type { TamanhoPainel, Variante } from "@fila-saude/design";
+import type { PanelSize, Variant } from "@fila-saude/design";
 import { Loader2Icon, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type { TamanhoPainel, Variante };
+export type { PanelSize, Variant };
 
 type Props = Omit<ButtonPrimitive.Props, "className"> & {
-  variante?: Variante;
-  tamanho?: TamanhoPainel;
+  variant?: Variant;
+  size?: PanelSize;
   /** Ícone à esquerda do rótulo (ou sozinho, no tamanho "icone"). */
-  icone?: LucideIcon;
+  icon?: LucideIcon;
   /** Ação em andamento: não aceita clique, avisa o leitor de tela e mostra "Aguarde…". */
-  carregando?: boolean;
+  loading?: boolean;
   /** Só para layout (largura, margem, posição): a aparência vem do design system. */
   className?: string;
 };
@@ -23,10 +23,10 @@ type Props = Omit<ButtonPrimitive.Props, "className"> & {
  * as mesmas do `Botao` do app.
  */
 function Button({
-  variante = "principal",
-  tamanho = "padrao",
-  icone: Icone,
-  carregando = false,
+  variant = "primary",
+  size = "default",
+  icon: Icon,
+  loading = false,
   disabled,
   className,
   children,
@@ -35,17 +35,17 @@ function Button({
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn("ds-btn", `ds-btn-${variante}`, `ds-btn-${tamanho}`, className)}
-      disabled={disabled || carregando}
-      aria-busy={carregando || undefined}
+      className={cn("ds-btn", `ds-btn-${variant}`, `ds-btn-${size}`, className)}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
-      {carregando ? (
+      {loading ? (
         <Loader2Icon className="size-4 animate-spin" aria-hidden />
-      ) : Icone ? (
-        <Icone className="size-4" aria-hidden />
+      ) : Icon ? (
+        <Icon className="size-4" aria-hidden />
       ) : null}
-      {carregando ? <span>Aguarde…</span> : typeof children === "string" ? <span>{children}</span> : children}
+      {loading ? <span>Aguarde…</span> : typeof children === "string" ? <span>{children}</span> : children}
     </ButtonPrimitive>
   );
 }

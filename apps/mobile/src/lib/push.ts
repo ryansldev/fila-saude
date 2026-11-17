@@ -14,31 +14,31 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export type ResultadoDoPush = "registrado" | "sem_permissao" | "sem_projeto" | "simulador" | "erro";
+export type PushResult = "registered" | "no_permission" | "no_project" | "simulator" | "error";
 
 /**
  * "perguntar": o celular ainda não perguntou (a tela 3 explica antes de pedir).
- * "desligados": a pessoa negou; `podePedir` diz se o celular ainda mostra o pedido ou só os ajustes resolvem.
+ * "desligados": a pessoa negou; `canRequest` diz se o celular ainda mostra o pedido ou só os ajustes resolvem.
  */
-export type EstadoDosAvisos = { tipo: "ligados" } | { tipo: "perguntar" } | { tipo: "desligados"; podePedir: boolean };
+export type NoticeState = { kind: "on" } | { kind: "ask" } | { kind: "off"; canRequest: boolean };
 
-const deStatus = (p: Notifications.NotificationPermissionsStatus): EstadoDosAvisos =>
+const fromStatus = (p: Notifications.NotificationPermissionsStatus): NoticeState =>
   p.granted
-    ? { tipo: "ligados" }
+    ? { kind: "on" }
     : p.status === "undetermined"
-      ? { tipo: "perguntar" }
-      : { tipo: "desligados", podePedir: p.canAskAgain };
+      ? { kind: "ask" }
+      : { kind: "off", canRequest: p.canAskAgain };
 
 /** Nunca lança: sem como ler, trata como ligados para não travar a entrada. */
-export async function estadoDosAvisos(): Promise<EstadoDosAvisos> {
+export async function noticeState(): Promise<NoticeState> {
   try {
-    return deStatus(await Notifications.getPermissionsAsync());
+    return fromStatus(await Notifications.getPermissionsAsync());
   } catch {
-    return { tipo: "ligados" };
+    return { kind: "on" };
   }
 }
 
-const criarCanal = async () => {
+const createChannel = async () => {
   if (Platform.OS !== "android") return;
   await Notifications.setNotificationChannelAsync("fila", {
     name: "fila",
@@ -47,13 +47,13 @@ const criarCanal = async () => {
   });
 };
 
-let tokenRegistrado: string | null = null;
+let registeredToken: string | null = null;
 
 /** Ao sair da conta: tira este aparelho da lista de avisos dela. Nunca lança. */
-export async function sairDoPush(api: Api): Promise<void> {
-  if (!tokenRegistrado) return;
-  await api.del("/v1/paciente/push", { token: tokenRegistrado }).catch(() => {});
-  tokenRegistrado = null;
+export async function leavePush(api: Api): Promise<void> {
+  if (!registeredToken) return;
+  await api.del("/v1/patient/push", { token: registeredToken }).catch(() => {});
+  registeredToken = null;
 }
 
 /**
@@ -61,21 +61,21 @@ export async function sairDoPush(api: Api): Promise<void> {
  * O token da Expo exige o projectId do EAS (EXPO_PUBLIC_EAS_PROJECT_ID ou extra.eas.projectId):
  * sem ele o app segue só com a consulta da tela. Nunca lança.
  */
-export async function registrarPush(api: Api): Promise<ResultadoDoPush> {
+export async function registerPush(api: Api): Promise<PushResult> {
   try {
-    if (!Device.isDevice) return "simulador";
-    if (!(await Notifications.getPermissionsAsync()).granted) return "sem_permissao";
-    await criarCanal();
+    if (!Device.isDevice) return "simulator";
+    if (!(await Notifications.getPermissionsAsync()).granted) return "no_permission";
+    await createChannel();
     const projectId =
       process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
       (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
-    if (!projectId) return "sem_projeto";
+    if (!projectId) return "no_project";
     const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
-    await api.put("/v1/paciente/push", { token: data });
-    tokenRegistrado = data;
-    return "registrado";
+    await api.put("/v1/patient/push", { token: data });
+    registeredToken = data;
+    return "registered";
   } catch {
-    return "erro";
+    return "error";
   }
 }
 
@@ -83,17 +83,17 @@ export async function registrarPush(api: Api): Promise<ResultadoDoPush> {
  * Pede a permissão ou, se o celular não pergunta mais, abre os ajustes do app. Devolve o estado depois
  * do pedido; ao voltar dos ajustes, quem chamou lê de novo. Não registra o token. Nunca lança.
  */
-export async function ligarAvisos(): Promise<EstadoDosAvisos> {
+export async function turnOnNotices(): Promise<NoticeState> {
   try {
     // Android 13+: o pedido só aparece depois de existir um canal.
-    await criarCanal();
-    const atual = await Notifications.getPermissionsAsync();
-    if (!atual.granted && atual.status !== "undetermined" && !atual.canAskAgain) {
+    await createChannel();
+    const current = await Notifications.getPermissionsAsync();
+    if (!current.granted && current.status !== "undetermined" && !current.canAskAgain) {
       await Linking.openSettings();
-      return deStatus(atual);
+      return fromStatus(current);
     }
-    return deStatus(atual.granted ? atual : await Notifications.requestPermissionsAsync());
+    return fromStatus(current.granted ? current : await Notifications.requestPermissionsAsync());
   } catch {
-    return estadoDosAvisos();
+    return noticeState();
   }
 }

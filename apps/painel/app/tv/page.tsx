@@ -1,181 +1,181 @@
 "use client";
 
-import type { TvEstado, TvRegistro } from "@fila-saude/schemas/tv";
+import type { TvRecord, TvState } from "@fila-saude/schemas/tv";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Logo } from "@/components/logo";
-import { PainelDaTv } from "@/components/tv/painel-da-tv";
+import { TvPanel } from "@/components/tv/tv-panel";
 import { Button } from "@/components/ui/button";
-import { qrEstilizado } from "@/lib/qr";
-import { urlDaApi } from "@/lib/tenant";
-import { ANUNCIOS_VAZIOS, type Anuncios, avancarAnuncios, receberChamadas, ultimasAnunciadas } from "@/lib/tv";
+import { styledQr } from "@/lib/qr";
+import { apiUrl } from "@/lib/tenant";
+import { type Announcements, advanceAnnouncements, EMPTY_ANNOUNCEMENTS, lastAnnounced, receiveCalls } from "@/lib/tv";
 
-const CHAVE = "fila-saude:tv";
-const CONSULTA_MS = 2_000; // PD-48
-const OFFLINE_APOS = 3; // leituras seguidas sem resposta: aviso discreto
-const OFFLINE_LONGO = 30; // ~1 min sem resposta: tela de "reconectando"
+const KEY = "fila-saude:tv";
+const QUERY_MS = 2_000; // PD-48
+const OFFLINE_AFTER = 3; // leituras seguidas sem resposta: aviso discreto
+const OFFLINE_LONG = 30; // ~1 min sem resposta: tela de "reconectando"
 
-const lerToken = () => {
+const readToken = () => {
   try {
-    return window.localStorage.getItem(CHAVE);
+    return window.localStorage.getItem(KEY);
   } catch {
     return null;
   }
 };
-const gravarToken = (t: string | null) => {
+const saveToken = (t: string | null) => {
   try {
-    if (t) window.localStorage.setItem(CHAVE, t);
-    else window.localStorage.removeItem(CHAVE);
+    if (t) window.localStorage.setItem(KEY, t);
+    else window.localStorage.removeItem(KEY);
   } catch {}
 };
 
 /** RN-TV-04: dois tons gerados no navegador, sem voz. */
-function tocarAviso(ctx: AudioContext | null) {
+function tapNotice(ctx: AudioContext | null) {
   if (!ctx) return;
-  const tom = (freq: number, inicio: number) => {
+  const tone = (freq: number, start: number) => {
     const o = ctx.createOscillator();
     const g = ctx.createGain();
     o.frequency.value = freq;
-    g.gain.setValueAtTime(0.0001, ctx.currentTime + inicio);
-    g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + inicio + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + inicio + 0.45);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime + start);
+    g.gain.exponentialRampToValueAtTime(0.4, ctx.currentTime + start + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + 0.45);
     o.connect(g).connect(ctx.destination);
-    o.start(ctx.currentTime + inicio);
-    o.stop(ctx.currentTime + inicio + 0.5);
+    o.start(ctx.currentTime + start);
+    o.stop(ctx.currentTime + start + 0.5);
   };
-  tom(880, 0);
-  tom(660, 0.5);
+  tone(880, 0);
+  tone(660, 0.5);
 }
 
 /** O QR de entrada do design system (pontos pretos, coração azul), o mesmo do painel e do monitor. */
-function useSvgDoQr(conteudo: string | null) {
-  return useMemo(() => (conteudo ? qrEstilizado(conteudo) : null), [conteudo]);
+function useQrSvg(content: string | null) {
+  return useMemo(() => (content ? styledQr(content) : null), [content]);
 }
 
 /** T3.5: TV da sala de espera. Pareamento (RN-TV-01), só senhas (RN-TV-05), fila de anúncios (RN-TV-07). */
 export default function Tv() {
-  const [estado, setEstado] = useState<TvEstado | null>(null);
-  const [falhas, setFalhas] = useState(0);
-  const [iniciado, setIniciado] = useState(false);
-  const [anuncios, setAnuncios] = useState<Anuncios>(ANUNCIOS_VAZIOS);
+  const [state, setState] = useState<TvState | null>(null);
+  const [failures, setFailures] = useState(0);
+  const [started, setStarted] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcements>(EMPTY_ANNOUNCEMENTS);
   // A hora do topo, pelo relógio da TV.
-  const [agora, setAgora] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setAgora(Date.now()), 10_000);
+    const id = setInterval(() => setNow(Date.now()), 10_000);
     return () => clearInterval(id);
   }, []);
   const audio = useRef<AudioContext | null>(null);
-  const pareada = estado?.estado === "pareada" ? estado : null;
-  const svg = useSvgDoQr(pareada?.qr?.conteudo ?? null);
+  const paired = state?.state === "paired" ? state : null;
+  const svg = useQrSvg(paired?.qr?.content ?? null);
 
   const base = useCallback(
-    () => urlDaApi(window.location, { NEXT_PUBLIC_API_PORTA: process.env.NEXT_PUBLIC_API_PORTA }),
+    () => apiUrl(window.location, { NEXT_PUBLIC_API_PORT: process.env.NEXT_PUBLIC_API_PORT }),
     [],
   );
 
   useEffect(() => {
-    let ativo = true;
-    const registrar = async () => {
+    let active = true;
+    const register = async () => {
       const r = await fetch(`${base()}/v1/tv`, { method: "POST" });
       if (!r.ok) throw new Error("registro");
-      const dados = (await r.json()) as TvRegistro;
-      gravarToken(dados.token);
-      return dados.token;
+      const data = (await r.json()) as TvRecord;
+      saveToken(data.token);
+      return data.token;
     };
     let timer: ReturnType<typeof setTimeout> | undefined;
     // Uma consulta por vez: a próxima só sai depois da resposta (senão duas leituras sem token
     // registravam duas TVs e o código piscava).
-    const buscar = async () => {
+    const load = async () => {
       try {
-        const token = lerToken() ?? (await registrar());
-        const r = await fetch(`${base()}/v1/tv/tela`, { headers: { authorization: `Bearer ${token}` } });
+        const token = readToken() ?? (await register());
+        const r = await fetch(`${base()}/v1/tv/screen`, { headers: { authorization: `Bearer ${token}` } });
         // RN-TV-01: revogada, desconhecida ou código vencido (o servidor decide): volta ao pareamento.
-        if (r.status === 401) gravarToken(null);
+        if (r.status === 401) saveToken(null);
         else {
           if (!r.ok) throw new Error(String(r.status));
-          const dados = (await r.json()) as TvEstado;
-          if (!ativo) return;
-          setEstado(dados);
-          setFalhas(0);
-          if (dados.estado === "pareada") {
-            const maxAtraso = dados.destaqueSegundos * 2000;
-            setAnuncios((a) => receberChamadas(a, dados.chamadas, Date.now(), maxAtraso));
+          const data = (await r.json()) as TvState;
+          if (!active) return;
+          setState(data);
+          setFailures(0);
+          if (data.state === "paired") {
+            const maxDelay = data.highlightSeconds * 2000;
+            setAnnouncements((a) => receiveCalls(a, data.calls, Date.now(), maxDelay));
           }
         }
       } catch {
-        if (ativo) setFalhas((f) => f + 1);
+        if (active) setFailures((f) => f + 1);
       }
-      if (ativo) timer = setTimeout(buscar, CONSULTA_MS);
+      if (active) timer = setTimeout(load, QUERY_MS);
     };
-    void buscar();
+    void load();
     return () => {
-      ativo = false;
+      active = false;
       if (timer) clearTimeout(timer);
     };
   }, [base]);
 
-  const destaqueMs = (pareada?.destaqueSegundos ?? 10) * 1000;
+  const highlightMs = (paired?.highlightSeconds ?? 10) * 1000;
   useEffect(() => {
-    const id = setInterval(() => setAnuncios((a) => avancarAnuncios(a, Date.now(), destaqueMs).estado), 250);
+    const id = setInterval(() => setAnnouncements((a) => advanceAnnouncements(a, Date.now(), highlightMs).state), 250);
     return () => clearInterval(id);
-  }, [destaqueMs]);
+  }, [highlightMs]);
 
   // RN-TV-04: o som toca uma vez por anúncio, fora do atualizador de estado (que o React pode repetir).
-  const anunciando = anuncios.atual?.chamada.id ?? null;
+  const announcing = announcements.current?.call.id ?? null;
   useEffect(() => {
-    if (anunciando) tocarAviso(audio.current);
-  }, [anunciando]);
+    if (announcing) tapNotice(audio.current);
+  }, [announcing]);
 
   // RN-TV-06: queda curta mantém a última tela com um aviso; só uma queda longa troca a tela.
-  const semConexao = falhas >= OFFLINE_APOS;
-  const offline = falhas >= OFFLINE_LONGO || (semConexao && estado?.estado !== "pareada");
+  const disconnected = failures >= OFFLINE_AFTER;
+  const offline = failures >= OFFLINE_LONG || (disconnected && state?.state !== "paired");
 
   return (
     <main className="flex min-h-screen flex-col bg-white font-[family-name:var(--font-nunito)] text-[#0c2e4e]">
       {offline ? (
-        <Centro>
+        <Center>
           <p className="text-5xl font-extrabold">reconectando…</p>
           <p className="text-2xl text-slate-500">a fila volta a aparecer quando a internet voltar.</p>
-        </Centro>
-      ) : !estado ? (
-        <Centro>
+        </Center>
+      ) : !state ? (
+        <Center>
           <Logo className="size-24 text-primary" />
-        </Centro>
-      ) : estado.estado === "aguardando" ? (
-        <Centro>
+        </Center>
+      ) : state.state === "waiting" ? (
+        <Center>
           <Logo className="size-20 text-primary" />
           <p className="text-3xl">para ligar esta TV, digite no painel da unidade o código</p>
           <p className="rounded-3xl bg-[#eef5fa] px-16 py-8 font-mono text-[10rem] leading-none font-extrabold tracking-[0.2em] text-[#0c2e4e]">
-            {estado.codigo}
+            {state.code}
           </p>
           <p className="text-xl text-slate-500">no painel: TVs › parear TV</p>
-        </Centro>
-      ) : !iniciado ? (
-        <Centro>
+        </Center>
+      ) : !started ? (
+        <Center>
           <Logo className="size-20 text-primary" />
-          <p className="text-4xl font-bold">{estado.unidade.nome}</p>
+          <p className="text-4xl font-bold">{state.unit.name}</p>
           <Button
-            variante="principal"
+            variant="primary"
             className="h-24 rounded-2xl px-12 text-4xl"
             onClick={() => {
               // RN-TV-04: o navegador só libera o som depois de um toque.
               audio.current = new AudioContext();
-              setIniciado(true);
+              setStarted(true);
             }}
           >
             iniciar painel
           </Button>
           <p className="text-xl text-slate-500">toque uma vez para ligar o som das chamadas.</p>
-        </Centro>
+        </Center>
       ) : (
         <>
-          <PainelDaTv
-            agora={agora}
-            estado={estado}
-            atual={anuncios.atual?.chamada ?? null}
-            ultimas={ultimasAnunciadas(anuncios, estado.chamadas).slice(0, 4)}
-            svg={semConexao ? null : svg}
+          <TvPanel
+            now={now}
+            state={state}
+            current={announcements.current?.call ?? null}
+            last={lastAnnounced(announcements, state.calls).slice(0, 4)}
+            svg={disconnected ? null : svg}
           />
-          {semConexao ? (
+          {disconnected ? (
             <p className="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-amber-100 px-5 py-2 text-xl font-bold text-amber-900">
               sem conexão, reconectando…
             </p>
@@ -186,6 +186,6 @@ export default function Tv() {
   );
 }
 
-function Centro({ children }: { children: React.ReactNode }) {
+function Center({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-1 flex-col items-center justify-center gap-8 p-12 text-center">{children}</div>;
 }

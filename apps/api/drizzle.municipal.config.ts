@@ -8,6 +8,6 @@ export default defineConfig({
   out: "./infra/database/municipal/migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: env.TENANT_DATABASE_URL_TEMPLATE.replace("{banco}", "fila_t_dev"),
+    url: env.TENANT_DATABASE_URL_TEMPLATE.replace("{database}", "fila_t_dev"),
   },
 });

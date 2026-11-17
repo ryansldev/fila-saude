@@ -4,7 +4,7 @@ import { boolean, date, index, pgTable, text, timestamp, uuid } from "drizzle-or
 // PD-23: a tabela do usuário do better-auth central é o paciente (`user.modelName = "paciente"`).
 // `username` (plugin username) e `cpf` guardam o mesmo CPF só com dígitos; o UNIQUE dos dois
 // fecha a corrida de dois cadastros simultâneos (RN-ID-02). INV-11: nada de sintoma, documento ou fila.
-export const paciente = pgTable("paciente", {
+export const patient = pgTable("patient", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
@@ -13,12 +13,12 @@ export const paciente = pgTable("paciente", {
   username: text("username").unique(),
   displayUsername: text("display_username"),
   cpf: text("cpf").notNull().unique(),
-  nascimento: date("nascimento", { mode: "string" }).notNull(),
-  telefone: text("telefone").notNull(),
+  birthDate: date("birth_date", { mode: "string" }).notNull(),
+  phone: text("phone").notNull(),
   // RN-ID-05: nulos até a recepção conferir o documento; nunca vêm do cliente.
-  verificadoEm: timestamp("verificado_em", { withTimezone: true }),
-  verificadoMetodo: text("verificado_metodo"),
-  verificadoMunicipio: uuid("verificado_municipio"),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  verificationMethod: text("verification_method"),
+  verifiedMunicipality: uuid("verified_municipality"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -40,7 +40,7 @@ export const session = pgTable(
     userAgent: text("user_agent"),
     userId: text("user_id")
       .notNull()
-      .references(() => paciente.id, { onDelete: "cascade" }),
+      .references(() => patient.id, { onDelete: "cascade" }),
   },
   (table) => [index("session_userId_idx").on(table.userId)],
 );
@@ -53,7 +53,7 @@ export const account = pgTable(
     providerId: text("provider_id").notNull(),
     userId: text("user_id")
       .notNull()
-      .references(() => paciente.id, { onDelete: "cascade" }),
+      .references(() => patient.id, { onDelete: "cascade" }),
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
@@ -85,21 +85,21 @@ export const verification = pgTable(
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
-export const pacienteRelations = relations(paciente, ({ many }) => ({
+export const patientRelations = relations(patient, ({ many }) => ({
   sessions: many(session),
   accounts: many(account),
 }));
 
 export const sessionRelations = relations(session, ({ one }) => ({
-  paciente: one(paciente, {
+  patient: one(patient, {
     fields: [session.userId],
-    references: [paciente.id],
+    references: [patient.id],
   }),
 }));
 
 export const accountRelations = relations(account, ({ one }) => ({
-  paciente: one(paciente, {
+  patient: one(patient, {
     fields: [account.userId],
-    references: [paciente.id],
+    references: [patient.id],
   }),
 }));

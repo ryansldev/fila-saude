@@ -85,7 +85,7 @@ Os planos detalhados ([1B](../../arquivo/planos/mvp-filas/plano-fase-1b-fundacao
 | --- | --- | --- |
 | PD-17 | O login do paciente feito na central vale no município por um JWT EdDSA de 15 min, conferido pelo JWKS da central | Fecha o item em aberto do plan. Muda o app (troca sessão por token) e o prazo de bloqueio de conta |
 | PD-21 | Senha com no mínimo 8 caracteres; 5 erros seguidos bloqueiam a conta por 15 min; limite por IP | É regra de produto (RN-ID-04 não fixa os números) |
-| PD-15 | No app, o município vai no caminho (`/v1/municipios/:slug/…`); no web, no subdomínio | Define o formato de todas as rotas do app |
+| PD-15 | No app, o município vai no caminho (`/v1/municipalities/:slug/…`); no web, no subdomínio | Define o formato de todas as rotas do app |
 | PD-27 | "Esta e as seguintes": sessões futuras com pacientes ficam como estão e passam para a série nova | Comportamento visível ao admin |
 | PD-29 | TV pareada por código de 6 dígitos válido por 10 min; até o SSE, consulta o estado a cada 5 s | Detalhe de operação na unidade |
 | PD-24 | Em dev, painel em `:3000` e landing (`apps/web`) movida para `:3001` | Muda o seu `npm run dev` da landing |
@@ -99,9 +99,9 @@ Pedido: "o mais rápido possível, menos perfeccionista". Tasks 2–20 feitas di
 | --- | --- | --- | --- | --- |
 | V1 | Processo | TDD mantido, mas um arquivo de teste por recurso (não por rota/método) e só os casos principais de cada task; sem revisão de código por task | Revisão por task (fluxo SDD) | Bug que a revisão pegaria; vale um `/code-review` da branch antes do PR |
 | V2 | Rota de teste das ressalvas (Task 8) | Ressalvas testadas só na unidade (`permitido`); a 403 por escopo é testada nas rotas reais | A rota `/v1/teste/painel/…/protegida` | Baixo |
-| V3 | CORS (Task 10) | Hook próprio em vez de `@fastify/cors`; mutação em `/v1/painel` com `Origin` de outro município → 403 antes da rota (CSRF) | `@fastify/cors` | Baixo: um arquivo |
+| V3 | CORS (Task 10) | Hook próprio em vez de `@fastify/cors`; mutação em `/v1/panel` com `Origin` de outro município → 403 antes da rota (CSRF) | `@fastify/cors` | Baixo: um arquivo |
 | V4 | Login do painel | Plugin username do better-auth: login só com letras, números, `.` e `_` (3–30) | Validador próprio que aceite hífen | Login com hífen dá 400 |
-| V5 | `GET /v1/painel/unidades` e `/config` | Qualquer usuário logado vê as unidades dos seus perfis (gestor: todas) | Exigir uma ação da matriz | Baixo |
+| V5 | `GET /v1/panel/units` e `/config` | Qualquer usuário logado vê as unidades dos seus perfis (gestor: todas) | Exigir uma ação da matriz | Baixo |
 
 ## Papéis da equipe (discovery, 2026-11-12)
 
@@ -174,7 +174,7 @@ Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, p
 | RV2 | Limite por conta | Até 5 inscrições ativas por conta em cada sessão (`limite_por_conta`) | Captcha (RN-ID-07 completo) | Família grande precisa da recepção |
 | RV3 | Remover estação | Recusado se estiver em sessão planejada ou aberta (`estacao_em_uso`) | Tirar das planejadas automaticamente | Precisa editar as sessões futuras antes |
 | RV4 | Conferência de documento | Painel mostra nascimento e CPF `•••.982.247-••`; "não confere" pede o motivo | CPF inteiro | Baixo |
-| RV5 | Nascimento depois da verificação | A conta verificada não muda a data pelo app (`nascimento_verificado`); só a recepção | Desfazer a verificação | Correção de data pede ida à recepção |
+| RV5 | Nascimento depois da verificação | A conta verificada não muda a data pelo app (`birth_date_verified`); só a recepção | Desfazer a verificação | Correção de data pede ida à recepção |
 | RV6 | Sessão aberta esquecida de outro dia | Continua na lista da fila do dia até alguém encerrar; a estação opera a sessão aberta mais recente | Encerrar sozinha (worker) | Precisa encerrar à mão |
 
 **Respondidas por você (2026-11-13):** RV8 → fila nova depois da triagem; RV9 → só o enfermeiro confirma, com as cores do Acolhimento com Classificação de Risco na fatia 3; RV10 → fim do seu nível; RV11 → todo remoto sem ninguém na frente (AD-056, implementado). RV7 continua aberta (ver abaixo).
@@ -326,3 +326,14 @@ Design: [app-inscricao.md](../design-system/app-inscricao.md).
 | IN2 | As relações | Três, como as pessoas se veem: "sou mãe, pai ou responsável legal de {Ana}", "cuido de {Ana} no dia a dia", "sou da família ou amigo de {Ana} e estou ajudando" (inclui quem faz um favor aos pais ou avós) | Mais opções ou separar família de amigo | Uma migração de valores e o texto no painel |
 | IN3 | O que o painel mostra | Pílula "por Carla (família ou amigo)" na linha da Fila do dia ("responsável legal", "cuida no dia a dia"), sem gênero e só com o primeiro nome | Nome completo, ou também na estação | Baixo |
 | IN4 | Recusa da conferência num dado | A conferência roda depois da relação; erro do CPF volta para a tela do CPF, erro da pessoa para a do nome | Conferir a cada tela | Uma chamada a mais por tela |
+
+## Nomes do código em inglês (2026-11-17)
+
+Ao terminar a troca (ver [nomes no código](../../specs/nomes-no-codigo.md)).
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| NC1 | Comentários e títulos dos testes | Seguem em português; só os nomes do código citados neles foram trocados. A tabela diz "comentários e testes em inglês", mas traduzir todos é outra tarefa, sem mudar comportamento | Traduzir tudo agora | Baixo: um passe só de texto, quando quiser |
+| NC2 | Migrações recriadas do zero | `0000_central` e `0000_municipal` substituem as 15 antigas. Banco de dev antigo não migra: `npm run dev:seed` depois de apagar os bancos `fila_*` do `postgres-dev` | Migrações de rename sobre as antigas | Nenhum enquanto não há piloto; com dados reais seria inaceitável |
+| NC3 | Códigos que eram só em português | `email_in_use`, `invalid_credentials`, `password_too_short`/`_long`, `immutable_field`, `birth_date_verified`, `person_mismatch`, `invalid_response`, `invalid_phone`, `invalid_rrule`, `occurrence_not_found`; avisos `pending`/`sent`/`failed`/`no_device`; lista de sessões com `?from=&until=` | Outros nomes | Baixo: troca em um lugar e nos testes |
+| NC4 | Ressalvas da matriz e logins de exemplo | Ficam em português: a ressalva é o texto da spec (`"atendimento"`), o login é o que a pessoa digita (`recepcao`) | Chaves em inglês | Baixo |

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 // INV-11: o central nunca guarda sintoma, documento nem dado de fila.
 // Coluna nova no central exige atualizar esta lista de propósito.
-const colunasPermitidas = [
+const allowedColumns = [
   "account.access_token",
   "account.access_token_expires_at",
   "account.account_id",
@@ -18,36 +18,36 @@ const colunasPermitidas = [
   "account.scope",
   "account.updated_at",
   "account.user_id",
+  "municipality.created_at",
+  "municipality.database_ref",
+  "municipality.id",
+  "municipality.migration_error",
+  "municipality.migration_version",
+  "municipality.name",
+  "municipality.slug",
+  "municipality.status",
+  "municipality.time_zone",
+  "municipality.uf",
+  "patient.birth_date",
+  "patient.cpf",
+  "patient.created_at",
+  "patient.display_username",
+  "patient.email",
+  "patient.email_verified",
+  "patient.id",
+  "patient.image",
+  "patient.name",
+  "patient.phone",
+  "patient.updated_at",
+  "patient.username",
+  "patient.verification_method",
+  "patient.verified_at",
+  "patient.verified_municipality",
   // T3.8: token de push do aparelho; não é dado clínico nem da fila.
-  "dispositivo_push.atualizado_em",
-  "dispositivo_push.id",
-  "dispositivo_push.paciente_id",
-  "dispositivo_push.token",
-  "municipio.banco_ref",
-  "municipio.criado_em",
-  "municipio.fuso",
-  "municipio.id",
-  "municipio.migracao_erro",
-  "municipio.migracao_versao",
-  "municipio.nome",
-  "municipio.slug",
-  "municipio.status",
-  "municipio.uf",
-  "paciente.cpf",
-  "paciente.created_at",
-  "paciente.display_username",
-  "paciente.email",
-  "paciente.email_verified",
-  "paciente.id",
-  "paciente.image",
-  "paciente.name",
-  "paciente.nascimento",
-  "paciente.telefone",
-  "paciente.updated_at",
-  "paciente.username",
-  "paciente.verificado_em",
-  "paciente.verificado_metodo",
-  "paciente.verificado_municipio",
+  "push_device.id",
+  "push_device.patient_id",
+  "push_device.token",
+  "push_device.updated_at",
   "session.created_at",
   "session.expires_at",
   "session.id",
@@ -65,28 +65,28 @@ const colunasPermitidas = [
 ];
 
 describe("banco central", () => {
-  it("PD-16: banco central migrado tem municipio e as tabelas do better-auth", async () => {
-    const resultado = await database.execute<{ banco: string; table_name: string }>(sql`
-      select current_database() as banco, table_name
+  it("PD-16: banco central migrado tem municipality e as tabelas do better-auth", async () => {
+    const result = await database.execute<{ database: string; table_name: string }>(sql`
+      select current_database() as database, table_name
       from information_schema.tables
       where table_schema = 'public'
       order by table_name
     `);
 
-    expect(resultado.rows[0]?.banco).toBe("fila_central");
-    const tabelas = resultado.rows.map((linha) => linha.table_name);
-    expect(tabelas).toEqual(["account", "dispositivo_push", "municipio", "paciente", "session", "verification"]);
+    expect(result.rows[0]?.database).toBe("fila_central");
+    const tables = result.rows.map((row) => row.table_name);
+    expect(tables).toEqual(["account", "municipality", "patient", "push_device", "session", "verification"]);
   });
 
   it("INV-11: o central só tem colunas permitidas", async () => {
-    const resultado = await database.execute<{ coluna: string }>(sql`
-      select table_name || '.' || column_name as coluna
+    const result = await database.execute<{ column: string }>(sql`
+      select table_name || '.' || column_name as column
       from information_schema.columns
       where table_schema = 'public'
       order by table_name, column_name
     `);
 
-    const colunas = resultado.rows.map((linha) => linha.coluna);
-    expect(colunas).toEqual(colunasPermitidas);
+    const columns = result.rows.map((row) => row.column);
+    expect(columns).toEqual(allowedColumns);
   });
 });

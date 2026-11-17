@@ -9,7 +9,7 @@
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
-import { rodar as rodarSpecsGen } from "./specs-gen.mjs";
+import { run as runSpecsGen } from "./specs-gen.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const SPECS = join(ROOT, ".specs");
@@ -131,7 +131,7 @@ if (migIdx !== -1) {
 }
 
 // ---------- tabelas geradas (AD-051) ----------
-for (const e of rodarSpecsGen(join(SPECS, "specs"), { checar: true })) errors.push(`.specs/specs/${e}`);
+for (const e of runSpecsGen(join(SPECS, "specs"), { check: true })) errors.push(`.specs/specs/${e}`);
 
 // ---------- saída ----------
 const unique = (a) => [...new Set(a)];

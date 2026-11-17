@@ -1,56 +1,49 @@
-import type { UnidadePublica } from "@fila-saude/schemas/fila";
+import type { PublicUnit } from "@fila-saude/schemas/queue";
 import * as Location from "expo-location";
 import { router, useFocusEffect } from "expo-router";
 import { Building2, Footprints, LocateFixed } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
-import { AbasDoPaciente } from "@/components/atendimento";
-import Mapa from "@/components/mapa";
-import type { PinoDoMapa } from "@/components/mapa.tipos";
+import { PatientTabs } from "@/components/care";
+import UnitsMap from "@/components/map";
+import type { MapPin } from "@/components/map.types";
 import {
   Avatar,
-  Botao,
-  Carregando,
-  Cartao,
-  COR,
-  Faixa,
-  FONTE,
-  LinhaTocavel,
-  Pequeno,
-  Selo,
-  Tela,
-  Texto,
-  TextoSuave,
-  Titulo,
+  Badge,
+  Banner,
+  BodyText,
+  Button,
+  Card,
+  COLOR,
+  FONT,
+  Loading,
+  Screen,
+  Small,
+  SoftText,
+  TappableRow,
+  Title,
 } from "@/components/ui";
-import { aparenciaDoPino } from "@/lib/mapa";
-import { useSessao } from "@/lib/sessao";
-import { avisoDoErro } from "@/lib/textos";
-import {
-  nomeDoTipo,
-  ordenarUnidades,
-  type Ponto,
-  textoAtendimentos,
-  textoDistancia,
-  type UnidadeNaLista,
-} from "@/lib/unidades";
+import { pinAppearance } from "@/lib/map";
+import { useSession } from "@/lib/session";
+import { errorNotice } from "@/lib/texts";
+import { appointmentsText, distanceText, kindName, type Point, sortUnits, type UnitInList } from "@/lib/units";
 
-type Localizacao =
-  | { estado: "conferindo" }
-  | { estado: "nao_pedida" }
-  | { estado: "pedindo" }
-  | { estado: "ok"; ponto: Ponto }
+type LocationState =
+  | { state: "verifying" }
+  | { state: "not_requested" }
+  | { state: "requesting" }
+  | { state: "ok"; point: Point }
   /** `bloqueada`: o celular não pergunta mais; só nas configurações. */
-  | { estado: "negada"; bloqueada: boolean }
-  | { estado: "indisponivel" };
+  | { state: "denied"; blocked: boolean }
+  | { state: "unavailable" };
 
-async function posicaoAtual(): Promise<Ponto | null> {
+async function currentPosition(): Promise<Point | null> {
   try {
     const p = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     return { lat: p.coords.latitude, lng: p.coords.longitude };
   } catch {
-    const ultima = await Location.getLastKnownPositionAsync().catch(() => null);
-    return ultima ? { lat: ultima.coords.latitude, lng: ultima.coords.longitude } : null;
+    const last = await Location.getLastKnownPositionAsync().catch(() => null);
+    return last ? { lat: last.coords.latitude, lng: last.coords.longitude } : null;
   }
 }
 
@@ -58,110 +51,110 @@ async function posicaoAtual(): Promise<Ponto | null> {
  * A localização só é pedida quando a pessoa toca em "usar minha localização" (com a explicação antes).
  * Se ela já deixou antes, a lista já abre da mais perto para a mais longe, sem perguntar de novo.
  */
-function useLocalizacao() {
-  const [loc, setLoc] = useState<Localizacao>({ estado: "conferindo" });
+function useLocation() {
+  const [loc, setLoc] = useState<LocationState>({ state: "verifying" });
 
   useEffect(() => {
-    let vivo = true;
+    let live = true;
     Location.getForegroundPermissionsAsync()
       .then(async (perm) => {
         if (!perm.granted) {
-          if (vivo) setLoc(perm.canAskAgain ? { estado: "nao_pedida" } : { estado: "negada", bloqueada: true });
+          if (live) setLoc(perm.canAskAgain ? { state: "not_requested" } : { state: "denied", blocked: true });
           return;
         }
-        const ponto = await posicaoAtual();
-        if (vivo) setLoc(ponto ? { estado: "ok", ponto } : { estado: "indisponivel" });
+        const point = await currentPosition();
+        if (live) setLoc(point ? { state: "ok", point } : { state: "unavailable" });
       })
-      .catch(() => vivo && setLoc({ estado: "nao_pedida" }));
+      .catch(() => live && setLoc({ state: "not_requested" }));
     return () => {
-      vivo = false;
+      live = false;
     };
   }, []);
 
-  const pedir = useCallback(async () => {
-    setLoc({ estado: "pedindo" });
+  const request = useCallback(async () => {
+    setLoc({ state: "requesting" });
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (!perm.granted) {
-        setLoc({ estado: "negada", bloqueada: !perm.canAskAgain });
+        setLoc({ state: "denied", blocked: !perm.canAskAgain });
         return;
       }
-      const ponto = await posicaoAtual();
-      setLoc(ponto ? { estado: "ok", ponto } : { estado: "indisponivel" });
+      const point = await currentPosition();
+      setLoc(point ? { state: "ok", point } : { state: "unavailable" });
     } catch {
-      setLoc({ estado: "indisponivel" });
+      setLoc({ state: "unavailable" });
     }
   }, []);
 
-  return { loc, pedir };
+  return { loc, request };
 }
 
 /** O pedido de localização, explicado antes (nunca de surpresa ao abrir a tela). */
-function PedidoDeLocalizacao({ loc, pedir }: { loc: Localizacao; pedir: () => void }) {
-  if (loc.estado === "conferindo" || loc.estado === "ok") return null;
-  if (loc.estado === "nao_pedida" || loc.estado === "pedindo")
+function LocationRequest({ loc, request }: { loc: LocationState; request: () => void }) {
+  if (loc.state === "verifying" || loc.state === "ok") return null;
+  if (loc.state === "not_requested" || loc.state === "requesting")
     return (
-      <Cartao style={{ gap: 12, backgroundColor: COR.primary50, borderColor: COR.primary50 }}>
+      <Card style={{ gap: 12, backgroundColor: COLOR.primary50, borderColor: COLOR.primary50 }}>
         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-          <LocateFixed size={30} color={COR.action} strokeWidth={2.5} />
-          <Text style={{ flex: 1, fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
+          <LocateFixed size={30} color={COLOR.action} strokeWidth={2.5} />
+          <Text style={{ flex: 1, fontFamily: FONT.extra, fontSize: 20, lineHeight: 26, color: COLOR.ink }}>
             ver as unidades mais perto de você
           </Text>
         </View>
-        <TextoSuave>
+        <SoftText>
           o app usa a sua localização só nesta tela, para pôr as unidades em ordem de distância. ela não é guardada.
-        </TextoSuave>
-        <Botao texto="usar minha localização" carregando={loc.estado === "pedindo"} onPress={pedir} />
-      </Cartao>
+        </SoftText>
+        <Button text="usar minha localização" loading={loc.state === "requesting"} onPress={request} />
+      </Card>
     );
   return (
     <View style={{ gap: 0 }}>
-      <Pequeno>
-        {loc.estado === "negada"
+      <Small>
+        {loc.state === "denied"
           ? "sem a sua localização, as unidades estão em ordem alfabética."
           : "não deu para saber onde você está. as unidades estão em ordem alfabética."}
-      </Pequeno>
-      {loc.estado === "negada" && loc.bloqueada && Platform.OS !== "web" ? (
-        <Botao variante="texto" texto="permitir nas configurações" onPress={() => void Linking.openSettings()} />
-      ) : loc.estado !== "negada" || !loc.bloqueada ? (
-        <Botao variante="texto" texto="tentar de novo" onPress={pedir} />
+      </Small>
+      {loc.state === "denied" && loc.blocked && Platform.OS !== "web" ? (
+        <Button variant="text" text="permitir nas configurações" onPress={() => void Linking.openSettings()} />
+      ) : loc.state !== "denied" || !loc.blocked ? (
+        <Button variant="text" text="tentar de novo" onPress={request} />
       ) : null}
     </View>
   );
 }
 
-function LinhaDaUnidade({ item, destaque = false }: { item: UnidadeNaLista; destaque?: boolean }) {
-  const { unidade: u, km } = item;
-  const aberta = u.atendimentos > 0;
+function UnitRow({ item, highlight = false }: { item: UnitInList; highlight?: boolean }) {
+  const { unit: u, km } = item;
+  const open = u.appointments > 0;
   return (
-    <LinhaTocavel
-      acao={aberta ? "ver os atendimentos" : "ver a unidade"}
+    <TappableRow
+      action={open ? "ver os atendimentos" : "ver a unidade"}
       onPress={() => router.push({ pathname: "/unidade/[id]", params: { id: u.id } })}
-      esquerda={<Avatar Icone={Building2} tom={aberta ? "verde" : "cinza"} />}
+      left={<Avatar Icon={Building2} tone={open ? "green" : "gray"} />}
     >
-      {destaque ? <Selo texto="no mapa" tom="amarelo" /> : null}
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>{u.nome}</Text>
-      <Pequeno>
-        {nomeDoTipo(u.tipo)} · {u.endereco.bairro}
-      </Pequeno>
+      {highlight ? <Badge text="no mapa" tone="yellow" /> : null}
+      <Text style={{ fontFamily: FONT.extra, fontSize: 20, lineHeight: 26, color: COLOR.ink }}>{u.name}</Text>
+      <Small>
+        {kindName(u.kind)} · {u.address.neighborhood}
+      </Small>
       {km !== null ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Footprints size={18} color={COR.ink} strokeWidth={2.25} />
-          <Text style={{ fontFamily: FONTE.bold, fontSize: 16, lineHeight: 22, color: COR.ink }}>
-            {textoDistancia(km)}
+          <Footprints size={18} color={COLOR.ink} strokeWidth={2.25} />
+          <Text style={{ fontFamily: FONT.bold, fontSize: 16, lineHeight: 22, color: COLOR.ink }}>
+            {distanceText(km)}
           </Text>
         </View>
       ) : null}
-      <Selo texto={textoAtendimentos(u.atendimentos)} tom={aberta ? "verde" : "cinza"} />
-    </LinhaTocavel>
+      <Badge text={appointmentsText(u.appointments)} tone={open ? "green" : "gray"} />
+    </TappableRow>
   );
 }
 
-function Legenda() {
-  const item = (aberto: boolean, texto: string) => (
+function Legend() {
+  const item = (open: boolean, text: string) => (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <View style={{ width: 12, height: 12, borderRadius: 999, backgroundColor: aparenciaDoPino(aberto, false).cor }} />
-      <Pequeno>{texto}</Pequeno>
+      <View style={{ width: 12, height: 12, borderRadius: 999, backgroundColor: pinAppearance(open, false).color }} />
+      <Small>{text}</Small>
     </View>
   );
   return (
@@ -173,101 +166,101 @@ function Legenda() {
 }
 
 /** Aba "unidades": mapa em cima e, embaixo, as unidades da mais perto para a mais longe (como no Uber). */
-export default function Unidades() {
-  const s = useSessao();
-  const [unidades, setUnidades] = useState<UnidadePublica[] | null>(null);
-  const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
-  const [tentando, setTentando] = useState(false);
-  const [selecionada, setSelecionada] = useState<string | null>(null);
-  const { loc, pedir } = useLocalizacao();
+export default function Units() {
+  const s = useSession();
+  const [units, setUnits] = useState<PublicUnit[] | null>(null);
+  const [error, setError] = useState<{ title: string; text: string } | null>(null);
+  const [trying, setTrying] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const { loc, request } = useLocation();
 
-  const buscar = useCallback(
+  const fetch = useCallback(
     () =>
       s.api
-        .get<UnidadePublica[]>(`/v1/municipios/${s.municipio}/unidades`)
+        .get<PublicUnit[]>(`/v1/municipalities/${s.municipality}/units`)
         .then((l) => {
-          setUnidades(l);
-          setErro(null);
+          setUnits(l);
+          setError(null);
         })
-        .catch((err) => setErro(avisoDoErro(err, "confira a conexão e tente de novo."))),
-    [s.api, s.municipio],
+        .catch((err) => setError(errorNotice(err, "confira a conexão e tente de novo."))),
+    [s.api, s.municipality],
   );
   // Volta à aba: busca de novo (o número de atendimentos abertos muda).
   useFocusEffect(
     useCallback(() => {
-      void buscar();
-    }, [buscar]),
+      void fetch();
+    }, [fetch]),
   );
 
-  const aqui = loc.estado === "ok" ? loc.ponto : null;
-  const lista = useMemo(() => ordenarUnidades(unidades ?? [], aqui), [unidades, aqui]);
-  const pinos = useMemo<PinoDoMapa[]>(
+  const here = loc.state === "ok" ? loc.point : null;
+  const list = useMemo(() => sortUnits(units ?? [], here), [units, here]);
+  const pins = useMemo<MapPin[]>(
     () =>
-      (unidades ?? []).flatMap((u) =>
+      (units ?? []).flatMap((u) =>
         u.lat === null || u.lng === null
           ? []
-          : [{ id: u.id, nome: u.nome, lat: u.lat, lng: u.lng, aberto: u.atendimentos > 0 }],
+          : [{ id: u.id, name: u.name, lat: u.lat, lng: u.lng, open: u.appointments > 0 }],
       ),
-    [unidades],
+    [units],
   );
-  const escolhida = lista.find((x) => x.unidade.id === selecionada);
+  const chosen = list.find((x) => x.unit.id === selected);
 
   return (
-    <Tela voltar={false} rodape={<AbasDoPaciente atual="unidades" />}>
-      <Titulo>unidades perto de você</Titulo>
-      {erro ? (
-        <Faixa
-          tipo="perigo"
-          titulo={erro.titulo}
-          texto={erro.texto}
-          acao={{
-            texto: "tentar de novo",
-            carregando: tentando,
+    <Screen back={false} footer={<PatientTabs current="units" />}>
+      <Title>unidades perto de você</Title>
+      {error ? (
+        <Banner
+          kind="danger"
+          title={error.title}
+          text={error.text}
+          action={{
+            text: "tentar de novo",
+            loading: trying,
             onPress: async () => {
-              setTentando(true);
-              await buscar();
-              setTentando(false);
+              setTrying(true);
+              await fetch();
+              setTrying(false);
             },
           }}
         />
       ) : null}
-      {unidades === null && !erro ? <Carregando texto="buscando as unidades…" /> : null}
-      {unidades && pinos.length > 0 ? (
+      {units === null && !error ? <Loading text="buscando as unidades…" /> : null}
+      {units && pins.length > 0 ? (
         <>
-          <Mapa
-            pinos={pinos}
-            aqui={aqui}
-            selecionado={selecionada}
-            aoTocarPino={(id) => setSelecionada((atual) => (atual === id ? null : id))}
-            aoTocarFora={() => setSelecionada(null)}
+          <UnitsMap
+            pins={pins}
+            here={here}
+            selected={selected}
+            onTapPin={(id) => setSelected((current) => (current === id ? null : id))}
+            onTapOutside={() => setSelected(null)}
           />
-          <Legenda />
+          <Legend />
         </>
       ) : null}
       {/* Tocou num pino: a unidade aparece logo embaixo do mapa, sem precisar rolar a lista. */}
-      {escolhida ? <LinhaDaUnidade item={escolhida} destaque /> : null}
-      {unidades && unidades.length > 0 ? <PedidoDeLocalizacao loc={loc} pedir={() => void pedir()} /> : null}
-      {unidades?.length === 0 ? (
+      {chosen ? <UnitRow item={chosen} highlight /> : null}
+      {units && units.length > 0 ? <LocationRequest loc={loc} request={() => void request()} /> : null}
+      {units?.length === 0 ? (
         <View style={{ gap: 4, paddingVertical: 24 }}>
-          <Texto style={{ fontFamily: FONTE.bold, textAlign: "center" }}>nenhuma unidade no app ainda</Texto>
-          <TextoSuave style={{ textAlign: "center" }}>
+          <BodyText style={{ fontFamily: FONT.bold, textAlign: "center" }}>nenhuma unidade no app ainda</BodyText>
+          <SoftText style={{ textAlign: "center" }}>
             as unidades do seu município aparecem aqui quando entram no fila saúde.
-          </TextoSuave>
+          </SoftText>
         </View>
       ) : null}
-      {lista.length > 0 ? (
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 18, color: COR.inkMuted, marginBottom: -6 }}>
-          {aqui ? "da mais perto para a mais longe" : "todas as unidades"}
+      {list.length > 0 ? (
+        <Text style={{ fontFamily: FONT.extra, fontSize: 18, color: COLOR.inkMuted, marginBottom: -6 }}>
+          {here ? "da mais perto para a mais longe" : "todas as unidades"}
         </Text>
       ) : null}
-      {lista
-        .filter((x) => x.unidade.id !== selecionada)
+      {list
+        .filter((x) => x.unit.id !== selected)
         .map((x) => (
-          <LinhaDaUnidade key={x.unidade.id} item={x} />
+          <UnitRow key={x.unit.id} item={x} />
         ))}
-      {aqui && lista.length > 0 ? (
-        <Pequeno style={{ textAlign: "center" }}>distância em linha reta; a pé pode levar um pouco mais.</Pequeno>
+      {here && list.length > 0 ? (
+        <Small style={{ textAlign: "center" }}>distância em linha reta; a pé pode levar um pouco mais.</Small>
       ) : null}
-    </Tela>
+    </Screen>
   );
 }

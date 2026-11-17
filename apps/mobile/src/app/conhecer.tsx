@@ -2,12 +2,12 @@ import { router } from "expo-router";
 import { Bell, CalendarCheck, Check, House, QrCode, Smartphone, Tv } from "lucide-react-native";
 import { type ReactNode, useState } from "react";
 import { Text, View } from "react-native";
-import { Botao, CartaoPosicao, COR, Faixa, FONTE, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
-import { gravar } from "@/lib/armazenamento";
-import { CHAVE_ONBOARDING, passoAnterior, proximoPasso } from "@/lib/onboarding";
+import { Badge, Banner, Button, COLOR, FONT, PositionCard, Screen, SoftText, Title } from "@/components/ui";
+import { KEY_ONBOARDING, nextStep, previousStep } from "@/lib/onboarding";
+import { save } from "@/lib/storage";
 
 /** Moldura da ilustração de cada passo: bloco grande e claro, com o desenho centralizado. */
-function Quadro({ children, fundo = COR.primary50 }: { children: ReactNode; fundo?: string }) {
+function Box({ children, background = COLOR.primary50 }: { children: ReactNode; background?: string }) {
   return (
     <View
       accessibilityElementsHidden
@@ -15,7 +15,7 @@ function Quadro({ children, fundo = COR.primary50 }: { children: ReactNode; fund
       style={{
         minHeight: 300,
         borderRadius: 28,
-        backgroundColor: fundo,
+        backgroundColor: background,
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
@@ -27,74 +27,74 @@ function Quadro({ children, fundo = COR.primary50 }: { children: ReactNode; fund
   );
 }
 
-const cartao = {
+const card = {
   alignSelf: "stretch" as const,
   gap: 10,
   padding: 16,
   borderRadius: 20,
   borderWidth: 2,
   borderBottomWidth: 5,
-  borderColor: COR.linha,
-  backgroundColor: COR.surface,
+  borderColor: COLOR.line,
+  backgroundColor: COLOR.surface,
 };
 
-function IlustracaoAgenda() {
+function ScheduleIllustration() {
   return (
-    <Quadro>
-      <View style={cartao}>
+    <Box>
+      <View style={card}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <View style={{ padding: 10, borderRadius: 14, backgroundColor: COR.primary50 }}>
-            <CalendarCheck size={30} color={COR.action} strokeWidth={2.5} />
+          <View style={{ padding: 10, borderRadius: 14, backgroundColor: COLOR.primary50 }}>
+            <CalendarCheck size={30} color={COLOR.action} strokeWidth={2.5} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 20, color: COR.ink }}>clínico geral</Text>
-            <Text style={{ fontFamily: FONTE.semi, fontSize: 16, color: COR.inkMuted }}>segunda, 7h às 11h</Text>
+            <Text style={{ fontFamily: FONT.extra, fontSize: 20, color: COLOR.ink }}>clínico geral</Text>
+            <Text style={{ fontFamily: FONT.semi, fontSize: 16, color: COLOR.inkMuted }}>segunda, 7h às 11h</Text>
           </View>
         </View>
-        <Selo texto="tem vaga" tom="verde" />
+        <Badge text="tem vaga" tone="green" />
       </View>
-      <View style={[cartao, { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14 }]}>
+      <View style={[card, { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14 }]}>
         <View
           style={{
             width: 26,
             height: 26,
             borderRadius: 7,
-            backgroundColor: COR.action,
+            backgroundColor: COLOR.action,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
           <Check size={18} color="#ffffff" strokeWidth={3.5} />
         </View>
-        <Text style={{ flex: 1, fontFamily: FONTE.bold, fontSize: 18, color: COR.ink }}>é minha primeira vez</Text>
+        <Text style={{ flex: 1, fontFamily: FONT.bold, fontSize: 18, color: COLOR.ink }}>é minha primeira vez</Text>
       </View>
-    </Quadro>
+    </Box>
   );
 }
 
-function IlustracaoCasa() {
+function HomeIllustration() {
   return (
-    <Quadro fundo={COR.warningBg}>
+    <Box background={COLOR.warningBg}>
       <View style={{ alignSelf: "stretch" }}>
-        <CartaoPosicao contexto="clínico geral · ubs centro" posicao={4} detalhe="cerca de 20 min" />
+        <PositionCard context="clínico geral · ubs centro" position={4} detail="cerca de 20 min" />
       </View>
-      <View style={[cartao, { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14 }]}>
-        <View style={{ padding: 8, borderRadius: 12, backgroundColor: COR.warningBg }}>
-          <House size={26} color={COR.warningInk} strokeWidth={2.5} />
+      <View style={[card, { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14 }]}>
+        <View style={{ padding: 8, borderRadius: 12, backgroundColor: COLOR.warningBg }}>
+          <House size={26} color={COLOR.warningInk} strokeWidth={2.5} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 18, color: COR.ink }}>hora de sair de casa</Text>
-          <Text style={{ fontFamily: FONTE.semi, fontSize: 15, color: COR.inkMuted }}>fila saúde · agora</Text>
+          <Text style={{ fontFamily: FONT.extra, fontSize: 18, color: COLOR.ink }}>hora de sair de casa</Text>
+          <Text style={{ fontFamily: FONT.semi, fontSize: 15, color: COLOR.inkMuted }}>fila saúde · agora</Text>
         </View>
-        <Bell size={22} color={COR.amarelo} strokeWidth={2.75} />
+        <Bell size={22} color={COLOR.yellow} strokeWidth={2.75} />
       </View>
-    </Quadro>
+    </Box>
   );
 }
 
-function IlustracaoQr() {
+function QrIllustration() {
   return (
-    <Quadro>
+    <Box>
       {/* A TV da sala de espera, com o QR na tela. */}
       <View style={{ alignItems: "center" }}>
         <View
@@ -103,29 +103,31 @@ function IlustracaoQr() {
             paddingVertical: 18,
             borderRadius: 18,
             borderWidth: 8,
-            borderColor: COR.primary900,
-            backgroundColor: COR.surface,
+            borderColor: COLOR.primary900,
+            backgroundColor: COLOR.surface,
             alignItems: "center",
             gap: 4,
           }}
         >
-          <QrCode size={110} color={COR.primary900} strokeWidth={1.75} />
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 15, color: COR.primary900 }}>leia para entrar na fila</Text>
+          <QrCode size={110} color={COLOR.primary900} strokeWidth={1.75} />
+          <Text style={{ fontFamily: FONT.extra, fontSize: 15, color: COLOR.primary900 }}>
+            leia para entrar na fila
+          </Text>
         </View>
-        <View style={{ width: 16, height: 14, backgroundColor: COR.primary900 }} />
-        <View style={{ width: 90, height: 8, borderRadius: 999, backgroundColor: COR.primary900 }} />
+        <View style={{ width: 16, height: 14, backgroundColor: COLOR.primary900 }} />
+        <View style={{ width: 90, height: 8, borderRadius: 999, backgroundColor: COLOR.primary900 }} />
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Tv size={22} color={COR.actionPressed} strokeWidth={2.5} />
-        <Text style={{ fontFamily: FONTE.bold, fontSize: 16, color: COR.actionPressed }}>a tv da sala de espera</Text>
+        <Tv size={22} color={COLOR.actionPressed} strokeWidth={2.5} />
+        <Text style={{ fontFamily: FONT.bold, fontSize: 16, color: COLOR.actionPressed }}>a tv da sala de espera</Text>
       </View>
-    </Quadro>
+    </Box>
   );
 }
 
-function IlustracaoVez() {
+function TurnIllustration() {
   return (
-    <Quadro fundo={COR.successBg}>
+    <Box background={COLOR.successBg}>
       <View
         style={{
           alignSelf: "stretch",
@@ -134,13 +136,13 @@ function IlustracaoVez() {
           paddingVertical: 22,
           borderRadius: 24,
           borderBottomWidth: 6,
-          borderBottomColor: COR.verdeSombra,
-          backgroundColor: COR.call,
+          borderBottomColor: COLOR.greenShadow,
+          backgroundColor: COLOR.call,
         }}
       >
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 26, color: "#ffffff" }}>chamando agora</Text>
-        <Text style={{ fontFamily: FONTE.bold, fontSize: 16, color: "#ffffffcc", marginTop: 8 }}>senha</Text>
-        <Text style={{ fontFamily: FONTE.extra, fontSize: 56, lineHeight: 62, color: "#ffffff" }}>C-012</Text>
+        <Text style={{ fontFamily: FONT.extra, fontSize: 26, color: "#ffffff" }}>chamando agora</Text>
+        <Text style={{ fontFamily: FONT.bold, fontSize: 16, color: "#ffffffcc", marginTop: 8 }}>senha</Text>
+        <Text style={{ fontFamily: FONT.extra, fontSize: 56, lineHeight: 62, color: "#ffffff" }}>C-012</Text>
         <View
           style={{
             marginTop: 6,
@@ -150,90 +152,90 @@ function IlustracaoVez() {
             backgroundColor: "#ffffff",
           }}
         >
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 18, color: COR.successInk }}>consultório 3</Text>
+          <Text style={{ fontFamily: FONT.extra, fontSize: 18, color: COLOR.successInk }}>consultório 3</Text>
         </View>
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-        <Tv size={22} color={COR.successInk} strokeWidth={2.5} />
-        <Text style={{ fontFamily: FONTE.bold, fontSize: 16, color: COR.successInk }}>na tv e no celular</Text>
-        <Smartphone size={22} color={COR.successInk} strokeWidth={2.5} />
+        <Tv size={22} color={COLOR.successInk} strokeWidth={2.5} />
+        <Text style={{ fontFamily: FONT.bold, fontSize: 16, color: COLOR.successInk }}>na tv e no celular</Text>
+        <Smartphone size={22} color={COLOR.successInk} strokeWidth={2.5} />
       </View>
-    </Quadro>
+    </Box>
   );
 }
 
-const PASSOS: { titulo: string; texto: string; Ilustracao: () => ReactNode; extra?: ReactNode }[] = [
+const STEPS: { title: string; text: string; Illustration: () => ReactNode; extra?: ReactNode }[] = [
   {
-    titulo: "escolha o atendimento",
-    texto: "na agenda do app, escolha o dia e responda umas perguntas rápidas.",
-    Ilustracao: IlustracaoAgenda,
+    title: "escolha o atendimento",
+    text: "na agenda do app, escolha o dia e responda umas perguntas rápidas.",
+    Illustration: ScheduleIllustration,
   },
   {
-    titulo: "espere em casa",
-    texto: "você vê a sua posição e quanto falta. a gente avisa a hora de sair de casa.",
-    Ilustracao: IlustracaoCasa,
+    title: "espere em casa",
+    text: "você vê a sua posição e quanto falta. a gente avisa a hora de sair de casa.",
+    Illustration: HomeIllustration,
   },
   {
-    titulo: "chegou? leia o qr",
-    texto: "na unidade, aponte a câmera do celular para o qr na tv da sala de espera.",
-    Ilustracao: IlustracaoQr,
+    title: "chegou? leia o qr",
+    text: "na unidade, aponte a câmera do celular para o qr na tv da sala de espera.",
+    Illustration: QrIllustration,
     extra: (
-      <Faixa tipo="info" titulo="primeira vez na unidade?" texto="passe antes na recepção com um documento com foto." />
+      <Banner kind="info" title="primeira vez na unidade?" text="passe antes na recepção com um documento com foto." />
     ),
   },
   {
-    titulo: "é a sua vez!",
-    texto: "a tv e o seu celular mostram a sua senha e a sala para onde ir.",
-    Ilustracao: IlustracaoVez,
+    title: "é a sua vez!",
+    text: "a tv e o seu celular mostram a sua senha e a sala para onde ir.",
+    Illustration: TurnIllustration,
   },
 ];
 
 /** "Conhecer o app": 4 passos curtos, um por tela, antes de criar a conta. */
-export default function Conhecer() {
-  const [passo, setPasso] = useState(0);
+export default function Intro() {
+  const [step, setStep] = useState(0);
 
-  const terminar = async (destino: "/cadastro" | "/entrar" = "/cadastro") => {
-    await gravar(CHAVE_ONBOARDING, "visto");
-    router.push(destino);
+  const finish = async (destination: "/cadastro" | "/entrar" = "/cadastro") => {
+    await save(KEY_ONBOARDING, "visto");
+    router.push(destination);
   };
-  const ultimo = passo === PASSOS.length - 1;
-  const continuar = () => {
-    const prox = proximoPasso(passo, PASSOS.length);
-    if (prox === "fim") void terminar();
-    else setPasso(prox);
+  const last = step === STEPS.length - 1;
+  const proceed = () => {
+    const next = nextStep(step, STEPS.length);
+    if (next === "end") void finish();
+    else setStep(next);
   };
-  const voltar = () => {
-    const ant = passoAnterior(passo);
-    if (ant !== "sair") setPasso(ant);
+  const back = () => {
+    const ant = previousStep(step);
+    if (ant !== "leave") setStep(ant);
     else if (router.canGoBack()) router.back();
     else router.replace("/boas-vindas");
   };
 
-  const atual = PASSOS[passo];
-  if (!atual) return null;
-  const { titulo, texto, Ilustracao, extra } = atual;
+  const current = STEPS[step];
+  if (!current) return null;
+  const { title, text, Illustration, extra } = current;
 
   return (
-    <Tela
-      progresso={{ atual: passo + 1, total: PASSOS.length }}
-      aoVoltar={voltar}
-      acoes={
+    <Screen
+      progress={{ current: step + 1, total: STEPS.length }}
+      onBack={back}
+      actions={
         <>
-          <Botao texto={ultimo ? "criar minha conta" : "continuar"} onPress={continuar} />
-          {ultimo ? (
-            <Botao variante="texto" texto="já tenho conta" onPress={() => void terminar("/entrar")} />
+          <Button text={last ? "criar minha conta" : "continuar"} onPress={proceed} />
+          {last ? (
+            <Button variant="text" text="já tenho conta" onPress={() => void finish("/entrar")} />
           ) : (
-            <Botao variante="texto" texto="pular" onPress={() => void terminar()} />
+            <Button variant="text" text="pular" onPress={() => void finish()} />
           )}
         </>
       }
     >
-      <Ilustracao />
+      <Illustration />
       <View style={{ gap: 8, paddingTop: 4 }}>
-        <Titulo style={{ fontSize: 30, lineHeight: 36 }}>{titulo}</Titulo>
-        <TextoSuave style={{ fontSize: 20, lineHeight: 30 }}>{texto}</TextoSuave>
+        <Title style={{ fontSize: 30, lineHeight: 36 }}>{title}</Title>
+        <SoftText style={{ fontSize: 20, lineHeight: 30 }}>{text}</SoftText>
       </View>
       {extra}
-    </Tela>
+    </Screen>
   );
 }

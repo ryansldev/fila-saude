@@ -1,81 +1,81 @@
 import { CalendarX, Clock, IdCard, type LucideIcon, Siren } from "lucide-react-native";
 import { Text, View } from "react-native";
-import { BotaoLigar, Cartao, COR, FONTE, Tela, Texto, TextoSuave, Titulo } from "@/components/ui";
+import { BodyText, CallButton, Card, COLOR, FONT, Screen, SoftText, Title } from "@/components/ui";
 
-const PERGUNTAS: { pergunta: string; resposta: string; Icone: LucideIcon; fundo: string; cor: string }[] = [
+const QUESTIONS: { question: string; answer: string; Icon: LucideIcon; background: string; color: string }[] = [
   {
-    pergunta: "é a minha primeira vez na unidade. o que faço?",
-    resposta:
+    question: "é a minha primeira vez na unidade. o que faço?",
+    answer:
       "passe na recepção com um documento com foto (RG ou CNH) e o cartão do SUS, se tiver. eles confirmam os seus dados uma vez só.",
-    Icone: IdCard,
-    fundo: COR.primary50,
-    cor: COR.action,
+    Icon: IdCard,
+    background: COLOR.primary50,
+    color: COLOR.action,
   },
   {
-    pergunta: "e se eu perder a minha vez?",
-    resposta:
+    question: "e se eu perder a minha vez?",
+    answer:
       "fale com a recepção assim que chegar. dependendo do caso, eles te colocam de volta na fila ou marcam outro dia.",
-    Icone: Clock,
-    fundo: COR.warningBg,
-    cor: COR.warningInk,
+    Icon: Clock,
+    background: COLOR.warningBg,
+    color: COLOR.warningInk,
   },
   {
-    pergunta: "não vou conseguir ir. e agora?",
-    resposta:
+    question: "não vou conseguir ir. e agora?",
+    answer:
       "na aba “atendimentos”, toque em “não vou poder ir” no atendimento. assim a vaga fica para outra pessoa, e você pode se inscrever de novo depois.",
-    Icone: CalendarX,
-    fundo: COR.successBg,
-    cor: COR.successInk,
+    Icon: CalendarX,
+    background: COLOR.successBg,
+    color: COLOR.successInk,
   },
 ];
 
 /** Ajuda: perguntas comuns em linguagem simples e os telefones de emergência. */
-export default function Ajuda() {
+export default function Help() {
   return (
-    <Tela>
-      <Titulo>ajuda</Titulo>
-      <TextoSuave>respostas curtas para as dúvidas mais comuns.</TextoSuave>
-      {PERGUNTAS.map(({ pergunta, resposta, Icone, fundo, cor }) => (
-        <Cartao key={pergunta} style={{ gap: 10 }}>
+    <Screen>
+      <Title>ajuda</Title>
+      <SoftText>respostas curtas para as dúvidas mais comuns.</SoftText>
+      {QUESTIONS.map(({ question, answer, Icon, background, color }) => (
+        <Card key={question} style={{ gap: 10 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View style={{ padding: 10, borderRadius: 14, backgroundColor: fundo }}>
-              <Icone size={24} color={cor} strokeWidth={2.5} />
+            <View style={{ padding: 10, borderRadius: 14, backgroundColor: background }}>
+              <Icon size={24} color={color} strokeWidth={2.5} />
             </View>
             <Text
               accessibilityRole="header"
-              style={{ flex: 1, fontFamily: FONTE.extra, fontSize: 19, lineHeight: 25, color: COR.ink }}
+              style={{ flex: 1, fontFamily: FONT.extra, fontSize: 19, lineHeight: 25, color: COLOR.ink }}
             >
-              {pergunta}
+              {question}
             </Text>
           </View>
-          <Texto>{resposta}</Texto>
-        </Cartao>
+          <BodyText>{answer}</BodyText>
+        </Card>
       ))}
-      <View style={{ gap: 12, padding: 18, borderRadius: 20, backgroundColor: COR.dangerBg }}>
+      <View style={{ gap: 12, padding: 18, borderRadius: 20, backgroundColor: COLOR.dangerBg }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Siren size={28} color={COR.dangerInk} strokeWidth={2.5} />
+          <Siren size={28} color={COLOR.dangerInk} strokeWidth={2.5} />
           <Text
             accessibilityRole="header"
-            style={{ flex: 1, fontFamily: FONTE.extra, fontSize: 22, lineHeight: 28, color: COR.dangerInk }}
+            style={{ flex: 1, fontFamily: FONT.extra, fontSize: 22, lineHeight: 28, color: COLOR.dangerInk }}
           >
             é uma emergência?
           </Text>
         </View>
-        <Text style={{ fontFamily: FONTE.semi, fontSize: 18, lineHeight: 26, color: COR.dangerInk }}>
+        <Text style={{ fontFamily: FONT.semi, fontSize: 18, lineHeight: 26, color: COLOR.dangerInk }}>
           não espere na fila. ligue para o SAMU, de graça, a qualquer hora.
         </Text>
-        <BotaoLigar texto="ligar para o SAMU (192)" numero="192" variante="perigo" />
+        <CallButton text="ligar para o SAMU (192)" number="192" variant="danger" />
       </View>
-      <Cartao style={{ gap: 10 }}>
+      <Card style={{ gap: 10 }}>
         <Text
           accessibilityRole="header"
-          style={{ fontFamily: FONTE.extra, fontSize: 19, lineHeight: 25, color: COR.ink }}
+          style={{ fontFamily: FONT.extra, fontSize: 19, lineHeight: 25, color: COLOR.ink }}
         >
           precisa conversar?
         </Text>
-        <Texto>o CVV ouve você com sigilo, de graça, 24 horas por dia.</Texto>
-        <BotaoLigar texto="ligar para o CVV (188)" numero="188" variante="secundario" />
-      </Cartao>
-    </Tela>
+        <BodyText>o CVV ouve você com sigilo, de graça, 24 horas por dia.</BodyText>
+        <CallButton text="ligar para o CVV (188)" number="188" variant="secondary" />
+      </Card>
+    </Screen>
   );
 }

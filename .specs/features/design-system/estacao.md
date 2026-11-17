@@ -89,7 +89,7 @@ Senha grande azul, rótulo da fase, nome completo, pílulas com ícone (tempo e,
   - **consultório: marca o comparecimento sozinho** na mesma hora e segue.
 - Spec de chamada: duas linhas novas na tabela de transições do item (Chamado + Compareceu → (mesmo); Chamado + Desfazer compareceu → (mesmo)) e o texto da estação.
 - A operação da estação passa a devolver: `chamado.compareceuEm`, `chamado.prioridade` (já existe na ficha da triagem; passa a valer em qualquer etapa), `proximos` (até 3: senha, primeiro nome, presente desde), `aCaminho` (até 3: senha, primeiro nome), `maisAntigo` (presente desde e tempo-alvo em minutos) ou `null`.
-- Comandos novos: `POST /v1/painel/estacoes/:id/compareceu` e `.../desfazer-compareceu`.
+- Comandos novos: `POST /v1/panel/stations/:id/showed-up` e `.../undo-showed-up`.
 
 ## Restrições
 

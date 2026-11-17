@@ -157,16 +157,16 @@ apps/painel/                                  Next 16 (igual a apps/web) + vites
 **Files:** Create `packages/domain/src/servico.ts`, `src/sessao-config.ts`, `test/servico.test.ts`, `test/sessao-config.test.ts`; Modify `src/index.ts`
 
 **Interfaces:**
-- Consumes: `TRANSICOES_ENTRADA`, `transicionar`, `EstadoEntrada`, `EstadoSessao`, `falha`, `ok`.
+- Consumes: `TRANSICOES_ENTRADA`, `applyTransition`, `EstadoEntrada`, `EstadoSessao`, `falha`, `ok`.
 - Produces:
   - `type ModoServico = "livre" | "requisicao" | "regulado"`.
   - `podeMudarExigeTriagem(sessoesDoServico: { estado: EstadoSessao }[]): boolean` (falso com alguma `aberta`).
-  - `mudarModoServico(de: ModoServico, para: ModoServico, entradas: { id: string; estado: EstadoEntrada; vagaSegura: boolean; sessaoAbriu: boolean }[]): Resultado<{ mudancas: { id: string; para: EstadoEntrada; push: boolean }[] }>` — para `regulado` com entradas ativas (não finais e não arquivadas) → `falha("servico_regulado")` (a API mostra a contagem com `contarAtivas(entradas): number`, também exportada); arquivadas viram `cancelada` com push; `requisicao` → `livre`: `aguardando_encaminhamento` vira `aguardando`, ou `confirmada` com push se tinha vaga segura e a sessão não abriu (linhas da tabela de [marcacao](../../../specs/marcacao/spec.md#transições), via `transicionar`); `livre` → `requisicao`: nada muda (AD-038).
+  - `mudarModoServico(de: ModoServico, para: ModoServico, entradas: { id: string; estado: EstadoEntrada; vagaSegura: boolean; sessaoAbriu: boolean }[]): Resultado<{ mudancas: { id: string; para: EstadoEntrada; push: boolean }[] }>` — para `regulado` com entradas ativas (não finais e não arquivadas) → `falha("servico_regulado")` (a API mostra a contagem com `contarAtivas(entradas): number`, também exportada); arquivadas viram `cancelada` com push; `requisicao` → `livre`: `aguardando_encaminhamento` vira `aguardando`, ou `confirmada` com push se tinha vaga segura e a sessão não abriu (linhas da tabela de [marcacao](../../../specs/marcacao/spec.md#transições), via `applyTransition`); `livre` → `requisicao`: nada muda (AD-038).
   - `type ConfigSessao = { vagas: number | null; visibilidade: "publica" | "privada"; dispensaPreCadastro: boolean; profissional: string | null; estacoes: string[] }`.
   - `validarSessao(servico: { modo: ModoServico; estacoesDoServico: string[] }, c: ConfigSessao): { ok: true } | { ok: false; erro: "servico_regulado" | "entrada_invalida"; campos?: Record<string, string> }` — vagas inteiro ≥ 1 ou nulo; pública em serviço regulado → `servico_regulado`; dispensa só em pública (AD-016); estações só as que atendem o serviço.
   - `mudarVisibilidade(c: ConfigSessao, para: "publica" | "privada", modo: ModoServico): Resultado<ConfigSessao>` — para privada desliga a dispensa (RN-PUB-03); para pública em regulado → `falha("servico_regulado")`.
 - [ ] **Step 1: Testes** `"RN-ENC-07: troca para regulado bloqueada com entradas ativas, com a contagem"`; `"RN-ENC-07: arquivadas são canceladas com push"`; `"RN-ENC-07: aguardando encaminhamento vira aguardando ao virar livre"`; `"RN-ENC-07: vaga segura vira confirmada com push antes da abertura"`; `"AD-038: livre para requisição não exige foto de quem já está na lista"`; `"RN-TRI-01: exige triagem não muda com sessão aberta"` (planejada pode, aberta não); `validarSessao`: vagas 0 recusado, 1 aceito, nulo aceito; `"AD-016: dispensa só em pública"`; `"RN-PUB-03: pública vira privada e perde a dispensa"`; `"RN-PUB-03: privada não vira pública em serviço regulado"`.
-- [ ] **Step 2:** FAIL. **Step 3:** implementar (cada mudança de estado da entrada passa por `transicionar`; `null` → `falha("transicao_proibida")`). **Step 4:** PASS; biome. **Step 5:** Commit `feat(domain): safe service and session configuration changes`.
+- [ ] **Step 2:** FAIL. **Step 3:** implementar (cada mudança de estado da entrada passa por `applyTransition`; `null` → `falha("transicao_proibida")`). **Step 4:** PASS; biome. **Step 5:** Commit `feat(domain): safe service and session configuration changes`.
 
 ### Task 6: Contratos Zod da configuração (T2.1–T2.6)
 
@@ -440,7 +440,7 @@ Regra: tudo o que usa o Postgres de teste (5433), a porta 3333 ou as pastas de m
 
 | Grupo | Tasks | Pode rodar junto com | Observação |
 | --- | --- | --- | --- |
-| **Domínio (independente da API)** | 1 → 2 → 3 (recorrência, em sequência: mesmo arquivo); 4; 5 | Todos os outros grupos; pode começar já, em paralelo com a 1B | 4 e 5 tocam arquivos diferentes de 1–3; conflito só em `src/index.ts`, trivial. A Task 5 usa `transicionar` da 1A (já integrado) |
+| **Domínio (independente da API)** | 1 → 2 → 3 (recorrência, em sequência: mesmo arquivo); 4; 5 | Todos os outros grupos; pode começar já, em paralelo com a 1B | 4 e 5 tocam arquivos diferentes de 1–3; conflito só em `src/index.ts`, trivial. A Task 5 usa `applyTransition` da 1A (já integrado) |
 | **Schemas (independente)** | 6 | Todos | Só `packages/schemas`; as rotas consomem depois |
 | **Painel, base (independente da API)** | 7 → 8 | Domínio, schemas, API | Só `apps/painel` e `apps/web/package.json`; testes com API falsa |
 | **API (sequencial)** | 9 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 25 → 26 | Domínio, schemas, painel | Mesmo banco de teste, mesma porta e migrations em sequência. Precisa da 1B inteira. 13–15 (worker) dependem só da 1B e podem vir antes de 10–12 se for útil; 19 precisa de 5; 20–23 precisam de 1–3; 24 precisa de 19 e 21 |

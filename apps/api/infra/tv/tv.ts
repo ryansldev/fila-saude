@@ -1,165 +1,165 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import type { TvDaUnidade, TvEstado, TvRegistro } from "@fila-saude/schemas/tv";
+import type { TvRecord, TvState, UnitTv } from "@fila-saude/schemas/tv";
 import { and, eq, gt, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
-import { CONFIGURAR, exigirUnidade } from "infra/config/comum";
-import { diaSessao } from "infra/database/municipal/schema/dia-sessao";
-import { estacao } from "infra/database/municipal/schema/estacao";
-import { servico } from "infra/database/municipal/schema/servico";
-import { sessao } from "infra/database/municipal/schema/sessao";
+import { CONFIGURE, requireUnit } from "infra/config/common";
+import { service } from "infra/database/municipal/schema/service";
+import { session } from "infra/database/municipal/schema/session";
+import { sessionDay } from "infra/database/municipal/schema/session-day";
+import { station } from "infra/database/municipal/schema/station";
 import { tv } from "infra/database/municipal/schema/tv";
-import { unidade } from "infra/database/municipal/schema/unidade";
-import type { BancoDoTenant, DbDoTenant } from "infra/database/tenants";
-import { ErroApi } from "infra/erros";
-import { configDaUnidade } from "infra/fila/dia";
-import { conteudoDoQr } from "infra/fila/qr";
-import { type ContextoDaAcao, executarAcao } from "infra/painel/acao";
+import { unit } from "infra/database/municipal/schema/unit";
+import type { TenantDatabase, TenantDb } from "infra/database/tenants";
+import { ApiError } from "infra/errors";
+import { type ActionContext, runAction } from "infra/panel/action";
+import { unitConfig } from "infra/queue/day";
+import { qrContent } from "infra/queue/qr";
 
-const VALIDADE_DO_CODIGO_MS = 15 * 60_000;
+const CODE_VALIDITY_MS = 15 * 60_000;
 const ONLINE_MS = 60_000;
-const SINAL_MS = 20_000;
-const ULTIMAS = 5;
+const SIGNAL_MS = 20_000;
+const LAST = 5;
 
 const hash = (token: string) => createHash("sha256").update(token).digest("hex");
 
 // PD-47 / RN-TV-01: a TV se registra sozinha; o código só vale enquanto ninguém o usou e não venceu.
 // Dois códigos pendentes iguais deixariam o admin parear a TV errada: sorteia de novo.
-export async function registrarTv(db: DbDoTenant, agora: number): Promise<TvRegistro> {
+export async function registerTv(db: TenantDb, now: number): Promise<TvRecord> {
   const token = randomBytes(32).toString("base64url");
-  for (let tentativa = 0; tentativa < 10; tentativa++) {
-    const codigo = String(randomInt(0, 1_000_000)).padStart(6, "0");
-    const [igual] = await db
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const [equal] = await db
       .select({ id: tv.id })
       .from(tv)
-      .where(and(eq(tv.codigo, codigo), ...pendente(agora)))
+      .where(and(eq(tv.code, code), ...pending(now)))
       .limit(1);
-    if (igual) continue;
-    await db.insert(tv).values({ codigo, tokenHash: hash(token), criadaEm: new Date(agora) });
-    return { codigo, token };
+    if (equal) continue;
+    await db.insert(tv).values({ code, tokenHash: hash(token), createdAt: new Date(now) });
+    return { code, token };
   }
-  throw new ErroApi(503, "tente_de_novo");
+  throw new ApiError(503, "try_again");
 }
 
-const pendente = (agora: number) => [
-  isNull(tv.unidadeId),
-  isNull(tv.revogadaEm),
-  gt(tv.criadaEm, new Date(agora - VALIDADE_DO_CODIGO_MS)),
+const pending = (now: number) => [
+  isNull(tv.unitId),
+  isNull(tv.revokedAt),
+  gt(tv.createdAt, new Date(now - CODE_VALIDITY_MS)),
 ];
 
-async function tvDoToken(db: BancoDoTenant, token: string | null) {
-  if (!token) throw new ErroApi(401, "tv_nao_pareada");
-  const [linha] = await db
+async function tokenTv(db: TenantDatabase, token: string | null) {
+  if (!token) throw new ApiError(401, "tv_not_paired");
+  const [row] = await db
     .select()
     .from(tv)
     .where(eq(tv.tokenHash, hash(token)));
-  if (!linha || linha.revogadaEm) throw new ErroApi(401, "tv_nao_pareada");
-  return linha;
+  if (!row || row.revokedAt) throw new ApiError(401, "tv_not_paired");
+  return row;
 }
 
-export async function parearTv(ctx: ContextoDaAcao, unidadeId: string, codigo: string): Promise<{ id: string }> {
-  await exigirUnidade(ctx.db, unidadeId);
-  return executarAcao(ctx, { acao: CONFIGURAR, alvo: { tipo: "tv", id: (r) => r.id }, unidadeId }, async (tx) => {
-    const [linha] = await tx
+export async function pairTv(ctx: ActionContext, unitId: string, code: string): Promise<{ id: string }> {
+  await requireUnit(ctx.db, unitId);
+  return runAction(ctx, { action: CONFIGURE, target: { kind: "tv", id: (r) => r.id }, unitId }, async (tx) => {
+    const [row] = await tx
       .update(tv)
-      .set({ unidadeId, pareadaEm: new Date(ctx.agora) })
-      .where(and(eq(tv.codigo, codigo), ...pendente(ctx.agora)))
+      .set({ unitId, pairedAt: new Date(ctx.now) })
+      .where(and(eq(tv.code, code), ...pending(ctx.now)))
       .returning({ id: tv.id });
-    if (!linha) throw new ErroApi(404, "codigo_invalido", undefined, "Código não encontrado ou vencido.");
-    return linha;
+    if (!row) throw new ApiError(404, "invalid_code", undefined, "Código não encontrado ou vencido.");
+    return row;
   });
 }
 
-export async function tvsDaUnidade(ctx: ContextoDaAcao, unidadeId: string): Promise<TvDaUnidade[]> {
-  const linhas = await ctx.db
+export async function unitTvs(ctx: ActionContext, unitId: string): Promise<UnitTv[]> {
+  const rows = await ctx.db
     .select()
     .from(tv)
-    .where(and(eq(tv.unidadeId, unidadeId), isNull(tv.revogadaEm), isNotNull(tv.pareadaEm)));
-  return linhas.map((t) => ({
+    .where(and(eq(tv.unitId, unitId), isNull(tv.revokedAt), isNotNull(tv.pairedAt)));
+  return rows.map((t) => ({
     id: t.id,
-    pareadaEm: (t.pareadaEm as Date).toISOString(),
-    ultimoSinalEm: t.ultimoSinalEm?.toISOString() ?? null,
-    online: t.ultimoSinalEm !== null && ctx.agora - t.ultimoSinalEm.getTime() < ONLINE_MS,
+    pairedAt: (t.pairedAt as Date).toISOString(),
+    lastSignalAt: t.lastSignalAt?.toISOString() ?? null,
+    online: t.lastSignalAt !== null && ctx.now - t.lastSignalAt.getTime() < ONLINE_MS,
   }));
 }
 
-export async function revogarTv(ctx: ContextoDaAcao, tvId: string): Promise<{ id: string }> {
+export async function revokeTv(ctx: ActionContext, tvId: string): Promise<{ id: string }> {
   const [t] = await ctx.db.select().from(tv).where(eq(tv.id, tvId));
-  if (!t?.unidadeId || t.revogadaEm) throw new ErroApi(404, "nao_encontrado");
-  return executarAcao(ctx, { acao: CONFIGURAR, alvo: { tipo: "tv", id: tvId }, unidadeId: t.unidadeId }, async (tx) => {
+  if (!t?.unitId || t.revokedAt) throw new ApiError(404, "not_found");
+  return runAction(ctx, { action: CONFIGURE, target: { kind: "tv", id: tvId }, unitId: t.unitId }, async (tx) => {
     await tx
       .update(tv)
-      .set({ revogadaEm: new Date(ctx.agora) })
+      .set({ revokedAt: new Date(ctx.now) })
       .where(eq(tv.id, tvId));
     return { id: tvId };
   });
 }
 
 // RN-TV-02..07: só a unidade pareada; só senhas, destino e números.
-export async function telaDaTv(db: DbDoTenant, slug: string, token: string | null, agora: number): Promise<TvEstado> {
-  const t = await tvDoToken(db, token);
+export async function tvScreen(db: TenantDb, slug: string, token: string | null, now: number): Promise<TvState> {
+  const t = await tokenTv(db, token);
   // RN-TV-06: sinal de vida, gravado no máximo a cada 20 s.
   await db
     .update(tv)
-    .set({ ultimoSinalEm: new Date(agora) })
-    .where(and(eq(tv.id, t.id), or(isNull(tv.ultimoSinalEm), lt(tv.ultimoSinalEm, new Date(agora - SINAL_MS)))));
-  if (!t.unidadeId) {
+    .set({ lastSignalAt: new Date(now) })
+    .where(and(eq(tv.id, t.id), or(isNull(tv.lastSignalAt), lt(tv.lastSignalAt, new Date(now - SIGNAL_MS)))));
+  if (!t.unitId) {
     // O servidor decide a validade (o relógio da TV pode estar errado): vencido, a TV se registra de novo.
-    if (t.criadaEm.getTime() + VALIDADE_DO_CODIGO_MS <= agora) throw new ErroApi(401, "tv_nao_pareada");
+    if (t.createdAt.getTime() + CODE_VALIDITY_MS <= now) throw new ApiError(401, "tv_not_paired");
     return {
-      estado: "aguardando",
-      codigo: t.codigo,
-      expiraEm: new Date(t.criadaEm.getTime() + VALIDADE_DO_CODIGO_MS).toISOString(),
+      state: "waiting",
+      code: t.code,
+      expiresAt: new Date(t.createdAt.getTime() + CODE_VALIDITY_MS).toISOString(),
     };
   }
-  const [u] = await db.select().from(unidade).where(eq(unidade.id, t.unidadeId));
-  if (!u || u.arquivadaEm) throw new ErroApi(401, "tv_nao_pareada");
+  const [u] = await db.select().from(unit).where(eq(unit.id, t.unitId));
+  if (!u || u.archivedAt) throw new ApiError(401, "tv_not_paired");
 
-  const abertas = await db
-    .select({ servico: servico.nome, dia: diaSessao.dia })
-    .from(sessao)
-    .innerJoin(servico, eq(sessao.servicoId, servico.id))
-    .innerJoin(diaSessao, eq(diaSessao.sessaoId, sessao.id))
-    .where(and(eq(servico.unidadeId, u.id), eq(sessao.estado, "aberta")));
-  const idsDeEstacao = [...new Set(abertas.flatMap(({ dia }) => dia.chamadas.map((c) => c.estacaoId)))];
-  const nomes = new Map(
-    idsDeEstacao.length === 0
+  const open = await db
+    .select({ service: service.name, day: sessionDay.day })
+    .from(session)
+    .innerJoin(service, eq(session.serviceId, service.id))
+    .innerJoin(sessionDay, eq(sessionDay.sessionId, session.id))
+    .where(and(eq(service.unitId, u.id), eq(session.state, "open")));
+  const stationIds = [...new Set(open.flatMap(({ day }) => day.calls.map((c) => c.stationId)))];
+  const names = new Map(
+    stationIds.length === 0
       ? []
       : (
-          await db.select({ id: estacao.id, nome: estacao.nome }).from(estacao).where(inArray(estacao.id, idsDeEstacao))
-        ).map((e) => [e.id, e.nome]),
+          await db.select({ id: station.id, name: station.name }).from(station).where(inArray(station.id, stationIds))
+        ).map((e) => [e.id, e.name]),
   );
 
-  const chamadas = abertas
-    .flatMap(({ dia }) =>
+  const calls = open
+    .flatMap(({ day }) =>
       // RN-CHAM-02: cada rechamada é um anúncio novo.
-      dia.chamadas.flatMap((c) =>
-        [c.em, ...(c.rechamadas ?? [])].map((em) => ({
-          id: `${c.itemId}:${em}`,
-          senha: dia.itens.find((i) => i.id === c.itemId)?.senha ?? "",
-          destino: nomes.get(c.estacaoId) ?? "",
-          em,
+      day.calls.flatMap((c) =>
+        [c.at, ...(c.recalls ?? [])].map((at) => ({
+          id: `${c.itemId}:${at}`,
+          ticket: day.items.find((i) => i.id === c.itemId)?.ticket ?? "",
+          destination: names.get(c.stationId) ?? "",
+          at,
         })),
       ),
     )
-    .sort((a, b) => b.em - a.em)
-    .slice(0, ULTIMAS)
-    .map((c) => ({ ...c, em: new Date(c.em).toISOString() }));
+    .sort((a, b) => b.at - a.at)
+    .slice(0, LAST)
+    .map((c) => ({ ...c, at: new Date(c.at).toISOString() }));
 
-  const porServico = new Map<string, { aguardando: number; aCaminho: number }>();
-  for (const { servico: nome, dia } of abertas) {
-    const atual = porServico.get(nome) ?? { aguardando: 0, aCaminho: 0 };
-    atual.aguardando += dia.itens.filter((i) => i.estado === "presente").length;
-    atual.aCaminho += dia.itens.filter((i) => i.estado === "remoto").length;
-    porServico.set(nome, atual);
+  const byService = new Map<string, { waiting: number; onTheWay: number }>();
+  for (const { service: name, day } of open) {
+    const current = byService.get(name) ?? { waiting: 0, onTheWay: 0 };
+    current.waiting += day.items.filter((i) => i.state === "present").length;
+    current.onTheWay += day.items.filter((i) => i.state === "remote").length;
+    byService.set(name, current);
   }
 
-  const qr = await conteudoDoQr(db, slug, u.id, agora);
+  const qr = await qrContent(db, slug, u.id, now);
   return {
-    estado: "pareada",
-    unidade: { id: u.id, nome: u.nome },
-    destaqueSegundos: configDaUnidade(u).destaqueTvSegundos,
-    chamadas,
-    servicos: [...porServico].map(([nome, n]) => ({ nome, ...n })).sort((a, b) => a.nome.localeCompare(b.nome)),
-    qr: qr.conteudo && qr.expiraEm ? { conteudo: qr.conteudo, expiraEm: qr.expiraEm } : null,
-    atendimentoIniciado: abertas.some(({ dia }) => dia.estacoes.some((e) => e.aberta)),
+    state: "paired",
+    unit: { id: u.id, name: u.name },
+    highlightSeconds: unitConfig(u).tvHighlightSeconds,
+    calls,
+    services: [...byService].map(([name, n]) => ({ name, ...n })).sort((a, b) => a.name.localeCompare(b.name)),
+    qr: qr.content && qr.expiresAt ? { content: qr.content, expiresAt: qr.expiresAt } : null,
+    careStarted: open.some(({ day }) => day.stations.some((e) => e.open)),
   };
 }

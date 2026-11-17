@@ -32,7 +32,7 @@ A Fila do dia é a tela da **recepção no balcão**. Hoje ela mostra uma sessã
 
 **Tela** (escolhida: C): (A) cartões das sessões em linha e a fila da escolhida embaixo; (B) cartões numa coluna à esquerda e a fila à direita (como o Agendamento); **(C) a unidade inteira com busca, cartões como filtros**. C foi escolhida por você ("100%"): é a que serve ao balcão, onde quem chega pode ser de qualquer serviço.
 
-**Dados** (escolhida: A): **(A) uma rota nova, `GET /v1/painel/unidades/:id/fila-de-hoje`**, que devolve as sessões de hoje com os números e todas as pessoas de uma vez; (B) o painel juntar `/hoje` e a fila de cada sessão aberta (2 a 4 consultas a cada 3 s, números às vezes desencontrados). A: uma consulta só, números coerentes, tela leve.
+**Dados** (escolhida: A): **(A) uma rota nova, `GET /v1/panel/units/:id/today-queue`**, que devolve as sessões de hoje com os números e todas as pessoas de uma vez; (B) o painel juntar `/hoje` e a fila de cada sessão aberta (2 a 4 consultas a cada 3 s, números às vezes desencontrados). A: uma consulta só, números coerentes, tela leve.
 
 ## O desenho
 
@@ -64,8 +64,8 @@ UBS Centro
 ## Mudanças por camada
 
 - **Domínio:** `ItemFila.presenteDesde: number | null`, gravado ao ficar presente (check-in, presença pela recepção, volta da triagem para a fila do atendimento já presente) e apagado ao voltar a remoto. Dia antigo sem o campo vale `null`.
-- **API:** `GET /v1/painel/unidades/:unidadeId/fila-de-hoje`, para quem é da equipe da unidade (a mesma regra da fila da sessão, F1): `{ agora, sessoes: [{ id, servico: { id, nome }, inicio, fim, estado, vagas, ocupadas, reserva, contagens: { naFila, naUnidade, aCaminho, chamados, atendidos } }], itens: [ItemDaFila + { sessaoId, servico, desde: iso | null, estacao: string | null }] }`. `desde` = hora da chamada (chamado) ou `presenteDesde` (na unidade).
-- **Painel:** a página reescrita; componentes novos do kit `Filtros` (pílulas de escolha) e `Busca` (campo com ícone); funções puras em `lib/fila.ts` (busca, linha de contexto, tempo de espera, rótulo da pílula).
+- **API:** `GET /v1/panel/units/:unitId/today-queue`, para quem é da equipe da unidade (a mesma regra da fila da sessão, F1): `{ agora, sessoes: [{ id, servico: { id, nome }, inicio, fim, estado, vagas, ocupadas, reserva, contagens: { naFila, naUnidade, aCaminho, chamados, atendidos } }], itens: [ItemDaFila + { sessaoId, servico, desde: iso | null, estacao: string | null }] }`. `desde` = hora da chamada (chamado) ou `presenteDesde` (na unidade).
+- **Painel:** a página reescrita; componentes novos do kit `Filtros` (pílulas de escolha) e `Busca` (campo com ícone); funções puras em `lib/queue.ts` (busca, linha de contexto, tempo de espera, rótulo da pílula).
 
 ## Restrições
 

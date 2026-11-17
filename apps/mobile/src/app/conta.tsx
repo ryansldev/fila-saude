@@ -11,37 +11,37 @@ import {
 } from "lucide-react-native";
 import { type ReactNode, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import { AbasDoPaciente } from "@/components/atendimento";
-import { AreaTocavel, Botao, COR, FONTE, Gaveta, Pequeno, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
-import { cpfEscondido, iniciais, type Municipio, nomeDoMunicipio, primeiroNome, textoDosAvisos } from "@/lib/conta";
-import { useSessao } from "@/lib/sessao";
+import { PatientTabs } from "@/components/care";
+import { Badge, Button, COLOR, FONT, Screen, Sheet, Small, SoftText, TappableArea, Title } from "@/components/ui";
+import { firstName, hiddenCpf, initials, type Municipality, municipalityName, noticeText } from "@/lib/account";
+import { useSession } from "@/lib/session";
 
 /** Aba "conta": quem está no app e um menu simples, como no gov.br e no Meu SUS Digital. */
-export default function Conta() {
-  const s = useSessao();
-  const [municipios, setMunicipios] = useState<Municipio[] | null>(null);
-  const [ligando, setLigando] = useState(false);
-  const [confirmarSaida, setConfirmarSaida] = useState(false);
-  const [saindo, setSaindo] = useState(false);
+export default function Account() {
+  const s = useSession();
+  const [municipalities, setMunicipalities] = useState<Municipality[] | null>(null);
+  const [turningOn, setTurningOn] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     s.api
-      .get<Municipio[]>("/v1/municipios")
-      .then(setMunicipios)
-      .catch(() => setMunicipios([]));
+      .get<Municipality[]>("/v1/municipalities")
+      .then(setMunicipalities)
+      .catch(() => setMunicipalities([]));
   }, [s.api]);
 
-  const nomeMunicipio = nomeDoMunicipio(municipios, s.municipio);
-  const avisos = textoDosAvisos(s.avisos);
-  const cpf = cpfEscondido(s.conta?.cpf ?? "");
+  const currentMunicipalityName = municipalityName(municipalities, s.municipality);
+  const notices = noticeText(s.notices);
+  const cpf = hiddenCpf(s.account?.cpf ?? "");
 
-  async function sair() {
-    setSaindo(true);
+  async function leave() {
+    setLeaving(true);
     try {
-      await s.sair();
+      await s.leave();
     } finally {
-      setSaindo(false);
-      setConfirmarSaida(false);
+      setLeaving(false);
+      setConfirmExit(false);
       // Pilha nova: o "voltar" não volta para dentro da conta que saiu.
       if (router.canDismiss()) router.dismissAll();
       router.replace("/boas-vindas");
@@ -49,169 +49,169 @@ export default function Conta() {
   }
 
   return (
-    <Tela voltar={false} rodape={<AbasDoPaciente atual="conta" />}>
-      <View style={estilo.topo}>
-        <View style={estilo.avatar} accessibilityElementsHidden importantForAccessibility="no">
-          <Text style={estilo.iniciais}>{s.conta ? iniciais(s.conta.nome) : ""}</Text>
+    <Screen back={false} footer={<PatientTabs current="account" />}>
+      <View style={style.top}>
+        <View style={style.avatar} accessibilityElementsHidden importantForAccessibility="no">
+          <Text style={style.initials}>{s.account ? initials(s.account.name) : ""}</Text>
         </View>
         <View style={{ flex: 1, gap: 2 }}>
-          {s.conta ? (
+          {s.account ? (
             <>
-              <Titulo style={{ fontSize: 30, lineHeight: 36 }}>{primeiroNome(s.conta.nome)}</Titulo>
+              <Title style={{ fontSize: 30, lineHeight: 36 }}>{firstName(s.account.name)}</Title>
               {cpf ? (
-                <Text style={estilo.cpf} accessibilityLabel="CPF escondido. só os números do meio aparecem.">
+                <Text style={style.cpf} accessibilityLabel="CPF escondido. só os números do meio aparecem.">
                   CPF {cpf}
                 </Text>
               ) : null}
             </>
           ) : (
-            <ActivityIndicator color={COR.action} style={{ alignSelf: "flex-start" }} />
+            <ActivityIndicator color={COLOR.action} style={{ alignSelf: "flex-start" }} />
           )}
-          {s.municipio ? (
+          {s.municipality ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 }}>
-              <MapPin size={18} color={COR.inkMuted} strokeWidth={2.5} />
-              <Pequeno style={{ flex: 1 }}>{nomeMunicipio ?? "seu município"}</Pequeno>
+              <MapPin size={18} color={COLOR.inkMuted} strokeWidth={2.5} />
+              <Small style={{ flex: 1 }}>{currentMunicipalityName ?? "seu município"}</Small>
             </View>
           ) : null}
         </View>
       </View>
 
-      <View style={estilo.lista}>
-        <Linha
-          Icone={MapPin}
-          tom="azul"
-          rotulo="município"
-          descricao={nomeMunicipio ?? "toque para escolher"}
+      <View style={style.list}>
+        <Row
+          Icon={MapPin}
+          tone="blue"
+          label="município"
+          description={currentMunicipalityName ?? "toque para escolher"}
           onPress={() => router.push("/municipio")}
         />
-        <Divisor />
-        <Linha
-          Icone={avisos.ligados ? BellRing : BellOff}
-          tom={avisos.ligados ? "verde" : "amarelo"}
-          rotulo="avisos"
-          descricao={avisos.texto}
-          carregando={ligando}
-          direita={avisos.ligados ? <Selo texto="ligados" tom="verde" /> : undefined}
+        <Divider />
+        <Row
+          Icon={notices.on ? BellRing : BellOff}
+          tone={notices.on ? "green" : "yellow"}
+          label="avisos"
+          description={notices.text}
+          loading={turningOn}
+          right={notices.on ? <Badge text="ligados" tone="green" /> : undefined}
           onPress={
-            avisos.ligados || !s.avisos
+            notices.on || !s.notices
               ? undefined
               : async () => {
-                  setLigando(true);
+                  setTurningOn(true);
                   try {
-                    await s.ligarAvisos();
+                    await s.turnOnNotices();
                   } finally {
-                    setLigando(false);
+                    setTurningOn(false);
                   }
                 }
           }
         />
-        <Divisor />
-        <Linha
-          Icone={Lightbulb}
-          tom="amarelo"
-          rotulo="como funciona"
-          descricao="veja de novo o passo a passo do app"
-          onPress={() => router.push({ pathname: "/conhecer", params: { revisao: "1" } })}
+        <Divider />
+        <Row
+          Icon={Lightbulb}
+          tone="yellow"
+          label="como funciona"
+          description="veja de novo o passo a passo do app"
+          onPress={() => router.push({ pathname: "/conhecer", params: { review: "1" } })}
         />
-        <Divisor />
-        <Linha
-          Icone={CircleQuestionMark}
-          tom="azul"
-          rotulo="ajuda"
-          descricao="dúvidas comuns e telefones de emergência"
+        <Divider />
+        <Row
+          Icon={CircleQuestionMark}
+          tone="blue"
+          label="ajuda"
+          description="dúvidas comuns e telefones de emergência"
           onPress={() => router.push("/ajuda")}
         />
       </View>
 
-      <View style={estilo.lista}>
-        <Linha
-          Icone={LogOut}
-          tom="vermelho"
-          rotulo="sair da conta"
-          descricao="para usar outra conta neste celular"
-          perigo
-          onPress={() => setConfirmarSaida(true)}
+      <View style={style.list}>
+        <Row
+          Icon={LogOut}
+          tone="red"
+          label="sair da conta"
+          description="para usar outra conta neste celular"
+          danger
+          onPress={() => setConfirmExit(true)}
         />
       </View>
 
-      <Gaveta aberta={confirmarSaida} fechar={() => setConfirmarSaida(false)} travada={saindo}>
-        <Titulo>sair da conta?</Titulo>
-        <TextoSuave>você deixa de receber os avisos neste celular.</TextoSuave>
-        <Botao texto="sair da conta" variante="perigo" carregando={saindo} onPress={() => void sair()} />
-        <Botao texto="continuar na conta" variante="secundario" onPress={() => setConfirmarSaida(false)} />
-      </Gaveta>
-    </Tela>
+      <Sheet open={confirmExit} close={() => setConfirmExit(false)} locked={leaving}>
+        <Title>sair da conta?</Title>
+        <SoftText>você deixa de receber os avisos neste celular.</SoftText>
+        <Button text="sair da conta" variant="danger" loading={leaving} onPress={() => void leave()} />
+        <Button text="continuar na conta" variant="secondary" onPress={() => setConfirmExit(false)} />
+      </Sheet>
+    </Screen>
   );
 }
 
-const TONS = {
-  azul: { fundo: COR.primary50, cor: COR.action },
-  verde: { fundo: COR.successBg, cor: COR.successInk },
-  amarelo: { fundo: COR.warningBg, cor: COR.warningInk },
-  vermelho: { fundo: COR.dangerBg, cor: COR.dangerInk },
+const TONES = {
+  blue: { background: COLOR.primary50, color: COLOR.action },
+  green: { background: COLOR.successBg, color: COLOR.successInk },
+  yellow: { background: COLOR.warningBg, color: COLOR.warningInk },
+  red: { background: COLOR.dangerBg, color: COLOR.dangerInk },
 };
 
-function Linha({
-  Icone,
-  tom,
-  rotulo,
-  descricao,
+function Row({
+  Icon,
+  tone,
+  label,
+  description,
   onPress,
-  direita,
-  carregando = false,
-  perigo = false,
+  right,
+  loading = false,
+  danger = false,
 }: {
-  Icone: LucideIcon;
-  tom: keyof typeof TONS;
-  rotulo: string;
-  descricao: string;
+  Icon: LucideIcon;
+  tone: keyof typeof TONES;
+  label: string;
+  description: string;
   onPress?: (() => void) | undefined;
-  direita?: ReactNode;
-  carregando?: boolean;
-  perigo?: boolean;
+  right?: ReactNode;
+  loading?: boolean;
+  danger?: boolean;
 }) {
-  const t = TONS[tom];
-  const conteudo = (pressed: boolean) => (
-    <View style={[estilo.linha, pressed && { backgroundColor: perigo ? COR.dangerBg : COR.primary50 }]}>
-      <View style={[estilo.icone, { backgroundColor: t.fundo }]}>
-        <Icone size={26} color={t.cor} strokeWidth={2.5} />
+  const t = TONES[tone];
+  const content = (pressed: boolean) => (
+    <View style={[style.row, pressed && { backgroundColor: danger ? COLOR.dangerBg : COLOR.primary50 }]}>
+      <View style={[style.icon, { backgroundColor: t.background }]}>
+        <Icon size={26} color={t.color} strokeWidth={2.5} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[estilo.rotulo, perigo && { color: COR.dangerInk }]}>{rotulo}</Text>
-        <Text style={estilo.descricao}>{descricao}</Text>
+        <Text style={[style.label, danger && { color: COLOR.dangerInk }]}>{label}</Text>
+        <Text style={style.description}>{description}</Text>
       </View>
-      {carregando ? (
-        <ActivityIndicator color={COR.action} />
-      ) : direita ? (
-        direita
+      {loading ? (
+        <ActivityIndicator color={COLOR.action} />
+      ) : right ? (
+        right
       ) : onPress ? (
-        <ChevronRight size={26} color={perigo ? COR.dangerInk : COR.inkMuted} strokeWidth={2.5} />
+        <ChevronRight size={26} color={danger ? COLOR.dangerInk : COLOR.inkMuted} strokeWidth={2.5} />
       ) : null}
     </View>
   );
   if (!onPress)
     return (
-      <View accessible accessibilityLabel={`${rotulo}: ${descricao}`}>
-        {conteudo(false)}
+      <View accessible accessibilityLabel={`${label}: ${description}`}>
+        {content(false)}
       </View>
     );
   return (
-    <AreaTocavel rotulo={rotulo} dica={descricao} ocupado={carregando} onPress={onPress}>
-      {(pressed) => conteudo(pressed)}
-    </AreaTocavel>
+    <TappableArea label={label} hint={description} busy={loading} onPress={onPress}>
+      {(pressed) => content(pressed)}
+    </TappableArea>
   );
 }
 
-const Divisor = () => <View style={{ height: 2, backgroundColor: COR.linha, marginLeft: 76 }} />;
+const Divider = () => <View style={{ height: 2, backgroundColor: COLOR.line, marginLeft: 76 }} />;
 
-const estilo = StyleSheet.create({
-  topo: {
+const style = StyleSheet.create({
+  top: {
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
     padding: 18,
     borderRadius: 24,
-    backgroundColor: COR.primary50,
+    backgroundColor: COLOR.primary50,
   },
   avatar: {
     width: 72,
@@ -219,21 +219,21 @@ const estilo = StyleSheet.create({
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COR.action,
+    backgroundColor: COLOR.action,
     borderBottomWidth: 4,
-    borderBottomColor: COR.acaoSombra,
+    borderBottomColor: COLOR.actionShadow,
   },
-  iniciais: { fontFamily: FONTE.extra, fontSize: 28, color: "#ffffff", letterSpacing: 1 },
-  cpf: { fontFamily: FONTE.bold, fontSize: 17, lineHeight: 24, color: COR.inkMuted, letterSpacing: 0.5 },
-  lista: {
+  initials: { fontFamily: FONT.extra, fontSize: 28, color: "#ffffff", letterSpacing: 1 },
+  cpf: { fontFamily: FONT.bold, fontSize: 17, lineHeight: 24, color: COLOR.inkMuted, letterSpacing: 0.5 },
+  list: {
     borderRadius: 20,
     borderWidth: 2,
     borderBottomWidth: 4,
-    borderColor: COR.linha,
-    backgroundColor: COR.surface,
+    borderColor: COLOR.line,
+    backgroundColor: COLOR.surface,
     overflow: "hidden",
   },
-  linha: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
@@ -241,13 +241,13 @@ const estilo = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  icone: {
+  icon: {
     width: 48,
     height: 48,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
-  rotulo: { fontFamily: FONTE.extra, fontSize: 19, lineHeight: 24, color: COR.ink },
-  descricao: { fontFamily: FONTE.semi, fontSize: 15, lineHeight: 21, color: COR.inkMuted },
+  label: { fontFamily: FONT.extra, fontSize: 19, lineHeight: 24, color: COLOR.ink },
+  description: { fontFamily: FONT.semi, fontSize: 15, lineHeight: 21, color: COLOR.inkMuted },
 });

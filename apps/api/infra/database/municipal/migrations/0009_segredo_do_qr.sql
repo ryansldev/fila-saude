@@ -1,1 +1,0 @@
-ALTER TABLE "dia_sessao" ADD COLUMN "segredo_qr" text;

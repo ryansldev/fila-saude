@@ -1,49 +1,49 @@
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type QrLido = { municipio: string; unidadeId: string; tokens: string[] };
+export type ReadQr = { municipality: string; unitId: string; tokens: string[] };
 
 /**
  * Lê o link do QR de entrada (`filasaude://check-in?m=<slug>&u=<unidade>&t=<tok1>,<tok2>`). Parse à mão:
  * o `URL` do React Native não garante `searchParams` para esquema próprio.
  */
-export function lerQr(conteudo: string): QrLido | null {
-  const m = /^filasaude:\/\/check-in\?(.+)$/.exec(conteudo.trim());
+export function readQr(content: string): ReadQr | null {
+  const m = /^filasaude:\/\/check-in\?(.+)$/.exec(content.trim());
   if (!m?.[1]) return null;
   const params = new Map<string, string>();
-  for (const par of m[1].split("&")) {
-    const [k, v = ""] = par.split("=");
+  for (const pair of m[1].split("&")) {
+    const [k, v = ""] = pair.split("=");
     if (k) params.set(k, decodeURIComponent(v));
   }
-  return deParametros({ m: params.get("m"), u: params.get("u"), t: params.get("t") });
+  return fromParameters({ m: params.get("m"), u: params.get("u"), t: params.get("t") });
 }
 
 /** Os mesmos dados quando o link abriu o app direto (parâmetros da rota). */
-export function deParametros(p: {
+export function fromParameters(p: {
   m?: string | undefined;
   u?: string | undefined;
   t?: string | undefined;
-}): QrLido | null {
+}): ReadQr | null {
   const tokens = (p.t ?? "").split(",").filter(Boolean);
   if (!p.m || !p.u || !UUID.test(p.u) || tokens.length === 0) return null;
-  return { municipio: p.m, unidadeId: p.u, tokens };
+  return { municipality: p.m, unitId: p.u, tokens };
 }
 
-type Resultado = { pessoa: string; senha: string; resultado: "presente" | "pendencia" | "ja_na_unidade" | "chamado" };
+type Result = { person: string; ticket: string; result: "present" | "pending_check" | "already_in_unit" | "called" };
 
-const RECEPCAO = "passe na recepção para confirmar seus documentos. você ainda não entrou na fila da unidade.";
+const RECEPTION = "passe na recepção para confirmar seus documentos. você ainda não entrou na fila da unidade.";
 
 /** RN-PRES-01 / RN-FILA-05: o que o app diz depois de ler o QR. */
-export function textoDoCheckIn(lista: Resultado[]): {
-  tipo: "presente" | "recepcao" | "sem_senha";
-  linhas: string[];
+export function checkInText(list: Result[]): {
+  kind: "present" | "reception" | "no_ticket";
+  rows: string[];
 } {
-  if (lista.length === 0) return { tipo: "sem_senha", linhas: ["você não tem senha aberta nesta unidade agora."] };
-  const linhas = lista.map((r) => {
-    const quem = `${r.pessoa} (${r.senha})`;
-    if (r.resultado === "pendencia") return `${quem}: ${RECEPCAO}`;
-    if (r.resultado === "ja_na_unidade") return `${quem}: você já está na fila da unidade.`;
-    if (r.resultado === "chamado") return `${quem}: você já foi chamado. vá para a sala indicada na TV.`;
-    return `${quem}: você está na unidade. fique de olho na TV e no celular.`;
+  if (list.length === 0) return { kind: "no_ticket", rows: ["você não tem senha aberta nesta unidade agora."] };
+  const rows = list.map((r) => {
+    const forWhom = `${r.person} (${r.ticket})`;
+    if (r.result === "pending_check") return `${forWhom}: ${RECEPTION}`;
+    if (r.result === "already_in_unit") return `${forWhom}: você já está na fila da unidade.`;
+    if (r.result === "called") return `${forWhom}: você já foi chamado. vá para a sala indicada na TV.`;
+    return `${forWhom}: você está na unidade. fique de olho na TV e no celular.`;
   });
-  return { tipo: lista.some((r) => r.resultado === "pendencia") ? "recepcao" : "presente", linhas };
+  return { kind: list.some((r) => r.result === "pending_check") ? "reception" : "present", rows };
 }

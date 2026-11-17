@@ -1,5 +1,5 @@
-export type { EstiloDoBotao, TamanhoApp, TamanhoPainel, Variante } from "./botao.ts";
-export { estiloDoBotao, VARIANTES } from "./botao.ts";
-export { gerarCss } from "./css.ts";
+export type { AppSize, ButtonStyle, PanelSize, Variant } from "./button.ts";
+export { buttonStyle, VARIANTS } from "./button.ts";
+export { generateCss } from "./css.ts";
 export { LINO_SVG } from "./lino.ts";
-export { COR, FONTE, OPACIDADE_DESATIVADO } from "./tokens.ts";
+export { COLOR, DISABLED_OPACITY, FONT } from "./tokens.ts";

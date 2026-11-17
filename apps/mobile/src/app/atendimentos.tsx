@@ -1,69 +1,69 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
-import { AbasDoPaciente, useMinhaFila } from "@/components/atendimento";
-import { Botao, Carregando, Cartao, CartaoTocavel, Faixa, Segmentado, Tela, TextoSuave, Titulo } from "@/components/ui";
+import { PatientTabs, useMyQueue } from "@/components/care";
+import { Banner, Button, Card, Loading, Screen, Segmented, SoftText, TappableCard, Title } from "@/components/ui";
 
-type Aba = "proximos" | "historico";
+type Tab = "upcoming" | "history";
 
 /**
  * Meus atendimentos: o que está marcado para outros dias, a lista de espera e a reserva ("próximos"),
  * e o que já terminou ("histórico"). O de hoje fica na aba "hoje".
  */
-export default function Atendimentos() {
-  const f = useMinhaFila();
-  const [aba, setAba] = useState<Aba>("proximos");
-  const proximos = f.lista
-    .filter((x) => x.resumo.grupo === "proximos" || x.resumo.grupo === "sem_data")
-    .sort((a, b) => (a.en.sessao?.inicio ?? "9").localeCompare(b.en.sessao?.inicio ?? "9"));
-  const historico = f.lista.filter((x) => x.resumo.grupo === "encerrados");
-  const deHoje = f.lista.filter((x) => x.resumo.grupo === "hoje").length;
-  const itens = aba === "proximos" ? proximos : historico;
+export default function Appointments() {
+  const f = useMyQueue();
+  const [tab, setTab] = useState<Tab>("upcoming");
+  const upcoming = f.list
+    .filter((x) => x.summary.group === "upcoming" || x.summary.group === "no_date")
+    .sort((a, b) => (a.en.session?.start ?? "9").localeCompare(b.en.session?.start ?? "9"));
+  const history = f.list.filter((x) => x.summary.group === "closed");
+  const fromToday = f.list.filter((x) => x.summary.group === "today").length;
+  const items = tab === "upcoming" ? upcoming : history;
 
   return (
-    <Tela voltar={false} rodape={<AbasDoPaciente atual="atendimentos" lista={f.lista} />}>
-      <Titulo>meus atendimentos</Titulo>
-      <Segmentado
-        atual={aba}
-        mudar={setAba}
-        opcoes={[
-          { id: "proximos", rotulo: `próximos${proximos.length > 0 ? ` (${proximos.length})` : ""}` },
-          { id: "historico", rotulo: `histórico${historico.length > 0 ? ` (${historico.length})` : ""}` },
+    <Screen back={false} footer={<PatientTabs current="appointments" list={f.list} />}>
+      <Title>meus atendimentos</Title>
+      <Segmented
+        current={tab}
+        change={setTab}
+        options={[
+          { id: "upcoming", label: `próximos${upcoming.length > 0 ? ` (${upcoming.length})` : ""}` },
+          { id: "history", label: `histórico${history.length > 0 ? ` (${history.length})` : ""}` },
         ]}
       />
-      {f.erro ? (
-        <Faixa
-          tipo="perigo"
-          titulo={f.erro.titulo}
-          texto={f.erro.texto}
-          acao={{ texto: "tentar de novo", onPress: () => void f.tentarDeNovo(), carregando: f.tentando }}
+      {f.error ? (
+        <Banner
+          kind="danger"
+          title={f.error.title}
+          text={f.error.text}
+          action={{ text: "tentar de novo", onPress: () => void f.tryAgain(), loading: f.trying }}
         />
       ) : null}
-      {f.cancelada ? <Faixa tipo="ok" titulo="pronto, inscrição cancelada" texto={f.cancelada} /> : null}
-      {deHoje > 0 && aba === "proximos" ? (
-        <CartaoTocavel acao="ver o de hoje" onPress={() => router.replace("/inicio")}>
-          <TextoSuave>
-            {deHoje === 1 ? "você tem 1 atendimento hoje." : `você tem ${deHoje} atendimentos hoje.`}
-          </TextoSuave>
-        </CartaoTocavel>
+      {f.cancelled ? <Banner kind="ok" title="pronto, inscrição cancelada" text={f.cancelled} /> : null}
+      {fromToday > 0 && tab === "upcoming" ? (
+        <TappableCard action="ver o de hoje" onPress={() => router.replace("/inicio")}>
+          <SoftText>
+            {fromToday === 1 ? "você tem 1 atendimento hoje." : `você tem ${fromToday} atendimentos hoje.`}
+          </SoftText>
+        </TappableCard>
       ) : null}
-      {f.entradas === null && !f.erro ? <Carregando texto="buscando os seus atendimentos…" /> : null}
-      {f.entradas !== null && itens.length === 0 ? (
-        <Cartao style={{ alignItems: "center", gap: 10, paddingVertical: 24 }}>
-          <TextoSuave style={{ textAlign: "center" }}>
-            {aba === "proximos"
+      {f.entries === null && !f.error ? <Loading text="buscando os seus atendimentos…" /> : null}
+      {f.entries !== null && items.length === 0 ? (
+        <Card style={{ alignItems: "center", gap: 10, paddingVertical: 24 }}>
+          <SoftText style={{ textAlign: "center" }}>
+            {tab === "upcoming"
               ? "nenhum atendimento marcado para os próximos dias."
               : "os atendimentos que terminarem aparecem aqui."}
-          </TextoSuave>
-          {aba === "proximos" ? (
+          </SoftText>
+          {tab === "upcoming" ? (
             <View style={{ alignSelf: "stretch" }}>
-              <Botao texto="procurar uma unidade" onPress={() => router.replace("/unidades")} />
+              <Button text="procurar uma unidade" onPress={() => router.replace("/unidades")} />
             </View>
           ) : null}
-        </Cartao>
+        </Card>
       ) : null}
-      {f.cartoes(itens, "lista")}
-      {f.gaveta}
-    </Tela>
+      {f.cards(items, "list")}
+      {f.sheet}
+    </Screen>
   );
 }

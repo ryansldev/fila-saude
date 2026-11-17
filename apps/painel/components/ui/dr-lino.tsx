@@ -16,7 +16,7 @@ export function DrLino({ className }: { className?: string }) {
 }
 
 /** Balão de fala suave do Dr. Lino: fundo azul bem claro, sem borda, com a pontinha à esquerda. */
-export function Balao({ children, className }: { children: ReactNode; className?: string }) {
+export function Bubble({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(

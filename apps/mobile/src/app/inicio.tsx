@@ -3,114 +3,114 @@ import { MapPin } from "lucide-react-native";
 import { useState } from "react";
 import { Text, View } from "react-native";
 import {
-  AbasDoPaciente,
-  BilheteDoDia,
-  FUNDO_DO_HOJE,
-  LinhaDoDia,
-  OpcoesDoBilhete,
-  SuaVez,
-  useMinhaFila,
-} from "@/components/atendimento";
-import { Botao, Carregando, COR, Faixa, FONTE, Mascote, Pequeno, Tela } from "@/components/ui";
-import { primeiroNome } from "@/lib/conta";
-import { cumprimentoDoDia, hora, partesDoDia } from "@/lib/datas";
-import { ordenarDoDia } from "@/lib/hoje";
-import { useSessao } from "@/lib/sessao";
+  DayRow,
+  DayTicketCard,
+  PatientTabs,
+  TicketCardOptions,
+  TODAY_BACKGROUND,
+  useMyQueue,
+  YourTurn,
+} from "@/components/care";
+import { Banner, Button, COLOR, FONT, Loading, Mascot, Screen, Small } from "@/components/ui";
+import { firstName } from "@/lib/account";
+import { dayGreeting, dayParts, hour } from "@/lib/dates";
+import { useSession } from "@/lib/session";
+import { sortForDay } from "@/lib/today";
 
 /**
  * Hoje (aba principal, design de 2026-11-16): o atendimento que mais pede ação vira o bilhete, com a
  * senha enorme; os outros do dia, uma linha cada. O resto (outros dias, lista de espera) fica em
  * "atendimentos", com o número na aba.
  */
-export default function Hoje() {
-  const s = useSessao();
-  const f = useMinhaFila();
-  const [opcoes, setOpcoes] = useState<{
-    en: (typeof f.lista)[number]["en"];
-    sit: (typeof f.lista)[number]["sit"];
+export default function Today() {
+  const s = useSession();
+  const f = useMyQueue();
+  const [options, setOptions] = useState<{
+    en: (typeof f.list)[number]["en"];
+    sit: (typeof f.list)[number]["sit"];
   } | null>(null);
-  if (f.vez) return <SuaVez senha={f.vez.senha} estacao={f.vez.estacao} fechar={f.vez.dispensar} />;
+  if (f.turn) return <YourTurn ticket={f.turn.ticket} station={f.turn.station} close={f.turn.dismiss} />;
 
-  const deHoje = ordenarDoDia(f.lista.filter((x) => x.resumo.grupo === "hoje"));
-  const [bilhete, ...tambem] = deHoje;
-  const proximo = f.lista
-    .filter((x) => x.resumo.grupo === "proximos" && x.en.sessao)
-    .sort((a, b) => (a.en.sessao?.inicio ?? "").localeCompare(b.en.sessao?.inicio ?? ""))[0];
-  const nome = s.conta?.nome ? primeiroNome(s.conta.nome) : undefined;
-  const resumo =
-    deHoje.length === 0
+  const fromToday = sortForDay(f.list.filter((x) => x.summary.group === "today"));
+  const [ticketCard, ...also] = fromToday;
+  const next = f.list
+    .filter((x) => x.summary.group === "upcoming" && x.en.session)
+    .sort((a, b) => (a.en.session?.start ?? "").localeCompare(b.en.session?.start ?? ""))[0];
+  const name = s.account?.name ? firstName(s.account.name) : undefined;
+  const summary =
+    fromToday.length === 0
       ? "hoje está livre."
-      : deHoje.length === 1
+      : fromToday.length === 1
         ? "você tem 1 atendimento hoje."
-        : `você tem ${deHoje.length} atendimentos hoje.`;
-  const abrir = (entradaId: string) => () => router.push({ pathname: "/fila/[entradaId]", params: { entradaId } });
+        : `você tem ${fromToday.length} atendimentos hoje.`;
+  const open = (entryId: string) => () => router.push({ pathname: "/fila/[entryId]", params: { entryId } });
 
   return (
-    <Tela voltar={false} fundo={FUNDO_DO_HOJE} rodape={<AbasDoPaciente atual="hoje" lista={f.lista} />}>
+    <Screen back={false} background={TODAY_BACKGROUND} footer={<PatientTabs current="today" list={f.list} />}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-        <Mascote tamanho={64} moldura={false} />
+        <Mascot size={64} frame={false} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 24, lineHeight: 30, color: COR.ink }}>
-            {cumprimentoDoDia(Date.now())}
-            {nome ? `, ${nome}` : ""}!
+          <Text style={{ fontFamily: FONT.extra, fontSize: 24, lineHeight: 30, color: COLOR.ink }}>
+            {dayGreeting(Date.now())}
+            {name ? `, ${name}` : ""}!
           </Text>
-          <Pequeno style={{ fontSize: 16 }}>{resumo}</Pequeno>
+          <Small style={{ fontSize: 16 }}>{summary}</Small>
         </View>
       </View>
-      {f.erro ? (
-        <Faixa
-          tipo="perigo"
-          titulo={f.erro.titulo}
-          texto={f.erro.texto}
-          acao={{ texto: "tentar de novo", onPress: () => void f.tentarDeNovo(), carregando: f.tentando }}
+      {f.error ? (
+        <Banner
+          kind="danger"
+          title={f.error.title}
+          text={f.error.text}
+          action={{ text: "tentar de novo", onPress: () => void f.tryAgain(), loading: f.trying }}
         />
       ) : null}
-      {f.cancelada ? <Faixa tipo="ok" titulo="pronto, inscrição cancelada" texto={f.cancelada} /> : null}
-      {f.entradas === null && !f.erro ? <Carregando texto="buscando o seu dia…" /> : null}
-      {bilhete ? (
-        <BilheteDoDia
-          en={bilhete.en}
-          sit={bilhete.sit}
-          responder={f.acoesDe(bilhete.en, bilhete.sit).responder}
-          aoAbrir={abrir(bilhete.en.entradaId)}
-          aoMais={() => setOpcoes({ en: bilhete.en, sit: bilhete.sit })}
+      {f.cancelled ? <Banner kind="ok" title="pronto, inscrição cancelada" text={f.cancelled} /> : null}
+      {f.entries === null && !f.error ? <Loading text="buscando o seu dia…" /> : null}
+      {ticketCard ? (
+        <DayTicketCard
+          en={ticketCard.en}
+          sit={ticketCard.sit}
+          answer={f.actionsOf(ticketCard.en, ticketCard.sit).answer}
+          onOpen={open(ticketCard.en.entryId)}
+          onMore={() => setOptions({ en: ticketCard.en, sit: ticketCard.sit })}
         />
       ) : null}
-      {tambem.length > 0 ? (
+      {also.length > 0 ? (
         <View style={{ gap: 10 }}>
-          <Text style={{ fontFamily: FONTE.extra, fontSize: 14, letterSpacing: 1, color: COR.inkMuted }}>
+          <Text style={{ fontFamily: FONT.extra, fontSize: 14, letterSpacing: 1, color: COLOR.inkMuted }}>
             TAMBÉM HOJE
           </Text>
-          {tambem.map((x) => (
-            <LinhaDoDia key={x.en.entradaId} en={x.en} sit={x.sit} aoAbrir={abrir(x.en.entradaId)} />
+          {also.map((x) => (
+            <DayRow key={x.en.entryId} en={x.en} sit={x.sit} onOpen={open(x.en.entryId)} />
           ))}
         </View>
       ) : null}
-      {f.entradas !== null && deHoje.length === 0 ? (
-        proximo?.en.sessao ? (
+      {f.entries !== null && fromToday.length === 0 ? (
+        next?.en.session ? (
           <View style={{ gap: 10 }}>
-            <Text style={{ fontFamily: FONTE.extra, fontSize: 14, letterSpacing: 1, color: COR.inkMuted }}>
+            <Text style={{ fontFamily: FONT.extra, fontSize: 14, letterSpacing: 1, color: COLOR.inkMuted }}>
               PRÓXIMO ATENDIMENTO
             </Text>
-            <LinhaDoDia en={proximo.en} sit={proximo.sit} aoAbrir={abrir(proximo.en.entradaId)} />
-            <Pequeno>
+            <DayRow en={next.en} sit={next.sit} onOpen={open(next.en.entryId)} />
+            <Small>
               {(() => {
-                const p = partesDoDia(proximo.en.sessao.inicio, Date.now());
-                return `${p.topo === "amanhã" ? "amanhã" : `${p.topo}, ${p.dia} de ${p.mes}`}, às ${hora(proximo.en.sessao.inicio)}`;
+                const p = dayParts(next.en.session.start, Date.now());
+                return `${p.top === "amanhã" ? "amanhã" : `${p.top}, ${p.day} de ${p.month}`}, às ${hour(next.en.session.start)}`;
               })()}
-            </Pequeno>
+            </Small>
           </View>
         ) : (
-          <Botao
-            texto="ver as unidades"
-            variante="secundario"
-            icone={MapPin}
+          <Button
+            text="ver as unidades"
+            variant="secondary"
+            icon={MapPin}
             onPress={() => router.replace("/unidades")}
           />
         )
       ) : null}
-      <OpcoesDoBilhete alvo={opcoes} fechar={() => setOpcoes(null)} acoes={f.acoesDe} />
-      {f.gaveta}
-    </Tela>
+      <TicketCardOptions target={options} close={() => setOptions(null)} actions={f.actionsOf} />
+      {f.sheet}
+    </Screen>
   );
 }

@@ -2,94 +2,94 @@ import { router } from "expo-router";
 import { ChevronRight, MapPin } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
-import { AreaTocavel, Carregando, COR, Faixa, FONTE, Selo, Tela, TextoSuave, Titulo } from "@/components/ui";
-import { type Municipio, rotuloDoMunicipio } from "@/lib/conta";
-import { useSessao } from "@/lib/sessao";
-import { avisoDoErro } from "@/lib/textos";
+import { Badge, Banner, COLOR, FONT, Loading, Screen, SoftText, TappableArea, Title } from "@/components/ui";
+import { type Municipality, municipalityLabel } from "@/lib/account";
+import { useSession } from "@/lib/session";
+import { errorNotice } from "@/lib/texts";
 
 /** AD-028: um app só; a pessoa escolhe o município (na primeira vez ou pela aba "conta"). */
-export default function EscolherMunicipio() {
-  const s = useSessao();
-  const [lista, setLista] = useState<Municipio[] | null>(null);
-  const [erro, setErro] = useState<{ titulo: string; texto: string } | null>(null);
-  const [tentando, setTentando] = useState(false);
+export default function ChooseMunicipality() {
+  const s = useSession();
+  const [list, setList] = useState<Municipality[] | null>(null);
+  const [error, setError] = useState<{ title: string; text: string } | null>(null);
+  const [trying, setTrying] = useState(false);
   // Um toque só: dois toques seguidos não trocam de município duas vezes.
-  const [escolhendo, setEscolhendo] = useState<string | null>(null);
-  const trocando = Boolean(s.municipio);
+  const [choosing, setChoosing] = useState<string | null>(null);
+  const switching = Boolean(s.municipality);
 
-  const buscar = useCallback(
+  const fetch = useCallback(
     () =>
       s.api
-        .get<Municipio[]>("/v1/municipios")
+        .get<Municipality[]>("/v1/municipalities")
         .then((l) => {
-          setLista(l);
-          setErro(null);
+          setList(l);
+          setError(null);
         })
-        .catch((err) => setErro(avisoDoErro(err, "confira a conexão e tente de novo."))),
+        .catch((err) => setError(errorNotice(err, "confira a conexão e tente de novo."))),
     [s.api],
   );
   useEffect(() => {
-    void buscar();
-  }, [buscar]);
+    void fetch();
+  }, [fetch]);
 
   // Volta para onde a pessoa estava (a conta, por exemplo); na primeira escolha, vai para "hoje".
-  const seguir = () => {
-    if (trocando && router.canGoBack()) router.back();
+  const follow = () => {
+    if (switching && router.canGoBack()) router.back();
     else router.replace("/inicio");
   };
 
-  async function escolher(m: Municipio) {
-    if (escolhendo) return;
-    if (m.slug === s.municipio) return seguir();
-    setEscolhendo(m.slug);
+  async function choose(m: Municipality) {
+    if (choosing) return;
+    if (m.slug === s.municipality) return follow();
+    setChoosing(m.slug);
     try {
-      await s.escolherMunicipio(m.slug);
-      seguir();
+      await s.chooseMunicipality(m.slug);
+      follow();
     } catch (err) {
-      setErro(avisoDoErro(err, "confira a conexão e tente de novo."));
+      setError(errorNotice(err, "confira a conexão e tente de novo."));
     } finally {
-      setEscolhendo(null);
+      setChoosing(null);
     }
   }
 
   return (
-    <Tela voltar={trocando}>
-      <Titulo>{trocando ? "trocar de município" : "qual é o seu município?"}</Titulo>
-      <TextoSuave>você vê as unidades e os atendimentos da cidade que escolher.</TextoSuave>
-      {erro ? (
-        <Faixa
-          tipo="perigo"
-          titulo={erro.titulo}
-          texto={erro.texto}
-          acao={{
-            texto: "tentar de novo",
-            carregando: tentando,
+    <Screen back={switching}>
+      <Title>{switching ? "trocar de município" : "qual é o seu município?"}</Title>
+      <SoftText>você vê as unidades e os atendimentos da cidade que escolher.</SoftText>
+      {error ? (
+        <Banner
+          kind="danger"
+          title={error.title}
+          text={error.text}
+          action={{
+            text: "tentar de novo",
+            loading: trying,
             onPress: async () => {
-              setTentando(true);
-              await buscar();
-              setTentando(false);
+              setTrying(true);
+              await fetch();
+              setTrying(false);
             },
           }}
         />
       ) : null}
-      {lista === null && !erro ? <Carregando texto="buscando os municípios…" /> : null}
-      {lista?.length === 0 ? (
-        <TextoSuave style={{ textAlign: "center", paddingVertical: 24 }}>
+      {list === null && !error ? <Loading text="buscando os municípios…" /> : null}
+      {list?.length === 0 ? (
+        <SoftText style={{ textAlign: "center", paddingVertical: 24 }}>
           nenhum município usa o fila saúde ainda. na dúvida, pergunte na sua unidade de saúde.
-        </TextoSuave>
+        </SoftText>
       ) : null}
-      {lista?.map((m) => {
-        const atual = m.slug === s.municipio;
-        const carregando = escolhendo === m.slug;
+      {list?.map((m) => {
+        const current = m.slug === s.municipality;
+        const loading = choosing === m.slug;
         return (
-          <AreaTocavel
+          <TappableArea
             key={m.slug}
-            rotulo={rotuloDoMunicipio(m)}
-            dica={atual ? "é o seu município agora" : "escolher este município"}
-            selecionado={atual}
-            ocupado={carregando}
-            desativado={Boolean(escolhendo)}
-            onPress={() => void escolher(m)}
+            label={municipalityLabel(m)}
+            hint={current ? "é o seu município agora" : "escolher este município"}
+            selected={current}
+            busy={loading}
+            disabled={Boolean(choosing)}
+            onPress={() => void choose(m)}
             style={(pressed) => ({
               flexDirection: "row",
               alignItems: "center",
@@ -100,8 +100,8 @@ export default function EscolherMunicipio() {
               borderRadius: 20,
               borderWidth: 2,
               borderBottomWidth: 4,
-              borderColor: atual || pressed ? COR.action : COR.linha,
-              backgroundColor: atual || pressed ? COR.primary50 : COR.surface,
+              borderColor: current || pressed ? COLOR.action : COLOR.line,
+              backgroundColor: current || pressed ? COLOR.primary50 : COLOR.surface,
             })}
           >
             <View
@@ -111,25 +111,25 @@ export default function EscolherMunicipio() {
                 borderRadius: 14,
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: atual ? COR.surface : COR.primary50,
+                backgroundColor: current ? COLOR.surface : COLOR.primary50,
               }}
             >
-              <MapPin size={26} color={COR.action} strokeWidth={2.5} />
+              <MapPin size={26} color={COLOR.action} strokeWidth={2.5} />
             </View>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={{ fontFamily: FONTE.extra, fontSize: 20, lineHeight: 26, color: COR.ink }}>
-                {rotuloDoMunicipio(m)}
+              <Text style={{ fontFamily: FONT.extra, fontSize: 20, lineHeight: 26, color: COLOR.ink }}>
+                {municipalityLabel(m)}
               </Text>
-              {atual ? <Selo texto="atual" tom="verde" /> : null}
+              {current ? <Badge text="atual" tone="green" /> : null}
             </View>
-            {carregando ? (
-              <ActivityIndicator color={COR.action} />
+            {loading ? (
+              <ActivityIndicator color={COLOR.action} />
             ) : (
-              <ChevronRight size={26} color={atual ? COR.action : COR.inkMuted} strokeWidth={2.5} />
+              <ChevronRight size={26} color={current ? COLOR.action : COLOR.inkMuted} strokeWidth={2.5} />
             )}
-          </AreaTocavel>
+          </TappableArea>
         );
       })}
-    </Tela>
+    </Screen>
   );
 }

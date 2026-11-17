@@ -1,176 +1,174 @@
-import type { CheckIn } from "@fila-saude/schemas/fila";
+import type { CheckIn } from "@fila-saude/schemas/queue";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useLocalSearchParams } from "expo-router";
 import { Camera } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Text, View } from "react-native";
-import { Botao, COR, Faixa, FONTE, Tela, TextoSuave } from "@/components/ui";
-import { deParametros, lerQr, type QrLido, textoDoCheckIn } from "@/lib/check-in";
-import { useSessao } from "@/lib/sessao";
-import { mensagemDoErro } from "@/lib/textos";
+import { Banner, Button, COLOR, FONT, Screen, SoftText } from "@/components/ui";
+import { checkInText, fromParameters, type ReadQr, readQr } from "@/lib/check-in";
+import { useSession } from "@/lib/session";
+import { errorMessage } from "@/lib/texts";
 
-type Estado =
-  | { tipo: "lendo" }
-  | { tipo: "enviando" }
-  | { tipo: "fim"; resultado: "presente" | "recepcao" | "sem_senha"; linhas: string[] }
-  | { tipo: "erro"; texto: string };
+type State =
+  | { kind: "reading" }
+  | { kind: "sending" }
+  | { kind: "end"; result: "present" | "reception" | "no_ticket"; rows: string[] }
+  | { kind: "error"; text: string };
 
-const branco = { color: "#ffffff" };
+const white = { color: "#ffffff" };
 
 /** RN-PRES-01: "estou na unidade". Abre pelo link do QR (câmera do celular) ou pelo leitor do app. */
-export default function CheckInPeloQr() {
+export default function CheckInByQr() {
   const params = useLocalSearchParams<{ m?: string; u?: string; t?: string }>();
-  const s = useSessao();
-  const [permissao, pedirPermissao] = useCameraPermissions();
-  const [estado, setEstado] = useState<Estado>({ tipo: "lendo" });
-  const [naoLe, setNaoLe] = useState(false);
-  const lido = useRef(false);
+  const s = useSession();
+  const [permission, requestPermission] = useCameraPermissions();
+  const [state, setState] = useState<State>({ kind: "reading" });
+  const [cannotRead, setCannotRead] = useState(false);
+  const read = useRef(false);
   // O link do QR (câmera do celular) é usado uma vez; depois, "ler de novo" abre a câmera.
-  const linkUsado = useRef(false);
+  const usedLink = useRef(false);
 
-  const enviar = useCallback(
-    async (qr: QrLido) => {
-      if (lido.current) return;
-      lido.current = true;
-      setEstado({ tipo: "enviando" });
+  const send = useCallback(
+    async (qr: ReadQr) => {
+      if (read.current) return;
+      read.current = true;
+      setState({ kind: "sending" });
       try {
-        const r = await s.api.post<CheckIn>(`/v1/municipios/${qr.municipio}/check-in`, {
-          unidadeId: qr.unidadeId,
+        const r = await s.api.post<CheckIn>(`/v1/municipalities/${qr.municipality}/check-in`, {
+          unitId: qr.unitId,
           tokens: qr.tokens,
         });
         // Só troca de município quando o check-in achou alguma senha da conta naquele município.
-        if (r.length > 0 && s.municipio !== qr.municipio) await s.escolherMunicipio(qr.municipio);
-        const { tipo, linhas } = textoDoCheckIn(r);
-        setEstado({ tipo: "fim", resultado: tipo, linhas });
+        if (r.length > 0 && s.municipality !== qr.municipality) await s.chooseMunicipality(qr.municipality);
+        const { kind, rows } = checkInText(r);
+        setState({ kind: "end", result: kind, rows });
       } catch (err) {
-        setEstado({ tipo: "erro", texto: mensagemDoErro(err) });
+        setState({ kind: "error", text: errorMessage(err) });
       }
     },
     [s],
   );
 
   useEffect(() => {
-    if (!s.pronto || !s.token || linkUsado.current) return;
-    const doLink = deParametros(params);
-    if (doLink) {
-      linkUsado.current = true;
-      void enviar(doLink);
+    if (!s.ready || !s.token || usedLink.current) return;
+    const fromLink = fromParameters(params);
+    if (fromLink) {
+      usedLink.current = true;
+      void send(fromLink);
     }
-  }, [s.pronto, s.token, params, enviar]);
+  }, [s.ready, s.token, params, send]);
 
-  const deNovo = () => {
-    lido.current = false;
-    setEstado({ tipo: "lendo" });
+  const again = () => {
+    read.current = false;
+    setState({ kind: "reading" });
   };
-  const verFila = () => router.replace("/inicio");
+  const seeQueue = () => router.replace("/inicio");
 
-  if (s.pronto && !s.token)
+  if (s.ready && !s.token)
     return (
-      <Tela
-        voltar={false}
-        acoes={
+      <Screen
+        back={false}
+        actions={
           <>
-            <Botao texto="entrar" onPress={() => router.replace("/entrar")} />
-            <Botao variante="texto" texto="criar conta" onPress={() => router.replace("/boas-vindas")} />
+            <Button text="entrar" onPress={() => router.replace("/entrar")} />
+            <Button variant="text" text="criar conta" onPress={() => router.replace("/boas-vindas")} />
           </>
         }
       >
-        <Faixa
-          tipo="aviso"
-          titulo="entre na sua conta"
-          texto="para confirmar a chegada, entre no app e leia o QR da TV de novo."
+        <Banner
+          kind="notice"
+          title="entre na sua conta"
+          text="para confirmar a chegada, entre no app e leia o QR da TV de novo."
           style={{ marginTop: 8 }}
         />
-      </Tela>
+      </Screen>
     );
 
-  if (estado.tipo === "fim" && estado.resultado === "sem_senha")
+  if (state.kind === "end" && state.result === "no_ticket")
     return (
-      <Tela voltar={false} acoes={<Botao texto="ver minha fila" onPress={verFila} />}>
-        <Faixa tipo="info" titulo="nenhuma senha aqui agora" texto={estado.linhas.join(" ")} style={{ marginTop: 8 }} />
-        <TextoSuave>
-          confira se é a unidade certa e se o seu atendimento é hoje. na dúvida, fale com a recepção.
-        </TextoSuave>
-      </Tela>
+      <Screen back={false} actions={<Button text="ver minha fila" onPress={seeQueue} />}>
+        <Banner kind="info" title="nenhuma senha aqui agora" text={state.rows.join(" ")} style={{ marginTop: 8 }} />
+        <SoftText>confira se é a unidade certa e se o seu atendimento é hoje. na dúvida, fale com a recepção.</SoftText>
+      </Screen>
     );
 
-  if (estado.tipo === "fim" && estado.resultado === "presente")
+  if (state.kind === "end" && state.result === "present")
     return (
-      <Tela voltar={false} acoes={<Botao texto="ver minha fila" onPress={verFila} />}>
-        <Faixa
-          tipo="ok"
-          grande
-          titulo="você está na unidade"
-          texto="fique de olho na TV e no celular."
+      <Screen back={false} actions={<Button text="ver minha fila" onPress={seeQueue} />}>
+        <Banner
+          kind="ok"
+          large
+          title="você está na unidade"
+          text="fique de olho na TV e no celular."
           style={{ marginTop: 8 }}
         />
-        {estado.linhas.map((l) => (
-          <TextoSuave key={l}>{l}</TextoSuave>
+        {state.rows.map((l) => (
+          <SoftText key={l}>{l}</SoftText>
         ))}
-      </Tela>
+      </Screen>
     );
 
-  if (estado.tipo === "fim")
+  if (state.kind === "end")
     return (
-      <Tela voltar={false} acoes={<Botao texto="ver minha fila" onPress={verFila} />}>
-        <Faixa
-          tipo="aviso"
-          grande
-          titulo="passe na recepção"
-          texto="para confirmar seus documentos. você ainda não entrou na fila da unidade."
+      <Screen back={false} actions={<Button text="ver minha fila" onPress={seeQueue} />}>
+        <Banner
+          kind="notice"
+          large
+          title="passe na recepção"
+          text="para confirmar seus documentos. você ainda não entrou na fila da unidade."
           style={{ marginTop: 8 }}
         />
-        {estado.linhas.map((l) => (
-          <TextoSuave key={l}>{l}</TextoSuave>
+        {state.rows.map((l) => (
+          <SoftText key={l}>{l}</SoftText>
         ))}
-        <TextoSuave>só na primeira vez. depois disso, é só ler o QR.</TextoSuave>
-      </Tela>
+        <SoftText>só na primeira vez. depois disso, é só ler o QR.</SoftText>
+      </Screen>
     );
 
-  if (estado.tipo === "erro")
+  if (state.kind === "error")
     return (
-      <Tela
-        voltar={false}
-        acoes={
+      <Screen
+        back={false}
+        actions={
           <>
-            <Botao texto="ler de novo" onPress={deNovo} />
-            <Botao texto="ver minha fila" variante="secundario" onPress={verFila} />
+            <Button text="ler de novo" onPress={again} />
+            <Button text="ver minha fila" variant="secondary" onPress={seeQueue} />
           </>
         }
       >
-        <Faixa tipo="perigo" titulo="não deu certo" texto={estado.texto} style={{ marginTop: 8 }} />
-        <TextoSuave>se continuar dando errado, peça ajuda na recepção: eles marcam a sua presença.</TextoSuave>
-      </Tela>
+        <Banner kind="danger" title="não deu certo" text={state.text} style={{ marginTop: 8 }} />
+        <SoftText>se continuar dando errado, peça ajuda na recepção: eles marcam a sua presença.</SoftText>
+      </Screen>
     );
 
-  const enviando = estado.tipo === "enviando" || (!linkUsado.current && Boolean(deParametros(params)));
+  const sending = state.kind === "sending" || (!usedLink.current && Boolean(fromParameters(params)));
   return (
-    <Tela
-      fundo={COR.primary900}
-      topo={false}
-      acoes={
+    <Screen
+      background={COLOR.primary900}
+      top={false}
+      actions={
         <>
-          {!permissao?.granted ? (
+          {!permission?.granted ? (
             // Negou de vez: o pedido não aparece mais; só os ajustes do celular liberam a câmera.
-            permissao && !permissao.canAskAgain ? (
-              <Botao texto="liberar a câmera nos ajustes" onPress={() => void Linking.openSettings()} />
+            permission && !permission.canAskAgain ? (
+              <Button text="liberar a câmera nos ajustes" onPress={() => void Linking.openSettings()} />
             ) : (
-              <Botao texto="permitir a câmera" onPress={() => void pedirPermissao()} />
+              <Button text="permitir a câmera" onPress={() => void requestPermission()} />
             )
           ) : null}
-          <Botao
-            variante="texto"
-            texto={naoLe ? "esconder ajuda" : "não consigo ler"}
-            onPress={() => setNaoLe(!naoLe)}
+          <Button
+            variant="text"
+            text={cannotRead ? "esconder ajuda" : "não consigo ler"}
+            onPress={() => setCannotRead(!cannotRead)}
           />
-          <Botao variante="texto" texto="voltar" onPress={() => (router.canGoBack() ? router.back() : verFila())} />
+          <Button variant="text" text="voltar" onPress={() => (router.canGoBack() ? router.back() : seeQueue())} />
         </>
       }
     >
-      <Text style={{ fontFamily: FONTE.extra, fontSize: 28, lineHeight: 34, marginTop: 8, ...branco }}>
-        {enviando ? "confirmando sua chegada…" : "aponte para o QR da TV"}
+      <Text style={{ fontFamily: FONT.extra, fontSize: 28, lineHeight: 34, marginTop: 8, ...white }}>
+        {sending ? "confirmando sua chegada…" : "aponte para o QR da TV"}
       </Text>
-      <Text style={{ fontFamily: FONTE.regular, fontSize: 18, lineHeight: 28, ...branco }}>
+      <Text style={{ fontFamily: FONT.regular, fontSize: 18, lineHeight: 28, ...white }}>
         ele fica na TV da sala de espera ou na recepção.
       </Text>
       <View
@@ -186,32 +184,32 @@ export default function CheckInPeloQr() {
           justifyContent: "center",
         }}
       >
-        {permissao?.granted && !enviando ? (
+        {permission?.granted && !sending ? (
           <CameraView
             style={{ width: "100%", height: "100%" }}
             facing="back"
             barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
             onBarcodeScanned={({ data }) => {
-              const qr = lerQr(data);
-              if (qr) void enviar(qr);
+              const qr = readQr(data);
+              if (qr) void send(qr);
             }}
           />
-        ) : enviando ? (
+        ) : sending ? (
           <ActivityIndicator size="large" color="#ffffff" />
         ) : (
           <View style={{ alignItems: "center", gap: 12, padding: 16 }}>
             <Camera size={48} color="#ffffff" strokeWidth={2} />
-            <Text style={{ fontFamily: FONTE.semi, fontSize: 17, lineHeight: 24, textAlign: "center", ...branco }}>
+            <Text style={{ fontFamily: FONT.semi, fontSize: 17, lineHeight: 24, textAlign: "center", ...white }}>
               a câmera aparece aqui
             </Text>
           </View>
         )}
       </View>
-      {naoLe ? (
-        <Text style={{ fontFamily: FONTE.regular, fontSize: 18, lineHeight: 28, textAlign: "center", ...branco }}>
+      {cannotRead ? (
+        <Text style={{ fontFamily: FONT.regular, fontSize: 18, lineHeight: 28, textAlign: "center", ...white }}>
           sem problema: peça ajuda na recepção. eles marcam a sua presença.
         </Text>
       ) : null}
-    </Tela>
+    </Screen>
   );
 }

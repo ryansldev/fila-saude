@@ -1,145 +1,145 @@
 import { eq, sql } from "drizzle-orm";
 import database from "infra/database";
-import { municipio } from "infra/database/central/schema/municipio";
-import { PoolsDosTenants, urlDoBanco } from "infra/database/tenants";
-import { bancoDoSlug } from "infra/tenant/slug";
+import { municipality } from "infra/database/central/schema/municipality";
+import { databaseUrl, TenantsPools } from "infra/database/tenants";
+import { databaseForSlug } from "infra/tenant/slug";
 import orchestrator from "tests/orchestrator";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
-const abertos: PoolsDosTenants[] = [];
+const open: TenantsPools[] = [];
 
-function novosPools(opcoes: Partial<ConstructorParameters<typeof PoolsDosTenants>[0]> = {}) {
-  const pools = new PoolsDosTenants({ max: 10, conexoesPorTenant: 2, central: database, ttlCatalogoMs: 0, ...opcoes });
-  abertos.push(pools);
+function newPools(options: Partial<ConstructorParameters<typeof TenantsPools>[0]> = {}) {
+  const pools = new TenantsPools({ max: 10, connectionsByTenant: 2, central: database, ttlCatalogMs: 0, ...options });
+  open.push(pools);
   return pools;
 }
 
-async function municipioSemBanco(status: "criando" | "suspenso") {
-  const slug = orchestrator.slugUnico();
+async function municipalityWithoutDatabase(status: "creating" | "suspended") {
+  const slug = orchestrator.uniqueSlug();
   await database
-    .insert(municipio)
-    .values({ slug, nome: "Sem banco", uf: "SP", bancoRef: `template:${bancoDoSlug(slug)}`, status });
+    .insert(municipality)
+    .values({ slug, name: "Sem banco", uf: "SP", databaseRef: `template:${databaseForSlug(slug)}`, status });
   return slug;
 }
 
-describe("PoolsDosTenants", () => {
+describe("TenantPools", () => {
   afterEach(async () => {
-    for (const pools of abertos.splice(0)) await pools.encerrar();
+    for (const pools of open.splice(0)) await pools.close();
   });
 
   afterAll(async () => {
-    await orchestrator.derrubarMunicipios();
+    await orchestrator.dropMunicipalities();
   });
 
-  it("PD-14: urlDoBanco expande template e env, recusa prefixo desconhecido", () => {
-    const deps = { template: "postgresql://h:1/{banco}", env: { BANCO_A: "postgresql://a:2/fila_t_a" } };
+  it("PD-14: databaseUrl expande template e env, recusa prefixo desconhecido", () => {
+    const deps = { template: "postgresql://h:1/{database}", env: { DATABASE_A: "postgresql://a:2/fila_t_a" } };
 
-    expect(urlDoBanco("template:fila_t_x", deps)).toBe("postgresql://h:1/fila_t_x");
-    expect(urlDoBanco("env:BANCO_A", deps)).toBe("postgresql://a:2/fila_t_a");
-    expect(() => urlDoBanco("env:BANCO_B", deps)).toThrow(/variável de ambiente ausente: BANCO_B/);
-    expect(() => urlDoBanco("env:", deps)).toThrow(/sem nome/);
-    expect(() => urlDoBanco("template:", deps)).toThrow(/sem nome/);
-    expect(() => urlDoBanco("ftp:fila_t_x", deps)).toThrow(/referência de banco desconhecida: ftp:/);
+    expect(databaseUrl("template:fila_t_x", deps)).toBe("postgresql://h:1/fila_t_x");
+    expect(databaseUrl("env:DATABASE_A", deps)).toBe("postgresql://a:2/fila_t_a");
+    expect(() => databaseUrl("env:DATABASE_B", deps)).toThrow(/variável de ambiente ausente: DATABASE_B/);
+    expect(() => databaseUrl("env:", deps)).toThrow(/sem nome/);
+    expect(() => databaseUrl("template:", deps)).toThrow(/sem nome/);
+    expect(() => databaseUrl("ftp:fila_t_x", deps)).toThrow(/referência de banco desconhecida: ftp:/);
   });
 
   it("pool: mesmo slug devolve a mesma instância", async () => {
-    const { slug, municipioId } = await orchestrator.criarMunicipio({ fuso: "America/Recife" });
-    const pools = novosPools();
+    const { slug, municipalityId } = await orchestrator.createMunicipality({ timeZone: "America/Recife" });
+    const pools = newPools();
 
-    const primeiro = await pools.obter(slug);
-    const segundo = await pools.obter(slug);
+    const first = await pools.get(slug);
+    const second = await pools.get(slug);
 
-    expect(primeiro).toMatchObject({ slug, municipioId, fuso: "America/Recife" });
-    expect(segundo?.db).toBe(primeiro?.db);
+    expect(first).toMatchObject({ slug, municipalityId, timeZone: "America/Recife" });
+    expect(second?.db).toBe(first?.db);
     // O pool aponta para o banco do tenant, não para o central.
-    const resultado = await primeiro?.db.execute<{ banco: string }>("select current_database() as banco");
-    expect(resultado?.rows[0]?.banco).toBe(bancoDoSlug(slug));
+    const result = await first?.db.execute<{ database: string }>("select current_database() as database");
+    expect(result?.rows[0]?.database).toBe(databaseForSlug(slug));
   });
 
   it("pool: com max 2, o terceiro tenant encerra o menos usado", async () => {
-    const a = await orchestrator.criarMunicipio();
-    const b = await orchestrator.criarMunicipio();
-    const c = await orchestrator.criarMunicipio();
-    const pools = novosPools({ max: 2 });
+    const a = await orchestrator.createMunicipality();
+    const b = await orchestrator.createMunicipality();
+    const c = await orchestrator.createMunicipality();
+    const pools = newPools({ max: 2 });
 
-    const tenantA = await pools.obter(a.slug);
-    const tenantB = await pools.obter(b.slug);
+    const tenantA = await pools.get(a.slug);
+    const tenantB = await pools.get(b.slug);
     await tenantB?.db.execute("select 1");
-    await pools.obter(a.slug); // A passa a ser o mais recente; B vira o menos usado.
-    const tenantC = await pools.obter(c.slug);
+    await pools.get(a.slug); // A passa a ser o mais recente; B vira o menos usado.
+    const tenantC = await pools.get(c.slug);
 
     expect(tenantB?.db.$client.ended).toBe(true);
     expect(tenantA?.db.$client.ended).toBe(false);
     expect(tenantC?.db.$client.ended).toBe(false);
 
     // B volta com um pool novo.
-    const deNovo = await pools.obter(b.slug);
-    expect(deNovo?.db).not.toBe(tenantB?.db);
-    expect(deNovo?.db.$client.ended).toBe(false);
+    const again = await pools.get(b.slug);
+    expect(again?.db).not.toBe(tenantB?.db);
+    expect(again?.db.$client.ended).toBe(false);
     expect(tenantA?.db.$client.ended).toBe(true);
 
-    await pools.encerrar();
+    await pools.close();
     expect(tenantC?.db.$client.ended).toBe(true);
-    expect(deNovo?.db.$client.ended).toBe(true);
+    expect(again?.db.$client.ended).toBe(true);
   });
 
   it("pool: slug desconhecido, criando ou suspenso → null", async () => {
-    const criando = await municipioSemBanco("criando");
-    const suspenso = await municipioSemBanco("suspenso");
-    const pools = novosPools();
+    const creating = await municipalityWithoutDatabase("creating");
+    const suspended = await municipalityWithoutDatabase("suspended");
+    const pools = newPools();
 
-    expect(await pools.obter(orchestrator.slugUnico())).toBeNull();
-    expect(await pools.obter(criando)).toBeNull();
-    expect(await pools.obter(suspenso)).toBeNull();
+    expect(await pools.get(orchestrator.uniqueSlug())).toBeNull();
+    expect(await pools.get(creating)).toBeNull();
+    expect(await pools.get(suspended)).toBeNull();
   });
 
   it("pool: mudança de status no catálogo aparece depois do TTL", async () => {
-    const { slug } = await orchestrator.criarMunicipio();
-    const pools = novosPools({ ttlCatalogoMs: 200 });
+    const { slug } = await orchestrator.createMunicipality();
+    const pools = newPools({ ttlCatalogMs: 200 });
 
-    const ativo = await pools.obter(slug);
-    expect(ativo).not.toBeNull();
-    await database.update(municipio).set({ status: "suspenso" }).where(eq(municipio.slug, slug));
+    const active = await pools.get(slug);
+    expect(active).not.toBeNull();
+    await database.update(municipality).set({ status: "suspended" }).where(eq(municipality.slug, slug));
 
-    expect(await pools.obter(slug)).not.toBeNull(); // ainda no cache do catálogo
-    await new Promise((resolver) => setTimeout(resolver, 250));
-    expect(await pools.obter(slug)).toBeNull();
+    expect(await pools.get(slug)).not.toBeNull(); // ainda no cache do catálogo
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(await pools.get(slug)).toBeNull();
     // Suspenso, o pool do tenant é encerrado na hora.
-    expect(ativo?.db.$client.ended).toBe(true);
+    expect(active?.db.$client.ended).toBe(true);
   });
   it("pool: conexão derrubada no banco do tenant não derruba o processo e o próximo obter reconecta", async () => {
-    const { slug } = await orchestrator.criarMunicipio();
-    const erros: string[] = [];
-    const pools = novosPools({ registrar: (mensagem) => erros.push(mensagem) });
+    const { slug } = await orchestrator.createMunicipality();
+    const errors: string[] = [];
+    const pools = newPools({ register: (message) => errors.push(message) });
 
-    const antes = await pools.obter(slug);
-    await antes?.db.execute("select 1"); // deixa um cliente ocioso no pool
-    expect(antes?.db.$client.idleCount).toBe(1);
+    const before = await pools.get(slug);
+    await before?.db.execute("select 1"); // deixa um cliente ocioso no pool
+    expect(before?.db.$client.idleCount).toBe(1);
 
     await database.execute(
-      sql`select pg_terminate_backend(pid) from pg_stat_activity where datname = ${bancoDoSlug(slug)} and pid <> pg_backend_pid()`,
+      sql`select pg_terminate_backend(pid) from pg_stat_activity where datname = ${databaseForSlug(slug)} and pid <> pg_backend_pid()`,
     );
-    for (let i = 0; i < 50 && erros.length === 0; i++) await new Promise((r) => setTimeout(r, 20));
+    for (let i = 0; i < 50 && errors.length === 0; i++) await new Promise((r) => setTimeout(r, 20));
 
-    expect(erros).toEqual([expect.stringContaining(slug)]);
-    const depois = await pools.obter(slug);
-    expect(depois?.db).not.toBe(antes?.db);
-    const resultado = await depois?.db.execute<{ um: number }>("select 1 as um");
-    expect(resultado?.rows[0]?.um).toBe(1);
+    expect(errors).toEqual([expect.stringContaining(slug)]);
+    const after = await pools.get(slug);
+    expect(after?.db).not.toBe(before?.db);
+    const result = await after?.db.execute<{ one: number }>("select 1 as one");
+    expect(result?.rows[0]?.one).toBe(1);
   });
 
   it("pool: encerrar fecha todos mesmo quando um pool.end() falha", async () => {
-    const a = await orchestrator.criarMunicipio();
-    const b = await orchestrator.criarMunicipio();
-    const erros: string[] = [];
-    const pools = novosPools({ registrar: (mensagem) => erros.push(mensagem) });
+    const a = await orchestrator.createMunicipality();
+    const b = await orchestrator.createMunicipality();
+    const errors: string[] = [];
+    const pools = newPools({ register: (message) => errors.push(message) });
 
-    const tenantA = await pools.obter(a.slug);
-    const tenantB = await pools.obter(b.slug);
+    const tenantA = await pools.get(a.slug);
+    const tenantB = await pools.get(b.slug);
     await tenantA?.db.$client.end(); // o segundo end() deste pool rejeita
 
-    await expect(pools.encerrar()).resolves.toBeUndefined();
+    await expect(pools.close()).resolves.toBeUndefined();
     expect(tenantB?.db.$client.ended).toBe(true);
-    expect(erros).toEqual([expect.stringContaining(a.slug)]);
+    expect(errors).toEqual([expect.stringContaining(a.slug)]);
   });
 });
