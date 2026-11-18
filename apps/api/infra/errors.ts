@@ -48,20 +48,24 @@ export function errorBody(err: ApiError): ErrorBody {
   };
 }
 
-// PD-22: valida com um schema Zod de `packages/schemas`; `campos` mapeia o caminho do campo
-// (separado por ".") às mensagens, e erros na raiz ficam na chave "_".
-export function validate<T>(schema: ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-  if (result.success) return result.data;
-
+// PD-22: os problemas do Zod no formato `campos`: o caminho do campo (separado por ".") com as
+// mensagens; erros na raiz ficam na chave "_".
+export function zodFields(issues: readonly { path: readonly PropertyKey[]; message: string }[]) {
   const fields: Record<string, string[]> = {};
-  for (const problem of result.error.issues) {
-    const key = problem.path.length > 0 ? problem.path.join(".") : "_";
+  for (const problem of issues) {
+    const key = problem.path.length > 0 ? problem.path.map(String).join(".") : "_";
     const messages = fields[key] ?? [];
     messages.push(problem.message);
     fields[key] = messages;
   }
-  throw new ApiError(400, "invalid_input", fields);
+  return fields;
+}
+
+// PD-22: valida com um schema Zod de `packages/schemas`; o erro sai como `invalid_input` com os campos.
+export function validate<T>(schema: ZodType<T>, value: unknown): T {
+  const result = schema.safeParse(value);
+  if (result.success) return result.data;
+  throw new ApiError(400, "invalid_input", zodFields(result.error.issues));
 }
 
 // PD-22: serializa qualquer erro no formato `{ erro, mensagem?, campos? }`; erro desconhecido não vaza mensagem.

@@ -69,10 +69,14 @@ export function registerRoutes(app: FastifyInstance) {
   });
 }
 
+export function registeredRoutes(app: FastifyInstance): RouteOptions[] {
+  return (app as WithRoutes)[ROUTES] ?? [];
+}
+
 const MUTATIONS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export function listRoutesWithoutAction(app: FastifyInstance): string[] {
-  const routes = (app as WithRoutes)[ROUTES] ?? [];
+  const routes = registeredRoutes(app);
   const missing: string[] = [];
   for (const r of routes) {
     if (!r.url.startsWith("/v1/panel") || r.url.startsWith("/v1/panel/auth")) continue;

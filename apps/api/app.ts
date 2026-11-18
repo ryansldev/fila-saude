@@ -10,6 +10,7 @@ import { tenantSource } from "infra/database/tenants";
 import env from "infra/env";
 import { handleError, notFound } from "infra/errors";
 import { startSweep } from "infra/notices/sweep";
+import { serializerCompiler, validatorCompiler } from "infra/openapi/compilers";
 import { registerRoutes } from "infra/panel/action";
 import { panelCors } from "infra/panel/cors";
 import { activeMunicipalities } from "infra/queue/app";
@@ -28,6 +29,9 @@ export async function buildApp(options: { logger?: boolean } = {}): Promise<Fast
   // AD-063: erros da contagem de tentativas que não derrubam o pedido vão para o log do app.
   attemptErrors.log = (err, what) => app.log.error({ err }, what);
 
+  // DOC2: as rotas declaram os schemas Zod no Fastify (validação, resposta e a referência da API).
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
   app.setErrorHandler(handleError);
   app.setNotFoundHandler(notFound);
   registerRoutes(app);
