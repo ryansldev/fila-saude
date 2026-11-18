@@ -9,7 +9,8 @@ import database, { schemaCentral } from "infra/database";
 import { patient } from "infra/database/central/schema/auth";
 import env from "infra/env";
 import { ApiError, errorBody, validate } from "infra/errors";
-import { authAsError, bodyOf } from "./body";
+import { bodyOf } from "./body";
+import { authAsError } from "./errors";
 import { loginLockout } from "./login-lockout";
 
 // RN-ID-02: texto exato da orientação ao paciente quando o CPF já tem conta.

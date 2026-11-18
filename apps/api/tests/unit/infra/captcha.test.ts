@@ -55,4 +55,18 @@ describe("AD-062: conferência do Turnstile na Cloudflare", () => {
     expect(await turnstileVerify("s", "tok", "1.1.1.1", codes(["missing-input-secret"]))).toBe("unavailable");
     expect(await turnstileVerify("s", "tok", "1.1.1.1", codes(["bad-request"]))).toBe("unavailable");
   });
+
+  it("código que não conhecemos vai para o log (senão uma mudança da Cloudflare pareceria ela fora do ar)", async () => {
+    const { attemptErrors } = await import("infra/auth/attempts");
+    const logged: string[] = [];
+    const original = attemptErrors.log;
+    attemptErrors.log = (error) => logged.push(String(error));
+    try {
+      const odd = answer({ success: false, "error-codes": ["codigo-novo"] }) as unknown as typeof fetch;
+      expect(await turnstileVerify("s", "tok", "1.1.1.1", odd)).toBe("unavailable");
+      expect(logged.join()).toContain("codigo-novo");
+    } finally {
+      attemptErrors.log = original;
+    }
+  });
 });

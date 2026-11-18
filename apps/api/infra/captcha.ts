@@ -15,9 +15,6 @@ const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
  */
 export type CaptchaResult = "missing" | "ok" | "rejected" | "expired" | "unavailable";
 
-// Códigos da Cloudflare que dizem que a nossa configuração (segredo, pedido) está errada: vão para o log.
-const CONFIG_ERRORS = ["missing-input-secret", "invalid-input-secret", "bad-request"];
-
 /** Confere o token na Cloudflare. */
 export async function turnstileVerify(
   secret: string,
@@ -35,9 +32,9 @@ export async function turnstileVerify(
     const codes: unknown[] = Array.isArray(answer["error-codes"]) ? answer["error-codes"] : [];
     if (codes.includes("invalid-input-response")) return "rejected";
     if (codes.includes("timeout-or-duplicate")) return "expired";
-    if (codes.some((c) => CONFIG_ERRORS.includes(String(c))))
-      attemptErrors.log(new Error(`turnstile: ${codes.join(", ")}`), "configuração do captcha");
-    // `internal-error`, erro de configuração ou código desconhecido: não é culpa de quem mandou.
+    // Erro de configuração nossa (segredo, pedido), `internal-error` ou código novo: não é culpa de quem
+    // mandou, e vai para o log (sem ele, qualquer um desses pareceria a Cloudflare fora do ar).
+    attemptErrors.log(new Error(`turnstile: ${codes.join(", ") || "sem código"}`), "captcha");
     return "unavailable";
   } catch {
     return "unavailable";

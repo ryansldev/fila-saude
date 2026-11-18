@@ -10,11 +10,24 @@ export default async function setup() {
 
   // O contêiner do Postgres pode acabar de subir (`services:up` na CI): tenta por até ~30 s antes de desistir.
   const { default: retry } = await import("async-retry");
-  await retry(() => createDatabaseIfMissing(env.DATABASE_URL, env.POSTGRES_DB), {
-    retries: 30,
-    minTimeout: 1000,
-    maxTimeout: 1000,
-  });
+  // Só erro de conexão tenta de novo; senha ou URL errada aparece na hora.
+  const connecting = new Set(["ECONNREFUSED", "ECONNRESET", "57P03"]);
+  await retry(
+    async (bail) => {
+      try {
+        await createDatabaseIfMissing(env.DATABASE_URL, env.POSTGRES_DB);
+      } catch (error) {
+        const code = (error as { code?: string }).code ?? "";
+        if (!connecting.has(code) && !String(error).includes("Connection terminated")) bail(error as Error);
+        else throw error;
+      }
+    },
+    {
+      retries: 30,
+      minTimeout: 1000,
+      maxTimeout: 1000,
+    },
+  );
 
   const server = new URL(env.DATABASE_URL);
   server.pathname = "/postgres";

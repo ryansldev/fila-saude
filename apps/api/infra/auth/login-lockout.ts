@@ -4,7 +4,8 @@ import { isAPIError } from "better-auth/api";
 import { type CaptchaResult, checkCaptcha } from "infra/captcha";
 import { ApiError } from "infra/errors";
 import { type AttemptStore, AttemptsBusy, attemptErrors, attemptStore, type Change, SlidingLimit } from "./attempts";
-import { authAsError, bodyOf } from "./body";
+import { bodyOf } from "./body";
+import { authAsError } from "./errors";
 import { ipKey } from "./ip";
 
 type HookCtx = { path: string; body?: unknown; request?: unknown; context: { returned?: unknown } };
