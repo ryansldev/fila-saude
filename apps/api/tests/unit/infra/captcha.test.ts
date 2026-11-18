@@ -16,7 +16,7 @@ describe("AD-062: conferência do Turnstile na Cloudflare", () => {
     expect(sent?.get("remoteip")).toBe("203.0.113.7");
   });
 
-  it("recusa quando a Cloudflare recusa, quando não responde e quando não há token", async () => {
+  it("recusa quando a Cloudflare recusa ou não responde", async () => {
     expect(await turnstileVerify("s", "tok", "1.1.1.1", answer({ success: false }) as unknown as typeof fetch)).toBe(
       "rejected",
     );
@@ -33,8 +33,12 @@ describe("AD-062: conferência do Turnstile na Cloudflare", () => {
         (async () => new Response("<html>", { status: 502 })) as unknown as typeof fetch,
       ),
     ).toBe("unavailable");
-    expect(await turnstileVerify("s", "", "1.1.1.1", answer({ success: true }) as unknown as typeof fetch)).toBe(
-      "rejected",
-    );
+  });
+
+  it("erro do lado da Cloudflare (internal-error) é 'indisponível', não culpa de quem mandou o token", async () => {
+    const internal = answer({ success: false, "error-codes": ["internal-error"] }) as unknown as typeof fetch;
+    expect(await turnstileVerify("s", "tok", "1.1.1.1", internal)).toBe("unavailable");
+    const invalid = answer({ success: false, "error-codes": ["invalid-input-response"] }) as unknown as typeof fetch;
+    expect(await turnstileVerify("s", "tok", "1.1.1.1", invalid)).toBe("rejected");
   });
 });

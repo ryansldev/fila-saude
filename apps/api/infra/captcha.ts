@@ -21,14 +21,16 @@ export async function turnstileVerify(
   ip: string | undefined,
   fetcher: typeof fetch = fetch,
 ): Promise<Exclude<CaptchaResult, "missing">> {
-  if (!token) return "rejected";
   const body = new URLSearchParams({ secret, response: token });
   if (ip) body.set("remoteip", ip);
   try {
     const r = await fetcher(SITEVERIFY, { method: "POST", body, signal: AbortSignal.timeout(5_000) });
-    const answer = (await r.json()) as { success?: unknown };
+    const answer = (await r.json()) as { success?: unknown; "error-codes"?: unknown };
     if (answer.success === true) return "ok";
-    return answer.success === false ? "rejected" : "unavailable";
+    if (answer.success !== false) return "unavailable";
+    // `internal-error` é da Cloudflare, não do token: não conta como erro de quem mandou.
+    const codes = Array.isArray(answer["error-codes"]) ? answer["error-codes"] : [];
+    return codes.includes("internal-error") ? "unavailable" : "rejected";
   } catch {
     return "unavailable";
   }

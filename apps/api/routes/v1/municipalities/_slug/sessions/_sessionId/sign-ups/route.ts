@@ -17,6 +17,13 @@ export default async function (app: FastifyInstance) {
     const captcha = await checkCaptcha(typeof token === "string" ? token : null, req.ip);
     if (captcha === "missing")
       throw new ApiError(400, "captcha_required", undefined, "Confirme que você não é um robô para se inscrever.");
+    if (captcha === "unavailable")
+      throw new ApiError(
+        503,
+        "captcha_unavailable",
+        undefined,
+        "A verificação está fora do ar agora. Tente de novo daqui a pouco ou procure a recepção.",
+      );
     if (captcha !== "ok") {
       throw new ApiError(
         400,
