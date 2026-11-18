@@ -266,4 +266,56 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
       body: { error: "captcha_required" },
     });
   });
+
+  it("só as reservas podem ser recusadas por fila cheia; registrar um erro já conferido, nunca", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const store = new MemoryStore();
+    const calls: { key: string; refusable: boolean }[] = [];
+    const watching: AttemptStore = {
+      update(key, now, change, options) {
+        calls.push({ key, refusable: Boolean(options?.refusable) });
+        return store.update(key, now, change);
+      },
+    };
+    const hooks = loginLockout(() => "gestor", watching);
+    await attempt(hooks, "203.0.113.9");
+    expect(calls.map((c) => c.refusable)).toEqual([true, true, false, false]);
+  });
+
+  it("errar depois de passar pelo captcha também conta no teto (a janela não esvazia com o ataque em curso)", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const { SlidingLimit } = await import("infra/auth/attempts");
+    const store = new MemoryStore();
+    const hooks = loginLockout(
+      () => "gestor",
+      store,
+      undefined,
+      async () => true,
+    );
+    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+    const ctx = ctxOf("203.0.113.9", "errada", { "x-captcha-token": "bom" });
+    await hooks.before(ctx);
+    const { APIError } = await import("better-auth/api");
+    await hooks.after({ ...ctx, context: { returned: new APIError("UNAUTHORIZED", wrong.body) } });
+    const probe = new SlidingLimit({ name: "login-ceiling", max: 31, windowMs: 60 * MIN }, store);
+    expect(await probe.reserve(":gestor", Date.now())).toBeNull();
+  });
+
+  it("token de captcha recusado conta como erro no par: 5 tokens inventados bloqueiam o IP", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(
+      () => "gestor",
+      new MemoryStore(),
+      undefined,
+      async () => false,
+    );
+    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+    for (let i = 0; i < 5; i++)
+      await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "lixo" }))).rejects.toMatchObject({
+        body: { error: "captcha_failed" },
+      });
+    await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "lixo" }))).rejects.toMatchObject({
+      body: { error: "login_locked" },
+    });
+  });
 });

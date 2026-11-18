@@ -81,13 +81,18 @@ export class Lockout {
    * `"busy"` (as vagas estão com pedidos que ainda correm).
    */
   reserve(key: string, now: number): Promise<string | "blocked" | "busy"> {
-    return this.store.update<LockState, string | "blocked" | "busy">(`lockout:${key}`, now, (state) => {
-      const s = this.current(state, now);
-      if (s.blockedUntil !== null) return this.save(s, "blocked");
-      if (s.failures + s.pending.length >= this.options.max) return this.save(s, "busy");
-      const id = randomUUID();
-      return this.save({ ...s, pending: [...s.pending, { id, at: now }] }, id);
-    });
+    return this.store.update<LockState, string | "blocked" | "busy">(
+      `lockout:${key}`,
+      now,
+      (state) => {
+        const s = this.current(state, now);
+        if (s.blockedUntil !== null) return this.save(s, "blocked");
+        if (s.failures + s.pending.length >= this.options.max) return this.save(s, "busy");
+        const id = randomUUID();
+        return this.save({ ...s, pending: [...s.pending, { id, at: now }] }, id);
+      },
+      { refusable: true },
+    );
   }
 
   /** Solta a própria reserva sem contar (pedido inválido, erro do servidor). */
@@ -193,9 +198,14 @@ export function loginLockout(
       // sozinho em laço (a Cloudflare fora do ar recusaria todos).
       if (ceilingToken === null) {
         const sent = ctx.request instanceof Request && Boolean(ctx.request.headers.get(CAPTCHA_HEADER));
-        if (!sent || !(await captchaOk(ctx))) {
+        if (!sent) {
           await giveBack();
-          return refuse(sent ? REFUSALS.captchaFailed : REFUSALS.captcha);
+          return refuse(REFUSALS.captcha);
+        }
+        // Token recusado conta como erro no par: tokens inventados sem fim bloqueiam o IP em 5.
+        if (!(await captchaOk(ctx))) {
+          await pairs.fail(pair(ctx, scope), r, now).catch(onError);
+          return refuse(REFUSALS.captchaFailed);
         }
       }
       tokens.set(holder(ctx), { pair: r, ceiling: ceilingToken });
@@ -219,9 +229,10 @@ export function loginLockout(
           else await pairs.release(k, held.pair, now);
         })().catch(onError),
         (async () => {
-          if (held.ceiling === null) return;
-          if (wrong) await ceiling.confirm(login(ctx, scope), held.ceiling, now);
-          else await ceiling.drop(login(ctx, scope), held.ceiling, now);
+          // Com o captcha resolvido não houve vaga (o teto estava cheio), mas o erro conta do mesmo jeito:
+          // a janela segue cheia enquanto o ataque continua.
+          if (wrong) await ceiling.confirm(login(ctx, scope), held.ceiling ?? randomUUID(), now);
+          else if (held.ceiling !== null) await ceiling.drop(login(ctx, scope), held.ceiling, now);
         })().catch(onError),
       ]);
     },

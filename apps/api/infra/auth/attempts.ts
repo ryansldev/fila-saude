@@ -14,7 +14,16 @@ export type Change<S, T> = { state: S | null; expiresAt: number; result: T };
  * como `null`.
  */
 export interface AttemptStore {
-  update<S, T>(key: string, now: number, change: (state: S | null) => Change<S, T>): Promise<T>;
+  /**
+   * `refusable`: o pedido pode ser recusado com `AttemptsBusy` quando há fila demais na chave (só as
+   * reservas, antes de conferir a senha). Registrar o que já aconteceu (uma senha errada) nunca é recusado.
+   */
+  update<S, T>(
+    key: string,
+    now: number,
+    change: (state: S | null) => Change<S, T>,
+    options?: { refusable?: boolean },
+  ): Promise<T>;
 }
 
 /** Em memória, para os testes de unidade das regras (o `change` é síncrono, então já é atômico). */
@@ -66,12 +75,17 @@ export class PostgresStore implements AttemptStore {
     return createHmac("sha256", env.BETTER_AUTH_SECRET).update(key).digest("hex");
   }
 
-  async update<S, T>(key: string, now: number, change: (state: S | null) => Change<S, T>): Promise<T> {
+  async update<S, T>(
+    key: string,
+    now: number,
+    change: (state: S | null) => Change<S, T>,
+    options: { refusable?: boolean } = {},
+  ): Promise<T> {
     const hashed = this.hash(key);
     const queue = this.queues.get(hashed) ?? { tail: Promise.resolve(), waiting: 0 };
-    if (queue.waiting >= MAX_WAITING) throw new AttemptsBusy();
+    if (options.refusable && queue.waiting >= MAX_WAITING) throw new AttemptsBusy();
     queue.waiting++;
-    const run = queue.tail.then(() => this.write(hashed, now, change));
+    const run = queue.tail.then(() => this.write(hashed, now, change, options.refusable ? 1 : 3));
     const tail = run.then(
       () => {},
       () => {},
@@ -91,14 +105,21 @@ export class PostgresStore implements AttemptStore {
     return result;
   }
 
-  private write<S, T>(hashed: string, now: number, change: (state: S | null) => Change<S, T>): Promise<T> {
+  /** `tries`: quantas vezes tenta quando outra instância segura a linha (o que não é reserva insiste). */
+  private write<S, T>(
+    hashed: string,
+    now: number,
+    change: (state: S | null) => Change<S, T>,
+    tries: number,
+  ): Promise<T> {
     return this.transaction(hashed, now, change).catch((error: unknown) => {
       // `lock_timeout` (55P03): outra instância segura a linha; o pedido é "ocupado", não erro do servidor.
       const code =
         (error as { code?: unknown; cause?: { code?: unknown } }).code ??
         (error as { cause?: { code?: unknown } }).cause?.code;
-      if (code === "55P03") throw new AttemptsBusy();
-      throw error;
+      if (code !== "55P03") throw error;
+      if (tries > 1) return this.write(hashed, now, change, tries - 1);
+      throw new AttemptsBusy();
     });
   }
 
@@ -168,13 +189,18 @@ export class SlidingLimit {
    * token da vaga, que `drop` devolve ou `confirm` firma, ou `null` se a janela está cheia.
    */
   reserve(key: string, now: number): Promise<string | null> {
-    return this.store.update<Entries, string | null>(`sliding:${this.options.name}:${key}`, now, (state) => {
-      const recent = this.live(state, now);
-      if (recent.length >= this.options.max) return this.save(recent, null);
-      const id = randomUUID();
-      const pending = this.options.pendingMs !== undefined;
-      return this.save([...recent, { at: now, id, ...(pending ? { pending } : {}) }], id);
-    });
+    return this.store.update<Entries, string | null>(
+      `sliding:${this.options.name}:${key}`,
+      now,
+      (state) => {
+        const recent = this.live(state, now);
+        if (recent.length >= this.options.max) return this.save(recent, null);
+        const id = randomUUID();
+        const pending = this.options.pendingMs !== undefined;
+        return this.save([...recent, { at: now, id, ...(pending ? { pending } : {}) }], id);
+      },
+      { refusable: true },
+    );
   }
 
   /** Firma a vaga reservada: ela conta a janela toda (se já venceu, porque o pedido demorou, conta de novo). */
