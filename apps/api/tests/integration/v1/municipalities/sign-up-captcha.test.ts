@@ -26,7 +26,7 @@ describe("RN-ID-07 / AD-062: captcha na inscrição em sessão pública", () => 
     expect(none.status).toBe(400);
     expect(none.body).toMatchObject({ error: "captcha_required" });
     expect((await signUp(url, ana.cookie, { "x-captcha-token": "inventado" })).body).toMatchObject({
-      error: "captcha_required",
+      error: "captcha_failed",
     });
     expect((await signUp(url, ana.cookie, CAPTCHA_OK)).status).toBe(201);
   });

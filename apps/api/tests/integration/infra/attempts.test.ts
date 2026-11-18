@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
-import { PostgresStore, SlidingLimit } from "infra/auth/attempts";
+import { AttemptsBusy, PostgresStore, SlidingLimit } from "infra/auth/attempts";
 import { Lockout } from "infra/auth/login-lockout";
 import database from "infra/database";
 import { attempt } from "infra/database/central/schema/attempt";
@@ -58,5 +58,16 @@ describe("AD-063: contagem de tentativas no Postgres", () => {
         .from(attempt)
         .where(eq(attempt.key, hash(fresh))),
     ).toHaveLength(1);
+  });
+
+  it("uma enxurrada na mesma chave não enfileira sem fim: passado o limite da fila, a instância responde 'ocupado'", async () => {
+    const store = new PostgresStore();
+    const limit = new SlidingLimit({ name: "teste", max: 1000, windowMs: MIN }, store);
+    const k = key();
+    const now = Date.now();
+    const results = await Promise.allSettled(Array.from({ length: 200 }, () => limit.take(k, now)));
+    const busy = results.filter((r) => r.status === "rejected" && r.reason instanceof AttemptsBusy);
+    expect(busy.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.status === "fulfilled" || r.reason instanceof AttemptsBusy)).toBe(true);
   });
 });

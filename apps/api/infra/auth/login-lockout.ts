@@ -3,7 +3,7 @@ import { CAPTCHA_HEADER } from "@fila-saude/schemas/captcha";
 import { APIError, isAPIError } from "better-auth/api";
 import { verifyCaptcha } from "infra/captcha";
 import { ApiError, errorBody } from "infra/errors";
-import { type AttemptStore, attemptErrors, attemptStore, type Change, SlidingLimit } from "./attempts";
+import { type AttemptStore, AttemptsBusy, attemptErrors, attemptStore, type Change, SlidingLimit } from "./attempts";
 import { bodyOf } from "./body";
 import { ipKey } from "./ip";
 
@@ -25,6 +25,12 @@ const REFUSALS = {
     "captcha_required",
     undefined,
     "Muitas tentativas erradas neste login. Confirme que você não é um robô para tentar de novo.",
+  ),
+  captchaFailed: new ApiError(
+    429,
+    "captcha_failed",
+    undefined,
+    "Não conseguimos confirmar a verificação. Tente entrar de novo daqui a pouco.",
   ),
   busy: new ApiError(
     429,
@@ -152,7 +158,13 @@ export function loginLockout(
   const holder = (ctx: HookCtx): object => (ctx.request as object | undefined) ?? ctx.context;
   const login = (ctx: HookCtx, scope: string) => `${scope}:${keyOf(ctx)}`;
   const pair = (ctx: HookCtx, scope: string) => `${login(ctx, scope)}|${ipOf(ctx)}`;
-  const refuse = (error: ApiError) => {
+  // A fila da chave nesta instância está cheia: a resposta é "espere alguns segundos".
+  const busyIfQueued = <T>(f: () => Promise<T>): Promise<T | "busy"> =>
+    f().catch((error) => {
+      if (error instanceof AttemptsBusy) return "busy" as const;
+      throw error;
+    });
+  const refuse = (error: ApiError): never => {
     // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
     throw new APIError(error.status as 400, errorBody(error));
   };
@@ -162,24 +174,29 @@ export function loginLockout(
       const body = bodyOf(ctx);
       if (!body.username || !body.password) return;
       const now = Date.now();
-      // A vaga no teto é reservada antes de conferir a senha, como a do par: em paralelo, de muitos IPs,
-      // não passam mais que as vagas que faltam. O par vem antes do captcha: par bloqueado não gasta o
-      // token na Cloudflare.
-      const ceilingToken = await ceiling.reserve(login(ctx, scope), now);
-      // Se o banco falhar ao reservar o par, a vaga do teto volta (não fica presa por 1 min).
-      const r = await pairs.reserve(pair(ctx, scope), now).catch(async (error) => {
-        if (ceilingToken !== null) await ceiling.drop(login(ctx, scope), ceilingToken, now).catch(onError);
+      // Primeiro o par: par bloqueado recusa sem tocar no teto (a enxurrada de um IP bloqueado não pesa
+      // na conta) nem gastar o captcha. Depois a vaga do teto, também antes de conferir a senha: em
+      // paralelo, de muitos IPs, não passam mais que as vagas que faltam.
+      const r = await busyIfQueued(() => pairs.reserve(pair(ctx, scope), now));
+      if (r === "blocked" || r === "busy") return refuse(REFUSALS[r]);
+      const giveBack = () => pairs.release(pair(ctx, scope), r, now).catch(onError);
+      const ceilingToken = await busyIfQueued(() => ceiling.reserve(login(ctx, scope), now)).catch(async (error) => {
+        await giveBack();
         throw error;
       });
-      if (r === "blocked" || r === "busy") {
-        if (ceilingToken !== null) await ceiling.drop(login(ctx, scope), ceilingToken, now);
-        refuse(REFUSALS[r]);
-        return;
+      if (ceilingToken === "busy") {
+        await giveBack();
+        return refuse(REFUSALS.busy);
       }
       // Passado o teto, só segue com o captcha resolvido (e aí não ocupa vaga: a janela já está cheia).
-      if (ceilingToken === null && !(await captchaOk(ctx))) {
-        await pairs.release(pair(ctx, scope), r, now);
-        refuse(REFUSALS.captcha);
+      // Sem token, o cliente mostra o captcha; token recusado é outro código, para o cliente não reenviar
+      // sozinho em laço (a Cloudflare fora do ar recusaria todos).
+      if (ceilingToken === null) {
+        const sent = ctx.request instanceof Request && ctx.request.headers.has(CAPTCHA_HEADER);
+        if (!sent || !(await captchaOk(ctx))) {
+          await giveBack();
+          return refuse(sent ? REFUSALS.captchaFailed : REFUSALS.captcha);
+        }
       }
       tokens.set(holder(ctx), { pair: r, ceiling: ceilingToken });
     },

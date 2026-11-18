@@ -12,11 +12,13 @@ export default async function (app: FastifyInstance) {
     // O corpo é conferido antes: um pedido inválido não gasta o token (que vale uma vez) na Cloudflare.
     const input = validate(signUpInputSchema, req.body);
     // RN-ID-07 / AD-062: só há inscrição pelo app em sessão pública, e ela pede o captcha.
+    // Sem token é `captcha_required`; token recusado é `captcha_failed` (o app não reenvia sozinho).
     const token = req.headers[CAPTCHA_HEADER];
-    if (!(await verifyCaptcha(typeof token === "string" ? token : null, req.ip))) {
+    if (typeof token !== "string" || !token) throw new ApiError(400, "captcha_required");
+    if (!(await verifyCaptcha(token, req.ip))) {
       throw new ApiError(
         400,
-        "captcha_required",
+        "captcha_failed",
         undefined,
         "Não conseguimos confirmar que você não é um robô. Tente de novo ou procure a recepção.",
       );

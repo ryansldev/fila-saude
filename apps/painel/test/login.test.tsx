@@ -170,4 +170,20 @@ describe("login", () => {
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/unidades"));
     expect(sent[1]).toEqual({ "x-captcha-token": "token-da-cloudflare" });
   });
+
+  it("AD-062: token recusado (captcha_failed) mostra o texto e não reenvia sozinho (sem laço)", async () => {
+    let calls = 0;
+    const api = apiWithLogin(async () => ({}));
+    api.post = (async () => {
+      calls++;
+      if (calls === 1) throw new ApiError(429, "captcha_required", "Confirme que você não é um robô.");
+      throw new ApiError(429, "captcha_failed", "Não conseguimos confirmar a verificação.");
+    }) as Api["post"];
+    build(api);
+    fillAndSend();
+    expect(await screen.findByText("Não conseguimos confirmar a verificação.")).toBeDefined();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls).toBe(2);
+    expect(screen.queryByText("verificação")).toBeNull();
+  });
 });

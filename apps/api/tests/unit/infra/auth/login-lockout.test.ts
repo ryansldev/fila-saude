@@ -181,8 +181,9 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
     for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
     const without = ctxOf("203.0.113.9");
     await expect(hooks.before(without)).rejects.toMatchObject({ body: { error: "captcha_required" } });
+    // Token mandado e recusado é outro código: o cliente não reenvia sozinho (senão entra em laço).
     await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "ruim" }))).rejects.toMatchObject({
-      body: { error: "captcha_required" },
+      body: { error: "captcha_failed" },
     });
     await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "bom" }))).resolves.toBeUndefined();
   });
@@ -202,5 +203,53 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
       body: { error: "login_locked" },
     });
     expect(asked).toBe(0);
+  });
+
+  it("par bloqueado não mexe no teto (a enxurrada de um IP bloqueado não pesa na conta)", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const store = new MemoryStore();
+    let writes = 0;
+    const counting: AttemptStore = {
+      update(key, now, change) {
+        if (key.startsWith("sliding:")) writes++;
+        return store.update(key, now, change);
+      },
+    };
+    const hooks = loginLockout(() => "gestor", counting);
+    for (let i = 0; i < 5; i++) await attempt(hooks, "203.0.113.9");
+    writes = 0;
+    expect(await attempt(hooks, "203.0.113.9")).toBe("login_locked");
+    expect(writes).toBe(0);
+  });
+
+  it("uma falha do banco ao recusar não vira 500: a recusa sai com o código certo", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const store = new MemoryStore();
+    let fail = false;
+    const flaky: AttemptStore = {
+      update(key, now, change) {
+        if (fail) return Promise.reject(new Error("banco fora"));
+        return store.update(key, now, change);
+      },
+    };
+    const errors: unknown[] = [];
+    const hooks = loginLockout(
+      () => "gestor",
+      flaky,
+      (e) => errors.push(e),
+      async () => false,
+    );
+    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+    const ctx = ctxOf("203.0.113.9", "x", { "x-captcha-token": "ruim" });
+    // O teto cheio é lido; a falha vem ao soltar a reserva do par na recusa.
+    const original = flaky.update;
+    let calls = 0;
+    flaky.update = (key, now, change) => {
+      calls++;
+      fail = calls > 2;
+      return original(key, now, change);
+    };
+    await expect(hooks.before(ctx)).rejects.toMatchObject({ body: { error: "captcha_failed" } });
+    expect(errors).toHaveLength(1);
   });
 });

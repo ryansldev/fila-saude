@@ -3,6 +3,7 @@ import { eq, lt, sql } from "drizzle-orm";
 import database from "infra/database";
 import { attempt } from "infra/database/central/schema/attempt";
 import env from "infra/env";
+import { ApiError } from "infra/errors";
 
 /** O que uma regra devolve ao mudar uma chave: o estado novo (`null` apaga), quando ele vence e a resposta. */
 export type Change<S, T> = { state: S | null; expiresAt: number; result: T };
@@ -29,6 +30,19 @@ export class MemoryStore implements AttemptStore {
   }
 }
 
+/**
+ * Muitos pedidos da mesma chave já esperando nesta instância (uma enxurrada num CPF ou login): o pedido é
+ * recusado na hora, em vez de entrar no fim de uma fila sem limite.
+ */
+export class AttemptsBusy extends ApiError {
+  constructor() {
+    super(429, "attempts_busy", undefined, "Muitos pedidos ao mesmo tempo. Espere alguns segundos e tente de novo.");
+  }
+}
+
+// Quantos pedidos da mesma chave podem esperar na fila de uma instância.
+const MAX_WAITING = 20;
+
 // De quanto em quanto tempo uma instância apaga as linhas vencidas, aproveitando um pedido.
 const CLEANUP_EVERY_MS = 10 * 60_000;
 
@@ -46,7 +60,7 @@ export const attemptErrors = {
  */
 export class PostgresStore implements AttemptStore {
   private lastCleanup = 0;
-  private readonly queues = new Map<string, Promise<void>>();
+  private readonly queues = new Map<string, { tail: Promise<void>; waiting: number }>();
 
   private hash(key: string): string {
     return createHmac("sha256", env.BETTER_AUTH_SECRET).update(key).digest("hex");
@@ -54,14 +68,19 @@ export class PostgresStore implements AttemptStore {
 
   async update<S, T>(key: string, now: number, change: (state: S | null) => Change<S, T>): Promise<T> {
     const hashed = this.hash(key);
-    const run = (this.queues.get(hashed) ?? Promise.resolve()).then(() => this.write(hashed, now, change));
+    const queue = this.queues.get(hashed) ?? { tail: Promise.resolve(), waiting: 0 };
+    if (queue.waiting >= MAX_WAITING) throw new AttemptsBusy();
+    queue.waiting++;
+    const run = queue.tail.then(() => this.write(hashed, now, change));
     const tail = run.then(
       () => {},
       () => {},
     );
-    this.queues.set(hashed, tail);
+    queue.tail = tail;
+    this.queues.set(hashed, queue);
     void tail.then(() => {
-      if (this.queues.get(hashed) === tail) this.queues.delete(hashed);
+      queue.waiting--;
+      if (queue.waiting === 0 && this.queues.get(hashed) === queue) this.queues.delete(hashed);
     });
     const result = await run;
     if (now - this.lastCleanup > CLEANUP_EVERY_MS) {
