@@ -80,10 +80,14 @@ const TURNSTILE_TEST_KEY = /^[123]x0{10,}/;
 // PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido e
 // TENANT_DATABASE_URL o boot falha. AD-062: em produção, o Turnstile precisa das chaves de verdade.
 export const envSchema = envFields.superRefine((values, ctx) => {
-  if (values.NODE_ENV === "production") {
+  if (values.NODE_ENV === "production" || values.NODE_ENV === "staging") {
     for (const key of ["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"] as const) {
       if (TURNSTILE_TEST_KEY.test(values[key]))
-        ctx.addIssue({ code: "custom", path: [key], message: `${key} de teste não vale em produção (AD-062)` });
+        ctx.addIssue({
+          code: "custom",
+          path: [key],
+          message: `${key} de teste não vale em produção nem em staging (AD-062)`,
+        });
     }
   }
   if (values.TENANT_MODE !== "single") {

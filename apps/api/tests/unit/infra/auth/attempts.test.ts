@@ -54,3 +54,12 @@ describe("AD-063: cada limite tem o próprio nome", () => {
     expect(await ceiling.take("cpf:abc", 0)).toBe(true);
   });
 });
+
+describe("AD-064: senha errada conta no teto mesmo se o pedido demorou", () => {
+  it("confirmar uma vaga que já venceu ainda conta o erro", async () => {
+    const a = new SlidingLimit({ name: "teste", max: 1, windowMs: 60 * MIN, pendingMs: MIN }, new MemoryStore());
+    const t = await a.reserve("k", 0);
+    await a.confirm("k", t as string, 2 * MIN);
+    expect(await a.reserve("k", 3 * MIN)).toBeNull();
+  });
+});

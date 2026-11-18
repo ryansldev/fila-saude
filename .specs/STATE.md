@@ -8,7 +8,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - **Revisão de UI com o design system em andamento.** Feitas no painel: Agendamento, Fila do dia, QR de entrada e unidade no menu, Estação (com "Compareceu"), TV. No app: página da unidade, entrar, criar conta, aba "hoje" (bilhete), mapa das unidades, inscrição (com a relação para outra pessoa). Designs em [features/design-system/](features/design-system/).
 - **Código em inglês** pela tabela de [nomes no código](specs/nomes-no-codigo.md); telas e specs em português. Migrações recriadas do zero (NC2); o banco de dev já está no conjunto novo (2026-11-18).
 - **Code review das fatias 0 a 4 feito em duas rodadas (2026-11-17)**, com os achados corrigidos; daqui em diante, review antes de cada commit.
-- **Testes (2026-11-18):** API 350, domínio 369, painel 171, app 150, schemas 76, design 9; lint limpo.
+- **Testes (2026-11-18):** API 354, domínio 369, painel 171, app 150, schemas 76, design 9; lint limpo.
 
 ## Esperando você
 

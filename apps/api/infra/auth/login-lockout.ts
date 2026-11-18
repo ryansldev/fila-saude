@@ -192,7 +192,7 @@ export function loginLockout(
       // Sem token, o cliente mostra o captcha; token recusado é outro código, para o cliente não reenviar
       // sozinho em laço (a Cloudflare fora do ar recusaria todos).
       if (ceilingToken === null) {
-        const sent = ctx.request instanceof Request && ctx.request.headers.has(CAPTCHA_HEADER);
+        const sent = ctx.request instanceof Request && Boolean(ctx.request.headers.get(CAPTCHA_HEADER));
         if (!sent || !(await captchaOk(ctx))) {
           await giveBack();
           return refuse(sent ? REFUSALS.captchaFailed : REFUSALS.captcha);

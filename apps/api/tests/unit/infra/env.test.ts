@@ -101,4 +101,8 @@ describe("envSchema", () => {
     const real = { TURNSTILE_SITE_KEY: "0x4AAAAAAAreal", TURNSTILE_SECRET_KEY: "0x4AAAAAAArealsecret" };
     expect(envSchema.safeParse({ ...base, NODE_ENV: "production", ...real }).success).toBe(true);
   });
+
+  it("AD-062: em staging, as chaves de teste do Turnstile também são recusadas", () => {
+    expect(envSchema.safeParse({ ...base, NODE_ENV: "staging" }).success).toBe(false);
+  });
 });

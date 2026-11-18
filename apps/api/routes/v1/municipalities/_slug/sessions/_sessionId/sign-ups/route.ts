@@ -14,7 +14,8 @@ export default async function (app: FastifyInstance) {
     // RN-ID-07 / AD-062: só há inscrição pelo app em sessão pública, e ela pede o captcha.
     // Sem token é `captcha_required`; token recusado é `captcha_failed` (o app não reenvia sozinho).
     const token = req.headers[CAPTCHA_HEADER];
-    if (typeof token !== "string" || !token) throw new ApiError(400, "captcha_required");
+    if (typeof token !== "string" || !token)
+      throw new ApiError(400, "captcha_required", undefined, "Confirme que você não é um robô para se inscrever.");
     if (!(await verifyCaptcha(token, req.ip))) {
       throw new ApiError(
         400,

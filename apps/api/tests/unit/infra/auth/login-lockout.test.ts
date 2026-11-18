@@ -252,4 +252,18 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
     await expect(hooks.before(ctx)).rejects.toMatchObject({ body: { error: "captcha_failed" } });
     expect(errors).toHaveLength(1);
   });
+
+  it("cabeçalho do captcha vazio é 'sem token' (pede o captcha), não 'recusado'", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(
+      () => "gestor",
+      new MemoryStore(),
+      undefined,
+      async () => false,
+    );
+    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+    await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "" }))).rejects.toMatchObject({
+      body: { error: "captcha_required" },
+    });
+  });
 });

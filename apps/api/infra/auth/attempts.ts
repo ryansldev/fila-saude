@@ -92,6 +92,17 @@ export class PostgresStore implements AttemptStore {
   }
 
   private write<S, T>(hashed: string, now: number, change: (state: S | null) => Change<S, T>): Promise<T> {
+    return this.transaction(hashed, now, change).catch((error: unknown) => {
+      // `lock_timeout` (55P03): outra instância segura a linha; o pedido é "ocupado", não erro do servidor.
+      const code =
+        (error as { code?: unknown; cause?: { code?: unknown } }).code ??
+        (error as { cause?: { code?: unknown } }).cause?.code;
+      if (code === "55P03") throw new AttemptsBusy();
+      throw error;
+    });
+  }
+
+  private transaction<S, T>(hashed: string, now: number, change: (state: S | null) => Change<S, T>): Promise<T> {
     return database.transaction(async (tx) => {
       // Outra instância segurando a linha por mais que isso é defeito: o pedido falha em vez de esperar.
       await tx.execute(sql`set local lock_timeout = '2s'`);
@@ -166,14 +177,15 @@ export class SlidingLimit {
     });
   }
 
-  /** Firma a vaga reservada: ela conta a janela toda. */
+  /** Firma a vaga reservada: ela conta a janela toda (se já venceu, porque o pedido demorou, conta de novo). */
   confirm(key: string, token: string, now: number): Promise<void> {
-    return this.store.update<Entries, void>(`sliding:${this.options.name}:${key}`, now, (state) =>
-      this.save(
-        this.live(state, now).map((e) => (e.id === token ? { at: e.at, id: e.id } : e)),
-        undefined,
-      ),
-    );
+    return this.store.update<Entries, void>(`sliding:${this.options.name}:${key}`, now, (state) => {
+      const live = this.live(state, now);
+      const firmed = live.some((e) => e.id === token)
+        ? live.map((e) => (e.id === token ? { at: e.at, id: e.id } : e))
+        : [...live, { at: now, id: token }];
+      return this.save(firmed, undefined);
+    });
   }
 
   /** Devolve a vaga (o que ela contava não aconteceu). */

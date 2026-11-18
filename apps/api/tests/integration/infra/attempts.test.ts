@@ -70,4 +70,23 @@ describe("AD-063: contagem de tentativas no Postgres", () => {
     expect(busy.length).toBeGreaterThan(0);
     expect(results.every((r) => r.status === "fulfilled" || r.reason instanceof AttemptsBusy)).toBe(true);
   });
+
+  it("linha travada por mais de 2 s em outra instância: o pedido sai como 'ocupado', não como erro do servidor", async () => {
+    const k = key();
+    const limit = new SlidingLimit({ name: "teste", max: 5, windowMs: MIN }, new PostgresStore());
+    await limit.take(k, Date.now());
+    const hashed = createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:teste:${k}`).digest("hex");
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => (release = r));
+    const locking = database.transaction(async (tx) => {
+      await tx.select().from(attempt).where(eq(attempt.key, hashed)).for("update");
+      await held;
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    await expect(
+      new SlidingLimit({ name: "teste", max: 5, windowMs: MIN }, new PostgresStore()).take(k, Date.now()),
+    ).rejects.toBeInstanceOf(AttemptsBusy);
+    release();
+    await locking;
+  }, 10_000);
 });
