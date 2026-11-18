@@ -50,7 +50,10 @@
         "summary": "Página do captcha para o app",
         "tags": ["Sistema"],
         "responses": {
-          "200": { "description": "Default Response", "content": { "text/html": { "schema": { "type": "string" } } } }
+          "200": {
+            "description": "Página HTML do Turnstile",
+            "content": { "text/html": { "schema": { "type": "string" } } }
+          }
         }
       }
     },
@@ -60,7 +63,7 @@
         "tags": ["Município"],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -122,7 +125,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -195,7 +198,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -249,7 +252,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -303,7 +306,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -421,7 +424,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -482,7 +485,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -529,7 +532,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -769,7 +772,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -956,7 +959,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1116,7 +1119,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1232,7 +1235,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1282,7 +1285,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1353,7 +1356,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1415,7 +1418,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1457,7 +1460,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1620,7 +1623,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1727,7 +1730,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -1847,7 +1850,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -2029,7 +2032,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -2227,7 +2230,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -2418,7 +2421,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -2520,7 +2523,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -2711,7 +2714,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -2902,7 +2905,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -3105,7 +3108,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -3230,7 +3233,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -3359,7 +3362,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -3591,7 +3594,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -3823,7 +3826,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -4032,7 +4035,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -4260,7 +4263,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -4492,7 +4495,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -4724,7 +4727,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -4933,7 +4936,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -5074,7 +5077,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -5226,7 +5229,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -5392,7 +5395,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -5655,7 +5658,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -5855,7 +5858,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -5962,7 +5965,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6016,7 +6019,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6121,7 +6124,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6190,7 +6193,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6324,7 +6327,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6444,7 +6447,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6569,7 +6572,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6636,7 +6639,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6708,7 +6711,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -6838,7 +6841,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7102,7 +7105,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7147,7 +7150,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7219,7 +7222,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7316,7 +7319,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7444,7 +7447,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7544,7 +7547,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7760,7 +7763,7 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7874,7 +7877,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7914,7 +7917,7 @@
         "security": [{ "patientBearer": [] }, { "patientCookie": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7943,7 +7946,7 @@
         "tags": ["Sistema"],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -7992,7 +7995,7 @@
         "tags": ["TV"],
         "responses": {
           "201": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {
@@ -8029,7 +8032,7 @@
         "security": [{ "tvBearer": [] }],
         "responses": {
           "200": {
-            "description": "Default Response",
+            "description": "Sucesso",
             "content": {
               "application/json": {
                 "schema": {

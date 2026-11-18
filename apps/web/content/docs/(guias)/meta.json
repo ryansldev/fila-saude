@@ -1,0 +1,6 @@
+{
+  "title": "Guias",
+  "description": "Como a API funciona",
+  "root": true,
+  "pages": ["index", "..."]
+}

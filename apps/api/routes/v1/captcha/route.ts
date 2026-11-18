@@ -9,7 +9,7 @@ export default async function (app: FastifyInstance) {
   const schema = {
     tags: [TAGS.system],
     summary: "Página do captcha para o app",
-    response: { 200: { content: { "text/html": { schema: z.string() } } } },
+    response: { 200: { description: "Página HTML do Turnstile", content: { "text/html": { schema: z.string() } } } },
   };
   app.get("/", { schema }, async (_req, reply) =>
     reply

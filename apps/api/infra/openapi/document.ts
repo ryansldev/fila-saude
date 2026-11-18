@@ -54,8 +54,18 @@ export function registerOpenApi(app: FastifyInstance) {
     },
     transform: (document) => {
       if (isOutsideReference(document.url)) return { schema: { hide: true }, url: document.url };
+      const out = transform(document);
+      // O `@fastify/swagger` chama de "Default Response" a resposta sem descrição: a 2xx com corpo vira
+      // "Sucesso" (ou a descrição do próprio schema).
+      const responses = (out.schema as { response?: Record<string, Record<string, unknown>> }).response ?? {};
+      // Só as 2xx com corpo: o 204 (`NO_CONTENT`) já sai sem corpo, e os erros já têm os códigos.
+      for (const [status, response] of Object.entries(responses)) {
+        if (!/^2\d\d$/.test(status) || status === "204" || "content" in response) continue;
+        const description = typeof response.description === "string" ? response.description : "Sucesso";
+        responses[status] = { description, content: { "application/json": { schema: response } } };
+      }
       // O `autoload` registra `/v1/status/`; os clientes chamam sem a barra final.
-      return { ...transform(document), url: document.url.replace(/(.)\/$/, "$1") };
+      return { ...out, url: document.url.replace(/(.)\/$/, "$1") };
     },
     transformObject: (document) => withoutUnusedSchemas(jsonSchemaTransformObject(document)),
   });

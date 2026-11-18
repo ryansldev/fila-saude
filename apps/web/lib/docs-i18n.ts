@@ -1,3 +1,4 @@
+import type { Translations as OpenApiTranslations } from "fumadocs-openapi/i18n";
 import type { Translations } from "fumadocs-ui/i18n";
 
 // A interface do Fumadocs em português; o tipo trava as chaves (uma renomeada no upgrade não compila).
@@ -66,4 +67,64 @@ export const PT_BR: Omit<Translations, "displayName"> = {
     "A página que você procura pode ter sido removida ou mudado de endereço.",
   "Toggle Menu(home layout header)(aria-label)": "Abrir ou fechar o menu",
   "Type(type table)": "Tipo",
+};
+
+// Chaves do playground e do login OAuth, que estão desligados (DA8).
+type OffKeys = Extract<
+  keyof OpenApiTranslations,
+  `${string}(playground${string}` | `${string}(OAuth dialog)` | `${string}(scalar API client)`
+>;
+
+// As páginas da referência da API (`fumadocs-openapi`); o tipo trava as chaves, como no `PT_BR`.
+export const PT_BR_API: Omit<OpenApiTranslations, OffKeys | "displayName"> = {
+  "Authorization(operation page)": "Autenticação",
+  "Authorization(security scheme)": "Autenticação",
+  "Basic <token>(security scheme)": "Basic <token>",
+  "Bearer <token>(security scheme)": "Bearer <token>",
+  "Client certificate(security scheme)": "Certificado do cliente",
+  "Copied Text(code block)(aria-label)": "Copiado",
+  "Copy Text(code block)(aria-label)": "Copiar",
+  "OpenID Connect(security scheme)": "OpenID Connect",
+  "Callbacks(operation page)": "Callbacks",
+  "Close(operation page)": "Fechar",
+  "Code language(operation page)": "Linguagem",
+  "Cookie Parameters(operation page)": "Parâmetros de cookie",
+  "Copied Link(schema UI)(aria-label)": "Link copiado",
+  "Copy Link(schema UI)(aria-label)": "Copiar o link",
+  "Default(operation page)": "Padrão",
+  "Default(schema UI)": "Padrão",
+  "Deprecated(operation page)": "Obsoleta",
+  "Deprecated(schema UI)": "Obsoleto",
+  "Deprecated(security scheme)": "Obsoleto",
+  "Empty(operation page)": "Vazio",
+  "Example Request(operation page)": "Exemplo de pedido",
+  "Example Requests(operation page)": "Exemplos de pedido",
+  "Example Response(operation page)": "Exemplo de resposta",
+  "Example request(operation page)": "Exemplo de pedido",
+  "Example {key}(operation page)": "Exemplo {key}",
+  "Example(operation page)": "Exemplo",
+  "Example(schema UI)": "Exemplo",
+  "Filter Properties(schema UI)": "Filtrar campos",
+  "Format(schema UI)": "Formato",
+  "Header Parameters(operation page)": "Parâmetros de cabeçalho",
+  "Items(schema UI)": "Itens",
+  "Length(schema UI)": "Tamanho",
+  "Match(schema UI)": "Formato",
+  "Media type(operation page)": "Tipo de conteúdo",
+  "Multiple Of(schema UI)": "Múltiplo de",
+  "No property matching(schema UI)": "Nenhum campo encontrado",
+  "Path Parameters(operation page)": "Parâmetros do caminho",
+  "Properties(schema UI)": "Campos",
+  "Query Parameters(operation page)": "Parâmetros da query",
+  "Range(schema UI)": "Intervalo",
+  "Request Body(operation page)": "Corpo do pedido",
+  "Response Body(operation page)": "Corpo da resposta",
+  "Response status(operation page)": "Status da resposta",
+  "Schema variant(schema UI)": "Variante",
+  "Schema(operation page)": "Schema",
+  "Scope(security scheme)": "Escopo",
+  "Security scheme(operation page)": "Esquema de segurança",
+  "Show Path(schema UI)(aria-label)": "Mostrar o caminho",
+  "Use the {name} type in TypeScript.(TypeScript definitions)": "Use o tipo {name} no TypeScript.",
+  "Value in(schema UI)": "Valor em",
 };

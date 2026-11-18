@@ -4,7 +4,7 @@ import { RootProvider } from "fumadocs-ui/provider/next";
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import type { CSSProperties, ReactNode } from "react";
-import { PT_BR } from "@/lib/docs-i18n";
+import { PT_BR, PT_BR_API } from "@/lib/docs-i18n";
 import { baseOptions } from "@/lib/layout.shared";
 import { siteMetadata } from "@/lib/site-metadata";
 import { source } from "@/lib/source";
@@ -51,7 +51,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <RootProvider
           theme={{ forcedTheme: "light" }}
           search={{ options: { api: "/api/search" } }}
-          i18n={{ locale: "pt-BR", translations: PT_BR }}
+          i18n={{ locale: "pt-BR", translations: { ...PT_BR, ...PT_BR_API } }}
         >
           <DocsLayout tree={source.getPageTree()} {...baseOptions()}>
             {children}

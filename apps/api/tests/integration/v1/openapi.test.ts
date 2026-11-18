@@ -64,6 +64,18 @@ describe("documento OpenAPI da v1 (DOC2)", () => {
     }
   });
 
+  it("textos em português: nenhuma resposta fica com o padrão do swagger (Default Response)", () => {
+    expect(JSON.stringify(doc)).not.toContain("Default Response");
+  });
+
+  it("respostas: 2xx com corpo é Sucesso em JSON; 204 sem corpo; erros com os códigos", () => {
+    const remove = doc.paths["/v1/panel/units/{unitId}"]?.delete?.responses;
+    expect(remove?.["204"]).toEqual({ description: "Sem corpo" });
+    const read = doc.paths["/v1/panel/units/{unitId}"]?.get?.responses as Record<string, { description: string }>;
+    expect(read["200"]?.description).toBe("Sucesso");
+    expect(read["404"]?.description).toContain("not_found");
+  });
+
   it("PD-22: os erros citam o componente ApiError", () => {
     expect(doc.components.schemas.ApiError).toBeDefined();
     const unit = doc.paths["/v1/panel/units/{unitId}"]?.get;
