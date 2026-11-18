@@ -2,16 +2,18 @@ import swagger from "@fastify/swagger";
 import type { FastifyInstance } from "fastify";
 import { createJsonSchemaTransform, jsonSchemaTransformObject } from "fastify-type-provider-zod";
 import { isPanelAuth } from "infra/panel/guard";
+import { apiVersion, isUnder } from "infra/routes/versions";
 
-// DOC2 / DOC4: a referência da v1 sai das próprias rotas. Ficam fora as rotas de teste (PD-19) e as do
-// better-auth (`/v1/auth/*`, `/v1/panel/auth/*`), que o guia de autenticação explica.
+// AD-066 / AD-068: a referência de cada versão (`/v{n}`) sai das próprias rotas. Ficam fora as rotas de
+// teste (PD-19) e as do better-auth (`/v{n}/auth/*`, `/v{n}/panel/auth/*`), que o guia de autenticação
+// explica.
 export function isOutsideReference(url: string) {
-  return !url.startsWith("/v1/") || url.startsWith("/v1/test/") || isAuth(url);
+  return !apiVersion(url) || isUnder(url, "test") || isAuth(url);
 }
 
 // Rotas do better-auth: o paciente na central e a equipe no painel.
 export function isAuth(url: string) {
-  return url === "/v1/auth" || url.startsWith("/v1/auth/") || isPanelAuth(url);
+  return isUnder(url, "auth") || isPanelAuth(url);
 }
 
 const transform = createJsonSchemaTransform({ skipList: [] });
@@ -22,16 +24,17 @@ export function registerOpenApi(app: FastifyInstance) {
       openapi: "3.1.0",
       info: {
         title: "Fila Saúde",
-        version: "v1",
+        // Cada documento por versão recebe a sua (`splitByVersion`).
+        version: "",
         description: "API da central de filas: app do paciente, painel da unidade e TV.",
       },
       servers: [
         {
           url: "http://{municipality}.localhost:3333",
-          description: "Painel e TV: o município vem do subdomínio (PD-15)",
+          description: "Painel e TV: o município vem do subdomínio",
           variables: { municipality: { default: "exemplo" } },
         },
-        { url: "http://localhost:3333", description: "App do paciente: o município vem do caminho (PD-15)" },
+        { url: "http://localhost:3333", description: "App do paciente: o município vem do caminho" },
       ],
       components: {
         securitySchemes: {
@@ -48,7 +51,7 @@ export function registerOpenApi(app: FastifyInstance) {
             name: "fila-painel.session_token",
             description: "Sessão do painel",
           },
-          tvBearer: { type: "http", scheme: "bearer", description: "Token que a TV ganha ao se registrar (RN-TV-02)" },
+          tvBearer: { type: "http", scheme: "bearer", description: "Token que a TV ganha ao se registrar" },
         },
       },
     },
@@ -64,28 +67,64 @@ export function registerOpenApi(app: FastifyInstance) {
         const description = typeof response.description === "string" ? response.description : "Sucesso";
         responses[status] = { description, content: { "application/json": { schema: response } } };
       }
-      // O `autoload` registra `/v1/status/`; os clientes chamam sem a barra final.
+      // O `autoload` registra `/v{n}/status/`; os clientes chamam sem a barra final.
       return { ...out, url: document.url.replace(/(.)\/$/, "$1") };
     },
-    transformObject: (document) => withoutUnusedSchemas(jsonSchemaTransformObject(document)),
+    transformObject: jsonSchemaTransformObject,
   });
 }
 
-// O provider gera cada componente nas versões de entrada e de saída (`ApiErrorInput`, `ApiError`);
-// fica só o que alguma operação cita.
-function withoutUnusedSchemas<D extends object>(document: D): D {
-  const schemas = (document as { components?: { schemas?: Record<string, unknown> } }).components?.schemas;
-  if (!schemas) return document;
-  const { components: _, ...rest } = document as { components?: unknown };
-  const text = JSON.stringify(rest);
-  for (const name of Object.keys(schemas)) {
-    if (!text.includes(`"#/components/schemas/${name}"`)) delete schemas[name];
+type OpenApiDocument = {
+  info: { version: string };
+  paths?: Record<string, unknown>;
+  components?: { schemas?: Record<string, unknown> };
+};
+
+// Os componentes que os caminhos citam, e os que esses componentes citam (um schema dentro de outro).
+function usedSchemas(paths: unknown, schemas: Record<string, unknown>): Record<string, unknown> {
+  const used = new Set<string>();
+  const pending = [JSON.stringify(paths)];
+  while (pending.length > 0) {
+    const text = pending.pop() ?? "";
+    for (const [, name] of text.matchAll(/"#\/components\/schemas\/([^"]+)"/g)) {
+      if (!name || used.has(name) || !(name in schemas)) continue;
+      used.add(name);
+      pending.push(JSON.stringify(schemas[name]));
+    }
   }
-  return document;
+  return Object.fromEntries(Object.entries(schemas).filter(([name]) => used.has(name)));
 }
 
-// O documento da v1, com o app pronto (as rotas registradas).
-export async function openApiDocument(app: FastifyInstance) {
+// AD-068: um documento por versão, cada um só com os caminhos dela e os componentes que eles usam (o
+// provider gera cada componente nas versões de entrada e de saída, como `ApiErrorInput` e `ApiError`).
+export function splitByVersion<D extends OpenApiDocument>(document: D): Record<string, D> {
+  const byVersion = new Map<string, Record<string, unknown>>();
+  for (const [path, item] of Object.entries(document.paths ?? {})) {
+    const version = apiVersion(path);
+    if (!version) continue;
+    const paths = byVersion.get(version) ?? {};
+    paths[path] = item;
+    byVersion.set(version, paths);
+  }
+  const docs: Record<string, D> = {};
+  for (const [version, paths] of byVersion) {
+    docs[version] = {
+      ...document,
+      info: { ...document.info, version },
+      paths,
+      components: { ...document.components, schemas: usedSchemas(paths, document.components?.schemas ?? {}) },
+    };
+  }
+  return docs;
+}
+
+// Os documentos de todas as versões do app (as rotas já registradas, depois do `ready`).
+export function openApiDocumentsOf(app: FastifyInstance) {
+  return splitByVersion(app.swagger() as unknown as OpenApiDocument);
+}
+
+// Os documentos de todas as versões, com o app pronto.
+export async function openApiDocuments(app: FastifyInstance) {
   await app.ready();
-  return app.swagger();
+  return openApiDocumentsOf(app);
 }

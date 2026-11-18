@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyRequest, RouteOptions } from "fastify";
 import { audit } from "infra/database/municipal/schema/audit";
 import type { TenantDb, TenantTx } from "infra/database/tenants";
 import { ApiError } from "infra/errors";
+import { isPanelRoute } from "infra/routes/versions";
 import { allowed, type Caveats, isPanelAuth } from "./guard";
 import { type ScopedProfile, userProfiles } from "./profiles";
 import { staffUser } from "./session";
@@ -79,7 +80,7 @@ export function listRoutesWithoutAction(app: FastifyInstance): string[] {
   const routes = registeredRoutes(app);
   const missing: string[] = [];
   for (const r of routes) {
-    if (!r.url.startsWith("/v1/panel") || isPanelAuth(r.url)) continue;
+    if (!isPanelRoute(r.url) || isPanelAuth(r.url)) continue;
     const methods = (Array.isArray(r.method) ? r.method : [r.method]).filter((m) => MUTATIONS.has(m));
     const action = (r.config as { action?: unknown } | undefined)?.action;
     for (const m of methods) if (!action) missing.push(`${m} ${r.url}`);

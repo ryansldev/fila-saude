@@ -20,11 +20,7 @@
         "name": "fila-painel.session_token",
         "description": "Sessão do painel"
       },
-      "tvBearer": {
-        "type": "http",
-        "scheme": "bearer",
-        "description": "Token que a TV ganha ao se registrar (RN-TV-02)"
-      }
+      "tvBearer": { "type": "http", "scheme": "bearer", "description": "Token que a TV ganha ao se registrar" }
     },
     "schemas": {
       "ApiError": {
@@ -8175,9 +8171,9 @@
   "servers": [
     {
       "url": "http://{municipality}.localhost:3333",
-      "description": "Painel e TV: o município vem do subdomínio (PD-15)",
+      "description": "Painel e TV: o município vem do subdomínio",
       "variables": { "municipality": { "default": "exemplo" } }
     },
-    { "url": "http://localhost:3333", "description": "App do paciente: o município vem do caminho (PD-15)" }
+    { "url": "http://localhost:3333", "description": "App do paciente: o município vem do caminho" }
   ]
 }

@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { validate } from "@scalar/openapi-parser";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
@@ -17,11 +17,14 @@ type Doc = {
   components: { securitySchemes: Record<string, unknown>; schemas: Record<string, unknown> };
 };
 
+let docs: Record<string, Doc>;
+// As rotas de hoje estão na v1; as checagens gerais valem para toda versão.
 let doc: Doc;
 
 beforeAll(async () => {
   await orchestrator.waitForAllServices();
-  doc = (await (await fetch(`${webserver.origin}/v1/test/openapi`)).json()) as Doc;
+  docs = (await (await fetch(`${webserver.origin}/v1/test/openapi`)).json()) as Record<string, Doc>;
+  doc = docs.v1 as Doc;
 });
 
 const operations = () =>
@@ -29,30 +32,40 @@ const operations = () =>
     Object.entries(methods).map(([method, op]) => ({ path, method, op })),
   );
 
-describe("documento OpenAPI da v1 (DOC2)", () => {
-  it("o openapi/v1.json no git é o documento das rotas (senão: npm run docs:openapi)", async () => {
-    const committed = JSON.parse(await readFile(new URL("../../../openapi/v1.json", import.meta.url), "utf8"));
-    expect(committed).toEqual(doc);
+describe("documentos OpenAPI (AD-066, AD-068)", () => {
+  it("um arquivo por versão no git, igual ao documento das rotas (senão: npm run docs:openapi)", async () => {
+    const dir = new URL("../../../openapi/", import.meta.url);
+    const files = (await readdir(dir)).filter((f) => /^v\d+\.json$/.test(f)).sort();
+    expect(files).toEqual(
+      Object.keys(docs)
+        .map((v) => `${v}.json`)
+        .sort(),
+    );
+    for (const [version, current] of Object.entries(docs)) {
+      const committed = JSON.parse(await readFile(new URL(`${version}.json`, dir), "utf8"));
+      expect([version, committed]).toEqual([version, current]);
+    }
   });
 
-  it("é um OpenAPI 3.1 válido", async () => {
-    expect(doc.openapi).toMatch(/^3\.1\./);
-    const result = await validate(JSON.parse(JSON.stringify(doc)));
-    expect(result.errors ?? []).toEqual([]);
-    expect(result.valid).toBe(true);
+  it("cada versão é um OpenAPI 3.1 válido, só com os caminhos dela", async () => {
+    for (const [version, current] of Object.entries(docs)) {
+      expect(current.openapi).toMatch(/^3\.1\./);
+      expect((current as unknown as { info: { version: string } }).info.version).toBe(version);
+      expect(Object.keys(current.paths).every((p) => p.startsWith(`/${version}/`))).toBe(true);
+      const result = await validate(JSON.parse(JSON.stringify(current)));
+      expect([version, result.errors ?? []]).toEqual([version, []]);
+    }
   });
 
-  it("DOC4: só a /v1, sem as rotas de teste nem as do better-auth", () => {
-    const paths = Object.keys(doc.paths);
-    expect(paths.length).toBeGreaterThan(40);
-    expect(paths.every((p) => p.startsWith("/v1/"))).toBe(true);
+  it("sem as rotas de teste nem as do better-auth, e sem a barra final", () => {
+    const paths = Object.values(docs).flatMap((d) => Object.keys(d.paths));
+    expect(Object.keys(doc.paths).length).toBeGreaterThan(40);
     // O `autoload` registra `/v1/status/`; os clientes chamam `/v1/status` (o Fastify aceita os dois).
     expect(paths.filter((p) => p.endsWith("/"))).toEqual([]);
-    expect(paths.some((p) => p.startsWith("/v1/test"))).toBe(false);
-    expect(paths.some((p) => p.startsWith("/v1/auth") || p.startsWith("/v1/panel/auth"))).toBe(false);
+    expect(paths.filter((p) => /^\/v\d+\/(test|auth|panel\/auth)(\/|$)/.test(p))).toEqual([]);
   });
 
-  it("DOC4: toda operação tem grupo e resumo em português", () => {
+  it("toda operação tem grupo e resumo em português", () => {
     const groups = new Set(["Município", "Paciente", "Painel", "TV", "Sistema"]);
     for (const { path, method, op } of operations()) {
       expect([path, method, op.tags?.every((t) => groups.has(t)) && op.tags.length === 1]).toEqual([

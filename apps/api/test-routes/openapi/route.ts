@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
+import { openApiDocumentsOf } from "infra/openapi/document";
 
-// DOC2: o documento OpenAPI do app que está no ar (o mesmo que `npm run docs:openapi` grava).
+// AD-068: os documentos OpenAPI de cada versão do app que está no ar (os mesmos que `npm run
+// docs:openapi` grava).
 export default async function (app: FastifyInstance) {
-  app.get("/", async () => app.swagger());
+  app.get("/", async () => openApiDocumentsOf(app));
 }

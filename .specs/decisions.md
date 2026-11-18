@@ -338,7 +338,7 @@ A contagem de senhas erradas e de CPFs informados fica numa tabela UNLOGGED (`at
 
 ### AD-066 · Docs públicas com Fumadocs no site, referência gerada do OpenAPI
 2026-11-18 · ativa
-As docs ficam no `apps/web`, em `/docs`, com o Fumadocs (o mesmo Next 16 + Tailwind do site). São guias em MDX, em português, para quem integra, e a referência de cada rota da API, gerada do `apps/api/openapi/v1.json` (`npm run docs:openapi`), que sai das próprias rotas. A referência cobre toda a `/v1` menos as rotas de teste e as do better-auth (o login entra nos guias), agrupada por quem usa: Município, Paciente, Painel, TV e Sistema. Caminhos e campos ficam em inglês, como no código. **Por quê:** decisão sua, 2026-11-18 (DOC1, DOC4 e DOC5 do [plano das docs](arquivo/planos/docs-api/plan.md)): mesma pilha do site, sem serviço pago, e a referência não fica para trás do código.
+As docs ficam no `apps/web`, em `/docs`, com o Fumadocs (o mesmo Next 16 + Tailwind do site). São guias em MDX, em português, para quem integra, e a referência de cada rota da API, gerada dos `apps/api/openapi/v{n}.json`, um por versão (`npm run docs:openapi`), que sai das próprias rotas. A referência cobre toda a `/v1` menos as rotas de teste e as do better-auth (o login entra nos guias), agrupada por quem usa: Município, Paciente, Painel, TV e Sistema. Caminhos e campos ficam em inglês, como no código. **Por quê:** decisão sua, 2026-11-18 (DOC1, DOC4 e DOC5 do [plano das docs](arquivo/planos/docs-api/plan.md)): mesma pilha do site, sem serviço pago, e a referência não fica para trás do código.
 
 ### AD-067 · Schemas Zod declarados nas rotas do Fastify
 2026-11-18 · ativa
@@ -346,7 +346,7 @@ Cada rota declara os schemas de `packages/schemas` no próprio Fastify (`params`
 
 ### AD-068 · Versões da API: o que quebra vai para uma nova, a anterior fica 6 meses
 2026-11-18 · ativa
-Mudança que só acrescenta (rota nova, campo novo na resposta, campo opcional no corpo) fica na versão atual. Mudança que quebra vai para uma nova versão no caminho (`/v2`), lançada junto com o app que já a usa. A anterior continua no ar por 6 meses depois disso, com os cabeçalhos `Deprecation` e `Sunset`; cada versão tem a própria referência nas docs, lado a lado. **Por quê:** decisão sua, 2026-11-18 (DOC3 do [plano das docs](arquivo/planos/docs-api/plan.md)): o app antigo continua no celular de quem não atualizou, e a mudança no app sai junto com a da API, então os 6 meses contam do lançamento.
+A versão é um número no começo do caminho (`/v1`, `/v2`… `/v{n}`), sem nenhuma versão tratada como fixa. Mudança que só acrescenta (rota nova, campo novo na resposta, campo opcional no corpo) fica na versão atual. Mudança que quebra vai para a próxima (`/v{n+1}`), lançada junto com o app que já a usa. A anterior continua no ar por 6 meses depois disso, com os cabeçalhos `Deprecation` e `Sunset`. Como cada versão vira um documento e uma referência está na DA9 das [decisões para revisar](features/mvp-filas/decisoes-para-revisar.md). **Por quê:** decisão sua, 2026-11-18 (DOC3 do [plano das docs](arquivo/planos/docs-api/plan.md)): o app antigo continua no celular de quem não atualizou, e a mudança no app sai junto com a da API, então os 6 meses contam do lançamento. "v1 e v2 não são fixas, as vezes podemos estar na v5" (2026-11-18).
 
 ## Arquitetura
 

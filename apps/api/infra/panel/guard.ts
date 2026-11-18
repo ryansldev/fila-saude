@@ -1,6 +1,7 @@
 import { type Action, conditions } from "@fila-saude/domain";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { ApiError } from "infra/errors";
+import { isPanelRoute, isUnder } from "infra/routes/versions";
 import type { ScopedProfile } from "./profiles";
 import { staffUser } from "./session";
 
@@ -70,13 +71,13 @@ export const canConfigureUnit = require("configure_services_sessions_stations_tv
 // sem login é sempre 401, com qualquer corpo, query ou caminho.
 export function panelLogin(app: FastifyInstance) {
   app.addHook("onRoute", (route) => {
-    if (!route.url.startsWith("/v1/panel/") || isPanelAuth(route.url)) return;
+    if (!isPanelRoute(route.url) || isPanelAuth(route.url)) return;
     const own = route.preValidation ? [route.preValidation].flat() : [];
     route.preValidation = [requireLogin, ...own];
   });
 }
 
-// As rotas do better-auth do painel (`/v1/panel/auth/*`), que fazem o próprio login.
+// As rotas do better-auth do painel (`/v{n}/panel/auth/*`), que fazem o próprio login.
 export function isPanelAuth(url: string) {
-  return url === "/v1/panel/auth" || url.startsWith("/v1/panel/auth/");
+  return isUnder(url, "panel/auth");
 }

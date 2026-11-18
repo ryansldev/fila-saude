@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import env from "infra/env";
+import { isPanelRoute } from "infra/routes/versions";
 import { allowedOrigin } from "./origin";
 
 const METHODS = "GET, POST, PUT, PATCH, DELETE";
@@ -29,7 +30,7 @@ export function panelCors(app: FastifyInstance) {
       return;
     }
     const mutation = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
-    if (mutation && req.url.startsWith("/v1/panel")) {
+    if (mutation && isPanelRoute(req.url)) {
       return reply.status(403).send({ error: "no_permission" });
     }
   });
