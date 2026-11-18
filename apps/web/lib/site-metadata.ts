@@ -1,24 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Nunito } from "next/font/google";
-import "./globals.css";
-import { cn } from "@/lib/utils";
 
-const geist = Geist({
-  variable: "--font-geist",
-  subsets: ["latin"],
-});
-
-const nunito = Nunito({
-  variable: "--font-nunito",
-  subsets: ["latin"],
-});
-
-const SITE_URL = "https://filasaude.com.br";
+export const SITE_URL = "https://filasaude.com.br";
 
 const description =
   "Você entra na fila de atendimento de casa. A gente te avisa quando estiver perto da sua vez. Simples assim. Um projeto open source pra tornar o SUS mais transparente.";
 
-export const metadata: Metadata = {
+// Metadados do site (landing e docs, que têm layouts raiz separados).
+export const siteMetadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: "Fila Saúde — Acompanhe sua vez sem sair de casa",
@@ -76,15 +64,3 @@ export const metadata: Metadata = {
     telephone: false,
   },
 };
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="pt-BR" className={cn("h-full antialiased font-sans", geist.variable, nunito.variable)}>
-      <body className="min-h-full flex flex-col">{children}</body>
-    </html>
-  );
-}

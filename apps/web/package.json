@@ -10,8 +10,12 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@fila-saude/design": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fumadocs-core": "^16.19.4",
+    "fumadocs-mdx": "^15.6.3",
+    "fumadocs-ui": "npm:@fumadocs/base-ui@^16.19.4",
     "lucide-react": "^1.22.0",
     "motion": "^12.42.2",
     "next": "16.4.6",
@@ -23,6 +27,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/mdx": "^2.0.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
