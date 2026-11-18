@@ -21,11 +21,15 @@ function groups(ip: string): number[] {
  * bloco /64, que cada cliente recebe inteiro e dentro do qual troca de endereço à vontade.
  */
 export function ipKey(ip: string): string {
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip)?.[1];
-  if (mapped && isIPv4(mapped)) return mapped;
   if (isIPv4(ip)) return ip;
   if (!isIPv6(ip)) return "sem-ip";
-  const prefix = groups(ip.toLowerCase())
+  const g = groups(ip.toLowerCase());
+  // IPv4 mapeado (::ffff:a.b.c.d, também em hexadecimal): é o IPv4.
+  if (g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff) {
+    const [hi = 0, lo = 0] = g.slice(6);
+    return [hi >> 8, hi & 255, lo >> 8, lo & 255].join(".");
+  }
+  const prefix = g
     .slice(0, 4)
     .map((g) => g.toString(16))
     .join(":");

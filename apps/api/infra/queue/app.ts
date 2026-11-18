@@ -133,7 +133,7 @@ export async function municipalityUnits(db: TenantDb, now: number): Promise<Publ
  * tem conta não entra como "outra pessoa" (a própria conta usa "para mim"; quem tem conta entra pela dela).
  */
 // RN-ID-07: CPFs de outras pessoas que uma conta informa por hora (inscrição, lista e conferência).
-const cpfLookups = new SlidingLimit({ max: 20, windowMs: 3_600_000 });
+const cpfLookups = new SlidingLimit({ name: "cpf-lookup", max: 20, windowMs: 3_600_000 });
 
 export async function personFromRequest(
   p: AuthenticatedPatient,

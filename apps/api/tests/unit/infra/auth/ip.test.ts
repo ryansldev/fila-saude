@@ -6,8 +6,10 @@ describe("AD-064: IP da contagem", () => {
     expect(ipKey("203.0.113.7")).toBe("203.0.113.7");
   });
 
-  it("IPv4 mapeado em IPv6 vira o IPv4", () => {
+  it("IPv4 mapeado em IPv6 vira o IPv4, escrito com pontos ou em hexadecimal", () => {
     expect(ipKey("::ffff:203.0.113.7")).toBe("203.0.113.7");
+    expect(ipKey("::ffff:cb00:7107")).toBe("203.0.113.7");
+    expect(ipKey("0:0:0:0:0:FFFF:cb00:7107")).toBe("203.0.113.7");
   });
 
   it("IPv6 conta pelo bloco /64, escrito de qualquer jeito", () => {

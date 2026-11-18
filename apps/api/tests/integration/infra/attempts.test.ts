@@ -20,8 +20,8 @@ describe("AD-063: contagem de tentativas no Postgres", () => {
 
   it("guarda só o HMAC da chave, nunca o CPF ou o login", async () => {
     const k = `cpf:${Math.floor(Math.random() * 1e11)}`;
-    await new SlidingLimit({ max: 3, windowMs: MIN }, new PostgresStore()).take(k, Date.now());
-    const hashed = createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:${k}`).digest("hex");
+    await new SlidingLimit({ name: "teste", max: 3, windowMs: MIN }, new PostgresStore()).take(k, Date.now());
+    const hashed = createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:teste:${k}`).digest("hex");
     expect(await database.select().from(attempt).where(eq(attempt.key, hashed))).toHaveLength(1);
     expect(await database.select().from(attempt).where(eq(attempt.key, k))).toHaveLength(0);
   });
@@ -38,14 +38,14 @@ describe("AD-063: contagem de tentativas no Postgres", () => {
 
   it("a limpeza apaga as linhas vencidas e deixa as outras", async () => {
     const store = new PostgresStore();
-    const limit = new SlidingLimit({ max: 3, windowMs: MIN }, store);
+    const limit = new SlidingLimit({ name: "teste", max: 3, windowMs: MIN }, store);
     const old = key();
     const fresh = key();
     const now = Date.now();
     await limit.take(old, now - 2 * MIN);
     await limit.take(fresh, now);
     await store.cleanup(now);
-    const hash = (k: string) => createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:${k}`).digest("hex");
+    const hash = (k: string) => createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:teste:${k}`).digest("hex");
     expect(
       await database
         .select()

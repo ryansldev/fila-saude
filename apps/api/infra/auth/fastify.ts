@@ -31,7 +31,9 @@ export function webRequest(req: FastifyRequest): Request {
   }
   // Sem IP (a conexão caiu no meio do pedido), vai sem o cabeçalho, e não com "undefined".
   if (req.ip) headers.set("x-forwarded-for", req.ip);
-  const url = new URL(req.url, `${req.protocol}://${req.headers.host}`);
+  // No HTTP/2 o host vem em `:authority`, não em `Host`.
+  const host = req.headers.host ?? req.headers[":authority"];
+  const url = new URL(req.url, `${req.protocol}://${host}`);
   const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.body !== undefined;
   return new Request(url, { method: req.method, headers, ...(hasBody ? { body: JSON.stringify(req.body) } : {}) });
 }

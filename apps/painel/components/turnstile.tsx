@@ -27,7 +27,12 @@ function loadTurnstile(): Promise<TurnstileApi> {
     const script = document.createElement("script");
     script.src = SCRIPT;
     script.async = true;
-    script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("turnstile")));
+    script.onload = () => {
+      if (window.turnstile) return resolve(window.turnstile);
+      // Carregou sem o widget (bloqueador): a próxima tentativa carrega de novo.
+      loading = null;
+      reject(new Error("turnstile"));
+    };
     script.onerror = () => {
       loading = null;
       reject(new Error("turnstile"));

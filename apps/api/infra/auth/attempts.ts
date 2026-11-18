@@ -115,7 +115,8 @@ export class SlidingLimit {
      * `pendingMs`: uma vaga reservada com `pending` vence nesse tempo, a menos que `confirm` a firme (o
      * pedido caiu sem resposta e não deve ocupar a janela inteira).
      */
-    private readonly options: { max: number; windowMs: number; pendingMs?: number },
+    // `name` separa as contagens de cada limite no mesmo armazenamento (as chaves podem coincidir).
+    private readonly options: { name: string; max: number; windowMs: number; pendingMs?: number },
     private readonly store: AttemptStore = attemptStore,
   ) {}
 
@@ -137,7 +138,7 @@ export class SlidingLimit {
    * token da vaga, que `drop` devolve ou `confirm` firma, ou `null` se a janela está cheia.
    */
   reserve(key: string, now: number): Promise<string | null> {
-    return this.store.update<Entries, string | null>(`sliding:${key}`, now, (state) => {
+    return this.store.update<Entries, string | null>(`sliding:${this.options.name}:${key}`, now, (state) => {
       const recent = this.live(state, now);
       if (recent.length >= this.options.max) return this.save(recent, null);
       const id = randomUUID();
@@ -148,7 +149,7 @@ export class SlidingLimit {
 
   /** Firma a vaga reservada: ela conta a janela toda. */
   confirm(key: string, token: string, now: number): Promise<void> {
-    return this.store.update<Entries, void>(`sliding:${key}`, now, (state) =>
+    return this.store.update<Entries, void>(`sliding:${this.options.name}:${key}`, now, (state) =>
       this.save(
         this.live(state, now).map((e) => (e.id === token ? { at: e.at, id: e.id } : e)),
         undefined,
@@ -158,7 +159,7 @@ export class SlidingLimit {
 
   /** Devolve a vaga (o que ela contava não aconteceu). */
   drop(key: string, token: string, now: number): Promise<void> {
-    return this.store.update<Entries, void>(`sliding:${key}`, now, (state) =>
+    return this.store.update<Entries, void>(`sliding:${this.options.name}:${key}`, now, (state) =>
       this.save(
         this.live(state, now).filter((e) => e.id !== token),
         undefined,

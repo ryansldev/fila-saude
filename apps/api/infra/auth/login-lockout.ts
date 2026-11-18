@@ -116,9 +116,11 @@ export class Lockout {
 
 // AD-064: o IP que a API pôs no pedido (`webRequest`), com IPv6 pelo bloco /64. Sem IP (a conexão caiu no
 // meio do pedido), todos esses dividem uma contagem.
-function ipOf(ctx: HookCtx): string {
-  return ipKey(ctx.request instanceof Request ? (ctx.request.headers.get("x-forwarded-for") ?? "") : "");
+function clientIp(ctx: HookCtx): string | undefined {
+  return ctx.request instanceof Request ? (ctx.request.headers.get("x-forwarded-for") ?? undefined) : undefined;
 }
+
+const ipOf = (ctx: HookCtx): string => ipKey(clientIp(ctx) ?? "");
 
 /**
  * RN-ID-04 / AD-064 / AD-065: 5 senhas erradas seguidas, do mesmo login e do mesmo IP, bloqueiam esse par por 15 min
@@ -139,15 +141,12 @@ export function loginLockout(
   onError: (error: unknown) => void = (error) => attemptErrors.log(error, "contagem do login"),
   // AD-062: confere o captcha do pedido (cabeçalho `x-captcha-token`) na Cloudflare.
   captchaOk: (ctx: HookCtx) => Promise<boolean> = (ctx) =>
-    verifyCaptcha(
-      ctx.request instanceof Request ? ctx.request.headers.get(CAPTCHA_HEADER) : null,
-      ctx.request instanceof Request ? (ctx.request.headers.get("x-forwarded-for") ?? undefined) : undefined,
-    ),
+    verifyCaptcha(ctx.request instanceof Request ? ctx.request.headers.get(CAPTCHA_HEADER) : null, clientIp(ctx)),
 ) {
   // O bloqueio dura 15 min; uma reserva sem resposta vence em 1 min (a senha leva bem menos).
   const pairs = new Lockout({ max: 5, blockMs: 15 * 60_000, reservationMs: 60_000 }, store);
   // A vaga do teto vence em 1 min como a do par, se o pedido cair sem resposta; senha errada a firma.
-  const ceiling = new SlidingLimit({ max: 30, windowMs: 60 * 60_000, pendingMs: 60_000 }, store);
+  const ceiling = new SlidingLimit({ name: "login-ceiling", max: 30, windowMs: 60 * 60_000, pendingMs: 60_000 }, store);
   // O objeto do pedido é o mesmo no `before` e no `after`: guarda o token da reserva dele.
   const tokens = new WeakMap<object, { pair: string; ceiling: string | null }>();
   const holder = (ctx: HookCtx): object => (ctx.request as object | undefined) ?? ctx.context;
@@ -167,7 +166,11 @@ export function loginLockout(
       // não passam mais que as vagas que faltam. O par vem antes do captcha: par bloqueado não gasta o
       // token na Cloudflare.
       const ceilingToken = await ceiling.reserve(login(ctx, scope), now);
-      const r = await pairs.reserve(pair(ctx, scope), now);
+      // Se o banco falhar ao reservar o par, a vaga do teto volta (não fica presa por 1 min).
+      const r = await pairs.reserve(pair(ctx, scope), now).catch(async (error) => {
+        if (ceilingToken !== null) await ceiling.drop(login(ctx, scope), ceilingToken, now).catch(onError);
+        throw error;
+      });
       if (r === "blocked" || r === "busy") {
         if (ceilingToken !== null) await ceiling.drop(login(ctx, scope), ceilingToken, now);
         refuse(REFUSALS[r]);
