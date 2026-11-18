@@ -46,8 +46,12 @@ function build(slug: string, db: TenantDb) {
     advanced: { cookiePrefix: "fila-painel" },
     plugins: [username()],
     hooks: {
-      before: createAuthMiddleware(async (ctx) => lockout.before(ctx, slug)),
-      after: createAuthMiddleware(async (ctx) => lockout.after(ctx, slug)),
+      before: createAuthMiddleware(async (ctx) => {
+        await lockout.before(ctx, slug);
+      }),
+      after: createAuthMiddleware(async (ctx) => {
+        await lockout.after(ctx, slug);
+      }),
     },
   });
 }

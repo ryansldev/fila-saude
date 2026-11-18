@@ -14,6 +14,7 @@ const base = {
   CENTRAL_URL: "http://localhost:3333",
   MAILER: "database",
   TENANT_CACHE_TTL_MS: "0",
+  BETTER_AUTH_SECRET: "segredo-de-teste",
 };
 
 const single = {

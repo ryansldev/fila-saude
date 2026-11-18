@@ -152,14 +152,13 @@ export async function personFromRequest(
   if (digits) {
     // RN-ID-07: a resposta diz se o CPF tem conta; sem limite, uma conta varreria CPFs (oráculo).
     const key = `cpf:${p.patientId}`;
-    if (cpfLookups.blocked(key, Date.now()))
+    if (!(await cpfLookups.take(key, Date.now())))
       throw new ApiError(
         429,
         "cpf_lookup_limit",
         undefined,
         "Muitas pessoas informadas em pouco tempo. Tente de novo mais tarde ou procure a recepção.",
       );
-    cpfLookups.count(key, Date.now());
     const [owner] = await database.select({ id: patient.id }).from(patient).where(eq(patient.cpf, digits));
     if (owner?.id === p.patientId)
       throw new ApiError(409, "own_account_cpf", undefined, 'Esse é o seu CPF. Para se inscrever, escolha "para mim".');

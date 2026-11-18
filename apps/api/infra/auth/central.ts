@@ -130,7 +130,7 @@ export const authCentral = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       try {
-        lockout.before(ctx);
+        await lockout.before(ctx);
         if (ctx.path === "/sign-up/email") await prepareRegistration(bodyOf(ctx));
         if (ctx.path === "/update-user") {
           const session = await getSessionFromCtx(ctx).catch(() => null);
@@ -147,7 +147,7 @@ export const authCentral = betterAuth({
     // original mesmo quando o hook lança outro `APIError` (better-auth 1.6.23).
     after: createAuthMiddleware(async (ctx) => {
       const back = ctx.context.returned;
-      lockout.after(ctx);
+      await lockout.after(ctx);
       if (ctx.path !== "/sign-up/email" || !isAPIError(back)) return;
       if (!EXISTING_ACCOUNT_ERRORS.has(String(back.body?.code))) return;
       const cpf = bodyOf(ctx).cpf;

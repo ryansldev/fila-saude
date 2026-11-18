@@ -68,6 +68,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-060 | Refazer o questionário em casa no dia, com alerta de declaração falsa | ativa |
 | AD-061 | Acolhimento do técnico volta para o enfermeiro classificar | ativa |
 | AD-062 | Captcha da inscrição pública: Cloudflare Turnstile, depois da v0.1 | ativa |
+| AD-063 | Contagem de tentativas no Postgres (UNLOGGED, chave em HMAC) | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -317,6 +318,10 @@ O técnico de enfermagem chama na estação de triagem para o acolhimento e os s
 ### AD-062 · Captcha da inscrição pública: Cloudflare Turnstile, depois da v0.1
 2026-11-18 · ativa · Muda: RN-ID-07
 O captcha da RN-ID-07 é o Cloudflare Turnstile (grátis, sem limite de pedidos, quase sempre invisível). No app, entra por uma WebView que carrega uma página do widget num domínio nosso; a API confere o token na Cloudflare antes de inscrever em sessão pública. Se o desafio falhar no aparelho, a pessoa recebe um aviso e é levada à recepção. O Turnstile manda IP e sinais do aparelho à Cloudflare (EUA): é transferência internacional (LGPD, art. 33), que entra no contrato com o município e no aviso de privacidade (D5). O mesmo captcha serve ao painel, se a contagem por IP usar captcha depois de muitos erros. **Não entra na v0.1**: fica para antes do piloto, como o resto da T3.3 adiada. **Por quê:** decisão sua, 2026-11-18 ("posso adicionar essa parte do cloudflare na spec. MAS, não acho que precisamos pra essa v0.1 ainda"), depois do [discovery do captcha](features/mvp-filas/discovery-captcha.md): segura melhor que a prova de trabalho e bate com o que um edital espera.
+
+### AD-063 · Contagem de tentativas no Postgres (UNLOGGED, chave em HMAC)
+2026-11-18 · ativa · Muda: RN-ID-04, RN-ID-07
+A contagem de senhas erradas e de CPFs informados fica numa tabela UNLOGGED (`attempt`) do banco central, comum a todas as instâncias da API, e não mais na memória do processo. A chave é o HMAC (SHA-256 com o segredo da API) de CPF, login ou IP, nunca o valor. A linha some quando vence; os erros do login, depois de 7 dias sem tentativa (quem espaça os erros para escapar tenta no máximo 4 senhas por semana). O limitador do próprio better-auth segue em memória (janela de segundos). **Por quê:** decisão sua, 2026-11-18, depois do [discovery do armazenamento](features/mvp-filas/discovery-tentativas-armazenamento.md): não quebra com mais de uma instância nem num deploy, não acrescenta serviço (sem Redis, PD-07), e UNLOGGED deixa as contagens fora do WAL, do backup e das réplicas.
 
 ## Arquitetura
 

@@ -49,6 +49,8 @@ const envFields = z.object({
   MAILER: z.enum(["database", "smtp"]),
   TENANT_CACHE_TTL_MS: z.coerce.number().int().nonnegative(),
   AUTH_JWT_TTL: z.string().min(1).default("15m"),
+  // Segredo do better-auth; a contagem de tentativas (NC5) também o usa para o HMAC das chaves.
+  BETTER_AUTH_SECRET: z.string().min(1),
   // PD-39 / PD-24: origem do painel de cada município (`{slug}` trocado pelo slug), para CORS e trustedOrigins.
   PANEL_ORIGIN_TEMPLATE: z.string().includes("{slug}").default("http://{slug}.localhost:3000"),
   // NC5: proxies reversos (Caddy, nginx) cujo X-Forwarded-For a API aceita, separados por vírgula (IP ou

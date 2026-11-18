@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import env from "../env";
+import * as attempt from "./central/schema/attempt";
 import * as auth from "./central/schema/auth";
 import * as municipality from "./central/schema/municipality";
 import * as push from "./central/schema/push";
@@ -10,7 +11,7 @@ export const pool = new Pool({
   connectionString: env.DATABASE_URL,
 });
 
-export const schemaCentral = { ...auth, ...municipality, ...push };
+export const schemaCentral = { ...attempt, ...auth, ...municipality, ...push };
 
 const database = drizzle(pool, { schema: schemaCentral });
 

@@ -18,6 +18,10 @@ const allowedColumns = [
   "account.scope",
   "account.updated_at",
   "account.user_id",
+  // NC5: só o HMAC da chave e a contagem (nada de sintoma, documento ou fila).
+  "attempt.expires_at",
+  "attempt.key",
+  "attempt.state",
   "municipality.created_at",
   "municipality.database_ref",
   "municipality.id",
@@ -75,7 +79,7 @@ describe("banco central", () => {
 
     expect(result.rows[0]?.database).toBe("fila_central");
     const tables = result.rows.map((row) => row.table_name);
-    expect(tables).toEqual(["account", "municipality", "patient", "push_device", "session", "verification"]);
+    expect(tables).toEqual(["account", "attempt", "municipality", "patient", "push_device", "session", "verification"]);
   });
 
   it("INV-11: o central só tem colunas permitidas", async () => {

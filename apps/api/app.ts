@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import autoload from "@fastify/autoload";
 import Fastify, { type FastifyInstance } from "fastify";
+import { attemptErrors } from "infra/auth/attempts";
 import { trustProxyOption } from "infra/auth/fastify";
 import { patientPlugin } from "infra/auth/patient-session";
 import database from "infra/database";
@@ -23,6 +24,9 @@ export async function buildApp(options: { logger?: boolean } = {}): Promise<Fast
     logger: options.logger ?? true,
     trustProxy: trustProxyOption(env.TRUSTED_PROXIES),
   });
+
+  // NC5: erros da contagem de tentativas que não derrubam o pedido vão para o log do app.
+  attemptErrors.log = (err, what) => app.log.error({ err }, what);
 
   app.setErrorHandler(handleError);
   app.setNotFoundHandler(notFound);
