@@ -36,7 +36,7 @@ describe("RN-ID-04: bloqueio temporário depois de senhas erradas seguidas", () 
     expect((await signIn(data.cpf, data.password)).status).toBe(200);
   });
 
-  it("NC5: inventar um IP no X-Forwarded-For a cada tentativa não escapa do bloqueio do par", async () => {
+  it("AD-064: inventar um IP no X-Forwarded-For a cada tentativa não escapa do bloqueio do par", async () => {
     const data = orchestrator.registrationData();
     await orchestrator.registerPatient(data);
     for (let i = 0; i < 5; i++)

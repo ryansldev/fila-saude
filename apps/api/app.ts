@@ -19,13 +19,13 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 // Monta o app sem `listen` (servidor e testes de infra usam o mesmo).
 export async function buildApp(options: { logger?: boolean } = {}): Promise<FastifyInstance> {
-  // NC5: só os proxies de TRUSTED_PROXIES informam o IP do cliente (`req.ip`); sem eles, vale a conexão.
+  // AD-064: só os proxies de TRUSTED_PROXIES informam o IP do cliente (`req.ip`); sem eles, vale a conexão.
   const app = Fastify({
     logger: options.logger ?? true,
     trustProxy: trustProxyOption(env.TRUSTED_PROXIES),
   });
 
-  // NC5: erros da contagem de tentativas que não derrubam o pedido vão para o log do app.
+  // AD-063: erros da contagem de tentativas que não derrubam o pedido vão para o log do app.
   attemptErrors.log = (err, what) => app.log.error({ err }, what);
 
   app.setErrorHandler(handleError);

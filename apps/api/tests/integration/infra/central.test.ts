@@ -18,7 +18,7 @@ const allowedColumns = [
   "account.scope",
   "account.updated_at",
   "account.user_id",
-  // NC5: só o HMAC da chave e a contagem (nada de sintoma, documento ou fila).
+  // AD-063: só o HMAC da chave e a contagem (nada de sintoma, documento ou fila).
   "attempt.expires_at",
   "attempt.key",
   "attempt.state",

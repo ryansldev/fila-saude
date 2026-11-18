@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 const key = () => `teste:${crypto.randomUUID()}`;
 const MIN = 60_000;
 
-describe("NC5: contagem de tentativas no Postgres", () => {
+describe("AD-063: contagem de tentativas no Postgres", () => {
   it("a tabela é UNLOGGED (não vai para o WAL, o backup nem as réplicas)", async () => {
     const r = await database.execute<{ relpersistence: string }>(
       sql`select relpersistence from pg_class where relname = 'attempt'`,

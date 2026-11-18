@@ -70,6 +70,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-062 | Captcha: Cloudflare Turnstile, já na v0.1 (inscrição pública e login acima do teto) | ativa |
 | AD-063 | Contagem de tentativas no Postgres (UNLOGGED, chave em HMAC) | ativa |
 | AD-064 | Bloqueio do login pelo par (login, IP), com teto por login que pede captcha | ativa |
+| AD-065 | Regras e valores das tentativas de login e de CPFs informados | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -327,6 +328,10 @@ A contagem de senhas erradas e de CPFs informados fica numa tabela UNLOGGED (`at
 ### AD-064 · Bloqueio do login pelo par (login, IP), com teto por login que pede captcha
 2026-11-18 · ativa · Muda: RN-ID-04
 5 senhas erradas seguidas bloqueiam o par (login, IP) por 15 min, e não mais o login inteiro: quem erra de propósito bloqueia só o próprio par, e o dono do login, de outro IP (o da UBS), entra. No IPv6 conta o bloco /64. Contra quem troca de IP (VPN, botnet), há um teto por login: passadas 30 senhas erradas numa hora, somando os IPs, o login pede captcha (AD-062) a todos até a hora passar. O IP é só o que a API resolve pelos proxies de `TRUSTED_PROXIES`; o `X-Forwarded-For` do cliente é ignorado. **Por quê:** decisão sua, 2026-11-18 ("acho que IP é melhor", com a dúvida da VPN), depois do [discovery da contagem por IP](features/mvp-filas/discovery-bloqueio-por-ip.md): bloquear só por IP derrubaria a UBS inteira (NAT) e os vizinhos de operadora (CGNAT), e só por login deixava qualquer um trancar o "gestor".
+
+### AD-065 · Regras e valores das tentativas de login e de CPFs informados
+2026-11-18 · ativa · Muda: RN-ID-04, RN-ID-07
+**Login** (app pelo CPF, painel pelo login do município; o login por e-mail fica fechado nos dois): 5 senhas erradas seguidas do mesmo par (login, IP) bloqueiam o par por 15 min inteiros (AD-064). Não há janela: só acertar zera, e espaçar os erros não escapa (até 7 dias sem tentativa, AD-063). Só senha errada conta; corpo inválido e login ou senha vazios, não. A tentativa é reservada antes de conferir a senha: pedidos em paralelo não passam do limite e ouvem "espere alguns segundos"; cada pedido solta a própria reserva, que vence em 1 min se o pedido cair. Teto por login: 30 senhas erradas por hora, somando os IPs; passado o teto, o login pede captcha (AD-062), e acertar não zera o teto. Sem IP no pedido, esses pedidos dividem um par. **Inscrição:** 20 CPFs de outras pessoas por conta por hora, em janela deslizante (a resposta diz se o CPF tem conta). **Os valores são de partida** (5, 15 min, 30 por hora, 20 por hora), sem medição com uso real; reajustar com o piloto se for preciso. **Por quê:** decisão sua, 2026-11-18 ("siga a convenção base e depois reajustamos se necessário"); era a NC5 das decisões para revisar. Discoveries: [armazenamento](features/mvp-filas/discovery-tentativas-armazenamento.md), [captcha](features/mvp-filas/discovery-captcha.md), [IP](features/mvp-filas/discovery-bloqueio-por-ip.md).
 
 ## Arquitetura
 

@@ -2,7 +2,7 @@
 
 **Decidido (AD-062): Cloudflare Turnstile, já na v0.1.** A recomendação abaixo (ALTCHA) ficou como registro do que foi pesado.
 
-Pergunta (NC5, item b): a RN-ID-07 pede "limitar tentativas e exigir captcha na inscrição em sessão pública". O limite já existe; o captcha, não. Qual usar?
+Pergunta (NC5, item b; decidido na AD-062, valores na AD-065): a RN-ID-07 pede "limitar tentativas e exigir captcha na inscrição em sessão pública". O limite já existe; o captcha, não. Qual usar?
 
 Fontes no fim. Preços e limites mudaram várias vezes em 2026 e vêm em parte de blogs de concorrentes: conferir na página de cada fornecedor antes de contratar.
 

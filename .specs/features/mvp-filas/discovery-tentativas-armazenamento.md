@@ -1,6 +1,6 @@
 # Discovery: onde guardar a contagem de tentativas (2026-11-18)
 
-Pergunta (NC5, item a): hoje a contagem de senhas erradas (RN-ID-04) e de CPFs informados (RN-ID-07) fica na memória do processo da API. Onde ela deve ficar?
+Pergunta (NC5, item a; decidido na AD-063, valores na AD-065): hoje a contagem de senhas erradas (RN-ID-04) e de CPFs informados (RN-ID-07) fica na memória do processo da API. Onde ela deve ficar?
 
 Fontes no fim. É pesquisa de mesa somada à leitura do código; nada foi medido em produção.
 

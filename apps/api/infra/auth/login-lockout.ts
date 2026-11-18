@@ -45,7 +45,7 @@ const FORGET_AFTER_MS = 7 * 24 * 60 * 60_000;
 /**
  * Erros seguidos por chave, até acertar (sem janela: espaçar as tentativas não escapa da contagem).
  * No máximo, bloqueia por `blockMs`. Guardado num `AttemptStore` (o Postgres, comum a todas as
- * instâncias, NC5).
+ * instâncias, AD-063).
  */
 export class Lockout {
   constructor(
@@ -114,14 +114,14 @@ export class Lockout {
   }
 }
 
-// NC5: o IP que a API pôs no pedido (`webRequest`), com IPv6 pelo bloco /64. Sem IP (a conexão caiu no
+// AD-064: o IP que a API pôs no pedido (`webRequest`), com IPv6 pelo bloco /64. Sem IP (a conexão caiu no
 // meio do pedido), todos esses dividem uma contagem.
 function ipOf(ctx: HookCtx): string {
   return ipKey(ctx.request instanceof Request ? (ctx.request.headers.get("x-forwarded-for") ?? "") : "");
 }
 
 /**
- * RN-ID-04 / NC5: 5 senhas erradas seguidas, do mesmo login e do mesmo IP, bloqueiam esse par por 15 min
+ * RN-ID-04 / AD-064 / AD-065: 5 senhas erradas seguidas, do mesmo login e do mesmo IP, bloqueiam esse par por 15 min
  * (acertar zera). Quem erra de propósito bloqueia só o próprio par; o dono do login, de outro IP, entra.
  * Contra quem troca de IP (VPN, botnet), há um teto por login: 30 senhas erradas numa hora, somando os
  * IPs, e o login passa a pedir captcha a todos até a hora passar. Acertar zera o par, mas não o teto:

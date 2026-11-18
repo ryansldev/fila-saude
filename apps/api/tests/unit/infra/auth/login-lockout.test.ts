@@ -102,7 +102,7 @@ describe("gancho do login (RN-ID-04)", () => {
   });
 });
 
-describe("NC5: contagem pelo par (login, IP) e teto por login", () => {
+describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
   const ctxOf = (ip: string, password = "errada", extra: Record<string, string> = {}) => ({
     path: "/sign-in/username",
     body: { username: "gestor", password },

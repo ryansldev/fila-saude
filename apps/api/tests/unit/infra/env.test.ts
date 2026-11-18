@@ -65,23 +65,23 @@ describe("envSchema", () => {
     expect(r.success).toBe(false);
     expect(r.error?.issues[0]?.path).toEqual(["TENANT_SLUG"]);
   });
-  it("NC5: TRUSTED_PROXIES vazio quer dizer nenhum proxy (a API usa o IP da conexão)", () => {
+  it("AD-064: TRUSTED_PROXIES vazio quer dizer nenhum proxy (a API usa o IP da conexão)", () => {
     expect(envSchema.parse(base).TRUSTED_PROXIES).toEqual([]);
   });
 
-  it("NC5: TRUSTED_PROXIES aceita IPs e faixas separados por vírgula", () => {
+  it("AD-064: TRUSTED_PROXIES aceita IPs e faixas separados por vírgula", () => {
     const result = envSchema.parse({ ...base, TRUSTED_PROXIES: "127.0.0.1, 10.0.0.0/8,::1" });
     expect(result.TRUSTED_PROXIES).toEqual(["127.0.0.1", "10.0.0.0/8", "::1"]);
   });
 
-  it("NC5: TRUSTED_PROXIES com item inválido é recusado (um erro de digitação não pode virar 'confiar em todos')", () => {
+  it("AD-064: TRUSTED_PROXIES com item inválido é recusado (um erro de digitação não pode virar 'confiar em todos')", () => {
     const result = envSchema.safeParse({ ...base, TRUSTED_PROXIES: "127.0.0.1,caddy" });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(["TRUSTED_PROXIES"]);
     expect(envSchema.safeParse({ ...base, TRUSTED_PROXIES: "10.0.0.0/33" }).success).toBe(false);
   });
 
-  it("NC5: TRUSTED_PROXIES aceita os nomes do Fastify (loopback, linklocal, uniquelocal)", () => {
+  it("AD-064: TRUSTED_PROXIES aceita os nomes do Fastify (loopback, linklocal, uniquelocal)", () => {
     const result = envSchema.parse({ ...base, TRUSTED_PROXIES: "loopback,uniquelocal" });
     expect(result.TRUSTED_PROXIES).toEqual(["loopback", "uniquelocal"]);
   });

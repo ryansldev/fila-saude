@@ -1,7 +1,7 @@
 import { ipKey } from "infra/auth/ip";
 import { describe, expect, it } from "vitest";
 
-describe("NC5: IP da contagem", () => {
+describe("AD-064: IP da contagem", () => {
   it("IPv4 fica como está", () => {
     expect(ipKey("203.0.113.7")).toBe("203.0.113.7");
   });

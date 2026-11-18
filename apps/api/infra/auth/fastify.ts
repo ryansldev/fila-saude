@@ -14,12 +14,12 @@ const DROPPED_HEADERS = new Set([
   "x-forwarded-host",
 ]);
 
-/** NC5: o `trustProxy` do Fastify; sem proxy configurado, nenhum (nunca `true`, que confiaria em todos). */
+/** AD-064: o `trustProxy` do Fastify; sem proxy configurado, nenhum (nunca `true`, que confiaria em todos). */
 export function trustProxyOption(proxies: string[]): string[] | false {
   return proxies.length > 0 ? proxies : false;
 }
 
-// NC5: o better-auth (limitador e contagem de tentativas) lê o IP do `X-Forwarded-For`. Ele recebe só o
+// AD-064: o better-auth (limitador e contagem de tentativas) lê o IP do `X-Forwarded-For`. Ele recebe só o
 // `req.ip`, que o Fastify resolve pelo `trustProxy` (TRUSTED_PROXIES): o que o cliente inventa no
 // cabeçalho não chega lá, e atrás do proxy cada pessoa tem o próprio IP, não o do proxy. O endereço usa o
 // `Host` do pedido, o mesmo que resolve o município, e não o `X-Forwarded-Host`.

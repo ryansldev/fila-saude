@@ -8,7 +8,7 @@ import env from "infra/env";
 export type Change<S, T> = { state: S | null; expiresAt: number; result: T };
 
 /**
- * NC5: onde a contagem de tentativas fica. `update` lê o estado da chave, aplica `change` e grava, sem
+ * AD-063: onde a contagem de tentativas fica. `update` lê o estado da chave, aplica `change` e grava, sem
  * outro pedido mexer na mesma chave no meio (é o que segura pedidos em paralelo). Estado vencido chega
  * como `null`.
  */
@@ -38,7 +38,7 @@ export const attemptErrors = {
 };
 
 /**
- * NC5: tabela UNLOGGED `attempt` no banco central, comum a todas as instâncias da API. A chave é o HMAC
+ * AD-063: tabela UNLOGGED `attempt` no banco central, comum a todas as instâncias da API. A chave é o HMAC
  * (com o segredo da API) de CPF, login ou IP, nunca o valor. Cada mudança é uma transação curta: um só
  * `insert … on conflict do update … returning` cria ou trava a linha e a lê, então nenhuma outra
  * transação a apaga no meio. Pedidos da mesma chave na mesma instância esperam em fila aqui, e não

@@ -21,7 +21,7 @@ describe("limite de consultas de CPF (RN-ID-07): janela deslizante", () => {
   });
 });
 
-describe("NC5: regras diferentes no mesmo armazenamento", () => {
+describe("AD-063: regras diferentes no mesmo armazenamento", () => {
   it("a mesma chave em duas regras não se mistura (cada regra tem o próprio prefixo)", async () => {
     const { Lockout } = await import("infra/auth/login-lockout");
     const store = new MemoryStore();

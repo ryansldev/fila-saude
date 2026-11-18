@@ -26,7 +26,7 @@ async function seen(
 
 const forwardedFor = (options: Parameters<typeof seen>[0]) => seen(options, (r) => r.headers.get("x-forwarded-for"));
 
-describe("NC5: IP confiável do cliente", () => {
+describe("AD-064: IP confiável do cliente", () => {
   it("sem proxy confiável, o X-Forwarded-For do cliente é ignorado: vale o IP da conexão", async () => {
     expect(await forwardedFor({ remoteAddress: "203.0.113.7", header: "198.51.100.1" })).toBe("203.0.113.7");
   });

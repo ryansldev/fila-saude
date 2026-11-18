@@ -17,7 +17,7 @@ function groups(ip: string): number[] {
 }
 
 /**
- * NC5: o IP como a contagem de tentativas o usa. IPv4 como está (o mapeado em IPv6 vira IPv4); IPv6 pelo
+ * AD-064: o IP como a contagem de tentativas o usa. IPv4 como está (o mapeado em IPv6 vira IPv4); IPv6 pelo
  * bloco /64, que cada cliente recebe inteiro e dentro do qual troca de endereço à vontade.
  */
 export function ipKey(ip: string): string {

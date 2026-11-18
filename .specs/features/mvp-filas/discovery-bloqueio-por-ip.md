@@ -1,6 +1,6 @@
 # Discovery: contar tentativas por IP (2026-11-18)
 
-Pergunta (NC5, item c): hoje 5 senhas erradas bloqueiam o login por 15 minutos, e quem sabe um login ("gestor", "recepcao") consegue mantê-lo bloqueado errando de propósito. Contar por IP resolve? E uma VPN não fura isso?
+Pergunta (NC5, item c; decidido na AD-064, valores na AD-065): hoje 5 senhas erradas bloqueiam o login por 15 minutos, e quem sabe um login ("gestor", "recepcao") consegue mantê-lo bloqueado errando de propósito. Contar por IP resolve? E uma VPN não fura isso?
 
 Fontes no fim. É pesquisa de mesa somada à leitura do código do better-auth; nada foi medido em produção.
 

@@ -1,4 +1,4 @@
--- NC5: UNLOGGED (escrito à mão; o drizzle-kit não gera): contagens de minutos ficam fora do WAL, do backup e das réplicas.
+-- AD-063: UNLOGGED (escrito à mão; o drizzle-kit não gera): contagens de minutos ficam fora do WAL, do backup e das réplicas.
 CREATE UNLOGGED TABLE "attempt" (
 	"key" text PRIMARY KEY NOT NULL,
 	"state" jsonb NOT NULL,
