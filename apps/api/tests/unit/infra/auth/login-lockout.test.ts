@@ -82,7 +82,8 @@ describe("gancho do login (RN-ID-04)", () => {
     const flaky: AttemptStore = {
       async update(key, now, change) {
         calls++;
-        if (calls > 1) throw new Error("banco fora");
+        // As duas do `before` (teto e par) passam; a do `after` falha.
+        if (calls > 2) throw new Error("banco fora");
         return new MemoryStore().update(key, now, change);
       },
     };
@@ -96,6 +97,110 @@ describe("gancho do login (RN-ID-04)", () => {
     const ctx = { path: "/sign-in/username", body: { username: "x", password: "y" }, request, context: {} };
     await hooks.before(ctx);
     await expect(hooks.after({ ...ctx, context: { returned: { ok: true } } })).resolves.toBeUndefined();
-    expect(errors).toHaveLength(1);
+    // Par e teto tentam cada um por si; os dois erros vão para o log.
+    expect(errors).toHaveLength(2);
+  });
+});
+
+describe("NC5: contagem pelo par (login, IP) e teto por login", () => {
+  const ctxOf = (ip: string, password = "errada", extra: Record<string, string> = {}) => ({
+    path: "/sign-in/username",
+    body: { username: "gestor", password },
+    request: new Request("http://x/", { headers: { "x-forwarded-for": ip, ...extra } }),
+    context: {} as { returned?: unknown },
+  });
+  const wrong = { body: { code: "INVALID_USERNAME_OR_PASSWORD" }, status: "UNAUTHORIZED" };
+  const attempt = async (hooks: ReturnType<typeof import("infra/auth/login-lockout").loginLockout>, ip: string) => {
+    const ctx = ctxOf(ip);
+    try {
+      await hooks.before(ctx);
+    } catch (error) {
+      return (error as { body?: { error?: string } }).body?.error;
+    }
+    const { APIError } = await import("better-auth/api");
+    await hooks.after({ ...ctx, context: { returned: new APIError("UNAUTHORIZED", wrong.body) } });
+    return "wrong";
+  };
+
+  it("5 erros de um IP bloqueiam só aquele par: o mesmo login, de outro IP, segue tentando", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(() => "gestor", new MemoryStore());
+    for (let i = 0; i < 5; i++) expect(await attempt(hooks, "203.0.113.7")).toBe("wrong");
+    expect(await attempt(hooks, "203.0.113.7")).toBe("login_locked");
+    expect(await attempt(hooks, "198.51.100.1")).toBe("wrong");
+  });
+
+  it("no IPv6, o bloco /64 é um IP só (trocar de endereço dentro dele não zera)", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(() => "gestor", new MemoryStore());
+    for (let i = 0; i < 5; i++) expect(await attempt(hooks, `2001:db8:1:2::${i + 1}`)).toBe("wrong");
+    expect(await attempt(hooks, "2001:db8:1:2::99")).toBe("login_locked");
+    expect(await attempt(hooks, "2001:db8:1:3::1")).toBe("wrong");
+  });
+
+  it("passado o teto (30 erros por hora no login, somando os IPs), qualquer IP precisa de captcha", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(() => "gestor", new MemoryStore());
+    for (let i = 0; i < 30; i++) expect(await attempt(hooks, `198.51.100.${i}`)).toBe("wrong");
+    expect(await attempt(hooks, "203.0.113.200")).toBe("captcha_required");
+  });
+
+  it("o teto vale também em paralelo: 100 IPs ao mesmo tempo não passam de 30 senhas conferidas", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(() => "gestor", new MemoryStore());
+    const results = await Promise.all(
+      Array.from({ length: 100 }, async (_, i) => {
+        try {
+          await hooks.before(ctxOf(`198.51.${Math.floor(i / 5)}.${i}`));
+          return "passou";
+        } catch {
+          return "recusado";
+        }
+      }),
+    );
+    expect(results.filter((r) => r === "passou")).toHaveLength(30);
+  });
+
+  it("senha certa não gasta o teto", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(() => "gestor", new MemoryStore());
+    for (let i = 0; i < 40; i++) {
+      const ctx = ctxOf(`198.51.100.${i}`, "certa");
+      await hooks.before(ctx);
+      await hooks.after({ ...ctx, context: { returned: { ok: true } } });
+    }
+    expect(await attempt(hooks, "203.0.113.200")).toBe("wrong");
+  });
+
+  it("passado o teto, um captcha resolvido deixa tentar; um que não passa, não", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const store = new MemoryStore();
+    const verify = async (ctx: { request?: unknown }) =>
+      (ctx.request as Request).headers.get("x-captcha-token") === "bom";
+    const hooks = loginLockout(() => "gestor", store, undefined, verify);
+    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+    const without = ctxOf("203.0.113.9");
+    await expect(hooks.before(without)).rejects.toMatchObject({ body: { error: "captcha_required" } });
+    await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "ruim" }))).rejects.toMatchObject({
+      body: { error: "captcha_required" },
+    });
+    await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "bom" }))).resolves.toBeUndefined();
+  });
+
+  it("par bloqueado responde 'bloqueado' sem gastar o captcha na Cloudflare", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    let asked = 0;
+    const verify = async () => {
+      asked++;
+      return true;
+    };
+    const hooks = loginLockout(() => "gestor", new MemoryStore(), undefined, verify);
+    for (let i = 0; i < 25; i++) await attempt(hooks, `198.51.100.${i}`);
+    for (let i = 0; i < 5; i++) await attempt(hooks, "203.0.113.9");
+    asked = 0;
+    await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "bom" }))).rejects.toMatchObject({
+      body: { error: "login_locked" },
+    });
+    expect(asked).toBe(0);
   });
 });

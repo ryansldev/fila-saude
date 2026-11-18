@@ -18,7 +18,7 @@ Senha de todos: `exemplo123`. O seed cria a sessão pública **Curativos** come�
 | # | Quem | Onde | O que fazer | O que se vê |
 | --- | --- | --- | --- | --- |
 | 1 | Paciente | App | Entrar com a Carla (CPF `39053344705`) ou criar conta; escolher "Município Exemplo" | Tela "Olá, Carla" com a Odontologia aguardando |
-| 2 | Paciente | App → Agenda | Tocar em "Curativos", "Para mim", responder (problema novo, leve; gestante) | Aviso de que a prioridade é conferida; inscrição confirmada |
+| 2 | Paciente | App → Agenda | Tocar em "Curativos", "Para mim", responder (problema novo, leve; gestante) | Aviso de que a prioridade é conferida; a gaveta "só um instante" (captcha, AD-062) se resolve sozinha; inscrição confirmada |
 | 3 | Paciente | App | Marcar um sinal de alarme numa nova tentativa | Tela "Procure atendimento agora" com o botão 192; não entra na fila |
 | 4 | Gerente | Painel → Fila do dia | Entrar como `gerente`, escolher a sessão de Curativos, "Abrir sessão" | Senhas V-001.. remotas; no app, a senha e "Venha agora"/posição |
 | 5 | Recepção | Painel → QR de entrada | Entrar como `recepcao` e deixar a tela do QR aberta no monitor | QR que muda a cada 30 s |

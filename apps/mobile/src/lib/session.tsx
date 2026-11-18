@@ -25,7 +25,8 @@ type Session = {
   explainedNotices: boolean;
   turnOnNotices(): Promise<void>;
   skipNotices(): Promise<void>;
-  signIn(cpf: string, password: string): Promise<void>;
+  /** `captcha`: o token do Turnstile, depois do teto de erros no login (AD-064). */
+  signIn(cpf: string, password: string, captcha?: string): Promise<void>;
   register(data: RegistrationData): Promise<void>;
   chooseMunicipality(slug: string): Promise<void>;
   leave(): Promise<void>;
@@ -144,7 +145,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       await markExplained();
     },
     skipNotices: markExplained,
-    signIn: async (cpf, password) => storeToken(await signIn(API_URL, cpf, password)),
+    signIn: async (cpf, password, captcha) => storeToken(await signIn(API_URL, cpf, password, fetch, captcha)),
     register: async (data) => storeToken(await register(API_URL, data)),
     chooseMunicipality: async (slug) => {
       await storage.save(MUNICIPALITY_KEY, slug);

@@ -4,7 +4,7 @@ import { entry } from "infra/database/municipal/schema/entry";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { loggedInUser, occupation } from "tests/panel";
-import { queueScenario, ROUTINE, signUpPerson } from "tests/queue";
+import { CAPTCHA_OK, queueScenario, ROUTINE, signUpPerson } from "tests/queue";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let c: Awaited<ReturnType<typeof queueScenario>>;
@@ -45,7 +45,7 @@ afterAll(() => orchestrator.dropMunicipalities());
 async function fromApp(method: string, path: string, cookie: string, body?: unknown): Promise<unknown> {
   const r = await fetch(`${webserver.origin}${path}`, {
     method: method,
-    headers: { cookie, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+    headers: { cookie, ...(body !== undefined ? { "content-type": "application/json" } : {}), ...CAPTCHA_OK },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   return r.json();

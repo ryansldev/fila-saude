@@ -3,6 +3,9 @@ import { signUp } from "infra/queue/sign-up";
 import orchestrator from "tests/orchestrator";
 import { loggedInUser, municipalityWithUnit, occupation, unitManagerRoles } from "tests/panel";
 
+// AD-062: token que a API aceita no lugar do Turnstile, só com NODE_ENV=test (sem ir à Cloudflare).
+export const CAPTCHA_OK = { "x-captcha-token": "teste-captcha-ok" };
+
 export const ROUTINE: Answers = { alarms: [], reason: "follow_up", severity: null, conditions: [], groups: [] };
 
 // Município com unidade, admin, enfermeiro, um serviço, duas estações de atendimento e uma sessão pública de hoje.

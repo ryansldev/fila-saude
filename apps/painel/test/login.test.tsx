@@ -1,10 +1,19 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useEffect } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "@/components/login-form";
 import { type Api, ApiError } from "@/lib/api";
 import { ApiProvider } from "@/lib/api-context";
 
 afterEach(cleanup);
+
+// AD-062: o widget da Cloudflare não roda no jsdom; aqui ele "resolve" sozinho e entrega um token.
+vi.mock("@/components/turnstile", () => ({
+  Turnstile: ({ onToken }: { onToken: (token: string) => void }) => {
+    useEffect(() => onToken("token-da-cloudflare"), [onToken]);
+    return <p>verificação</p>;
+  },
+}));
 
 function apiWithLogin(sign: () => Promise<unknown>, me: unknown = undefined): Api {
   const nothing = async () => undefined as never;
@@ -135,5 +144,30 @@ describe("login", () => {
     expect((button as HTMLButtonElement).disabled).toBe(true);
     release({});
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/unidades"));
+  });
+
+  it("AD-064: passado o teto do login, mostra o captcha e, resolvido, tenta de novo com o token", async () => {
+    const sent: (Record<string, string> | undefined)[] = [];
+    const me = {
+      id: "p1",
+      name: "Ana",
+      login: "ana.souza",
+      unitLinks: [],
+      roles: [{ role: "sms_management", unitId: null }],
+      profiles: [{ profile: "sms_management", unitId: null }],
+    };
+    const api = apiWithLogin(async () => ({}), me);
+    const post = api.post;
+    api.post = (async (path: string, body: unknown, headers?: Record<string, string>) => {
+      sent.push(headers);
+      if (sent.length === 1)
+        throw new ApiError(429, "captcha_required", "Confirme que você não é um robô para tentar de novo.");
+      return post(path, body);
+    }) as Api["post"];
+    const navigate = build(api);
+    fillAndSend();
+    expect(await screen.findByText("Confirme que você não é um robô para tentar de novo.")).toBeDefined();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/unidades"));
+    expect(sent[1]).toEqual({ "x-captcha-token": "token-da-cloudflare" });
   });
 });

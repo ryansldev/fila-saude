@@ -1,6 +1,7 @@
 "use client";
 
 import { type StaffMe, staffMeSchema } from "@fila-saude/schemas/auth";
+import { CAPTCHA_HEADER } from "@fila-saude/schemas/captcha";
 import { createContext, createElement, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { type Api, ApiError } from "@/lib/api";
 import { useApi } from "@/lib/api-context";
@@ -64,7 +65,7 @@ function useOwnMe(fetch: boolean): MeState {
   return state;
 }
 
-export type LoginError = "credentials" | "locked" | "rate_limited" | "network";
+export type LoginError = "credentials" | "locked" | "captcha" | "rate_limited" | "network";
 export type LoginState =
   | { state: "idle" }
   | { state: "sending" }
@@ -74,6 +75,8 @@ function classifySignIn(e: unknown): LoginError {
   if (e instanceof ApiError) {
     // RN-ID-04: senhas erradas seguidas bloqueiam por um tempo (passa sozinho).
     if (e.error === "login_locked") return "locked";
+    // AD-064: passado o teto de erros no login, só entra com o captcha resolvido.
+    if (e.error === "captcha_required") return "captcha";
     // Outro 429 é o limite curto do próprio better-auth (segundos), não o bloqueio do login.
     if (e.status === 429) return "rate_limited";
     // 400 no campo login: o plugin username recusou o formato (ex.: com espaço); para quem digita, é login errado.
@@ -83,9 +86,10 @@ function classifySignIn(e: unknown): LoginError {
 }
 
 /** PD-23: login do painel pelo `login` (plugin username do better-auth). */
-async function signIn(api: Api, login: string, password: string): Promise<StaffMe> {
+async function signIn(api: Api, login: string, password: string, captcha?: string): Promise<StaffMe> {
   try {
-    await api.post(LOGIN_PATH, { username: login, password: password });
+    const headers = captcha ? { [CAPTCHA_HEADER]: captcha } : undefined;
+    await api.post(LOGIN_PATH, { username: login, password: password }, headers);
   } catch (e) {
     throw new EntryError(classifySignIn(e), e instanceof ApiError ? e.userMessage : undefined);
   }
@@ -111,10 +115,10 @@ export function useLogin(navigate: (href: string) => void) {
   const [state, setState] = useState<LoginState>({ state: "idle" });
 
   const send = useCallback(
-    async (login: string, password: string) => {
+    async (login: string, password: string, captcha?: string) => {
       setState({ state: "sending" });
       try {
-        const me = await signIn(api, login, password);
+        const me = await signIn(api, login, password, captcha);
         navigate(panelMenu(me.profiles)[0]?.href ?? "/em-breve");
       } catch (e) {
         if (e instanceof EntryError) setState({ state: "error", error: e.kind, message: e.userMessage });

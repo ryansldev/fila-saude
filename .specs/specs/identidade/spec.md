@@ -15,7 +15,8 @@ QUANDO alguém tentar criar conta com um CPF já usado, O SISTEMA DEVE recusar e
 A recepção PODE vincular a identidade à pessoa presencialmente (documento com foto) e bloquear uma conta usurpada. Conta bloqueada não loga.
 
 **RN-ID-04 · Senha**
-O SISTEMA DEVE exigir política mínima de senha, guardá-la com hash forte e bloquear temporariamente após tentativas seguidas de erro.
+O SISTEMA DEVE exigir política mínima de senha, guardá-la com hash forte e bloquear temporariamente após tentativas seguidas de erro do mesmo login e do mesmo IP; passado um teto de erros no login, somando os IPs, DEVE pedir captcha.
+*Decisões: AD-063, AD-064.*
 
 **RN-ID-05 · Nível de confiança**
 A conta nasce **não verificada** e já pode entrar na lista de espera e se inscrever em sessão pública; o agendador vê "identidade não verificada" na ficha. QUANDO a recepção conferir o documento com foto, O SISTEMA DEVE marcar a conta como **verificada** para todas as unidades e para sempre, registrando quem verificou, quando e por qual método (presencial; gov.br depois do piloto, opcional por município).

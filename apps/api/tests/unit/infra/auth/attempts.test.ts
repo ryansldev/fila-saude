@@ -32,3 +32,15 @@ describe("NC5: regras diferentes no mesmo armazenamento", () => {
     expect(await limit.take("k", 0)).toBe(false);
   });
 });
+
+describe("AD-064: vaga do teto reservada antes de conferir a senha", () => {
+  it("sem confirmação, a vaga vence em pouco tempo (o pedido caiu); confirmada, fica a janela toda", async () => {
+    const a = new SlidingLimit({ max: 1, windowMs: 60 * MIN, pendingMs: MIN }, new MemoryStore());
+    expect(await a.reserve("k", 0)).not.toBeNull();
+    expect(await a.reserve("k", 30_000)).toBeNull();
+    const t = await a.reserve("k", MIN + 1);
+    expect(t).not.toBeNull();
+    await a.confirm("k", t as string, MIN + 2);
+    expect(await a.reserve("k", 50 * MIN)).toBeNull();
+  });
+});

@@ -27,7 +27,7 @@ export class ApiError extends Error {
 
 export type Api = {
   get<T = unknown>(path: string): Promise<T>;
-  post<T = unknown>(path: string, body?: unknown): Promise<T>;
+  post<T = unknown>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T>;
   patch<T = unknown>(path: string, body?: unknown): Promise<T>;
   put<T = unknown>(path: string, body?: unknown): Promise<T>;
   del<T = unknown>(path: string): Promise<T>;
@@ -49,10 +49,11 @@ async function readJson(answer: Response): Promise<unknown> {
 
 /** Cliente da API do painel: cookie da sessão sempre (`credentials: "include"`), JSON na ida e na volta. */
 export function createApi(base: string, fetcher: typeof fetch = fetch, onExpire?: () => void): Api {
-  async function request<T>(method: Method, path: string, body?: unknown): Promise<T> {
-    const init: RequestInit = { method: method, credentials: "include", headers: { accept: "application/json" } };
+  async function request<T>(method: Method, path: string, body?: unknown, extra?: Record<string, string>): Promise<T> {
+    const headers: Record<string, string> = { accept: "application/json", ...extra };
+    const init: RequestInit = { method: method, credentials: "include", headers };
     if (body !== undefined) {
-      init.headers = { accept: "application/json", "content-type": "application/json" };
+      headers["content-type"] = "application/json";
       init.body = JSON.stringify(body);
     }
 
@@ -80,7 +81,7 @@ export function createApi(base: string, fetcher: typeof fetch = fetch, onExpire?
 
   return {
     get: (path) => request("GET", path),
-    post: (path, body) => request("POST", path, body),
+    post: (path, body, headers) => request("POST", path, body, headers),
     patch: (path, body) => request("PATCH", path, body),
     put: (path, body) => request("PUT", path, body),
     del: (path) => request("DELETE", path),

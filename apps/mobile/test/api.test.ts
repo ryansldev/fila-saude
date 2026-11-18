@@ -90,3 +90,20 @@ describe("cliente da API do app (PD-34, token)", () => {
     ).rejects.toMatchObject({ error: "cpf_in_use", message: "Procure a recepção" });
   });
 });
+
+describe("AD-062: token do captcha", () => {
+  it("o login manda o token no cabeçalho, quando há", async () => {
+    const { requests, fetcher } = fake([json({}, 200, { "set-auth-token": "t" })]);
+    await signIn("http://api", "529.982.247-25", "senha-forte", fetcher, "tok-cf");
+    expect((requests[0]?.init.headers as Record<string, string>)["x-captcha-token"]).toBe("tok-cf");
+  });
+
+  it("o post da inscrição leva o token no cabeçalho", async () => {
+    const { requests, fetcher } = fake([json({ ok: 1 })]);
+    const api = createApi("http://api", async () => "tok", fetcher);
+    await api.post("/x", { a: 1 }, { "x-captcha-token": "tok-cf" });
+    const h = requests[0]?.init.headers as Record<string, string>;
+    expect(h["x-captcha-token"]).toBe("tok-cf");
+    expect(h.authorization).toBe("Bearer tok");
+  });
+});

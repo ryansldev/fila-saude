@@ -53,6 +53,10 @@ const envFields = z.object({
   BETTER_AUTH_SECRET: z.string().min(1),
   // PD-39 / PD-24: origem do painel de cada município (`{slug}` trocado pelo slug), para CORS e trustedOrigins.
   PANEL_ORIGIN_TEMPLATE: z.string().includes("{slug}").default("http://{slug}.localhost:3000"),
+  // AD-062: chaves do Cloudflare Turnstile (painel da Cloudflare). O padrão são as de teste, que sempre
+  // passam; em produção são recusadas.
+  TURNSTILE_SITE_KEY: z.string().min(1).default("1x00000000000000000000AA"),
+  TURNSTILE_SECRET_KEY: z.string().min(1).default("1x0000000000000000000000000000000AA"),
   // NC5: proxies reversos (Caddy, nginx) cujo X-Forwarded-For a API aceita, separados por vírgula (IP ou
   // faixa). Vazio: nenhum, e vale o IP da conexão. Atrás de um proxy sem isso, todos parecem o proxy.
   TRUSTED_PROXIES: z
@@ -70,9 +74,18 @@ const envFields = z.object({
     ),
 });
 
+// Chaves de teste da Cloudflare começam por 1x, 2x ou 3x seguido de zeros.
+const TURNSTILE_TEST_KEY = /^[123]x0{10,}/;
+
 // PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido e
-// TENANT_DATABASE_URL o boot falha.
+// TENANT_DATABASE_URL o boot falha. AD-062: em produção, o Turnstile precisa das chaves de verdade.
 export const envSchema = envFields.superRefine((values, ctx) => {
+  if (values.NODE_ENV === "production") {
+    for (const key of ["TURNSTILE_SITE_KEY", "TURNSTILE_SECRET_KEY"] as const) {
+      if (TURNSTILE_TEST_KEY.test(values[key]))
+        ctx.addIssue({ code: "custom", path: [key], message: `${key} de teste não vale em produção (AD-062)` });
+    }
+  }
   if (values.TENANT_MODE !== "single") {
     // No modo multi um TENANT_SLUG esquecido no ambiente faria a varredura atender só esse município.
     if (values.TENANT_SLUG)

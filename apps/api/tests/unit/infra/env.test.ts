@@ -85,4 +85,20 @@ describe("envSchema", () => {
     const result = envSchema.parse({ ...base, TRUSTED_PROXIES: "loopback,uniquelocal" });
     expect(result.TRUSTED_PROXIES).toEqual(["loopback", "uniquelocal"]);
   });
+
+  it("AD-062: sem chaves do Turnstile, valem as de teste da Cloudflare (sempre passam)", () => {
+    const result = envSchema.parse(base);
+    expect(result.TURNSTILE_SITE_KEY).toBe("1x00000000000000000000AA");
+    expect(result.TURNSTILE_SECRET_KEY).toBe("1x0000000000000000000000000000000AA");
+  });
+
+  it("AD-062: em produção, as chaves de teste do Turnstile são recusadas", () => {
+    const result = envSchema.safeParse({ ...base, NODE_ENV: "production" });
+    expect(result.success).toBe(false);
+    const paths = result.error?.issues.map((i) => i.path.join("."));
+    expect(paths).toContain("TURNSTILE_SITE_KEY");
+    expect(paths).toContain("TURNSTILE_SECRET_KEY");
+    const real = { TURNSTILE_SITE_KEY: "0x4AAAAAAAreal", TURNSTILE_SECRET_KEY: "0x4AAAAAAArealsecret" };
+    expect(envSchema.safeParse({ ...base, NODE_ENV: "production", ...real }).success).toBe(true);
+  });
 });

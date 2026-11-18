@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { CAPTCHA_HEADER } from "@fila-saude/schemas/captcha";
 import { APIError, isAPIError } from "better-auth/api";
+import { verifyCaptcha } from "infra/captcha";
 import { ApiError, errorBody } from "infra/errors";
-import { type AttemptStore, attemptErrors, attemptStore, type Change } from "./attempts";
+import { type AttemptStore, attemptErrors, attemptStore, type Change, SlidingLimit } from "./attempts";
 import { bodyOf } from "./body";
+import { ipKey } from "./ip";
 
 type HookCtx = { path: string; body?: unknown; request?: unknown; context: { returned?: unknown } };
 
@@ -16,6 +19,12 @@ const REFUSALS = {
     "login_locked",
     undefined,
     "Muitas tentativas com senha errada. Espere 15 minutos e tente de novo.",
+  ),
+  captcha: new ApiError(
+    429,
+    "captcha_required",
+    undefined,
+    "Muitas tentativas erradas neste login. Confirme que você não é um robô para tentar de novo.",
   ),
   busy: new ApiError(
     429,
@@ -105,13 +114,22 @@ export class Lockout {
   }
 }
 
+// NC5: o IP que a API pôs no pedido (`webRequest`), com IPv6 pelo bloco /64. Sem IP (a conexão caiu no
+// meio do pedido), todos esses dividem uma contagem.
+function ipOf(ctx: HookCtx): string {
+  return ipKey(ctx.request instanceof Request ? (ctx.request.headers.get("x-forwarded-for") ?? "") : "");
+}
+
 /**
- * RN-ID-04: 5 senhas erradas seguidas bloqueiam o login por 15 min (acertar zera). Usado pelo login do
- * paciente (por CPF) e da equipe (por município e login). Um contador por módulo: a chave já separa
- * os municípios, e o auth de um município pode ser recriado sem zerar a contagem.
+ * RN-ID-04 / NC5: 5 senhas erradas seguidas, do mesmo login e do mesmo IP, bloqueiam esse par por 15 min
+ * (acertar zera). Quem erra de propósito bloqueia só o próprio par; o dono do login, de outro IP, entra.
+ * Contra quem troca de IP (VPN, botnet), há um teto por login: 30 senhas erradas numa hora, somando os
+ * IPs, e o login passa a pedir captcha a todos até a hora passar. Acertar zera o par, mas não o teto:
+ * quem ataca de muitos IPs não ganha 30 tentativas novas quando o dono entra. Usado pelo login do paciente (por CPF)
+ * e da equipe (por município e login).
  *
- * Cada pedido reserva uma vaga antes de conferir a senha (pedidos em paralelo não passam todos) e, no
- * fim, solta a própria vaga; só conta quando a resposta é "senha errada". Pedido sem login ou sem senha
+ * Cada pedido reserva uma vaga no par antes de conferir a senha (pedidos em paralelo não passam todos) e,
+ * no fim, solta a própria vaga; só conta quando a resposta é "senha errada". Pedido sem login ou sem senha
  * não reserva nem conta. Se o pedido cair sem resposta (o better-auth não roda o `after` em erro que
  * não é `APIError`), a reserva vence sozinha em 1 min.
  */
@@ -119,41 +137,73 @@ export function loginLockout(
   keyOf: (ctx: HookCtx) => string,
   store: AttemptStore = attemptStore,
   onError: (error: unknown) => void = (error) => attemptErrors.log(error, "contagem do login"),
+  // AD-062: confere o captcha do pedido (cabeçalho `x-captcha-token`) na Cloudflare.
+  captchaOk: (ctx: HookCtx) => Promise<boolean> = (ctx) =>
+    verifyCaptcha(
+      ctx.request instanceof Request ? ctx.request.headers.get(CAPTCHA_HEADER) : null,
+      ctx.request instanceof Request ? (ctx.request.headers.get("x-forwarded-for") ?? undefined) : undefined,
+    ),
 ) {
   // O bloqueio dura 15 min; uma reserva sem resposta vence em 1 min (a senha leva bem menos).
-  const attempts = new Lockout({ max: 5, blockMs: 15 * 60_000, reservationMs: 60_000 }, store);
+  const pairs = new Lockout({ max: 5, blockMs: 15 * 60_000, reservationMs: 60_000 }, store);
+  // A vaga do teto vence em 1 min como a do par, se o pedido cair sem resposta; senha errada a firma.
+  const ceiling = new SlidingLimit({ max: 30, windowMs: 60 * 60_000, pendingMs: 60_000 }, store);
   // O objeto do pedido é o mesmo no `before` e no `after`: guarda o token da reserva dele.
-  const tokens = new WeakMap<object, string>();
+  const tokens = new WeakMap<object, { pair: string; ceiling: string | null }>();
   const holder = (ctx: HookCtx): object => (ctx.request as object | undefined) ?? ctx.context;
-  const key = (ctx: HookCtx, scope: string) => `${scope}:${keyOf(ctx)}`;
+  const login = (ctx: HookCtx, scope: string) => `${scope}:${keyOf(ctx)}`;
+  const pair = (ctx: HookCtx, scope: string) => `${login(ctx, scope)}|${ipOf(ctx)}`;
+  const refuse = (error: ApiError) => {
+    // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
+    throw new APIError(error.status as 400, errorBody(error));
+  };
   return {
     async before(ctx: HookCtx, scope = "") {
       if (ctx.path !== LOGIN) return;
       const body = bodyOf(ctx);
       if (!body.username || !body.password) return;
-      const r = await attempts.reserve(key(ctx, scope), Date.now());
-      if (r !== "blocked" && r !== "busy") return void tokens.set(holder(ctx), r);
-      const error = REFUSALS[r];
-      // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
-      throw new APIError(error.status as 400, errorBody(error));
+      const now = Date.now();
+      // A vaga no teto é reservada antes de conferir a senha, como a do par: em paralelo, de muitos IPs,
+      // não passam mais que as vagas que faltam. O par vem antes do captcha: par bloqueado não gasta o
+      // token na Cloudflare.
+      const ceilingToken = await ceiling.reserve(login(ctx, scope), now);
+      const r = await pairs.reserve(pair(ctx, scope), now);
+      if (r === "blocked" || r === "busy") {
+        if (ceilingToken !== null) await ceiling.drop(login(ctx, scope), ceilingToken, now);
+        refuse(REFUSALS[r]);
+        return;
+      }
+      // Passado o teto, só segue com o captcha resolvido (e aí não ocupa vaga: a janela já está cheia).
+      if (ceilingToken === null && !(await captchaOk(ctx))) {
+        await pairs.release(pair(ctx, scope), r, now);
+        refuse(REFUSALS.captcha);
+      }
+      tokens.set(holder(ctx), { pair: r, ceiling: ceilingToken });
     },
     async after(ctx: HookCtx, scope = "") {
       if (ctx.path !== LOGIN) return;
-      const token = tokens.get(holder(ctx));
-      if (token === undefined) return;
+      const held = tokens.get(holder(ctx));
+      if (held === undefined) return;
       tokens.delete(holder(ctx));
-      const k = key(ctx, scope);
+      const k = pair(ctx, scope);
       const back = ctx.context.returned;
       const now = Date.now();
+      const wrong = isAPIError(back) && back.body?.code === WRONG_PASSWORD;
       // A resposta já está pronta (a sessão pode ter sido criada): uma falha ao contar vai para o log e não
-      // vira erro; a reserva vence sozinha em 1 min.
-      try {
-        if (!isAPIError(back)) await attempts.reset(k, token, now);
-        else if (back.body?.code === WRONG_PASSWORD) await attempts.fail(k, token, now);
-        else await attempts.release(k, token, now);
-      } catch (error) {
-        onError(error);
-      }
+      // vira erro; a reserva do par vence sozinha em 1 min. Par e teto, cada um por si: uma falha num não
+      // deixa de contar o outro. A vaga do teto só fica quando a senha estava errada.
+      await Promise.all([
+        (async () => {
+          if (!isAPIError(back)) await pairs.reset(k, held.pair, now);
+          else if (wrong) await pairs.fail(k, held.pair, now);
+          else await pairs.release(k, held.pair, now);
+        })().catch(onError),
+        (async () => {
+          if (held.ceiling === null) return;
+          if (wrong) await ceiling.confirm(login(ctx, scope), held.ceiling, now);
+          else await ceiling.drop(login(ctx, scope), held.ceiling, now);
+        })().catch(onError),
+      ]);
     },
   };
 }

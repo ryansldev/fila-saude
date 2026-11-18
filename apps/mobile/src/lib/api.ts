@@ -1,3 +1,4 @@
+import { CAPTCHA_HEADER } from "@fila-saude/schemas/captcha";
 /** Erro no formato da API (PD-22) mais o status; `no_connection` quando a rede falha. */
 export class ApiError extends Error {
   readonly status: number;
@@ -15,7 +16,8 @@ export class ApiError extends Error {
 
 export type Api = {
   get<T = unknown>(path: string): Promise<T>;
-  post<T = unknown>(path: string, body?: unknown): Promise<T>;
+  /** `headers`: o token do captcha (AD-062), na inscrição em sessão. */
+  post<T = unknown>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T>;
   put<T = unknown>(path: string, body?: unknown): Promise<T>;
   del<T = unknown>(path: string, body?: unknown): Promise<T>;
 };
@@ -36,8 +38,9 @@ async function requestRaw(
   method: "GET" | "POST" | "PUT" | "DELETE",
   token: string | null,
   body?: unknown,
+  extra?: Record<string, string>,
 ): Promise<{ answer: Response; data: Record<string, unknown> | undefined }> {
-  const headers: Record<string, string> = { accept: "application/json" };
+  const headers: Record<string, string> = { accept: "application/json", ...extra };
   if (token) headers.authorization = `Bearer ${token}`;
   if (body !== undefined) headers["content-type"] = "application/json";
   let answer: Response;
@@ -69,9 +72,14 @@ export function createApi(
   fetcher: typeof fetch = fetch,
   onExpire?: () => void,
 ): Api {
-  const request = async (url: string, method: "GET" | "POST" | "PUT" | "DELETE", body?: unknown) => {
+  const request = async (
+    url: string,
+    method: "GET" | "POST" | "PUT" | "DELETE",
+    body?: unknown,
+    headers?: Record<string, string>,
+  ) => {
     try {
-      return await requestRaw(fetcher, url, method, await token(), body);
+      return await requestRaw(fetcher, url, method, await token(), body, headers);
     } catch (err) {
       // Token vencido ou revogado: o app volta ao login em vez de repetir 401 a cada consulta.
       if (err instanceof ApiError && err.status === 401) onExpire?.();
@@ -80,11 +88,15 @@ export function createApi(
   };
   return {
     get: async <T>(path: string) => (await request(`${base}${path}`, "GET")).data as T,
-    post: async <T>(path: string, body?: unknown) => (await request(`${base}${path}`, "POST", body ?? {})).data as T,
+    post: async <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
+      (await request(`${base}${path}`, "POST", body ?? {}, headers)).data as T,
     put: async <T>(path: string, body?: unknown) => (await request(`${base}${path}`, "PUT", body ?? {})).data as T,
     del: async <T>(path: string, body?: unknown) => (await request(`${base}${path}`, "DELETE", body)).data as T,
   };
 }
+
+/** AD-062: cabeçalho em que o token do Turnstile vai à API. */
+export const captchaHeader = (token: string) => ({ [CAPTCHA_HEADER]: token });
 
 const onlyDigits = (s: string) => s.replace(/\D/g, "");
 
@@ -94,13 +106,23 @@ function tokenOf(r: Response): string {
   return t;
 }
 
-/** Login na central com CPF e senha (RN-ID-01); devolve o token. */
-export async function signIn(base: string, cpf: string, password: string, fetcher: typeof fetch = fetch) {
+/** Login na central com CPF e senha (RN-ID-01); devolve o token. `captcha`: depois do teto de erros (AD-064). */
+export async function signIn(
+  base: string,
+  cpf: string,
+  password: string,
+  fetcher: typeof fetch = fetch,
+  captcha?: string,
+) {
   try {
-    const { answer } = await requestRaw(fetcher, `${base}/v1/auth/sign-in/username`, "POST", null, {
-      username: onlyDigits(cpf),
-      password: password,
-    });
+    const { answer } = await requestRaw(
+      fetcher,
+      `${base}/v1/auth/sign-in/username`,
+      "POST",
+      null,
+      { username: onlyDigits(cpf), password: password },
+      captcha ? captchaHeader(captcha) : undefined,
+    );
     return tokenOf(answer);
   } catch (e) {
     if (e instanceof ApiError && (e.status === 401 || e.status === 400)) throw new ApiError(e.status, "credentials");

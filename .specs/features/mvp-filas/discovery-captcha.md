@@ -1,6 +1,6 @@
 # Discovery: captcha na inscrição pública (2026-11-18)
 
-**Decidido (AD-062): Cloudflare Turnstile, depois da v0.1.** A recomendação abaixo (ALTCHA) ficou como registro do que foi pesado.
+**Decidido (AD-062): Cloudflare Turnstile, já na v0.1.** A recomendação abaixo (ALTCHA) ficou como registro do que foi pesado.
 
 Pergunta (NC5, item b): a RN-ID-07 pede "limitar tentativas e exigir captcha na inscrição em sessão pública". O limite já existe; o captcha, não. Qual usar?
 

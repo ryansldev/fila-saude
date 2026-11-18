@@ -67,8 +67,9 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-059 | Vermelho fica na unidade; encaminhar à emergência é à parte | ativa |
 | AD-060 | Refazer o questionário em casa no dia, com alerta de declaração falsa | ativa |
 | AD-061 | Acolhimento do técnico volta para o enfermeiro classificar | ativa |
-| AD-062 | Captcha da inscrição pública: Cloudflare Turnstile, depois da v0.1 | ativa |
+| AD-062 | Captcha: Cloudflare Turnstile, já na v0.1 (inscrição pública e login acima do teto) | ativa |
 | AD-063 | Contagem de tentativas no Postgres (UNLOGGED, chave em HMAC) | ativa |
+| AD-064 | Bloqueio do login pelo par (login, IP), com teto por login que pede captcha | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -315,13 +316,17 @@ Quem está na fila do dia ainda em casa refaz o questionário pelo app e o risco
 2026-11-17 · ativa · Muda: RN-PERF-05, RN-TRI-03
 O técnico de enfermagem chama na estação de triagem para o acolhimento e os sinais vitais, mas não manda cor (a API recusa). Ao finalizar, a pessoa volta presente à fila da triagem, marcada como acolhida; quem classifica (enfermeiro) a chama antes dos outros e a manda para o atendimento com a cor. O técnico não chama de novo quem já acolheu. **Por quê:** decisão sua, 2026-11-17 ("volta para o enfermeiro"): a classificação de risco é ato privativo do enfermeiro (Cofen 661/2021) e a pessoa não pode ir ao atendimento sem ela.
 
-### AD-062 · Captcha da inscrição pública: Cloudflare Turnstile, depois da v0.1
+### AD-062 · Captcha: Cloudflare Turnstile, já na v0.1 (inscrição pública e login acima do teto)
 2026-11-18 · ativa · Muda: RN-ID-07
-O captcha da RN-ID-07 é o Cloudflare Turnstile (grátis, sem limite de pedidos, quase sempre invisível). No app, entra por uma WebView que carrega uma página do widget num domínio nosso; a API confere o token na Cloudflare antes de inscrever em sessão pública. Se o desafio falhar no aparelho, a pessoa recebe um aviso e é levada à recepção. O Turnstile manda IP e sinais do aparelho à Cloudflare (EUA): é transferência internacional (LGPD, art. 33), que entra no contrato com o município e no aviso de privacidade (D5). O mesmo captcha serve ao painel, se a contagem por IP usar captcha depois de muitos erros. **Não entra na v0.1**: fica para antes do piloto, como o resto da T3.3 adiada. **Por quê:** decisão sua, 2026-11-18 ("posso adicionar essa parte do cloudflare na spec. MAS, não acho que precisamos pra essa v0.1 ainda"), depois do [discovery do captcha](features/mvp-filas/discovery-captcha.md): segura melhor que a prova de trabalho e bate com o que um edital espera.
+O captcha da RN-ID-07 é o Cloudflare Turnstile (grátis, sem limite de pedidos, quase sempre invisível). No app, entra por uma WebView que carrega uma página do widget num domínio nosso; a API confere o token na Cloudflare antes de inscrever em sessão pública. Se o desafio falhar no aparelho, a pessoa recebe um aviso e é levada à recepção. O Turnstile manda IP e sinais do aparelho à Cloudflare (EUA): é transferência internacional (LGPD, art. 33), que entra no contrato com o município e no aviso de privacidade (D5). O mesmo captcha serve ao login do app e do painel passado o teto de erros (AD-064); no painel e na prévia web do app, o widget entra direto na página. O token vai no cabeçalho `X-Captcha-Token` e vale uma vez. Em produção, a API recusa subir com as chaves de teste da Cloudflare. **Entra já na v0.1.** **Por quê:** decisão sua, 2026-11-18, depois do [discovery do captcha](features/mvp-filas/discovery-captcha.md): segura melhor que a prova de trabalho e bate com o que um edital espera. Primeiro ficou para depois da v0.1 ("não acho que precisamos pra essa v0.1 ainda"); no mesmo dia, com o teto do login pedindo captcha, virou "mete marcha direto no Cloudflare mesmo (já que é gratuito)".
 
 ### AD-063 · Contagem de tentativas no Postgres (UNLOGGED, chave em HMAC)
 2026-11-18 · ativa · Muda: RN-ID-04, RN-ID-07
 A contagem de senhas erradas e de CPFs informados fica numa tabela UNLOGGED (`attempt`) do banco central, comum a todas as instâncias da API, e não mais na memória do processo. A chave é o HMAC (SHA-256 com o segredo da API) de CPF, login ou IP, nunca o valor. A linha some quando vence; os erros do login, depois de 7 dias sem tentativa (quem espaça os erros para escapar tenta no máximo 4 senhas por semana). O limitador do próprio better-auth segue em memória (janela de segundos). **Por quê:** decisão sua, 2026-11-18, depois do [discovery do armazenamento](features/mvp-filas/discovery-tentativas-armazenamento.md): não quebra com mais de uma instância nem num deploy, não acrescenta serviço (sem Redis, PD-07), e UNLOGGED deixa as contagens fora do WAL, do backup e das réplicas.
+
+### AD-064 · Bloqueio do login pelo par (login, IP), com teto por login que pede captcha
+2026-11-18 · ativa · Muda: RN-ID-04
+5 senhas erradas seguidas bloqueiam o par (login, IP) por 15 min, e não mais o login inteiro: quem erra de propósito bloqueia só o próprio par, e o dono do login, de outro IP (o da UBS), entra. No IPv6 conta o bloco /64. Contra quem troca de IP (VPN, botnet), há um teto por login: passadas 30 senhas erradas numa hora, somando os IPs, o login pede captcha (AD-062) a todos até a hora passar. O IP é só o que a API resolve pelos proxies de `TRUSTED_PROXIES`; o `X-Forwarded-For` do cliente é ignorado. **Por quê:** decisão sua, 2026-11-18 ("acho que IP é melhor", com a dúvida da VPN), depois do [discovery da contagem por IP](features/mvp-filas/discovery-bloqueio-por-ip.md): bloquear só por IP derrubaria a UBS inteira (NAT) e os vizinhos de operadora (CGNAT), e só por login deixava qualquer um trancar o "gestor".
 
 ## Arquitetura
 

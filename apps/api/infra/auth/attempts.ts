@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { eq, lt, sql } from "drizzle-orm";
 import database from "infra/database";
 import { attempt } from "infra/database/central/schema/attempt";
@@ -102,26 +102,72 @@ export class PostgresStore implements AttemptStore {
 /** Armazenamento da API (o Postgres); os testes de unidade passam um `MemoryStore`. */
 export const attemptStore: AttemptStore = new PostgresStore();
 
-type Times = { times: number[] };
+type Entry = { at: number; id: string; pending?: boolean };
+type Entries = { entries: Entry[] };
 
 /**
- * RN-ID-07: limite em janela deslizante (no máximo `max` em `windowMs`). O bloqueio do login (RN-ID-04)
- * é outra regra: `login-lockout.ts`.
+ * RN-ID-07 / AD-064: limite em janela deslizante (no máximo `max` em `windowMs`). O bloqueio do login
+ * (RN-ID-04) é outra regra: `login-lockout.ts`.
  */
 export class SlidingLimit {
   constructor(
-    private readonly options: { max: number; windowMs: number },
+    /**
+     * `pendingMs`: uma vaga reservada com `pending` vence nesse tempo, a menos que `confirm` a firme (o
+     * pedido caiu sem resposta e não deve ocupar a janela inteira).
+     */
+    private readonly options: { max: number; windowMs: number; pendingMs?: number },
     private readonly store: AttemptStore = attemptStore,
   ) {}
 
-  /** Conta uma vez se ainda houver vaga, de uma vez só (em paralelo, ninguém passa do máximo). */
-  take(key: string, now: number): Promise<boolean> {
-    return this.store.update<Times, boolean>(`sliding:${key}`, now, (state) => {
-      const recent = (state?.times ?? []).filter((t) => t > now - this.options.windowMs);
-      const last = recent.at(-1) ?? now;
-      if (recent.length >= this.options.max)
-        return { state: { times: recent }, expiresAt: last + this.options.windowMs, result: false };
-      return { state: { times: [...recent, now] }, expiresAt: now + this.options.windowMs, result: true };
+  private live(state: Entries | null, now: number): Entry[] {
+    const pendingMs = this.options.pendingMs ?? this.options.windowMs;
+    return (state?.entries ?? []).filter(
+      (e) => e.at > now - this.options.windowMs && !(e.pending && e.at <= now - pendingMs),
+    );
+  }
+
+  private save<T>(entries: Entry[], result: T): Change<Entries, T> {
+    if (entries.length === 0) return { state: null, expiresAt: 0, result };
+    const last = Math.max(...entries.map((e) => e.at));
+    return { state: { entries }, expiresAt: last + this.options.windowMs, result };
+  }
+
+  /**
+   * Ocupa uma vaga na janela, se houver, de uma vez só (em paralelo, ninguém passa do máximo). Devolve o
+   * token da vaga, que `drop` devolve ou `confirm` firma, ou `null` se a janela está cheia.
+   */
+  reserve(key: string, now: number): Promise<string | null> {
+    return this.store.update<Entries, string | null>(`sliding:${key}`, now, (state) => {
+      const recent = this.live(state, now);
+      if (recent.length >= this.options.max) return this.save(recent, null);
+      const id = randomUUID();
+      const pending = this.options.pendingMs !== undefined;
+      return this.save([...recent, { at: now, id, ...(pending ? { pending } : {}) }], id);
     });
+  }
+
+  /** Firma a vaga reservada: ela conta a janela toda. */
+  confirm(key: string, token: string, now: number): Promise<void> {
+    return this.store.update<Entries, void>(`sliding:${key}`, now, (state) =>
+      this.save(
+        this.live(state, now).map((e) => (e.id === token ? { at: e.at, id: e.id } : e)),
+        undefined,
+      ),
+    );
+  }
+
+  /** Devolve a vaga (o que ela contava não aconteceu). */
+  drop(key: string, token: string, now: number): Promise<void> {
+    return this.store.update<Entries, void>(`sliding:${key}`, now, (state) =>
+      this.save(
+        this.live(state, now).filter((e) => e.id !== token),
+        undefined,
+      ),
+    );
+  }
+
+  /** Conta uma vez se ainda houver vaga. */
+  async take(key: string, now: number): Promise<boolean> {
+    return (await this.reserve(key, now)) !== null;
   }
 }

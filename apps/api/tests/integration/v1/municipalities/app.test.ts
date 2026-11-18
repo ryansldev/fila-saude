@@ -1,7 +1,7 @@
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { loggedInUser, occupation } from "tests/panel";
-import { queueScenario, ROUTINE } from "tests/queue";
+import { CAPTCHA_OK, queueScenario, ROUTINE } from "tests/queue";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let c: Awaited<ReturnType<typeof queueScenario>>;
@@ -35,7 +35,11 @@ afterAll(() => orchestrator.dropMunicipalities());
 async function app(method: string, path: string, cookie?: string, body?: unknown) {
   const r = await fetch(`${webserver.origin}${path}`, {
     method: method,
-    headers: { ...(cookie ? { cookie } : {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+    headers: {
+      ...(cookie ? { cookie } : {}),
+      ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      ...CAPTCHA_OK,
+    },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   const text = await r.text();

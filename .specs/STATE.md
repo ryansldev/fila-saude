@@ -13,8 +13,10 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 ## Esperando você
 
 - Clicar o [roteiro](features/mvp-filas/roteiro-v01.md) no navegador e no celular (inclui ler o QR novo com um celular de verdade). Reinicie `npm run dev:mobile` antes.
-- Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC). **NC5** (tentativas): em andamento: IP confiável (`TRUSTED_PROXIES`) e contagem no Postgres (AD-063) feitos; faltam o par login+IP com teto por login ([discovery](features/mvp-filas/discovery-bloqueio-por-ip.md)) e o Turnstile já na v0.1 (AD-062). **RV7** (80+ e os outros grupos legais) pede sua decisão.
+- Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC). **NC5** (tentativas) feita: IP confiável, contagem no Postgres (AD-063), par login+IP com teto (AD-064) e Turnstile já na v0.1 (AD-062). **RV7** (80+ e os outros grupos legais) pede sua decisão.
 - **CA1:** e-mail obrigatório no cadastro, opcional ou fora? (muda a API).
+- **Turnstile (antes do piloto):** criar o widget na conta da Cloudflare (hostnames da API central, dos painéis e do app web) e passar a chave do site e o segredo (`TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel, `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app). Até lá valem as chaves de teste, que sempre passam.
+- **Banco de dev:** ainda no conjunto antigo de migrações (NC2): apague os bancos `fila_*` do `postgres-dev` e rode `npm run dev:seed`.
 - **G6:** push no celular de verdade pede um projeto EAS (conta da empresa na Expo) e um build de desenvolvimento.
 
 ## Próximo passo

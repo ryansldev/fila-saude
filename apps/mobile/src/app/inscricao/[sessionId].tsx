@@ -4,6 +4,7 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { Building2, CalendarDays, Lock, Stethoscope, Timer, UserRound } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Text, View } from "react-native";
+import { CaptchaSheet } from "@/components/captcha-sheet";
 import {
   Badge,
   Banner,
@@ -24,7 +25,8 @@ import {
   Title,
 } from "@/components/ui";
 import { firstName, properName } from "@/lib/account";
-import { ApiError } from "@/lib/api";
+import { ApiError, captchaHeader } from "@/lib/api";
+import { needsCaptcha } from "@/lib/captcha";
 import { shortDay } from "@/lib/dates";
 import {
   type AppAnswers,
@@ -176,7 +178,16 @@ export default function SignUp() {
   // Para outra pessoa, só monta com a relação e a declaração que a pessoa marcou (senão, `null`).
   const buildForWhom = (q: "me" | "other") => signUpForWhom(q, other, relationship, declared);
 
-  async function send() {
+  // RN-ID-07 / AD-062: a inscrição em sessão pede o captcha; a gaveta abre no "inscrever" e envia ao resolver.
+  const [captcha, setCaptcha] = useState(false);
+
+  function submit() {
+    if (!complete(r) || sendingRef.current || !forWhom) return;
+    if (needsCaptcha(mode)) setCaptcha(true);
+    else void send();
+  }
+
+  async function send(captchaToken?: string) {
     if (!complete(r) || sendingRef.current || !forWhom) return;
     sendingRef.current = true;
     setSending(true);
@@ -190,7 +201,11 @@ export default function SignUp() {
     const body: SignUpInput | { answers: AppAnswers } =
       mode === "redo" || !pq ? { answers: r } : { forWhom: pq, answers: r };
     try {
-      const res = await s.api.post<{ state?: string; classification: { level: string } }>(endpoints.send, body);
+      const res = await s.api.post<{ state?: string; classification: { level: string } }>(
+        endpoints.send,
+        body,
+        captchaToken ? captchaHeader(captchaToken) : undefined,
+      );
       if (mode === "redo") return setStep({ kind: "redone", level: res.classification.level });
       if (mode === "list") return setStep({ kind: "list" });
       setStep({
@@ -235,7 +250,7 @@ export default function SignUp() {
       if (d === "support") return setStep({ kind: "support" });
     }
     if (step.index + 1 < screens.length) return setStep({ kind: "question", index: step.index + 1 });
-    void send();
+    submit();
   }
 
   // "para quem é" (+ os 4 passos da outra pessoa) + a apresentação + uma pergunta por tela; o resultado
@@ -691,6 +706,16 @@ export default function SignUp() {
   return (
     <Screen
       progress={{ current: index + 1 + before, total }}
+      footer={
+        <CaptchaSheet
+          open={captcha}
+          close={() => setCaptcha(false)}
+          onToken={(token) => {
+            setCaptcha(false);
+            void send(token);
+          }}
+        />
+      }
       onBack={() => {
         setError(null);
         if (index === 0 && mode === "redo") return router.canGoBack() ? router.back() : goToMyQueue();

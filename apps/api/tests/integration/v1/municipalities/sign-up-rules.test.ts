@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { localPerson } from "infra/database/municipal/schema/local-person";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
-import { queueScenario, ROUTINE } from "tests/queue";
+import { CAPTCHA_OK, queueScenario, ROUTINE } from "tests/queue";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // Revisão de 2026-11-14: o app não pode deixar tentar o que a regra proíbe, e a API recusa cedo e claro.
@@ -12,7 +12,11 @@ let c: Awaited<ReturnType<typeof queueScenario>>;
 async function app(method: string, path: string, cookie?: string, body?: unknown) {
   const r = await fetch(`${webserver.origin}${path}`, {
     method: method,
-    headers: { ...(cookie ? { cookie } : {}), ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+    headers: {
+      ...(cookie ? { cookie } : {}),
+      ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      ...CAPTCHA_OK,
+    },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   const text = await r.text();
