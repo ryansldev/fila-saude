@@ -67,6 +67,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-059 | Vermelho fica na unidade; encaminhar à emergência é à parte | ativa |
 | AD-060 | Refazer o questionário em casa no dia, com alerta de declaração falsa | ativa |
 | AD-061 | Acolhimento do técnico volta para o enfermeiro classificar | ativa |
+| AD-062 | Captcha da inscrição pública: Cloudflare Turnstile, depois da v0.1 | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -312,6 +313,10 @@ Quem está na fila do dia ainda em casa refaz o questionário pelo app e o risco
 ### AD-061 · Acolhimento do técnico volta para o enfermeiro classificar
 2026-11-17 · ativa · Muda: RN-PERF-05, RN-TRI-03
 O técnico de enfermagem chama na estação de triagem para o acolhimento e os sinais vitais, mas não manda cor (a API recusa). Ao finalizar, a pessoa volta presente à fila da triagem, marcada como acolhida; quem classifica (enfermeiro) a chama antes dos outros e a manda para o atendimento com a cor. O técnico não chama de novo quem já acolheu. **Por quê:** decisão sua, 2026-11-17 ("volta para o enfermeiro"): a classificação de risco é ato privativo do enfermeiro (Cofen 661/2021) e a pessoa não pode ir ao atendimento sem ela.
+
+### AD-062 · Captcha da inscrição pública: Cloudflare Turnstile, depois da v0.1
+2026-11-18 · ativa · Muda: RN-ID-07
+O captcha da RN-ID-07 é o Cloudflare Turnstile (grátis, sem limite de pedidos, quase sempre invisível). No app, entra por uma WebView que carrega uma página do widget num domínio nosso; a API confere o token na Cloudflare antes de inscrever em sessão pública. Se o desafio falhar no aparelho, a pessoa recebe um aviso e é levada à recepção. O Turnstile manda IP e sinais do aparelho à Cloudflare (EUA): é transferência internacional (LGPD, art. 33), que entra no contrato com o município e no aviso de privacidade (D5). O mesmo captcha serve ao painel, se a contagem por IP usar captcha depois de muitos erros. **Não entra na v0.1**: fica para antes do piloto, como o resto da T3.3 adiada. **Por quê:** decisão sua, 2026-11-18 ("posso adicionar essa parte do cloudflare na spec. MAS, não acho que precisamos pra essa v0.1 ainda"), depois do [discovery do captcha](features/mvp-filas/discovery-captcha.md): segura melhor que a prova de trabalho e bate com o que um edital espera.
 
 ## Arquitetura
 

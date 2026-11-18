@@ -1,5 +1,7 @@
 # Discovery: captcha na inscrição pública (2026-11-18)
 
+**Decidido (AD-062): Cloudflare Turnstile, depois da v0.1.** A recomendação abaixo (ALTCHA) ficou como registro do que foi pesado.
+
 Pergunta (NC5, item b): a RN-ID-07 pede "limitar tentativas e exigir captcha na inscrição em sessão pública". O limite já existe; o captcha, não. Qual usar?
 
 Fontes no fim. Preços e limites mudaram várias vezes em 2026 e vêm em parte de blogs de concorrentes: conferir na página de cada fornecedor antes de contratar.
@@ -25,7 +27,7 @@ Fontes no fim. Preços e limites mudaram várias vezes em 2026 e vêm em parte d
 
 **Outra via, a investigar:** a atestação do aparelho (Play Integrity no Android, App Attest no iOS) prova que o pedido vem do nosso app instalado de verdade, sem nada na tela. É forte contra robôs que chamam a API direto, mas pede um módulo nativo no Expo e conta no Google e na Apple. Não validei o suporte atual no Expo.
 
-## 3. Recomendação
+## 3. Recomendação (antes da decisão)
 
 **ALTCHA (prova de trabalho, hospedado por nós) na inscrição em sessão pública, na v0.1.**
 - Custo zero, nenhum dado com terceiros (fecha a questão da LGPD), e nada que o paciente idoso precise resolver.

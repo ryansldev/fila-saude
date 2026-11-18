@@ -30,7 +30,7 @@ QUANDO uma falta for de conta não verificada, O SISTEMA NÃO DEVE registrá-la 
 
 **RN-ID-07 · Robôs**
 O SISTEMA DEVE limitar tentativas e exigir captcha na inscrição em sessão pública.
-*Decisões: AD-017.*
+*Decisões: AD-017, AD-062.*
 
 ## Pré-cadastro na unidade
 
