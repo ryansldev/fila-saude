@@ -61,4 +61,23 @@ describe("POST /v1/panel/auth/sign-in/username", () => {
     expect(r.headers.get("access-control-allow-origin")).toBeNull();
     expect(r.status).toBe(403);
   });
+  it("RN-ID-04: 5 senhas erradas seguidas bloqueiam o login no município, até com a senha certa", async () => {
+    await orchestrator.createUserWithProfiles(a, "bloqueio", sms());
+    for (let i = 0; i < 5; i++) expect((await enter(a, "bloqueio", "senha-errada-1")).status).toBe(401);
+    const blocked = await enter(a, "bloqueio", "senha-forte-1");
+    expect(blocked.status).toBe(429);
+    expect(await blocked.json()).toMatchObject({ error: "too_many_attempts" });
+    // O mesmo login em outro município é outra pessoa: não fica bloqueado.
+    await orchestrator.createUserWithProfiles(b, "bloqueio", sms());
+    expect((await enter(b, "bloqueio", "senha-forte-1")).status).toBe(200);
+  });
+
+  it("RN-ID-04: login por e-mail não existe no painel (só pelo login, onde as tentativas contam)", async () => {
+    const r = await fetch(`${orchestrator.tenantOrigin(a)}/v1/panel/auth/sign-in/email`, {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: panelOrigin(a) },
+      body: JSON.stringify({ email: "gestor@painel.invalid", password: MANAGER_PASSWORD }),
+    });
+    expect(r.status).toBe(404);
+  });
 });

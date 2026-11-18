@@ -64,12 +64,14 @@ function useOwnMe(fetch: boolean): MeState {
   return state;
 }
 
-export type LoginError = "credentials" | "blocked" | "network";
+export type LoginError = "credentials" | "blocked" | "too_many" | "network";
 export type LoginState = { state: "idle" } | { state: "sending" } | { state: "error"; error: LoginError };
 
 function classifySignIn(e: unknown): LoginError {
   if (e instanceof ApiError) {
-    if (e.status === 423 || e.status === 429 || e.error === "blocked") return "blocked";
+    // RN-ID-04: senhas erradas seguidas bloqueiam por um tempo (passa sozinho); conta bloqueada é outra coisa.
+    if (e.status === 429) return "too_many";
+    if (e.status === 423 || e.error === "blocked") return "blocked";
     // 400 no campo login: o plugin username recusou o formato (ex.: com espaço); para quem digita, é login errado.
     if (e.status === 401 || (e.status === 400 && e.error === "invalid_input")) return "credentials";
   }

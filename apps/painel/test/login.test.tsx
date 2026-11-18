@@ -89,6 +89,17 @@ describe("login", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it("RN-ID-04: muitas senhas erradas (429) pede para esperar, não diz que a conta foi bloqueada", async () => {
+    build(
+      apiWithLogin(async () => {
+        throw new ApiError(429, "too_many_attempts");
+      }),
+    );
+    fillAndSend();
+    expect(await screen.findByText(/espere 15 minutos/i)).toBeDefined();
+    expect(screen.queryByText(/conta bloqueada/i)).toBeNull();
+  });
+
   it("login: 423 ou código bloqueado mostra conta bloqueada", async () => {
     build(
       apiWithLogin(async () => {
