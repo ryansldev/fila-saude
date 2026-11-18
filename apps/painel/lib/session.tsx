@@ -64,13 +64,18 @@ function useOwnMe(fetch: boolean): MeState {
   return state;
 }
 
-export type LoginError = "credentials" | "blocked" | "too_many" | "network";
-export type LoginState = { state: "idle" } | { state: "sending" } | { state: "error"; error: LoginError };
+export type LoginError = "credentials" | "blocked" | "locked" | "rate_limited" | "network";
+export type LoginState =
+  | { state: "idle" }
+  | { state: "sending" }
+  | { state: "error"; error: LoginError; message?: string | undefined };
 
 function classifySignIn(e: unknown): LoginError {
   if (e instanceof ApiError) {
     // RN-ID-04: senhas erradas seguidas bloqueiam por um tempo (passa sozinho); conta bloqueada é outra coisa.
-    if (e.status === 429) return "too_many";
+    if (e.error === "login_locked") return "locked";
+    // Outro 429 é o limite curto do próprio better-auth (segundos), não o bloqueio do login.
+    if (e.status === 429) return "rate_limited";
     if (e.status === 423 || e.error === "blocked") return "blocked";
     // 400 no campo login: o plugin username recusou o formato (ex.: com espaço); para quem digita, é login errado.
     if (e.status === 401 || (e.status === 400 && e.error === "invalid_input")) return "credentials";
@@ -83,7 +88,7 @@ async function signIn(api: Api, login: string, password: string): Promise<StaffM
   try {
     await api.post(LOGIN_PATH, { username: login, password: password });
   } catch (e) {
-    throw new EntryError(classifySignIn(e));
+    throw new EntryError(classifySignIn(e), e instanceof ApiError ? e.userMessage : undefined);
   }
   // Falha do /eu depois do sign-in (ex.: cookie não chegou) não é erro de credenciais.
   try {
@@ -94,7 +99,10 @@ async function signIn(api: Api, login: string, password: string): Promise<StaffM
 }
 
 class EntryError extends Error {
-  constructor(readonly kind: LoginError) {
+  constructor(
+    readonly kind: LoginError,
+    readonly userMessage?: string,
+  ) {
     super(kind);
   }
 }
@@ -110,7 +118,8 @@ export function useLogin(navigate: (href: string) => void) {
         const me = await signIn(api, login, password);
         navigate(panelMenu(me.profiles)[0]?.href ?? "/em-breve");
       } catch (e) {
-        setState({ state: "error", error: e instanceof EntryError ? e.kind : "network" });
+        if (e instanceof EntryError) setState({ state: "error", error: e.kind, message: e.userMessage });
+        else setState({ state: "error", error: "network" });
       }
     },
     [api, navigate],

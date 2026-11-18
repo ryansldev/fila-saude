@@ -2,17 +2,17 @@ import { randomUUID } from "node:crypto";
 import { properName } from "@fila-saude/domain";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
+import { createAuthMiddleware } from "better-auth/api";
 import { hashPassword } from "better-auth/crypto";
 import { username } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { panelAccount, staffUser } from "infra/database/municipal/schema/auth";
 import { schemaMunicipal, type TenantDatabase, type TenantDb } from "infra/database/tenants";
 import env from "infra/env";
-import { ApiError, errorBody } from "infra/errors";
+import { ApiError } from "infra/errors";
 import { panelOrigin } from "infra/panel/origin";
 import webserver from "infra/webserver";
-import { Attempts } from "./attempts";
+import { bodyOf, loginLockout } from "./login-lockout";
 
 // Origem da API no host do município (`http://<slug>.localhost:3333` em dev e teste).
 export function tenantApiOrigin(slug: string): string {
@@ -22,6 +22,13 @@ export function tenantApiOrigin(slug: string): string {
 }
 
 function build(slug: string, db: TenantDb) {
+  // RN-ID-04: por município e login (normalizado como o plugin username: sem espaços nas pontas, minúsculo).
+  const lockout = loginLockout(
+    (ctx) =>
+      `${slug}:${String(bodyOf(ctx).username ?? "")
+        .trim()
+        .toLowerCase()}`,
+  );
   return betterAuth({
     basePath: "/v1/panel/auth",
     baseURL: tenantApiOrigin(slug),
@@ -38,33 +45,11 @@ function build(slug: string, db: TenantDb) {
     advanced: { cookiePrefix: "fila-painel" },
     plugins: [username()],
     hooks: {
-      before: createAuthMiddleware(async (ctx) => {
-        if (ctx.path !== LOGIN || !loginAttempts.blocked(loginKey(slug, ctx), Date.now())) return;
-        const error = new ApiError(
-          429,
-          "too_many_attempts",
-          undefined,
-          "Muitas tentativas com senha errada. Espere 15 minutos e tente de novo.",
-        );
-        // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
-        throw new APIError(error.status as 400, errorBody(error));
-      }),
-      after: createAuthMiddleware(async (ctx) => {
-        if (ctx.path !== LOGIN) return;
-        if (isAPIError(ctx.context.returned)) loginAttempts.count(loginKey(slug, ctx), Date.now());
-        else loginAttempts.reset(loginKey(slug, ctx));
-      }),
+      before: createAuthMiddleware(async (ctx) => lockout.before(ctx)),
+      after: createAuthMiddleware(async (ctx) => lockout.after(ctx)),
     },
   });
 }
-
-// RN-ID-04: 5 senhas erradas seguidas no mesmo login do município bloqueiam por 15 min; acertar zera.
-const LOGIN = "/sign-in/username";
-const loginAttempts = new Attempts({ max: 5, windowMs: 15 * 60_000 });
-const loginKey = (slug: string, ctx: { body?: unknown }) => {
-  const body = ctx.body && typeof ctx.body === "object" ? (ctx.body as Record<string, unknown>) : {};
-  return `${slug}:${String(body.username ?? "").toLowerCase()}`;
-};
 
 export type PanelAuth = ReturnType<typeof build>;
 

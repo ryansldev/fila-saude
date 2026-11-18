@@ -97,6 +97,11 @@ describe("minha fila: estado de cada entrada, como no design do app", () => {
     expect(errorMessage(new ApiError(409, "duplicate"))).toBe("essa pessoa já está inscrita neste atendimento.");
     expect(errorMessage(new ApiError(0, "no_connection"))).toMatch(/^sem internet/);
     expect(errorMessage(new Error("x"))).toBe("não deu certo. tente de novo.");
+    // RN-ID-04: o bloqueio do login dura 15 min; o limite de CPFs diz o que fazer (vem do servidor).
+    expect(errorMessage(new ApiError(429, "login_locked"))).toMatch(/espere 15 minutos/);
+    expect(errorMessage(new ApiError(429, "cpf_lookup_limit", "Muitas pessoas informadas em pouco tempo."))).toBe(
+      "muitas pessoas informadas em pouco tempo.",
+    );
   });
 });
 

@@ -60,6 +60,7 @@ const MESSAGES: Record<string, string> = {
   not_authenticated: "sua sessão expirou. entre de novo.",
   no_permission: "o servidor recusou o pedido. feche o app, abra de novo e tente outra vez.",
   too_many_attempts: "muitas tentativas seguidas. espere um minuto e tente de novo.",
+  login_locked: "muitas tentativas com senha errada. espere 15 minutos e tente de novo.",
   credentials: "CPF ou senha incorretos.",
   duplicate: "essa pessoa já está inscrita neste atendimento.",
   emergency: "isso pode ser uma emergência. ligue 192.",

@@ -66,10 +66,25 @@ describe("POST /v1/panel/auth/sign-in/username", () => {
     for (let i = 0; i < 5; i++) expect((await enter(a, "bloqueio", "senha-errada-1")).status).toBe(401);
     const blocked = await enter(a, "bloqueio", "senha-forte-1");
     expect(blocked.status).toBe(429);
-    expect(await blocked.json()).toMatchObject({ error: "too_many_attempts" });
+    expect(await blocked.json()).toMatchObject({ error: "login_locked" });
     // O mesmo login em outro município é outra pessoa: não fica bloqueado.
     await orchestrator.createUserWithProfiles(b, "bloqueio", sms());
     expect((await enter(b, "bloqueio", "senha-forte-1")).status).toBe(200);
+  });
+
+  it("RN-ID-04: só senha errada conta (corpo inválido não); pedidos em paralelo não passam do limite", async () => {
+    await orchestrator.createUserWithProfiles(a, "paralelo", sms());
+    const malformed = () =>
+      fetch(`${orchestrator.tenantOrigin(a)}/v1/panel/auth/sign-in/username`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: panelOrigin(a) },
+        body: JSON.stringify({ username: "paralelo" }),
+      });
+    for (let i = 0; i < 6; i++) expect((await malformed()).status).toBe(400);
+    expect((await enter(a, "paralelo", "senha-forte-1")).status).toBe(200);
+    const all = await Promise.all(Array.from({ length: 20 }, () => enter(a, "paralelo", "senha-errada-1")));
+    expect(all.filter((r) => r.status === 401)).toHaveLength(5);
+    expect(all.filter((r) => r.status === 429)).toHaveLength(15);
   });
 
   it("RN-ID-04: login por e-mail não existe no painel (só pelo login, onde as tentativas contam)", async () => {

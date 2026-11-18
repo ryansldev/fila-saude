@@ -72,7 +72,7 @@ describe("RN-ID-07: consultas de CPF por conta", () => {
     }
     await expect(personFromRequest(p, other("Mais uma", orchestrator.generateCpf()).forWhom)).rejects.toMatchObject({
       status: 429,
-      code: "too_many_attempts",
+      code: "cpf_lookup_limit",
     });
     // Sem CPF não consulta a base de contas: não conta.
     await expect(personFromRequest(p, other("Sem CPF").forWhom)).resolves.toMatchObject({ cpf: null });

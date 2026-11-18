@@ -8,7 +8,9 @@ import { type LoginError, useLogin } from "@/lib/session";
 const MESSAGES: Record<LoginError, string> = {
   credentials: "Login ou senha inválidos.",
   blocked: "Conta bloqueada. Procure o gestor do município.",
-  too_many: "Muitas tentativas com senha errada. Espere 15 minutos e tente de novo.",
+  // RN-ID-04: o texto com o tempo do bloqueio vem do servidor; este é só o reserva.
+  locked: "Muitas tentativas com senha errada. Espere e tente de novo.",
+  rate_limited: "Muitas tentativas seguidas. Espere alguns segundos e tente de novo.",
   network: "Não foi possível entrar agora. Tente de novo.",
 };
 
@@ -33,7 +35,7 @@ export function LoginForm({ navigate }: { navigate: (href: string) => void }) {
       </FormField>
       {state.state === "error" ? (
         <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
-          {MESSAGES[state.error]}
+          {state.error === "locked" && state.message ? state.message : MESSAGES[state.error]}
         </p>
       ) : null}
       <Button type="submit" disabled={sending} className="w-full">

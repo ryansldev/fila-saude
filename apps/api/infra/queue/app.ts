@@ -155,7 +155,7 @@ export async function personFromRequest(
     if (cpfLookups.blocked(key, Date.now()))
       throw new ApiError(
         429,
-        "too_many_attempts",
+        "cpf_lookup_limit",
         undefined,
         "Muitas pessoas informadas em pouco tempo. Tente de novo mais tarde ou procure a recepção.",
       );

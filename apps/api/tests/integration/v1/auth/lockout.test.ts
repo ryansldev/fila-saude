@@ -20,7 +20,7 @@ describe("RN-ID-04: bloqueio temporário depois de senhas erradas seguidas", () 
     for (let i = 0; i < 5; i++) expect((await signIn(data.cpf, "senha-errada-1")).status).toBe(401);
     const blocked = await signIn(data.cpf, data.password);
     expect(blocked.status).toBe(429);
-    expect(await blocked.json()).toMatchObject({ error: "too_many_attempts" });
+    expect(await blocked.json()).toMatchObject({ error: "login_locked" });
 
     const other = orchestrator.registrationData();
     await orchestrator.registerPatient(other);
