@@ -12,7 +12,8 @@ import env from "infra/env";
 import { ApiError } from "infra/errors";
 import { panelOrigin } from "infra/panel/origin";
 import webserver from "infra/webserver";
-import { bodyOf, loginLockout } from "./login-lockout";
+import { bodyOf } from "./body";
+import { loginLockout } from "./login-lockout";
 
 // Origem da API no host do município (`http://<slug>.localhost:3333` em dev e teste).
 export function tenantApiOrigin(slug: string): string {
@@ -21,14 +22,14 @@ export function tenantApiOrigin(slug: string): string {
   return url.origin;
 }
 
+// RN-ID-04: por município (o `scope` de cada hook) e login, normalizado como o plugin username.
+const lockout = loginLockout((ctx) =>
+  String(bodyOf(ctx).username ?? "")
+    .trim()
+    .toLowerCase(),
+);
+
 function build(slug: string, db: TenantDb) {
-  // RN-ID-04: por município e login (normalizado como o plugin username: sem espaços nas pontas, minúsculo).
-  const lockout = loginLockout(
-    (ctx) =>
-      `${slug}:${String(bodyOf(ctx).username ?? "")
-        .trim()
-        .toLowerCase()}`,
-  );
   return betterAuth({
     basePath: "/v1/panel/auth",
     baseURL: tenantApiOrigin(slug),
@@ -45,8 +46,8 @@ function build(slug: string, db: TenantDb) {
     advanced: { cookiePrefix: "fila-painel" },
     plugins: [username()],
     hooks: {
-      before: createAuthMiddleware(async (ctx) => lockout.before(ctx)),
-      after: createAuthMiddleware(async (ctx) => lockout.after(ctx)),
+      before: createAuthMiddleware(async (ctx) => lockout.before(ctx, slug)),
+      after: createAuthMiddleware(async (ctx) => lockout.after(ctx, slug)),
     },
   });
 }

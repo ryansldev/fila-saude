@@ -1,58 +1,83 @@
 import { LRUCache } from "lru-cache";
 
-type State = { times: number[]; blockedUntil: number | null };
+/** Quanto uma reserva vale sem resposta (o pedido caiu antes do hook `after`). */
+const RESERVATION_MS = 30_000;
+
+type Options = {
+  max: number;
+  windowMs: number;
+  /** Ao chegar ao máximo, bloqueia pela janela inteira (login, RN-ID-04). Sem isso, janela deslizante. */
+  lockout?: boolean;
+};
 
 /**
- * RN-ID-04 / RN-ID-07: conta tentativas por chave. Ao chegar ao máximo dentro da janela, bloqueia pela
- * janela inteira (contada da última tentativa); depois do bloqueio, começa do zero. Em memória: a v0.1
- * roda numa instância só (decisão NC5).
+ * RN-ID-04 / RN-ID-07: conta tentativas por chave, em memória (a v0.1 roda numa instância só,
+ * decisão NC5). Os bloqueios ficam num cache à parte e maior: encher o de contagens com chaves
+ * novas não tira ninguém do bloqueio.
  */
 export class Attempts {
-  private readonly state: LRUCache<string, State>;
+  private readonly times = new LRUCache<string, number[]>({ max: 100_000 });
+  private readonly pending = new LRUCache<string, number[]>({ max: 100_000 });
+  private readonly blockedUntil = new LRUCache<string, number>({ max: 1_000_000 });
 
-  constructor(private readonly options: { max: number; windowMs: number }) {
-    this.state = new LRUCache({ max: 100_000 });
+  constructor(private readonly options: Options) {}
+
+  private recent(key: string, now: number): number[] {
+    return (this.times.get(key) ?? []).filter((t) => t > now - this.options.windowMs);
   }
 
-  /** O estado vigente: o bloqueio que passou e as tentativas fora da janela somem. */
-  private current(key: string, now: number): State {
-    const s = this.state.get(key);
-    if (!s) return { times: [], blockedUntil: null };
-    if (s.blockedUntil !== null && now >= s.blockedUntil) return { times: [], blockedUntil: null };
-    return { times: s.times.filter((t) => t > now - this.options.windowMs), blockedUntil: s.blockedUntil };
+  private live(key: string, now: number): number[] {
+    return (this.pending.get(key) ?? []).filter((t) => t > now - RESERVATION_MS);
   }
 
   blocked(key: string, now: number): boolean {
-    return this.current(key, now).blockedUntil !== null;
+    if (!this.options.lockout) return this.recent(key, now).length >= this.options.max;
+    const until = this.blockedUntil.get(key);
+    if (until === undefined) return false;
+    if (now < until) return true;
+    this.blockedUntil.delete(key);
+    this.times.delete(key);
+    return false;
   }
 
-  /** Conta uma tentativa; a que completa o máximo liga o bloqueio. */
+  /** Conta uma tentativa; com `lockout`, a que completa o máximo liga o bloqueio. */
   count(key: string, now: number): void {
-    const s = this.current(key, now);
-    const times = [...s.times, now];
-    const blockedUntil = s.blockedUntil ?? (times.length >= this.options.max ? now + this.options.windowMs : null);
-    this.state.set(key, { times, blockedUntil });
+    if (this.blocked(key, now)) return;
+    const times = [...this.recent(key, now), now];
+    this.times.set(key, times);
+    if (this.options.lockout && times.length >= this.options.max) {
+      this.blockedUntil.set(key, now + this.options.windowMs);
+    }
   }
 
   /**
-   * Checa e conta de uma vez (sem `await` no meio): pedidos em paralelo não passam todos da checagem.
-   * `false` = bloqueado. Quem não era tentativa de verdade devolve com `refund`.
+   * Ocupa uma vaga enquanto o pedido corre (sem `await` entre checar e ocupar): pedidos em paralelo
+   * não passam todos. Não liga o bloqueio; só `fail` conta. `null` = sem vaga.
    */
   reserve(key: string, now: number): boolean {
     if (this.blocked(key, now)) return false;
-    this.count(key, now);
+    const live = this.live(key, now);
+    if (this.recent(key, now).length + live.length >= this.options.max) return false;
+    this.pending.set(key, [...live, now]);
     return true;
   }
 
-  /** Devolve a última tentativa reservada (o pedido não era uma senha errada). */
-  refund(key: string): void {
-    const s = this.state.get(key);
-    if (!s) return;
-    const times = s.times.slice(0, -1);
-    this.state.set(key, { times, blockedUntil: times.length >= this.options.max ? s.blockedUntil : null });
+  /** Solta uma reserva sem contar (acertou, pedido inválido, erro do servidor). */
+  release(key: string): void {
+    const live = this.pending.get(key) ?? [];
+    if (live.length > 0) this.pending.set(key, live.slice(1));
   }
 
+  /** A reserva era uma senha errada: conta. */
+  fail(key: string, now: number): void {
+    this.release(key);
+    this.count(key, now);
+  }
+
+  /** Acertou: solta a reserva do pedido e zera a contagem. */
   reset(key: string): void {
-    this.state.delete(key);
+    this.release(key);
+    this.times.delete(key);
+    this.blockedUntil.delete(key);
   }
 }

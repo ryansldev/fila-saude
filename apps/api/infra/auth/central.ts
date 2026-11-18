@@ -9,7 +9,8 @@ import database, { schemaCentral } from "infra/database";
 import { patient } from "infra/database/central/schema/auth";
 import env from "infra/env";
 import { ApiError, errorBody, validate } from "infra/errors";
-import { bodyOf, loginLockout } from "./login-lockout";
+import { bodyOf } from "./body";
+import { loginLockout } from "./login-lockout";
 
 // RN-ID-02: texto exato da orientação ao paciente quando o CPF já tem conta.
 export const CPF_IN_USE_MESSAGE = "Procure a recepção da sua unidade para contestar.";
