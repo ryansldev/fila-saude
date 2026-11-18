@@ -99,6 +99,16 @@ describe("login", () => {
     expect(await screen.findByText("Muitas tentativas com senha errada. Espere 15 minutos.")).toBeDefined();
   });
 
+  it("tentativa anterior ainda em andamento (login_busy): o texto do servidor", async () => {
+    build(
+      apiWithLogin(async () => {
+        throw new ApiError(429, "login_busy", "Ainda estamos conferindo a tentativa anterior.");
+      }),
+    );
+    fillAndSend();
+    expect(await screen.findByText("Ainda estamos conferindo a tentativa anterior.")).toBeDefined();
+  });
+
   it("limite curto do servidor (429 sem bloqueio do login) pede alguns segundos, não 15 minutos", async () => {
     build(
       apiWithLogin(async () => {

@@ -34,7 +34,9 @@ export function LoginForm({ navigate }: { navigate: (href: string) => void }) {
       </FormField>
       {state.state === "error" ? (
         <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
-          {state.error === "locked" && state.message ? state.message : MESSAGES[state.error]}
+          {(state.error === "locked" || state.error === "rate_limited") && state.message
+            ? state.message
+            : MESSAGES[state.error]}
         </p>
       ) : null}
       <Button type="submit" disabled={sending} className="w-full">

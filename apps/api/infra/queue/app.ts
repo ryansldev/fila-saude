@@ -10,7 +10,7 @@ import {
 } from "@fila-saude/domain";
 import type { MyEntry, PublicUnit, ScheduleSession, SignUpInput } from "@fila-saude/schemas/queue";
 import { and, asc, count, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
-import { Attempts } from "infra/auth/attempts";
+import { SlidingLimit } from "infra/auth/attempts";
 import type { AuthenticatedPatient } from "infra/auth/patient-session";
 import { requireService } from "infra/config/services";
 import database from "infra/database";
@@ -133,7 +133,7 @@ export async function municipalityUnits(db: TenantDb, now: number): Promise<Publ
  * tem conta não entra como "outra pessoa" (a própria conta usa "para mim"; quem tem conta entra pela dela).
  */
 // RN-ID-07: CPFs de outras pessoas que uma conta informa por hora (inscrição, lista e conferência).
-const cpfLookups = new Attempts({ max: 20, windowMs: 3_600_000 });
+const cpfLookups = new SlidingLimit({ max: 20, windowMs: 3_600_000 });
 
 export async function personFromRequest(
   p: AuthenticatedPatient,
