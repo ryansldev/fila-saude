@@ -40,7 +40,8 @@ export function patientPlugin(app: FastifyInstance) {
   });
 }
 
-// Depois de `exigirTenant` e `requirePatient`: o tenant e o paciente da requisição.
+// Depois do `requireTenant` (o hook do plugin do tenant, nas rotas `municipalities/:slug`) e do
+// `requirePatient` (no `preValidation` da rota): o tenant e o paciente da requisição.
 export function patientOf(req: FastifyRequest) {
   if (!req.tenant || !req.patient) throw new ApiError(401, "not_authenticated");
   return { db: req.tenant.db, patient: req.patient };

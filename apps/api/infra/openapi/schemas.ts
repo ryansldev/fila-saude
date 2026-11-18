@@ -35,3 +35,32 @@ export const TENANT_ERRORS: ErrorCodes = { 400: ["municipality_mismatch"], 404: 
 
 // Id malformado no caminho.
 export const PATH_ID_ERRORS: ErrorCodes = { 404: ["not_found (id malformado)"] };
+
+// PD-33: a sessão do paciente (cookie no navegador, bearer no app nativo).
+export const PATIENT = [{ patientBearer: [] }, { patientCookie: [] }];
+
+// Os mapas abaixo são `ErrorCodes`: a rota soma todos numa chamada só de `apiErrors` (duas chamadas
+// espalhadas na mesma `response` apagariam os códigos do mesmo status).
+export const PATIENT_ERRORS: ErrorCodes = { 401: ["not_authenticated"] };
+
+// Rotas do paciente dentro do município.
+export const PATIENT_IN_MUNICIPALITY_ERRORS: ErrorCodes[] = [TENANT_ERRORS, PATIENT_ERRORS];
+
+// Comandos do paciente sobre uma entrada (`entries/:entryId/…`).
+export const entryParams = slugParams.extend({ entryId: idSchema });
+export const ENTRY_COMMAND_ERRORS: ErrorCodes[] = [
+  ...PATIENT_IN_MUNICIPALITY_ERRORS,
+  { 404: ["not_found"], 409: ["forbidden_transition", "…códigos do domínio"] },
+];
+
+// Inscrição e lista de espera pelo app (a pessoa por CPF tem limite, AD-065).
+export const sessionParams = slugParams.extend({ sessionId: idSchema });
+export const SIGN_UP_ERRORS: ErrorCodes[] = [
+  ...PATIENT_IN_MUNICIPALITY_ERRORS,
+  {
+    400: ["invalid_input"],
+    404: ["not_found"],
+    409: ["duplicate", "…códigos do domínio"],
+    429: ["cpf_lookup_limit"],
+  },
+];

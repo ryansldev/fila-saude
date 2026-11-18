@@ -26,8 +26,8 @@ function pathSlug(req: FastifyRequest): string | undefined {
   return typeof slug === "string" ? slug : undefined;
 }
 
-// PD-15: resolução preguiçosa. Só as rotas que declaram `preHandler: app.exigirTenant` resolvem o
-// tenant e consultam o catálogo; as da raiz nunca tocam no catálogo nem falham por falta de tenant.
+// PD-15: resolução preguiçosa. Só as rotas `municipalities/:slug` (pelo hook `onRoute` abaixo, no
+// `preValidation`) e as que chamam `app.requireTenant` resolvem o tenant e consultam o catálogo; as da raiz nunca tocam no catálogo nem falham por falta de tenant.
 // Desconhecido, suspenso, criando, host raiz e subdomínio malformado respondem o mesmo
 // `404 unknown_municipality`, para não revelar se o município existe.
 async function tenantPlugin(app: FastifyInstance, options: TenantPluginOptions) {

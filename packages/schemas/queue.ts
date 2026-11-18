@@ -413,3 +413,12 @@ export const serviceWaitlistSchema = z.object({
   ),
 });
 export type ServiceWaitlist = z.infer<typeof serviceWaitlistSchema>;
+
+// RN-CANC-01: resposta do "Não vou poder ir".
+export const cancelledSchema = z.object({ state: z.literal("cancelled") });
+
+// "Estou indo"/"saí da unidade": o item volta para casa (remoto).
+export const leavingSchema = z.object({ ticket: z.string(), itemState: z.literal("remote") });
+
+// Comandos sem dado de volta.
+export const okSchema = z.object({ ok: z.literal(true) });

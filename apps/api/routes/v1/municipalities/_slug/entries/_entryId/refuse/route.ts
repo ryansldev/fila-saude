@@ -1,17 +1,27 @@
 import { registeredAnswerSchema } from "@fila-saude/schemas/queue";
 import type { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { patientOf } from "infra/auth/patient-session";
-import { pathId } from "infra/config/common";
-import { validate } from "infra/errors";
+import { apiErrors, ENTRY_COMMAND_ERRORS, entryParams, PATIENT, TAGS } from "infra/openapi/schemas";
 import { patientAnswer } from "infra/queue/waitlist";
 
 // RN-CONF-01/04: resposta à alocação pelo app, só da conta responsável.
 export default async function (app: FastifyInstance) {
-  app.post("/", { preHandler: [app.requireTenant, app.requirePatient] }, async (req) => {
-    const { db, patient } = patientOf(req);
-    return validate(
-      registeredAnswerSchema,
-      await patientAnswer(db, patient.patientId, pathId(req, "entryId"), "refused", Date.now()),
-    );
-  });
+  app.withTypeProvider<ZodTypeProvider>().post(
+    "/",
+    {
+      preValidation: [app.requirePatient],
+      schema: {
+        tags: [TAGS.patient],
+        summary: "Recusar a vaga",
+        security: PATIENT,
+        params: entryParams,
+        response: { 200: registeredAnswerSchema, ...apiErrors(...ENTRY_COMMAND_ERRORS) },
+      },
+    },
+    async (req) => {
+      const { db, patient } = patientOf(req);
+      return patientAnswer(db, patient.patientId, req.params.entryId, "refused", Date.now());
+    },
+  );
 }
