@@ -75,7 +75,7 @@ function send(message) {
 }
 function start() {
   turnstile.render("#captcha", {
-    sitekey: ${JSON.stringify(siteKey)},
+    sitekey: ${JSON.stringify(siteKey).replaceAll("<", "\\u003c")},
     language: "pt-br",
     callback: function (token) { send({ type: "token", token: token }); },
     "error-callback": function () { send({ type: "error" }); }

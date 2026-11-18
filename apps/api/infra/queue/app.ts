@@ -8,6 +8,7 @@ import {
   MAX_PER_ACCOUNT,
   refusalEnds,
 } from "@fila-saude/domain";
+import { normalizeCpf } from "@fila-saude/schemas/cpf";
 import type { MyEntry, PublicUnit, ScheduleSession, SignUpInput } from "@fila-saude/schemas/queue";
 import { and, asc, count, eq, gt, inArray, isNull, lt, notInArray, or } from "drizzle-orm";
 import { SlidingLimit } from "infra/auth/attempts";
@@ -148,7 +149,7 @@ export async function personFromRequest(
     return { ...account, patientId: p.patientId };
   }
   const { name, birthDate, cpf, relationship } = forWhom;
-  const digits = cpf ? cpf.replace(/\D/g, "") : null;
+  const digits = cpf ? normalizeCpf(cpf) : null;
   if (digits) {
     // RN-ID-07: a resposta diz se o CPF tem conta; sem limite, uma conta varreria CPFs (oráculo).
     const key = `cpf:${p.patientId}`;

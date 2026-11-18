@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { CAPTCHA_HEADER } from "@fila-saude/schemas/captcha";
-import { APIError, isAPIError } from "better-auth/api";
+import { isAPIError } from "better-auth/api";
 import { type CaptchaResult, checkCaptcha } from "infra/captcha";
-import { ApiError, errorBody } from "infra/errors";
+import { ApiError } from "infra/errors";
 import { type AttemptStore, AttemptsBusy, attemptErrors, attemptStore, type Change, SlidingLimit } from "./attempts";
-import { bodyOf } from "./body";
+import { authAsError, bodyOf } from "./body";
 import { ipKey } from "./ip";
 
 type HookCtx = { path: string; body?: unknown; request?: unknown; context: { returned?: unknown } };
@@ -170,8 +170,7 @@ export function loginLockout(
       throw error;
     });
   const refuse = (error: ApiError): never => {
-    // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
-    throw new APIError(error.status as 400, errorBody(error));
+    throw authAsError(error);
   };
   return {
     async before(ctx: HookCtx, scope = "") {

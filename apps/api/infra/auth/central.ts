@@ -1,15 +1,15 @@
 import { patientRegistrationSchema } from "@fila-saude/schemas/auth";
-import { validCpf } from "@fila-saude/schemas/cpf";
+import { normalizeCpf, validCpf } from "@fila-saude/schemas/cpf";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
+import { createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api";
 import { bearer, username } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import database, { schemaCentral } from "infra/database";
 import { patient } from "infra/database/central/schema/auth";
 import env from "infra/env";
 import { ApiError, errorBody, validate } from "infra/errors";
-import { bodyOf } from "./body";
+import { authAsError, bodyOf } from "./body";
 import { loginLockout } from "./login-lockout";
 
 // RN-ID-02: texto exato da orientação ao paciente quando o CPF já tem conta.
@@ -93,15 +93,8 @@ function prepareUpdate(body: Record<string, unknown>, verified: boolean) {
   });
 }
 
-// O better-auth responde direto, sem passar pelo handler de erros do Fastify: o `ErroApi` vira um
-// `APIError` com o corpo já no formato da PD-22.
-function authAsError(err: unknown): unknown {
-  // O tipo do `APIError` só aceita os status nomeados; em tempo de execução o número passa direto.
-  return err instanceof ApiError ? new APIError(err.status as 400, errorBody(err)) : err;
-}
-
 // RN-ID-04: por CPF (só os dígitos, como o plugin guarda).
-const lockout = loginLockout((ctx) => String(bodyOf(ctx).username ?? "").replace(/\D/g, ""));
+const lockout = loginLockout((ctx) => normalizeCpf(String(bodyOf(ctx).username ?? "")));
 
 // T1.8 / AD-017 / PD-23: better-auth da central, montado em `/v1/auth` no host raiz. A tabela do
 // usuário é `paciente`; `cpf` e `username` guardam o mesmo CPF só com dígitos.

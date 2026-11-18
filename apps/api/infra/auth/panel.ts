@@ -23,11 +23,7 @@ export function tenantApiOrigin(slug: string): string {
 }
 
 // RN-ID-04: por município (o `scope` de cada hook) e login, normalizado como o plugin username.
-const lockout = loginLockout((ctx) =>
-  String(bodyOf(ctx).username ?? "")
-    .trim()
-    .toLowerCase(),
-);
+const lockout = loginLockout((ctx) => String(bodyOf(ctx).username ?? "").toLowerCase());
 
 function build(slug: string, db: TenantDb) {
   return betterAuth({
