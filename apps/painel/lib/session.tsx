@@ -64,7 +64,7 @@ function useOwnMe(fetch: boolean): MeState {
   return state;
 }
 
-export type LoginError = "credentials" | "blocked" | "locked" | "rate_limited" | "network";
+export type LoginError = "credentials" | "locked" | "rate_limited" | "network";
 export type LoginState =
   | { state: "idle" }
   | { state: "sending" }
@@ -72,11 +72,10 @@ export type LoginState =
 
 function classifySignIn(e: unknown): LoginError {
   if (e instanceof ApiError) {
-    // RN-ID-04: senhas erradas seguidas bloqueiam por um tempo (passa sozinho); conta bloqueada é outra coisa.
+    // RN-ID-04: senhas erradas seguidas bloqueiam por um tempo (passa sozinho).
     if (e.error === "login_locked") return "locked";
     // Outro 429 é o limite curto do próprio better-auth (segundos), não o bloqueio do login.
     if (e.status === 429) return "rate_limited";
-    if (e.status === 423 || e.error === "blocked") return "blocked";
     // 400 no campo login: o plugin username recusou o formato (ex.: com espaço); para quem digita, é login errado.
     if (e.status === 401 || (e.status === 400 && e.error === "invalid_input")) return "credentials";
   }

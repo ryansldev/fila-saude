@@ -89,7 +89,7 @@ describe("login", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("RN-ID-04: muitas senhas erradas (429) pede para esperar, não diz que a conta foi bloqueada", async () => {
+  it("RN-ID-04: muitas senhas erradas (429) mostra o texto do servidor, com o tempo de espera", async () => {
     build(
       apiWithLogin(async () => {
         throw new ApiError(429, "login_locked", "Muitas tentativas com senha errada. Espere 15 minutos.");
@@ -97,7 +97,6 @@ describe("login", () => {
     );
     fillAndSend();
     expect(await screen.findByText("Muitas tentativas com senha errada. Espere 15 minutos.")).toBeDefined();
-    expect(screen.queryByText(/conta bloqueada/i)).toBeNull();
   });
 
   it("limite curto do servidor (429 sem bloqueio do login) pede alguns segundos, não 15 minutos", async () => {
@@ -108,25 +107,6 @@ describe("login", () => {
     );
     fillAndSend();
     expect(await screen.findByText(/espere alguns segundos/i)).toBeDefined();
-  });
-
-  it("login: 423 ou código bloqueado mostra conta bloqueada", async () => {
-    build(
-      apiWithLogin(async () => {
-        throw new ApiError(423, "qualquer");
-      }),
-    );
-    fillAndSend();
-    expect(await screen.findByText(/conta bloqueada/i)).toBeDefined();
-    cleanup();
-
-    build(
-      apiWithLogin(async () => {
-        throw new ApiError(403, "blocked");
-      }),
-    );
-    fillAndSend();
-    expect(await screen.findByText(/conta bloqueada/i)).toBeDefined();
   });
 
   it("login: enquanto envia o botão fica desabilitado", async () => {

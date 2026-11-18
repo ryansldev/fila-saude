@@ -81,6 +81,8 @@ describe("POST /v1/panel/auth/sign-in/username", () => {
         body: JSON.stringify({ username: "paralelo" }),
       });
     for (let i = 0; i < 6; i++) expect((await malformed()).status).toBe(400);
+    // Senha vazia o plugin responde como senha errada, mas nenhuma senha foi conferida: não conta.
+    for (let i = 0; i < 6; i++) expect((await enter(a, "paralelo", "")).status).toBe(401);
     expect((await enter(a, "paralelo", "senha-forte-1")).status).toBe(200);
     const all = await Promise.all(Array.from({ length: 20 }, () => enter(a, "paralelo", "senha-errada-1")));
     expect(all.filter((r) => r.status === 401)).toHaveLength(5);

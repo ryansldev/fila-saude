@@ -10,15 +10,18 @@ type Options = {
   lockout?: boolean;
 };
 
+type Reservation = { id: number; at: number };
+
 /**
  * RN-ID-04 / RN-ID-07: conta tentativas por chave, em memória (a v0.1 roda numa instância só,
- * decisão NC5). Os bloqueios ficam num cache à parte e maior: encher o de contagens com chaves
- * novas não tira ninguém do bloqueio.
+ * decisão NC5). Os caches são grandes (1 milhão de chaves) e os bloqueios ficam num à parte:
+ * para expulsar a contagem de alguém, seria preciso 1 milhão de logins com chaves novas.
  */
 export class Attempts {
-  private readonly times = new LRUCache<string, number[]>({ max: 100_000 });
-  private readonly pending = new LRUCache<string, number[]>({ max: 100_000 });
+  private readonly times = new LRUCache<string, number[]>({ max: 1_000_000 });
+  private readonly pending = new LRUCache<string, Reservation[]>({ max: 100_000 });
   private readonly blockedUntil = new LRUCache<string, number>({ max: 1_000_000 });
+  private next = 0;
 
   constructor(private readonly options: Options) {}
 
@@ -26,8 +29,13 @@ export class Attempts {
     return (this.times.get(key) ?? []).filter((t) => t > now - this.options.windowMs);
   }
 
-  private live(key: string, now: number): number[] {
-    return (this.pending.get(key) ?? []).filter((t) => t > now - RESERVATION_MS);
+  private live(key: string, now: number): Reservation[] {
+    return (this.pending.get(key) ?? []).filter((r) => r.at > now - RESERVATION_MS);
+  }
+
+  private setPending(key: string, list: Reservation[]): void {
+    if (list.length === 0) this.pending.delete(key);
+    else this.pending.set(key, list);
   }
 
   blocked(key: string, now: number): boolean {
@@ -52,31 +60,38 @@ export class Attempts {
 
   /**
    * Ocupa uma vaga enquanto o pedido corre (sem `await` entre checar e ocupar): pedidos em paralelo
-   * não passam todos. Não liga o bloqueio; só `fail` conta. `null` = sem vaga.
+   * não passam todos. Não liga o bloqueio; só `fail` conta. Devolve o token da reserva, `"blocked"`
+   * (bloqueado de fato) ou `"busy"` (as vagas estão com pedidos que ainda correm).
    */
-  reserve(key: string, now: number): boolean {
-    if (this.blocked(key, now)) return false;
+  reserve(key: string, now: number): number | "blocked" | "busy" {
+    if (this.blocked(key, now)) return "blocked";
     const live = this.live(key, now);
-    if (this.recent(key, now).length + live.length >= this.options.max) return false;
-    this.pending.set(key, [...live, now]);
-    return true;
+    if (this.recent(key, now).length + live.length >= this.options.max) {
+      this.setPending(key, live);
+      return "busy";
+    }
+    const id = ++this.next;
+    this.pending.set(key, [...live, { id, at: now }]);
+    return id;
   }
 
-  /** Solta uma reserva sem contar (acertou, pedido inválido, erro do servidor). */
-  release(key: string): void {
-    const live = this.pending.get(key) ?? [];
-    if (live.length > 0) this.pending.set(key, live.slice(1));
+  /** Solta a própria reserva sem contar (pedido inválido, erro do servidor). */
+  release(key: string, token: number): void {
+    this.setPending(
+      key,
+      (this.pending.get(key) ?? []).filter((r) => r.id !== token),
+    );
   }
 
   /** A reserva era uma senha errada: conta. */
-  fail(key: string, now: number): void {
-    this.release(key);
+  fail(key: string, token: number, now: number): void {
+    this.release(key, token);
     this.count(key, now);
   }
 
   /** Acertou: solta a reserva do pedido e zera a contagem. */
-  reset(key: string): void {
-    this.release(key);
+  reset(key: string, token: number): void {
+    this.release(key, token);
     this.times.delete(key);
     this.blockedUntil.delete(key);
   }

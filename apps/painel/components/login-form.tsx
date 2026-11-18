@@ -7,7 +7,6 @@ import { type LoginError, useLogin } from "@/lib/session";
 
 const MESSAGES: Record<LoginError, string> = {
   credentials: "Login ou senha inválidos.",
-  blocked: "Conta bloqueada. Procure o gestor do município.",
   // RN-ID-04: o texto com o tempo do bloqueio vem do servidor; este é só o reserva.
   locked: "Muitas tentativas com senha errada. Espere e tente de novo.",
   rate_limited: "Muitas tentativas seguidas. Espere alguns segundos e tente de novo.",
