@@ -71,6 +71,8 @@ AUTH_JWT_TTL=15m
 PANEL_ORIGIN_TEMPLATE=http://{slug}.localhost:3000
 ```
 
+**Em produção, atrás de um proxy reverso** (Caddy, nginx), defina `TRUSTED_PROXIES` com o IP ou a faixa do proxy, separados por vírgula (ex.: `TRUSTED_PROXIES=loopback` para o proxy na mesma máquina; também valem `127.0.0.1`, `10.0.0.0/8`, `linklocal` e `uniquelocal`). Sem isso, a API vê todo mundo com o IP do proxy, e o limite de tentativas vale para todos juntos. Vazio (padrão), vale o IP da conexão e o `X-Forwarded-For` é ignorado.
+
 `POSTGRES_DB` é o banco central (`fila_central`); cada município tem o próprio banco `fila_t_<slug>`, cuja URL sai de `TENANT_DATABASE_URL_TEMPLATE`.
 
 ### 3. Subir o banco de dados

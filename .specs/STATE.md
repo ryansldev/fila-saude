@@ -13,7 +13,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 ## Esperando você
 
 - Clicar o [roteiro](features/mvp-filas/roteiro-v01.md) no navegador e no celular (inclui ler o QR novo com um celular de verdade). Reinicie `npm run dev:mobile` antes.
-- Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC). **NC5** (tentativas): falta decidir o [armazenamento](features/mvp-filas/discovery-tentativas-armazenamento.md) e a [contagem por IP](features/mvp-filas/discovery-bloqueio-por-ip.md) (o IP confiável do proxy é para corrigir já); o captcha é o Turnstile, depois da v0.1 (AD-062). **RV7** (80+ e os outros grupos legais) pede sua decisão.
+- Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC). **NC5** (tentativas): falta decidir o [armazenamento](features/mvp-filas/discovery-tentativas-armazenamento.md) e a [contagem por IP](features/mvp-filas/discovery-bloqueio-por-ip.md) (o IP confiável do proxy já está corrigido: `TRUSTED_PROXIES`); o captcha é o Turnstile (AD-062). **RV7** (80+ e os outros grupos legais) pede sua decisão.
 - **CA1:** e-mail obrigatório no cadastro, opcional ou fora? (muda a API).
 - **G6:** push no celular de verdade pede um projeto EAS (conta da empresa na Expo) e um build de desenvolvimento.
 

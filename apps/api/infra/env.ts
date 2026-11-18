@@ -1,9 +1,23 @@
+import { isIP } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import dotEnvExpand from "dotenv-expand";
 import { z } from "zod";
 import { validateSlug } from "./tenant/slug";
+
+// Nomes que o `trustProxy` do Fastify conhece (proxy-addr), para o proxy na mesma máquina ou na rede interna.
+const PROXY_NAMES = new Set(["loopback", "linklocal", "uniquelocal"]);
+
+// "IP", "IP/prefixo" (prefixo dentro da família: 32 no IPv4, 128 no IPv6) ou um dos nomes acima.
+function validProxy(entry: string): boolean {
+  if (PROXY_NAMES.has(entry)) return true;
+  const [ip = "", prefix, ...rest] = entry.split("/");
+  const family = isIP(ip);
+  if (family === 0 || rest.length > 0) return false;
+  if (prefix === undefined) return true;
+  return /^\d+$/.test(prefix) && Number(prefix) <= (family === 4 ? 32 : 128);
+}
 
 const envFields = z.object({
   NODE_ENV: z.enum(["development", "production", "test", "staging"]).default("development"),
@@ -37,6 +51,21 @@ const envFields = z.object({
   AUTH_JWT_TTL: z.string().min(1).default("15m"),
   // PD-39 / PD-24: origem do painel de cada município (`{slug}` trocado pelo slug), para CORS e trustedOrigins.
   PANEL_ORIGIN_TEMPLATE: z.string().includes("{slug}").default("http://{slug}.localhost:3000"),
+  // NC5: proxies reversos (Caddy, nginx) cujo X-Forwarded-For a API aceita, separados por vírgula (IP ou
+  // faixa). Vazio: nenhum, e vale o IP da conexão. Atrás de um proxy sem isso, todos parecem o proxy.
+  TRUSTED_PROXIES: z
+    .string()
+    .default("")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean),
+    )
+    .refine(
+      (entries) => entries.every(validProxy),
+      "TRUSTED_PROXIES: cada item é um IP, uma faixa (IP/prefixo) ou loopback, linklocal, uniquelocal",
+    ),
 });
 
 // PD-12: no modo `single` o processo atende um município só; sem TENANT_SLUG válido e

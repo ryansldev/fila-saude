@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import autoload from "@fastify/autoload";
 import Fastify, { type FastifyInstance } from "fastify";
+import { trustProxyOption } from "infra/auth/fastify";
 import { patientPlugin } from "infra/auth/patient-session";
 import database from "infra/database";
 import { tenantSource } from "infra/database/tenants";
@@ -17,7 +18,11 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 // Monta o app sem `listen` (servidor e testes de infra usam o mesmo).
 export async function buildApp(options: { logger?: boolean } = {}): Promise<FastifyInstance> {
-  const app = Fastify({ logger: options.logger ?? true });
+  // NC5: só os proxies de TRUSTED_PROXIES informam o IP do cliente (`req.ip`); sem eles, vale a conexão.
+  const app = Fastify({
+    logger: options.logger ?? true,
+    trustProxy: trustProxyOption(env.TRUSTED_PROXIES),
+  });
 
   app.setErrorHandler(handleError);
   app.setNotFoundHandler(notFound);

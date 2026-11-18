@@ -3,16 +3,35 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 // O que `buildAuth` usa de uma instância do better-auth (central ou, depois, a do tenant).
 export type Auth = { handler: (request: Request) => Promise<Response> };
 
-// Cabeçalhos que deixam de valer quando o corpo é serializado de novo.
-const BODY_HEADERS = new Set(["content-length", "transfer-encoding"]);
+// Cabeçalhos que deixam de valer quando o corpo é serializado de novo, e os de IP e de host repassado,
+// que o cliente pode inventar: o IP vai só no `x-forwarded-for`, trocado pelo que o Fastify resolveu.
+const DROPPED_HEADERS = new Set([
+  "content-length",
+  "transfer-encoding",
+  "x-forwarded-for",
+  "x-real-ip",
+  "forwarded",
+  "x-forwarded-host",
+]);
 
-function webRequest(req: FastifyRequest): Request {
+/** NC5: o `trustProxy` do Fastify; sem proxy configurado, nenhum (nunca `true`, que confiaria em todos). */
+export function trustProxyOption(proxies: string[]): string[] | false {
+  return proxies.length > 0 ? proxies : false;
+}
+
+// NC5: o better-auth (limitador e contagem de tentativas) lê o IP do `X-Forwarded-For`. Ele recebe só o
+// `req.ip`, que o Fastify resolve pelo `trustProxy` (TRUSTED_PROXIES): o que o cliente inventa no
+// cabeçalho não chega lá, e atrás do proxy cada pessoa tem o próprio IP, não o do proxy. O endereço usa o
+// `Host` do pedido, o mesmo que resolve o município, e não o `X-Forwarded-Host`.
+export function webRequest(req: FastifyRequest): Request {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined || BODY_HEADERS.has(key)) continue;
+    if (value === undefined || DROPPED_HEADERS.has(key)) continue;
     for (const item of Array.isArray(value) ? value : [value]) headers.append(key, item);
   }
-  const url = new URL(req.url, `${req.protocol}://${req.host}`);
+  // Sem IP (a conexão caiu no meio do pedido), vai sem o cabeçalho, e não com "undefined".
+  if (req.ip) headers.set("x-forwarded-for", req.ip);
+  const url = new URL(req.url, `${req.protocol}://${req.headers.host}`);
   const hasBody = req.method !== "GET" && req.method !== "HEAD" && req.body !== undefined;
   return new Request(url, { method: req.method, headers, ...(hasBody ? { body: JSON.stringify(req.body) } : {}) });
 }
