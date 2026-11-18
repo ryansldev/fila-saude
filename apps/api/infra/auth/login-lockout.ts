@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { CAPTCHA_HEADER } from "@fila-saude/schemas/captcha";
 import { APIError, isAPIError } from "better-auth/api";
-import { verifyCaptcha } from "infra/captcha";
+import { type CaptchaResult, checkCaptcha } from "infra/captcha";
 import { ApiError, errorBody } from "infra/errors";
 import { type AttemptStore, AttemptsBusy, attemptErrors, attemptStore, type Change, SlidingLimit } from "./attempts";
 import { bodyOf } from "./body";
@@ -151,8 +151,8 @@ export function loginLockout(
   store: AttemptStore = attemptStore,
   onError: (error: unknown) => void = (error) => attemptErrors.log(error, "contagem do login"),
   // AD-062: confere o captcha do pedido (cabeçalho `x-captcha-token`) na Cloudflare.
-  captchaOk: (ctx: HookCtx) => Promise<boolean> = (ctx) =>
-    verifyCaptcha(ctx.request instanceof Request ? ctx.request.headers.get(CAPTCHA_HEADER) : null, clientIp(ctx)),
+  captchaCheck: (ctx: HookCtx) => Promise<CaptchaResult> = (ctx) =>
+    checkCaptcha(ctx.request instanceof Request ? ctx.request.headers.get(CAPTCHA_HEADER) : null, clientIp(ctx)),
 ) {
   // O bloqueio dura 15 min; uma reserva sem resposta vence em 1 min (a senha leva bem menos).
   const pairs = new Lockout({ max: 5, blockMs: 15 * 60_000, reservationMs: 60_000 }, store);
@@ -202,9 +202,12 @@ export function loginLockout(
           await giveBack();
           return refuse(REFUSALS.captcha);
         }
-        // Token recusado conta como erro no par: tokens inventados sem fim bloqueiam o IP em 5.
-        if (!(await captchaOk(ctx))) {
-          await pairs.fail(pair(ctx, scope), r, now).catch(onError);
+        const captcha = await captchaCheck(ctx);
+        if (captcha !== "ok") {
+          // Token recusado pela Cloudflare conta como erro no par (tokens inventados sem fim bloqueiam o IP
+          // em 5); sem resposta da Cloudflare, não é culpa de ninguém e só devolve a vaga.
+          if (captcha === "rejected") await pairs.fail(pair(ctx, scope), r, now).catch(onError);
+          else await giveBack();
           return refuse(REFUSALS.captchaFailed);
         }
       }

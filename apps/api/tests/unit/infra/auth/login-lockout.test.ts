@@ -1,6 +1,6 @@
 import { type AttemptStore, MemoryStore } from "infra/auth/attempts";
 import { Lockout } from "infra/auth/login-lockout";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 const MIN = 60_000;
 const lockout = () => new Lockout({ max: 5, blockMs: 15 * MIN, reservationMs: 60_000 }, new MemoryStore());
@@ -176,7 +176,7 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
     const { loginLockout } = await import("infra/auth/login-lockout");
     const store = new MemoryStore();
     const verify = async (ctx: { request?: unknown }) =>
-      (ctx.request as Request).headers.get("x-captcha-token") === "bom";
+      (ctx.request as Request).headers.get("x-captcha-token") === "bom" ? ("ok" as const) : ("rejected" as const);
     const hooks = loginLockout(() => "gestor", store, undefined, verify);
     for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
     const without = ctxOf("203.0.113.9");
@@ -193,7 +193,7 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
     let asked = 0;
     const verify = async () => {
       asked++;
-      return true;
+      return "ok" as const;
     };
     const hooks = loginLockout(() => "gestor", new MemoryStore(), undefined, verify);
     for (let i = 0; i < 25; i++) await attempt(hooks, `198.51.100.${i}`);
@@ -237,7 +237,7 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
       () => "gestor",
       flaky,
       (e) => errors.push(e),
-      async () => false,
+      async () => "rejected" as const,
     );
     for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
     const ctx = ctxOf("203.0.113.9", "x", { "x-captcha-token": "ruim" });
@@ -259,7 +259,7 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
       () => "gestor",
       new MemoryStore(),
       undefined,
-      async () => false,
+      async () => "rejected" as const,
     );
     for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
     await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "" }))).rejects.toMatchObject({
@@ -284,21 +284,30 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
 
   it("errar depois de passar pelo captcha também conta no teto (a janela não esvazia com o ataque em curso)", async () => {
     const { loginLockout } = await import("infra/auth/login-lockout");
-    const { SlidingLimit } = await import("infra/auth/attempts");
-    const store = new MemoryStore();
-    const hooks = loginLockout(
-      () => "gestor",
-      store,
-      undefined,
-      async () => true,
-    );
-    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
-    const ctx = ctxOf("203.0.113.9", "errada", { "x-captcha-token": "bom" });
-    await hooks.before(ctx);
     const { APIError } = await import("better-auth/api");
-    await hooks.after({ ...ctx, context: { returned: new APIError("UNAUTHORIZED", wrong.body) } });
-    const probe = new SlidingLimit({ name: "login-ceiling", max: 31, windowMs: 60 * MIN }, store);
-    expect(await probe.reserve(":gestor", Date.now())).toBeNull();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(0);
+      const hooks = loginLockout(
+        () => "gestor",
+        new MemoryStore(),
+        undefined,
+        async () => "ok" as const,
+      );
+      for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+      // Perto do fim da hora, 30 erros com o captcha resolvido, de outros IPs.
+      vi.setSystemTime(59 * MIN);
+      for (let i = 0; i < 30; i++) {
+        const ctx = ctxOf(`192.0.2.${i}`, "errada", { "x-captcha-token": "bom" });
+        await hooks.before(ctx);
+        await hooks.after({ ...ctx, context: { returned: new APIError("UNAUTHORIZED", wrong.body) } });
+      }
+      // Os 30 primeiros venceram, mas a janela continua cheia: sem captcha, nada passa.
+      vi.setSystemTime(61 * MIN);
+      expect(await attempt(hooks, "203.0.113.200")).toBe("captcha_required");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("token de captcha recusado conta como erro no par: 5 tokens inventados bloqueiam o IP", async () => {
@@ -307,7 +316,7 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
       () => "gestor",
       new MemoryStore(),
       undefined,
-      async () => false,
+      async () => "rejected" as const,
     );
     for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
     for (let i = 0; i < 5; i++)
@@ -317,5 +326,20 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
     await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "lixo" }))).rejects.toMatchObject({
       body: { error: "login_locked" },
     });
+  });
+
+  it("Cloudflare fora do ar não conta como erro: o dono não fica bloqueado por isso", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(
+      () => "gestor",
+      new MemoryStore(),
+      undefined,
+      async () => "unavailable" as const,
+    );
+    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+    for (let i = 0; i < 8; i++)
+      await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "bom" }))).rejects.toMatchObject({
+        body: { error: "captcha_failed" },
+      });
   });
 });

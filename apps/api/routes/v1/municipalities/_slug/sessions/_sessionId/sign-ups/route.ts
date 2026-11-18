@@ -1,7 +1,7 @@
 import { signUpInputSchema, signUpSchema } from "@fila-saude/schemas/queue";
 import type { FastifyInstance } from "fastify";
 import { patientOf } from "infra/auth/patient-session";
-import { CAPTCHA_HEADER, verifyCaptcha } from "infra/captcha";
+import { CAPTCHA_HEADER, checkCaptcha } from "infra/captcha";
 import { pathId } from "infra/config/common";
 import { ApiError, validate } from "infra/errors";
 import { signUpPatient } from "infra/queue/app";
@@ -14,9 +14,10 @@ export default async function (app: FastifyInstance) {
     // RN-ID-07 / AD-062: só há inscrição pelo app em sessão pública, e ela pede o captcha.
     // Sem token é `captcha_required`; token recusado é `captcha_failed` (o app não reenvia sozinho).
     const token = req.headers[CAPTCHA_HEADER];
-    if (typeof token !== "string" || !token)
+    const captcha = await checkCaptcha(typeof token === "string" ? token : null, req.ip);
+    if (captcha === "missing")
       throw new ApiError(400, "captcha_required", undefined, "Confirme que você não é um robô para se inscrever.");
-    if (!(await verifyCaptcha(token, req.ip))) {
+    if (captcha !== "ok") {
       throw new ApiError(
         400,
         "captcha_failed",

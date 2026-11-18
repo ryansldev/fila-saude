@@ -7,29 +7,38 @@ const TEST_TOKEN = "teste-captcha-ok";
 
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-/** Confere o token na Cloudflare. Sem token, recusa sem perguntar; sem resposta, recusa (falha fechada). */
+/**
+ * O resultado do captcha: `missing` (sem token), `ok`, `rejected` (a Cloudflare recusou o token) ou
+ * `unavailable` (a Cloudflare não respondeu). Os dois últimos não deixam passar (falha fechada), mas só
+ * `rejected` é culpa de quem mandou.
+ */
+export type CaptchaResult = "missing" | "ok" | "rejected" | "unavailable";
+
+/** Confere o token na Cloudflare. */
 export async function turnstileVerify(
   secret: string,
   token: string,
   ip: string | undefined,
   fetcher: typeof fetch = fetch,
-): Promise<boolean> {
-  if (!token) return false;
+): Promise<Exclude<CaptchaResult, "missing">> {
+  if (!token) return "rejected";
   const body = new URLSearchParams({ secret, response: token });
   if (ip) body.set("remoteip", ip);
   try {
     const r = await fetcher(SITEVERIFY, { method: "POST", body, signal: AbortSignal.timeout(5_000) });
     const answer = (await r.json()) as { success?: unknown };
-    return answer.success === true;
+    if (answer.success === true) return "ok";
+    return answer.success === false ? "rejected" : "unavailable";
   } catch {
-    return false;
+    return "unavailable";
   }
 }
 
-/** AD-062: o captcha do pedido passou? (Cada token vale uma vez só.) */
-export function verifyCaptcha(token: string | null | undefined, ip: string | undefined): Promise<boolean> {
-  if (env.NODE_ENV === "test") return Promise.resolve(token === TEST_TOKEN);
-  return turnstileVerify(env.TURNSTILE_SECRET_KEY, token ?? "", ip);
+/** AD-062: o captcha do pedido (cabeçalho `x-captcha-token`, vazio = sem token). Cada token vale uma vez só. */
+export function checkCaptcha(token: string | null | undefined, ip: string | undefined): Promise<CaptchaResult> {
+  if (!token) return Promise.resolve("missing");
+  if (env.NODE_ENV === "test") return Promise.resolve(token === TEST_TOKEN ? "ok" : "rejected");
+  return turnstileVerify(env.TURNSTILE_SECRET_KEY, token, ip);
 }
 
 /**

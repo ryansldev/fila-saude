@@ -30,7 +30,12 @@ export interface AttemptStore {
 export class MemoryStore implements AttemptStore {
   private readonly rows = new Map<string, { state: unknown; expiresAt: number }>();
 
-  async update<S, T>(key: string, now: number, change: (state: S | null) => Change<S, T>): Promise<T> {
+  async update<S, T>(
+    key: string,
+    now: number,
+    change: (state: S | null) => Change<S, T>,
+    _options?: { refusable?: boolean },
+  ): Promise<T> {
     const row = this.rows.get(key);
     const r = change(row && row.expiresAt > now ? (row.state as S) : null);
     if (r.state === null) this.rows.delete(key);
@@ -210,7 +215,8 @@ export class SlidingLimit {
       const firmed = live.some((e) => e.id === token)
         ? live.map((e) => (e.id === token ? { at: e.at, id: e.id } : e))
         : [...live, { at: now, id: token }];
-      return this.save(firmed, undefined);
+      // Além do máximo, só as mais novas importam (a janela segue cheia sem a lista crescer sem fim).
+      return this.save(firmed.sort((x, y) => x.at - y.at).slice(-this.options.max), undefined);
     });
   }
 

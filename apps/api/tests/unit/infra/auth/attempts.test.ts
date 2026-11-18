@@ -1,4 +1,4 @@
-import { MemoryStore, SlidingLimit } from "infra/auth/attempts";
+import { type AttemptStore, MemoryStore, SlidingLimit } from "infra/auth/attempts";
 import { describe, expect, it } from "vitest";
 
 const MIN = 60_000;
@@ -61,5 +61,30 @@ describe("AD-064: senha errada conta no teto mesmo se o pedido demorou", () => {
     const t = await a.reserve("k", 0);
     await a.confirm("k", t as string, 2 * MIN);
     expect(await a.reserve("k", 3 * MIN)).toBeNull();
+  });
+});
+
+describe("AD-064: a janela guarda no máximo o necessário", () => {
+  it("confirmar além do máximo não faz a lista crescer sem fim", async () => {
+    const store = new MemoryStore();
+    let size = 0;
+    const watching: AttemptStore = {
+      update(key, now, change, options) {
+        return store.update(
+          key,
+          now,
+          (state) => {
+            const r = change(state as never);
+            size = (r.state as { entries?: unknown[] } | null)?.entries?.length ?? 0;
+            return r;
+          },
+          options,
+        );
+      },
+    };
+    const a = new SlidingLimit({ name: "teste", max: 3, windowMs: 60 * MIN }, watching);
+    for (let i = 0; i < 10; i++) await a.confirm("k", `t${i}`, i);
+    expect(size).toBe(3);
+    expect(await a.reserve("k", 20)).toBeNull();
   });
 });
