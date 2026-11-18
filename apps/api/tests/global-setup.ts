@@ -8,7 +8,13 @@ export default async function setup() {
   const { migrateDatabase } = await import("../infra/database/migrate");
   const { Client, escapeIdentifier } = await import("pg");
 
-  await createDatabaseIfMissing(env.DATABASE_URL, env.POSTGRES_DB);
+  // O contêiner do Postgres pode acabar de subir (`services:up` na CI): tenta por até ~30 s antes de desistir.
+  const { default: retry } = await import("async-retry");
+  await retry(() => createDatabaseIfMissing(env.DATABASE_URL, env.POSTGRES_DB), {
+    retries: 30,
+    minTimeout: 1000,
+    maxTimeout: 1000,
+  });
 
   const server = new URL(env.DATABASE_URL);
   server.pathname = "/postgres";
