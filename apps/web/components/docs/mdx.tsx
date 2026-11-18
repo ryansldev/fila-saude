@@ -4,7 +4,7 @@ import { Tab, Tabs } from "fumadocs-ui/components/tabs";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Braces, LayoutDashboard, Rocket, Shapes, Smartphone, TriangleExclamationPoint, Tv } from "lucide-react";
 import type { MDXComponents } from "mdx/types";
-import { Callout, Card, Cards, Lino } from "@/components/docs/brand";
+import { Callout, Card, Cards, Flow, Hero } from "@/components/docs/brand";
 
 // Os componentes dos guias: os padrões do Fumadocs (código), abas, passos, acordeões, os cartões e avisos
 // com a cara do Fila Saúde e os ícones dos cartões.
@@ -15,7 +15,8 @@ export function getMDXComponents(components?: MDXComponents) {
     Callout,
     Card,
     Cards,
-    Lino,
+    Flow,
+    Hero,
     Accordion,
     Accordions,
     Step,

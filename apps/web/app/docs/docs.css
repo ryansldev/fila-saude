@@ -2,67 +2,358 @@
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 @import "fumadocs-openapi/css/preset.css";
+/* Os botões do kit (`.ds-btn-*`), os mesmos do painel. */
+@import "@fila-saude/design/tokens.css";
 
-/* A cara do Fila Saúde nas docs (DS: Nunito, azul de ação, relevo e cantos de 16 px; títulos em
-   minúsculas, como a landing). As cores vêm do `packages/design` (variáveis no <html> do layout). */
+/* As docs com a estrutura do AbacatePay e o jeito Fila Saúde (`.specs/features/design-system/docs.md`).
+   As cores vêm do `packages/design` (variáveis no <html> do layout das docs). */
 @theme {
   --font-sans: var(--font-nunito), Nunito, system-ui, sans-serif;
 }
 
-/* Títulos: Nunito extrabold, apertado, como na landing. */
-#nd-page h1,
-#nd-page h2,
-#nd-page h3 {
+/* ---------- topo ---------- */
+.docs-version {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.8125rem;
   font-weight: 800;
+  background: var(--color-fd-secondary);
+  color: var(--color-fd-primary);
+  border: 1.5px solid var(--color-fd-border);
+}
+/* A busca com a borda do DS. */
+:where(#nd-notebook-layout header) button[data-search-full],
+:where(#nd-notebook-layout header) button[data-search] {
+  border-width: 2px;
+  border-color: var(--color-fd-border);
+  border-radius: 12px;
+  background: var(--color-fd-card);
+  font-weight: 600;
+}
+/* As abas (guias e a referência de cada versão): extrabold; a ativa (a única em `text-fd-primary`) com
+   sublinhado grosso. */
+:where(#nd-notebook-layout header) a.border-b-2 {
+  font-weight: 800;
+}
+:where(#nd-notebook-layout header) a.border-b-2.text-fd-primary {
+  border-bottom-width: 3px;
+}
+
+/* ---------- menu ---------- */
+:where(#nd-sidebar, #nd-sidebar-mobile) p {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--color-fd-muted-foreground);
+}
+:where(#nd-sidebar, #nd-sidebar-mobile) a {
+  font-weight: 700;
+  border: 2px solid transparent;
+  border-bottom-width: 3px;
+  border-radius: 12px;
+}
+/* O item ativo vira um botão azul com relevo, como o principal do kit. */
+:where(#nd-sidebar, #nd-sidebar-mobile) a[data-active="true"] {
+  background: var(--color-fd-primary);
+  color: var(--color-fd-background);
+  border-color: var(--color-fd-primary);
+  border-bottom-color: var(--ds-action-shadow);
+  font-weight: 800;
+}
+:where(#nd-sidebar a[data-active="true"], #nd-sidebar-mobile a[data-active="true"]) :is(svg, span) {
+  color: var(--color-fd-background);
+}
+
+/* ---------- cabeçalho da página ---------- */
+.docs-eyebrow {
+  display: inline-block;
+  align-self: flex-start;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  background: var(--color-fd-secondary);
+  color: var(--color-fd-primary);
+}
+:where(#nd-page) h1,
+.docs-hero-title {
+  font-weight: 900;
+  font-size: 2.5rem;
+  line-height: 1.08;
   letter-spacing: -0.02em;
   color: var(--color-fd-foreground);
 }
-#nd-page h1 {
-  font-size: 2.25rem;
-  line-height: 1.15;
+.docs-lead {
+  max-width: 44rem;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--color-fd-muted-foreground);
+}
+:where(#nd-page) h2,
+:where(#nd-page) h3 {
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--color-fd-foreground);
 }
 
-/* Passos: o número em pílula azul-clara, como "1 2 3" na landing. */
-.fd-step::before {
+/* ---------- herói da introdução ---------- */
+.docs-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 1.75rem;
+  align-items: center;
+  padding-bottom: 1.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 2px solid var(--color-fd-muted);
+}
+.docs-hero .docs-eyebrow {
+  margin-bottom: 0.75rem;
+}
+.docs-hero-title {
+  margin: 0 0 0.6rem;
+}
+.docs-hero .docs-lead {
+  margin: 0 0 1rem;
+}
+.docs-hero-lino {
+  width: 210px;
+}
+.docs-hero-talk {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.docs-hero-lino-sm {
+  display: none;
+  width: 92px;
+  flex-shrink: 0;
+}
+/* O balão suave do kit (o mesmo `Bubble` do painel, `#eef5fa`): sem borda nem relevo, pontinha virada para o
+   Dr. Lino. */
+.docs-bubble {
+  position: relative;
+  max-width: 28rem;
+  border-radius: 22px;
+  padding: 1rem 1.25rem;
+  background: #eef5fa;
+  color: var(--color-fd-secondary-foreground);
+}
+.docs-bubble::after {
+  content: "";
+  position: absolute;
+  right: -10px;
+  bottom: 22px;
+  border: 10px solid transparent;
+  border-right: 0;
+  border-left-color: #eef5fa;
+}
+.docs-bubble strong {
+  display: block;
+  font-size: 1.2rem;
   font-weight: 800;
+}
+.docs-bubble span {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.55;
+  color: var(--color-fd-secondary-foreground);
+}
+@media (max-width: 767px) {
+  .docs-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .docs-hero-title {
+    font-size: 1.9rem;
+  }
+  .docs-hero-lino {
+    display: none;
+  }
+  .docs-hero-lino-sm {
+    display: block;
+  }
+  .docs-hero .ds-btn {
+    width: 100%;
+  }
+}
+
+/* ---------- fluxo ---------- */
+.docs-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0 1.25rem;
+}
+.docs-flow-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border: 2px solid var(--color-fd-border);
+  border-bottom-width: 4px;
+  border-radius: 14px;
+  background: var(--color-fd-background);
+  font-size: 0.875rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.docs-flow-step i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--color-fd-secondary);
   color: var(--color-fd-primary);
-  background-color: var(--color-fd-secondary);
+  font-size: 0.75rem;
+  font-style: normal;
+}
+.docs-flow-arrow {
+  width: 16px;
+  height: 16px;
+  color: var(--color-fd-primary);
+}
+
+/* ---------- cartões ---------- */
+.docs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  height: 100%;
+  padding: 1.15rem;
+  border: 2px solid var(--color-fd-border);
+  border-bottom-width: 5px;
+  border-radius: 18px;
+  background: var(--color-fd-background);
+  text-decoration: none;
+}
+.docs-card-link {
+  transition: transform 120ms;
+}
+.docs-card-link:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-fd-ring);
+}
+.docs-card-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 0.3rem;
+  border-radius: 12px;
+  background: var(--color-fd-secondary);
+  color: var(--color-fd-primary);
+}
+.docs-card-tile svg {
+  width: 20px;
+  height: 20px;
+}
+.docs-card-title {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--color-fd-foreground);
+}
+.docs-card-text {
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* ---------- avisos ---------- */
+.docs-callout {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+  padding: 0.9rem 1.1rem;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.docs-callout-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--color-fd-background);
+}
+
+/* ---------- passos: o número num círculo azul com relevo ---------- */
+.fd-step::before {
+  font-weight: 900;
+  color: var(--color-fd-background);
+  background-color: var(--color-fd-primary);
+  border-bottom: 3px solid var(--ds-action-shadow);
 }
 .fd-steps {
   border-color: var(--color-fd-border);
   border-inline-start-width: 2px;
 }
 
-/* Blocos de código e abas: borda grossa clara e cantos de 16 px, como os cartões do app. */
-#nd-page figure.shiki,
-#nd-page [role="tablist"] {
-  border-radius: 1rem;
+/* ---------- código: borda clara com relevo (guias e referência); abas em pílula (guias) ---------- */
+:where(#nd-page) figure.shiki {
+  border: 2px solid var(--color-fd-border);
+  border-bottom-width: 4px;
+  border-radius: 16px;
 }
-#nd-page figure.shiki {
-  border-width: 2px;
-  border-color: var(--color-fd-border);
+.docs-guide figure.shiki,
+.docs-guide div:has(> [role="tablist"]) {
+  border: 2px solid var(--color-fd-border);
+  border-bottom-width: 4px;
+  border-radius: 16px;
 }
-#nd-page div:has(> [role="tablist"]) {
-  border-width: 2px;
-  border-radius: 1rem;
-  border-color: var(--color-fd-border);
+.docs-guide div:has(> [role="tablist"]) figure.shiki {
+  border: 0;
+  border-radius: 0;
+}
+.docs-guide [role="tablist"] {
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  background: var(--color-fd-card);
+  border-bottom: 2px solid var(--color-fd-muted);
+}
+.docs-guide [role="tab"] {
+  border-radius: 9px;
+  padding: 0.3rem 0.7rem;
+  font-weight: 800;
+  border-bottom: 0;
+}
+.docs-guide [role="tab"][data-active],
+.docs-guide [role="tab"][aria-selected="true"] {
+  background: var(--color-fd-background);
+  color: var(--color-fd-primary);
+  box-shadow: 0 0 0 2px var(--color-fd-border);
 }
 
-/* Tabelas: borda clara e cabeçalho em negrito. */
-#nd-page table {
+/* ---------- tabelas ---------- */
+:where(#nd-page) table {
   border-radius: 1rem;
   overflow: hidden;
 }
-#nd-page th {
+:where(#nd-page) th {
   font-weight: 800;
 }
 
-/* Menu: item ativo em pílula azul-clara, em negrito. */
-#nd-sidebar a[data-active="true"] {
-  background-color: var(--color-fd-secondary);
-  font-weight: 700;
+/* ---------- anterior / próxima: cartões com relevo ---------- */
+:where(#nd-page) [class~="@container"].grid > a {
+  border: 2px solid var(--color-fd-border);
+  border-bottom-width: 4px;
+  border-radius: 16px;
 }
-#nd-sidebar p,
-#nd-sidebar a {
-  font-weight: 600;
+:where(#nd-page) [class~="@container"].grid > a p:first-child {
+  font-weight: 900;
+  color: var(--color-fd-primary);
+}
+
+/* ---------- sumário ---------- */
+:where(#nd-toc) a[data-active="true"] {
+  font-weight: 800;
 }

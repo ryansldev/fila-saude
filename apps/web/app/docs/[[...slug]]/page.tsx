@@ -1,18 +1,10 @@
 import type { OpenAPIPageData } from "fumadocs-openapi/server";
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-  MarkdownCopyButton,
-  ViewOptionsPopover,
-} from "fumadocs-ui/layouts/notebook/page";
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/notebook/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OpenAPIPage } from "@/components/docs/api-page";
 import { getMDXComponents } from "@/components/docs/mdx";
-import { REPOSITORY_URL } from "@/lib/constants";
 import { source } from "@/lib/source";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
@@ -34,19 +26,18 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   }
 
   const MDX = page.data.body;
-  const markdownUrl = `${page.url}.md`;
+  // A introdução traz o próprio herói (título, fala do Dr. Lino e botões); as outras, a seção acima do título.
+  const hero = page.data.hero === true;
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
-      <div className="flex flex-row items-center gap-2 border-b pb-6">
-        <MarkdownCopyButton markdownUrl={markdownUrl} />
-        <ViewOptionsPopover
-          markdownUrl={markdownUrl}
-          githubUrl={`${REPOSITORY_URL}/blob/main/apps/web/content/docs/${encodeURI(page.path)}`}
-        />
-      </div>
-      <DocsBody>
+      {hero ? null : (
+        <>
+          {page.data.section ? <span className="docs-eyebrow">{page.data.section}</span> : null}
+          <DocsTitle>{page.data.title}</DocsTitle>
+          <DocsDescription className="docs-lead">{page.data.description}</DocsDescription>
+        </>
+      )}
+      <DocsBody className="docs-guide">
         <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>
     </DocsPage>

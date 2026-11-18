@@ -1,38 +1,26 @@
 ---
 title: introdução
-description: Tudo o que você precisa para falar com a API do Fila Saúde.
+description: O paciente espera em casa e a unidade chama na hora certa. Aqui você integra o app, o painel e a TV com a API.
 icon: House
+hero: true
 ---
 
-<Lino>
-  Oi! Eu sou o **Dr. Lino**. Aqui você aprende a integrar com o Fila Saúde: o paciente espera em casa, e a
-  unidade chama na hora certa.
-</Lino>
+<Hero
+  section="começar"
+  title="a fila do posto, do celular"
+  lead="O paciente espera em casa e a unidade chama na hora certa. Aqui você integra o app, o painel e a TV com a API."
+  speech="oi! eu sou o Dr. Lino."
+  detail="Em 5 minutos você faz a primeira inscrição pela API. Bora?"
+  primary={{ href: "/docs/inicio-rapido", label: "começar pelo início rápido" }}
+  secondary={{ href: "/docs/conceitos", label: "ver os conceitos" }}
+/>
 
 ## como funciona
 
-<Steps>
-<Step>
-### o paciente se inscreve
+<Flow steps={["se inscreve", "espera em casa", "check-in pelo QR", "é chamado"]} />
 
-Pelo app, ele escolhe a unidade e o serviço e responde umas perguntas rápidas.
-</Step>
-<Step>
-### espera em casa
-
-No dia, o app mostra a posição na fila e avisa a hora de sair.
-</Step>
-<Step>
-### chega e faz check-in
-
-Na unidade, ele lê o QR da recepção com o app.
-</Step>
-<Step>
-### é chamado
-
-O profissional chama pela estação. A TV mostra a senha, e o app avisa.
-</Step>
-</Steps>
+O paciente se inscreve pelo app e espera em casa. No dia, o app mostra a posição e avisa a hora de sair.
+Na unidade, ele lê o QR da recepção, e o profissional chama pela estação: a TV mostra a senha.
 
 ## por onde começar
 

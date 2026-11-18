@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ["@fila-saude/design"],
   // Dois layouts raiz (landing e docs): o 404 de endereço desconhecido é o `app/global-not-found.tsx`.
   experimental: { globalNotFound: true },
-  // "Copiar Markdown" e ferramentas de IA: `/docs/<página>.md` serve o Markdown da página.
+  // Ferramentas de IA e leitores de Markdown: `/docs/<página>.md` serve o Markdown da página.
   async rewrites() {
     return [
       { source: "/docs.md", destination: "/llms.mdx/docs.md" },
