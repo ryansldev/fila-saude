@@ -76,7 +76,7 @@ Em cada rota, o `validate(x, req.body)` vira `schema.body`, e o `validate(y, res
 
 **Files:** `apps/api/scripts/openapi.ts`; script `docs:openapi` no `package.json` da raiz; saída `apps/api/openapi/v1.json`; Test `apps/api/tests/integration/v1/openapi.test.ts`.
 
-- [ ] Testes vermelhos: o documento passa num validador de OpenAPI 3.1 (`@scalar/openapi-parser`); nenhum caminho `/v1/test`; `components.schemas.ApiError` citado nas respostas de erro; `securitySchemes` com `patientBearer`, `patientCookie` (o app na web) e `panelCookie` (`fila-painel`); `servers` com a variável `{municipality}`; as tags do DOC4.
+- [ ] Testes vermelhos: o documento passa num validador de OpenAPI 3.1 (`@scalar/openapi-parser`); nenhum caminho `/v1/test`; `components.schemas.ApiError` citado nas respostas de erro; `securitySchemes` com `patientBearer`, `patientCookie` (o app na web), `panelCookie` (`fila-painel`) e `tvBearer`; `servers` com a variável `{municipality}`; as tags do DOC4.
 - [ ] O script sobe o app com `buildApp({ logger: false })` sem `listen`. Se o `buildApp` exigir banco só para montar as rotas, separar a montagem da conexão, sem abrir conexão para gerar o arquivo. Depois o script chama `app.swagger()` e grava o arquivo ordenado; com `--check`, só compara.
 - [ ] Decidir as rotas do better-auth (Review Focus 6) e anotar em `decisoes-para-revisar.md`.
 - [ ] Commit `feat(api): generate the v1 openapi document`.

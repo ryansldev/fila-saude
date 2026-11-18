@@ -107,3 +107,6 @@ export function panelSchema<const S extends PanelRoute>(route: S) {
 
 // Resposta sem corpo (204).
 export const NO_CONTENT = z.null().describe("Sem corpo");
+
+// RN-TV-02: o token que a TV ganha ao se registrar (Authorization: Bearer).
+export const TV = [{ tvBearer: [] }];
