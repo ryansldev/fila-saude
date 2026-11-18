@@ -2,5 +2,5 @@
   "title": "Guias",
   "description": "Como a API funciona",
   "root": true,
-  "pages": ["index", "..."]
+  "pages": ["index", "municipios", "autenticacao", "erros", "limites", "versoes"]
 }

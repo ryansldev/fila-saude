@@ -1,0 +1,26 @@
+---
+title: Municípios
+description: Cada município tem os próprios dados; a API sabe de qual você fala pelo endereço.
+---
+
+Cada município tem o próprio banco de dados. Toda rota que lê ou grava dados de um município precisa
+dizer qual é, de um destes dois jeitos:
+
+| Quem chama | Como diz o município | Exemplo |
+| --- | --- | --- |
+| App do paciente | No caminho, `/v1/municipalities/{slug}/…` | `GET /v1/municipalities/exemplo/schedule` |
+| Painel e TV | No subdomínio | `GET https://exemplo.<domínio>/v1/panel/units` |
+
+O `slug` é o nome curto do município (ex.: `exemplo`). A lista dos municípios ativos está em
+`GET /v1/municipalities`.
+
+Município desconhecido, suspenso ou ainda sendo criado responde sempre o mesmo erro, para não revelar
+quais existem:
+
+```json
+{ "error": "unknown_municipality" }
+```
+
+Esse 404 vem antes de qualquer outra conferência: com o município errado, a API nem olha o login, o
+corpo ou os parâmetros. Se o subdomínio e o caminho apontarem municípios diferentes, a resposta é
+400 `municipality_mismatch`.

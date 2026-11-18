@@ -2,5 +2,5 @@
   "title": "API v1",
   "description": "Referência das rotas",
   "root": "api",
-  "pages": ["municipio", "paciente", "painel", "tv", "sistema", "..."]
+  "pages": ["index", "municipio", "paciente", "painel", "tv", "sistema", "..."]
 }

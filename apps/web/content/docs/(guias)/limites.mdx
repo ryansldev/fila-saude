@@ -1,0 +1,42 @@
+---
+title: Limites
+description: Senha errada, captcha e CPFs informados na inscrição.
+---
+
+Os valores abaixo são de partida e podem ser reajustados com o uso real.
+
+## Login
+
+Valem para o login do app (`/v1/auth/sign-in/username`) e do painel (`/v1/panel/auth/sign-in/username`).
+Todas as recusas são **429**, com uma `message` em português para mostrar à pessoa:
+
+| Código | Quando | O que fazer |
+| --- | --- | --- |
+| `login_locked` | 5 erros seguidos do mesmo login e do mesmo IP | Esperar 15 minutos. O dono do login, de outro IP, continua entrando |
+| `captcha_required` | Passaram 30 erros numa hora nesse login, somando todos os IPs | Mostrar o captcha e reenviar com o token |
+| `captcha_failed` | O token do captcha foi recusado, ou a verificação está fora do ar | Avisar a pessoa e deixar ela tentar de novo; não reenvie sozinho |
+| `login_busy` | Outro pedido do mesmo login ainda está sendo conferido | Esperar alguns segundos |
+| `too_many_attempts` | Muitos pedidos em poucos segundos (limitador do próprio login) | Esperar alguns segundos |
+
+Contam como erro a senha errada e o token de captcha recusado. Corpo inválido e login ou senha vazios
+não contam. Só acertar a senha zera o bloqueio de 15 minutos; espaçar os erros não escapa. Acertar não
+zera o teto de 30 por hora.
+
+## Captcha
+
+O captcha é o Cloudflare Turnstile. O token resolvido vai no cabeçalho `X-Captcha-Token` e vale uma vez.
+O app nativo abre a página do widget (`GET /v1/captcha`) numa WebView.
+
+A **inscrição em sessão pública** pelo app sempre pede o captcha, com outros status que o login:
+
+| Resposta | O que fazer |
+| --- | --- |
+| 400 `captcha_required` | Mostrar o captcha e reenviar com o token |
+| 400 `captcha_failed` | O token foi recusado: avisar a pessoa, sem reenviar sozinho |
+| 503 `captcha_unavailable` | A verificação está fora do ar: tentar de novo mais tarde |
+
+## CPFs de outras pessoas
+
+Quando a pessoa se inscreve por outra (na sessão, na lista de espera ou na conferência antes do
+questionário), cada conta pode informar até **20 CPFs por hora**, em janela deslizante. Passado o limite,
+a resposta é 429 `cpf_lookup_limit`.

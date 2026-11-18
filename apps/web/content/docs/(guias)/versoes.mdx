@@ -1,0 +1,16 @@
+---
+title: Versões
+description: Como a API muda sem quebrar quem já usa.
+---
+
+Todas as rotas ficam sob `/v1`. A regra para mudar a API:
+
+- **Mudança que só acrescenta fica na v1**: rota nova, campo novo na resposta, campo opcional novo no
+  corpo. O seu código deve ignorar campos que não conhece.
+- **Mudança que quebra vai para `/v2`**: tirar ou renomear campo, mudar tipo, tornar obrigatório,
+  mudar o significado de um código de erro.
+- A v2 é lançada junto com o app que já a usa. **A v1 continua no ar por 6 meses depois disso**, para
+  quem ainda não atualizou o app. Nesse período, as respostas da v1 trazem os cabeçalhos `Deprecation`
+  e `Sunset` (com a data em que ela sai).
+
+A referência de cada versão fica nas docs, lado a lado: escolha a versão no seletor do menu.

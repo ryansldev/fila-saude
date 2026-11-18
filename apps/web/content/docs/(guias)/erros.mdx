@@ -1,0 +1,42 @@
+---
+title: Erros
+description: Toda resposta de erro tem o mesmo formato, com um código estável.
+---
+
+Todo erro da API vem no mesmo formato:
+
+```json
+{
+  "error": "invalid_input",
+  "message": "Texto para mostrar à pessoa (às vezes)",
+  "fields": { "answers.severity": ["Campo obrigatório"] },
+  "data": {}
+}
+```
+
+- **`error`**: o código, em inglês e `snake_case`. É ele que o seu código deve comparar; não mude de
+  comportamento pelo texto.
+- **`message`**: quando vem, é um texto em português para mostrar a quem usa.
+- **`fields`**: no 400 `invalid_input`, cada campo inválido, com o caminho separado por ponto
+  (`answers.severity`) e as mensagens em português. Erro no corpo inteiro (ex.: não é um objeto) vem na
+  chave `_`. Nas rotas de login e cadastro, a mensagem do campo é um código (ex.: `password_too_short`,
+  `invalid_cpf`), e alguns erros vêm sem `fields`.
+- **`data`**: contexto de alguns 409 (ex.: as entradas ativas que impedem a ação).
+
+## Status
+
+| Status | Quando |
+| --- | --- |
+| 400 | Corpo, query ou parâmetro inválido (`invalid_input`), captcha da inscrição (`captcha_required`, `captcha_failed`) ou outro erro do login (`auth_error`) |
+| 401 | Sem login (`not_authenticated`), login ou senha errados (`invalid_credentials`) ou TV não pareada (`tv_not_paired`) |
+| 403 | Logado, mas sem permissão para a ação (`no_permission`) |
+| 404 | Município desconhecido (`unknown_municipality`), recurso que não existe ou id malformado no caminho (`not_found`), código de TV errado (`invalid_code`) |
+| 409 | A regra recusou a ação: o código diz qual (ex.: `forbidden_transition`, `no_slot`, `session_closed`), ou dois pedidos iguais ao mesmo tempo (`duplicate`) |
+| 422 | Falta escolher algo antes da ação (ex.: `classify_risk`, a cor da classificação de risco na triagem) |
+| 429 | Limite de tentativas (ver [Limites](/docs/limites)) |
+| 500 | Erro nosso (`internal_error`), sem detalhes na resposta |
+| 503 | Serviço fora do ar por um momento (ex.: `captcha_unavailable`, `try_again`): tente de novo |
+
+Cada rota da [referência](/docs/api/v1) lista os códigos que pode devolver em cada status. As rotas de
+login e cadastro não estão na referência; os códigos delas estão em [Autenticação](/docs/autenticacao) e
+[Limites](/docs/limites).

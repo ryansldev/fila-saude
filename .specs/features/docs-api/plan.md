@@ -104,7 +104,7 @@ Em cada rota, o `validate(x, req.body)` vira `schema.body`, e o `validate(y, res
 
 **Files:** `apps/web/content/docs/`: `index.mdx`, `municipios.mdx` (endereço por subdomínio ou `municipalities/:slug`, PD-15), `autenticacao.mdx` (paciente e painel), `erros.mdx` (PD-22, com `fields` e `message`), `versoes.mdx` (DOC3), `limites.mdx` (tentativas e captcha, AD-063 a AD-065).
 
-- [ ] Cada guia cita a regra (RN/PD/AD) de onde vem, sem copiar o texto da spec (uma fonte por fato).
+- [ ] Os guias são para quem integra: sem os IDs internos (RN/PD/AD/DA), que um leitor de fora não consegue consultar; cada código citado foi conferido no código da API.
 - [ ] Commit `docs(web): guides for tenants, auth, errors, versions and limits`.
 
 ### Task 7: Painel e app continuam iguais
