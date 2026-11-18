@@ -8175,5 +8175,12 @@
       "variables": { "municipality": { "default": "exemplo" } }
     },
     { "url": "http://localhost:3333", "description": "App do paciente: o município vem do caminho" }
+  ],
+  "tags": [
+    { "name": "Município", "description": "Dados públicos, sem login: municípios, unidades, serviços e agenda" },
+    { "name": "Paciente", "description": "O app do paciente, com o login da central" },
+    { "name": "Painel", "description": "A equipe da unidade, com o login do painel" },
+    { "name": "TV", "description": "A TV da unidade, com o token dela" },
+    { "name": "Sistema", "description": "Saúde da API e a página do captcha" }
   ]
 }

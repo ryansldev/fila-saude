@@ -3,7 +3,66 @@
 @import "fumadocs-ui/css/preset.css";
 @import "fumadocs-openapi/css/preset.css";
 
-/* As cores vêm do `packages/design` (variáveis no <html> do layout das docs). */
+/* A cara do Fila Saúde nas docs (DS: Nunito, azul de ação, relevo e cantos de 16 px; títulos em
+   minúsculas, como a landing). As cores vêm do `packages/design` (variáveis no <html> do layout). */
 @theme {
   --font-sans: var(--font-nunito), Nunito, system-ui, sans-serif;
+}
+
+/* Títulos: Nunito extrabold, apertado, como na landing. */
+#nd-page h1,
+#nd-page h2,
+#nd-page h3 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--color-fd-foreground);
+}
+#nd-page h1 {
+  font-size: 2.25rem;
+  line-height: 1.15;
+}
+
+/* Passos: o número em pílula azul-clara, como "1 2 3" na landing. */
+.fd-step::before {
+  font-weight: 800;
+  color: var(--color-fd-primary);
+  background-color: var(--color-fd-secondary);
+}
+.fd-steps {
+  border-color: var(--color-fd-border);
+  border-inline-start-width: 2px;
+}
+
+/* Blocos de código e abas: borda grossa clara e cantos de 16 px, como os cartões do app. */
+#nd-page figure.shiki,
+#nd-page [role="tablist"] {
+  border-radius: 1rem;
+}
+#nd-page figure.shiki {
+  border-width: 2px;
+  border-color: var(--color-fd-border);
+}
+#nd-page div:has(> [role="tablist"]) {
+  border-width: 2px;
+  border-radius: 1rem;
+  border-color: var(--color-fd-border);
+}
+
+/* Tabelas: borda clara e cabeçalho em negrito. */
+#nd-page table {
+  border-radius: 1rem;
+  overflow: hidden;
+}
+#nd-page th {
+  font-weight: 800;
+}
+
+/* Menu: item ativo em pílula azul-clara, em negrito. */
+#nd-sidebar a[data-active="true"] {
+  background-color: var(--color-fd-secondary);
+  font-weight: 700;
+}
+#nd-sidebar p,
+#nd-sidebar a {
+  font-weight: 600;
 }

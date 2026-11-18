@@ -1,25 +1,68 @@
 ---
-title: Começando
-description: O que é a API do Fila Saúde e por onde começar.
+title: introdução
+description: Tudo o que você precisa para falar com a API do Fila Saúde.
+icon: House
 ---
 
-O Fila Saúde é uma central de filas para o atendimento público (UBS, policlínicas): o paciente espera em
-casa e a unidade chama na hora certa. A API atende três clientes:
+<Lino>
+  Oi! Eu sou o **Dr. Lino**. Aqui você aprende a integrar com o Fila Saúde: o paciente espera em casa, e a
+  unidade chama na hora certa.
+</Lino>
 
-- **o app do paciente**, que se inscreve, acompanha a vez e faz check-in pelo QR da unidade;
-- **o painel da unidade**, onde a equipe configura serviços e sessões, chama e atende;
-- **a TV da unidade**, que mostra as chamadas.
+## como funciona
 
-Todas as rotas ficam em `/v1`. A referência de cada rota sai do próprio código da API, então ela está
-sempre de acordo com o que a API faz.
+<Steps>
+<Step>
+### o paciente se inscreve
 
-## Por onde começar
+Pelo app, ele escolhe a unidade e o serviço e responde umas perguntas rápidas.
+</Step>
+<Step>
+### espera em casa
 
-1. [Municípios](/docs/municipios): cada município tem os próprios dados; a API sabe de qual você fala
-   pelo endereço.
-2. [Autenticação](/docs/autenticacao): o login do paciente, o da equipe e o token da TV.
-3. [Erros](/docs/erros): o formato único de erro e o que cada status quer dizer.
-4. [Limites](/docs/limites): senha errada, captcha e CPFs informados.
-5. [Versões](/docs/versoes): como a API muda sem quebrar quem já usa.
+No dia, o app mostra a posição na fila e avisa a hora de sair.
+</Step>
+<Step>
+### chega e faz check-in
 
-A [referência da API v1](/docs/api/v1) tem todas as rotas, uma por página.
+Na unidade, ele lê o QR da recepção com o app.
+</Step>
+<Step>
+### é chamado
+
+O profissional chama pela estação. A TV mostra a senha, e o app avisa.
+</Step>
+</Steps>
+
+## por onde começar
+
+<Cards>
+  <Card icon={<Rocket />} title="início rápido" href="/docs/inicio-rapido">
+    Faça sua primeira inscrição em 5 chamadas.
+  </Card>
+  <Card icon={<Shapes />} title="conceitos" href="/docs/conceitos">
+    Entenda município, sessão, inscrição e fila do dia.
+  </Card>
+</Cards>
+
+## escolha o que você vai construir
+
+<Cards>
+  <Card icon={<Smartphone />} title="app do paciente" href="/docs/app-do-paciente">
+    Agenda, inscrição, posição na fila e check-in.
+  </Card>
+  <Card icon={<LayoutDashboard />} title="painel da unidade" href="/docs/painel">
+    Configurar, agendar e chamar.
+  </Card>
+  <Card icon={<Tv />} title="TV da unidade" href="/docs/tv">
+    Parear e mostrar as chamadas.
+  </Card>
+  <Card icon={<Braces />} title="referência da API" href="/docs/referencia">
+    Cada rota, com exemplos.
+  </Card>
+</Cards>
+
+<Callout title="código aberto">
+  O Fila Saúde é código aberto, no [GitHub](https://github.com/ryansldev/fila-saude). Usa IA? O índice está
+  em [`/llms.txt`](/llms.txt), e as docs inteiras, em [`/llms-full.txt`](/llms-full.txt).
+</Callout>

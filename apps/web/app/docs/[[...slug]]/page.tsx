@@ -1,8 +1,18 @@
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
+import type { OpenAPIPageData } from "fumadocs-openapi/server";
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+  MarkdownCopyButton,
+  ViewOptionsPopover,
+} from "fumadocs-ui/layouts/notebook/page";
+import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { OpenAPIPage } from "@/components/docs/api-page";
 import { getMDXComponents } from "@/components/docs/mdx";
+import { REPOSITORY_URL } from "@/lib/constants";
 import { source } from "@/lib/source";
 
 export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
@@ -10,25 +20,34 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const page = source.getPage(slug);
   if (!page) notFound();
 
-  // Toda fonte além dos guias é a referência de uma versão da API (DOC3).
+  // A referência de uma versão da API (AD-068): a página vem do documento OpenAPI.
   if (page.type !== "docs") {
+    const api = page.data as unknown as OpenAPIPageData;
     return (
-      <DocsPage toc={page.data.toc} full>
-        <DocsTitle>{page.data.title}</DocsTitle>
+      <DocsPage toc={api.toc} full>
+        <DocsTitle>{api.title}</DocsTitle>
         <DocsBody>
-          <OpenAPIPage {...page.data.getOpenAPIPageProps()} />
+          <OpenAPIPage {...api.getOpenAPIPageProps()} />
         </DocsBody>
       </DocsPage>
     );
   }
 
   const MDX = page.data.body;
+  const markdownUrl = `${page.url}.md`;
   return (
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
+      <div className="flex flex-row items-center gap-2 border-b pb-6">
+        <MarkdownCopyButton markdownUrl={markdownUrl} />
+        <ViewOptionsPopover
+          markdownUrl={markdownUrl}
+          githubUrl={`${REPOSITORY_URL}/blob/main/apps/web/content/docs/${encodeURI(page.path)}`}
+        />
+      </div>
       <DocsBody>
-        <MDX components={getMDXComponents()} />
+        <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>
     </DocsPage>
   );

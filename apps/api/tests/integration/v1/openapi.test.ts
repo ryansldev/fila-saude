@@ -65,6 +65,11 @@ describe("documentos OpenAPI (AD-066, AD-068)", () => {
     expect(paths.filter((p) => /^\/v\d+\/(test|auth|panel\/auth)(\/|$)/.test(p))).toEqual([]);
   });
 
+  it("os grupos vêm declarados, na ordem das docs", () => {
+    const tags = (doc as unknown as { tags: { name: string }[] }).tags.map((t) => t.name);
+    expect(tags).toEqual(["Município", "Paciente", "Painel", "TV", "Sistema"]);
+  });
+
   it("toda operação tem grupo e resumo em português", () => {
     const groups = new Set(["Município", "Paciente", "Painel", "TV", "Sistema"]);
     for (const { path, method, op } of operations()) {

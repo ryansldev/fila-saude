@@ -1,16 +1,26 @@
 ---
-title: Versões
-description: Como a API muda sem quebrar quem já usa.
+title: versões
+description: Como a API muda sem quebrar o seu código.
+icon: GitBranch
 ---
 
-Todas as rotas ficam sob `/v1`. A regra para mudar a API:
+A versão vem no começo do caminho: `/v1`, `/v2`, e assim por diante. A aba **API** no topo mostra a
+referência de cada uma.
 
-- **Mudança que só acrescenta fica na v1**: rota nova, campo novo na resposta, campo opcional novo no
-  corpo. O seu código deve ignorar campos que não conhece.
-- **Mudança que quebra vai para `/v2`**: tirar ou renomear campo, mudar tipo, tornar obrigatório,
-  mudar o significado de um código de erro.
-- A v2 é lançada junto com o app que já a usa. **A v1 continua no ar por 6 meses depois disso**, para
-  quem ainda não atualizou o app. Nesse período, as respostas da v1 trazem os cabeçalhos `Deprecation`
-  e `Sunset` (com a data em que ela sai).
+## o que muda, e onde
 
-A referência de cada versão fica nas docs, lado a lado: escolha a versão no seletor do menu.
+<Cards>
+  <Card title="acrescentar fica na mesma versão">
+    Rota nova, campo novo na resposta ou campo opcional no corpo.
+  </Card>
+  <Card title="quebrar vira a próxima versão">
+    Tirar ou renomear campo, mudar tipo, tornar obrigatório ou mudar o sentido de um código.
+  </Card>
+</Cards>
+
+A versão nova sai junto com o app que a usa. **A anterior fica no ar por 6 meses** depois disso. Nesse
+tempo, as respostas dela trazem os cabeçalhos `Deprecation` e `Sunset`, com a data em que ela sai.
+
+<Callout title="no seu código">
+  Ignore os campos que você não conhece. Eles podem aparecer a qualquer momento.
+</Callout>

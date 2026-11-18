@@ -1,0 +1,46 @@
+---
+title: TV da unidade
+description: Parear a TV pelo código e mostrar as chamadas na tela.
+icon: Tv
+---
+
+A TV é uma página web no endereço do município. Ela não tem login: ganha um token ao se registrar, e a
+equipe pareia pelo código que aparece na tela.
+
+<Steps>
+<Step>
+### registre a TV
+A TV chama [`POST /v1/tv`](/docs/api/atual/tv/tv-post) e guarda o `token` que volta. Na tela, mostra o
+`code` de 6 dígitos.
+
+```json title="Resposta (201)"
+{ "code": "482913", "token": "…" }
+```
+</Step>
+<Step>
+### pareie no painel
+Alguém da equipe digita o código no painel:
+[`POST /v1/panel/units/{unitId}/tvs`](/docs/api/atual/painel/panel-units-unitid-tvs-post). Código errado ou
+vencido responde 404 `invalid_code`.
+</Step>
+<Step>
+### mostre as chamadas
+A TV consulta [`GET /v1/tv/screen`](/docs/api/atual/tv/tv-screen-get) a cada 2 segundos, com
+`Authorization: Bearer <token>`.
+
+Enquanto não foi pareada, a resposta é `{ "state": "waiting", "code": "…", "expiresAt": "…" }`. Depois,
+`state` vira `paired` e traz a unidade, as chamadas (a mais recente primeiro), quantos aguardam em cada
+serviço e o QR de entrada.
+</Step>
+</Steps>
+
+<Callout type="warn" title="a tela pediu o código de novo?">
+  Se a equipe revogar a TV ([`DELETE /v1/panel/tvs/{tvId}`](/docs/api/atual/painel/panel-tvs-tvid-delete)),
+  ou se o código vencer sem ser pareado, a tela passa a responder 401 `tv_not_paired`: registre de novo
+  para ganhar outro código.
+</Callout>
+
+<Callout title="use a hora da API">
+  Use o `now` e o `timeZone` da resposta para o relógio e o anúncio das chamadas: o relógio da própria TV
+  pode estar errado.
+</Callout>

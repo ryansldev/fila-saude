@@ -1,0 +1,95 @@
+---
+title: painel da unidade
+description: Configurar a unidade, marcar os dias e chamar nas estações.
+icon: LayoutDashboard
+---
+
+O painel fala com a API pelo endereço do município (`https://exemplo.<domínio>/v1/panel/…`), com a
+sessão da equipe ([autenticação](/docs/autenticacao)). Cada ação confere se o perfil da pessoa pode
+fazer aquilo na unidade.
+
+Para saber quem está logado e com quais perfis, chame [`GET /v1/panel/me`](/docs/api/atual/painel/panel-me-get).
+
+## configurar
+
+| O quê | Chame |
+| --- | --- |
+| Unidades | [listar](/docs/api/atual/painel/panel-units-get), [criar](/docs/api/atual/painel/panel-units-post), [ver](/docs/api/atual/painel/panel-units-unitid-get), [editar](/docs/api/atual/painel/panel-units-unitid-patch), [remover](/docs/api/atual/painel/panel-units-unitid-delete) |
+| Serviços da unidade | [listar](/docs/api/atual/painel/panel-units-unitid-services-get), [criar](/docs/api/atual/painel/panel-units-unitid-services-post), [editar](/docs/api/atual/painel/panel-services-serviceid-patch) |
+| Estações (consultórios e salas de triagem) | [listar](/docs/api/atual/painel/panel-units-unitid-stations-get), [criar](/docs/api/atual/painel/panel-units-unitid-stations-post), [editar](/docs/api/atual/painel/panel-stations-stationid-patch), [arquivar](/docs/api/atual/painel/panel-stations-stationid-delete) |
+| Sessões (dias de atendimento) | [listar num intervalo](/docs/api/atual/painel/panel-units-unitid-sessions-get), [criar](/docs/api/atual/painel/panel-units-unitid-sessions-post), [editar](/docs/api/atual/painel/panel-sessions-sessionid-patch), [mudar a visibilidade](/docs/api/atual/painel/panel-sessions-sessionid-visibility-post), [cancelar](/docs/api/atual/painel/panel-sessions-sessionid-cancel-post) |
+| Configuração efetiva, com a origem de cada valor | [`GET …/units/{unitId}/config`](/docs/api/atual/painel/panel-units-unitid-config-get) |
+| QR de entrada da unidade | [`GET …/units/{unitId}/qr`](/docs/api/atual/painel/panel-units-unitid-qr-get) |
+| TVs | [listar](/docs/api/atual/painel/panel-units-unitid-tvs-get), [parear pelo código](/docs/api/atual/painel/panel-units-unitid-tvs-post), [revogar](/docs/api/atual/painel/panel-tvs-tvid-delete) (ver [TV](/docs/tv)) |
+| Equipe | [listar](/docs/api/atual/painel/panel-users-get), [criar](/docs/api/atual/painel/panel-users-post), [trocar ocupações e funções](/docs/api/atual/painel/panel-users-userid-assignments-put), [remover](/docs/api/atual/painel/panel-users-userid-delete) |
+
+## marcar os dias
+
+Nas sessões privadas, quem agenda escolhe quem vai, pela lista de espera.
+
+<Steps>
+<Step>
+### veja a lista de espera
+[`GET …/units/{unitId}/waitlist`](/docs/api/atual/painel/panel-units-unitid-waitlist-get): por serviço, com as sessões
+privadas que vêm.
+</Step>
+<Step>
+### marque o dia
+[`GET …/sessions/{sessionId}/allocation`](/docs/api/atual/painel/panel-sessions-sessionid-allocation-get) traz as vagas e uma
+sugestão de quem chamar, com o motivo.
+[`POST …/sessions/{sessionId}/allocate`](/docs/api/atual/painel/panel-sessions-sessionid-allocate-post) marca o dia de uma
+inscrição. Se outra pessoa marcou antes, a resposta é 409, já com a lista atualizada.
+</Step>
+<Step>
+### ligue para quem não confirmou
+[`GET …/units/{unitId}/call-list`](/docs/api/atual/painel/panel-units-unitid-call-list-get) é a lista de ligação.
+Depois de ligar, registre a resposta:
+[`POST …/entries/{entryId}/answer`](/docs/api/atual/painel/panel-entries-entryid-answer-post) (`confirmed`, `refused` ou
+`no_contact`).
+</Step>
+</Steps>
+
+## o dia de atendimento
+
+<Steps>
+<Step>
+### veja o dia
+[`GET /v1/panel/units/today`](/docs/api/atual/painel/panel-units-today-get) resume cada unidade que a pessoa vê;
+[`GET …/units/{unitId}/today`](/docs/api/atual/painel/panel-units-unitid-today-get) e
+[`GET …/units/{unitId}/today-queue`](/docs/api/atual/painel/panel-units-unitid-today-queue-get) mostram a unidade e a fila
+inteira.
+</Step>
+<Step>
+### abra a sessão
+[`POST …/sessions/{sessionId}/open`](/docs/api/atual/painel/panel-sessions-sessionid-open-post): as inscrições confirmadas
+entram na fila. A fila da sessão está em
+[`GET …/sessions/{sessionId}/queue`](/docs/api/atual/painel/panel-sessions-sessionid-queue-get).
+</Step>
+<Step>
+### receba na recepção
+Quem chega sem app, ou com algo a conferir, passa na recepção:
+[`POST …/sessions/{sessionId}/attendance`](/docs/api/atual/painel/panel-sessions-sessionid-attendance-post) confere e marca
+a presença.
+</Step>
+<Step>
+### chame na estação
+A tela da estação é [`GET …/stations/{stationId}/operation`](/docs/api/atual/painel/panel-stations-stationid-operation-get).
+Cada comando devolve a tela atualizada:
+
+| Para | Chame |
+| --- | --- |
+| Chamar o próximo | [`call`](/docs/api/atual/painel/panel-stations-stationid-call-post) |
+| Chamar de novo | [`recall`](/docs/api/atual/painel/panel-stations-stationid-recall-post) |
+| A pessoa chegou | [`showed-up`](/docs/api/atual/painel/panel-stations-stationid-showed-up-post) (desfazer: [`undo-showed-up`](/docs/api/atual/painel/panel-stations-stationid-undo-showed-up-post)) |
+| Não compareceu | [`no-show`](/docs/api/atual/painel/panel-stations-stationid-no-show-post) |
+| Finalizar | [`finish`](/docs/api/atual/painel/panel-stations-stationid-finish-post) |
+
+Na triagem, quem classifica (o enfermeiro) manda a cor da classificação de risco em `confirmedRisk` ao
+finalizar ou ao chamar o próximo; sem ela, a resposta é 422 `classify_risk`. O técnico fecha sem cor, e a
+pessoa volta para o enfermeiro classificar.
+</Step>
+<Step>
+### encerre
+[`POST …/sessions/{sessionId}/close`](/docs/api/atual/painel/panel-sessions-sessionid-close-post) encerra a fila do dia.
+</Step>
+</Steps>

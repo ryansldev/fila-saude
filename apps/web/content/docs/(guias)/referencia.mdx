@@ -1,0 +1,29 @@
+---
+title: como usar a referência
+description: Cada rota da API tem uma página, gerada do próprio código.
+icon: Braces
+---
+
+A referência fica na aba **API** no topo. Ela sai do código da API, então nunca fica para trás.
+
+## os grupos
+
+| Grupo | Quem usa | Login |
+| --- | --- | --- |
+| [Município](/docs/api/atual/municipio/municipalities-get) | Qualquer um | Nenhum |
+| [Paciente](/docs/api/atual/paciente/municipalities-slug-mine-get) | O app do paciente | [Token do paciente](/docs/autenticacao) |
+| [Painel](/docs/api/atual/painel/panel-me-get) | A equipe da unidade | [Sessão do painel](/docs/autenticacao) |
+| [TV](/docs/api/atual/tv/tv-screen-get) | A TV da unidade | [Token da TV](/docs/tv) |
+| [Sistema](/docs/api/atual/sistema/status-get) | Monitoramento e o app nativo | Nenhum |
+
+## o que tem em cada página
+
+- **Autenticação**: qual login a rota pede.
+- **Parâmetros e corpo**: o que você manda, com o tipo de cada campo.
+- **Respostas**: o que volta em cada status, inclusive os códigos de erro.
+- **Exemplo**: o pedido em cURL e a resposta.
+
+## o documento OpenAPI
+
+Quer gerar um cliente ou testar no Postman e no Insomnia? Baixe o documento da versão atual no link
+**OpenAPI**, no topo. Cada versão da API tem o seu.

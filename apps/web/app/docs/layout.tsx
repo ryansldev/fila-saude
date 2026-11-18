@@ -1,11 +1,11 @@
 import { COLOR } from "@fila-saude/design";
-import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import { DocsLayout } from "fumadocs-ui/layouts/notebook";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import type { Metadata } from "next";
 import { Nunito } from "next/font/google";
 import type { CSSProperties, ReactNode } from "react";
 import { PT_BR, PT_BR_API } from "@/lib/docs-i18n";
-import { baseOptions } from "@/lib/layout.shared";
+import { baseOptions, docsOptions } from "@/lib/layout.shared";
 import { siteMetadata } from "@/lib/site-metadata";
 import { source } from "@/lib/source";
 import "./docs.css";
@@ -53,7 +53,12 @@ export default function Layout({ children }: { children: ReactNode }) {
           search={{ options: { api: "/api/search" } }}
           i18n={{ locale: "pt-BR", translations: { ...PT_BR, ...PT_BR_API } }}
         >
-          <DocsLayout tree={source.getPageTree()} {...baseOptions()}>
+          <DocsLayout
+            tree={source.getPageTree()}
+            tabMode="navbar"
+            nav={{ ...baseOptions().nav, mode: "top" }}
+            {...docsOptions()}
+          >
             {children}
           </DocsLayout>
         </RootProvider>

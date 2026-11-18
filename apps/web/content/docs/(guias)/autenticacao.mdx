@@ -1,56 +1,72 @@
 ---
-title: Autenticação
-description: Login do paciente (app) e da equipe (painel), e o token da TV.
+title: autenticação
+description: O login do paciente, o da equipe e o token da TV.
+icon: KeyRound
 ---
 
-A API tem três tipos de acesso. Cada rota da [referência](/docs/api/v1) diz qual pede, em
-**Autenticação**.
+Há três jeitos de entrar. Cada rota da [referência](/docs/referencia) diz qual pede.
 
-## Paciente (app)
+| Quem | Como entra | Como manda nas rotas |
+| --- | --- | --- |
+| Paciente | CPF e senha, na central (vale em todos os municípios) | `Authorization: Bearer <token>` |
+| Equipe | Login e senha, no painel do município | Cookie da sessão |
+| TV | Registra-se e é pareada pela equipe | `Authorization: Bearer <token>` |
 
-O paciente entra pelo CPF e senha na central, que vale para todos os municípios:
+<Tabs items={["paciente", "equipe", "TV"]}>
+<Tab value="paciente">
+### entrar
 
-```http
-POST /v1/auth/sign-in/username
-Content-Type: application/json
-
-{ "username": "12345678909", "password": "…" }
+```bash
+curl -i http://localhost:3333/v1/auth/sign-in/username \
+  -H "content-type: application/json" \
+  -d '{ "username": "11144477735", "password": "exemplo123" }'
 ```
 
-O token da sessão volta no cabeçalho `set-auth-token`. Nas rotas do paciente, mande-o em
-`Authorization: Bearer <token>`. No app pela web, a sessão vai num cookie que a API define
-(`better-auth.session_token`; em https, `__Secure-better-auth.session_token`).
+O token volta no cabeçalho `set-auth-token`. Mande-o em `Authorization: Bearer <token>` nas rotas do
+paciente. No app pela web, a sessão fica num cookie que a API define (`better-auth.session_token`; em
+https, `__Secure-better-auth.session_token`), sem cabeçalho.
 
 CPF ou senha errados respondem 401 `invalid_credentials`.
 
-O cadastro é `POST /v1/auth/sign-up/email`, com `name`, `cpf`, `email`, `phone`, `birthDate` e
+### criar a conta
+
+`POST /v1/auth/sign-up/email`, com `name`, `cpf`, `email`, `phone`, `birthDate` (`AAAA-MM-DD`) e
 `password`.
 
-## Equipe (painel)
+| Resposta | Quer dizer |
+| --- | --- |
+| 400 `invalid_cpf` | O CPF não é válido |
+| 400 `invalid_input` | Algum campo está errado; veja `fields` |
+| 409 `cpf_in_use` | Já existe uma conta com esse CPF |
+| 409 `email_in_use` | Já existe uma conta com esse e-mail |
+</Tab>
+<Tab value="equipe">
+### entrar
 
-A equipe entra no painel do município (pelo subdomínio, ver [Municípios](/docs/municipios)):
+Pelo subdomínio do município ([municípios](/docs/municipios)):
 
-```http
-POST https://exemplo.<domínio>/v1/panel/auth/sign-in/username
-Content-Type: application/json
-
-{ "username": "gestor", "password": "…" }
+```bash
+curl -i https://exemplo.<domínio>/v1/panel/auth/sign-in/username \
+  -H "content-type: application/json" \
+  -d '{ "username": "gestor", "password": "…" }'
 ```
 
 A sessão fica num cookie que a API define (`fila-painel.session_token`; em https,
-`__Secure-fila-painel.session_token`). Sem ele, toda rota do painel responde 401 `not_authenticated`,
-antes de olhar o corpo ou os parâmetros. Com login, cada ação ainda confere a permissão do perfil na
-unidade: sem ela, 403 `no_permission`.
+`__Secure-fila-painel.session_token`). No navegador, mande os pedidos com `credentials: "include"`.
 
-## TV
+Sem a sessão, as rotas do painel respondem 401 `not_authenticated`. Sem permissão para a ação, 403
+`no_permission`.
+</Tab>
+<Tab value="TV">
+A TV não tem login: registra-se em `POST /v1/tv`, ganha um token e é pareada pela equipe. Daí em diante,
+manda `Authorization: Bearer <token>` em `GET /v1/tv/screen`. O passo a passo está em [TV da unidade](/docs/tv).
+</Tab>
+</Tabs>
 
-A TV se registra em `POST /v1/tv` (pelo subdomínio do município) e recebe um código de 6 dígitos e um
-token. A equipe pareia o código no painel; daí em diante a TV manda `Authorization: Bearer <token>` em
-`GET /v1/tv/screen`.
+<Callout type="warn" title="errou a senha várias vezes?">
+  O login pode pedir para esperar ou pedir o captcha. Veja o que fazer em
+  [muitas tentativas](/docs/limites).
+</Callout>
 
-## Senha errada e captcha
-
-Ver [Limites](/docs/limites): depois de vários erros, o login bloqueia por um tempo ou pede captcha.
-
-As rotas de login (`/v1/auth/*` e `/v1/panel/auth/*`) não estão na referência: os códigos delas estão
-aqui, em [Erros](/docs/erros) e em [Limites](/docs/limites).
+As rotas de login não estão na referência. Os códigos delas estão aqui e em
+[muitas tentativas](/docs/limites).

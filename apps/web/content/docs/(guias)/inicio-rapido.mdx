@@ -1,0 +1,216 @@
+---
+title: início rápido
+description: Sua primeira inscrição em 5 chamadas. Só HTTP e JSON, sem biblioteca.
+icon: Rocket
+---
+
+Você vai listar a agenda, entrar como paciente e se inscrever numa sessão. Use a API local com os dados
+de exemplo: veja [ambiente local](/docs/ambiente-local).
+
+<Callout title="antes de começar">
+  Os exemplos usam `http://localhost:3333` e a versão `v1` da API. Se a aba **API** no topo mostrar uma
+  versão mais nova, troque o número no caminho.
+</Callout>
+
+<Steps>
+<Step>
+### liste os municípios
+
+O `slug` é o nome curto do município. Ele vai no caminho das próximas chamadas.
+
+<Tabs items={["cURL", "JavaScript"]}>
+<Tab value="cURL">
+```bash
+curl http://localhost:3333/v1/municipalities
+```
+</Tab>
+<Tab value="JavaScript">
+```ts
+const response = await fetch("http://localhost:3333/v1/municipalities");
+const municipalities = await response.json();
+```
+</Tab>
+</Tabs>
+
+```json title="Resposta"
+[{ "slug": "exemplo", "name": "Município Exemplo", "uf": "SP" }]
+```
+</Step>
+
+<Step>
+### veja a agenda
+
+Cada sessão é um dia de atendimento de um serviço numa unidade.
+
+<Tabs items={["cURL", "JavaScript"]}>
+<Tab value="cURL">
+```bash
+curl http://localhost:3333/v1/municipalities/exemplo/schedule
+```
+</Tab>
+<Tab value="JavaScript">
+```ts
+const response = await fetch("http://localhost:3333/v1/municipalities/exemplo/schedule");
+const sessions = await response.json();
+```
+</Tab>
+</Tabs>
+
+```json title="Resposta"
+[
+  {
+    "id": "1af6aed0-3da3-49c0-9292-f7622cbfbcab",
+    "unit": { "id": "08245b34-…", "name": "UBS Centro", "neighborhood": "Centro", "timeZone": "America/Sao_Paulo" },
+    "service": { "id": "b0b1cf10-…", "name": "Clínico geral" },
+    "start": "2026-11-19T11:00:00.000Z",
+    "end": "2026-11-19T15:00:00.000Z",
+    "professional": "Dra. Helena",
+    "remainingSlots": 20,
+    "state": "planned"
+  }
+]
+```
+</Step>
+
+<Step>
+### entre como paciente
+
+O paciente entra com CPF e senha. Guarde o token que volta no cabeçalho `set-auth-token`.
+
+<Tabs items={["cURL", "JavaScript"]}>
+<Tab value="cURL">
+```bash
+curl -i http://localhost:3333/v1/auth/sign-in/username \
+  -H "content-type: application/json" \
+  -d '{ "username": "11144477735", "password": "exemplo123" }'
+```
+</Tab>
+<Tab value="JavaScript">
+```ts
+const response = await fetch("http://localhost:3333/v1/auth/sign-in/username", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ username: "11144477735", password: "exemplo123" }),
+});
+const token = response.headers.get("set-auth-token");
+```
+</Tab>
+</Tabs>
+
+```http title="Resposta (cabeçalhos)"
+HTTP/1.1 200 OK
+set-auth-token: vZOAV1VOEghwOv08jJgmIavXhYX3abSU.…
+```
+</Step>
+
+<Step>
+### veja as inscrições
+
+Com o token, o paciente vê as próprias inscrições. O app chama esta rota de tempos em tempos para
+mostrar a posição na fila.
+
+<Tabs items={["cURL", "JavaScript"]}>
+<Tab value="cURL">
+```bash
+curl http://localhost:3333/v1/municipalities/exemplo/mine \
+  -H "authorization: Bearer $TOKEN"
+```
+</Tab>
+<Tab value="JavaScript">
+```ts
+const response = await fetch("http://localhost:3333/v1/municipalities/exemplo/mine", {
+  headers: { authorization: `Bearer ${token}` },
+});
+const entries = await response.json();
+```
+</Tab>
+</Tabs>
+
+```json title="Resposta"
+[
+  {
+    "entryId": "db904023-0518-4dfa-98d5-07783498231e",
+    "person": "Bruno Lima",
+    "state": "allocated",
+    "service": "Odontologia",
+    "unit": "UBS Centro",
+    "session": { "id": "7eacd715-…", "start": "2026-11-21T16:00:00.000Z", "state": "planned" },
+    "ticket": null,
+    "estimate": { "kind": "awaiting_start" },
+    "canCancel": true
+  }
+]
+```
+</Step>
+
+<Step>
+### inscreva-se numa sessão
+
+A inscrição pede o captcha, no cabeçalho `X-Captcha-Token`. Na API local, qualquer valor passa.
+
+<Tabs items={["cURL", "JavaScript"]}>
+<Tab value="cURL">
+```bash
+curl http://localhost:3333/v1/municipalities/exemplo/sessions/$SESSION_ID/sign-ups \
+  -H "authorization: Bearer $TOKEN" \
+  -H "x-captcha-token: XXXX.DUMMY.TOKEN.XXXX" \
+  -H "content-type: application/json" \
+  -d '{
+    "forWhom": { "kind": "me" },
+    "answers": { "alarms": [], "reason": "follow_up", "severity": null, "conditions": [], "groups": [] }
+  }'
+```
+</Tab>
+<Tab value="JavaScript">
+```ts
+const response = await fetch(`http://localhost:3333/v1/municipalities/exemplo/sessions/${sessionId}/sign-ups`, {
+  method: "POST",
+  headers: {
+    authorization: `Bearer ${token}`,
+    "x-captcha-token": captchaToken,
+    "content-type": "application/json",
+  },
+  body: JSON.stringify({
+    forWhom: { kind: "me" },
+    answers: { alarms: [], reason: "follow_up", severity: null, conditions: [], groups: [] },
+  }),
+});
+```
+</Tab>
+</Tabs>
+
+```json title="Resposta (201)"
+{ "entryId": "09a8b554-45ca-4bab-a638-265db4b3e82c", "state": "confirmed", "classification": { "level": "routine", "support": false } }
+```
+
+Pronto: a vaga é sua. Se a pessoa já tiver uma inscrição nesse serviço, a resposta é 409 `duplicate`.
+</Step>
+</Steps>
+
+## deu errado?
+
+<Accordions>
+<Accordion title="401 not_authenticated">
+O token não foi junto ou venceu. Entre de novo e mande `Authorization: Bearer <token>`.
+</Accordion>
+<Accordion title="404 unknown_municipality">
+O `slug` no caminho não é de um município ativo. Confira em `GET /v1/municipalities`.
+</Accordion>
+<Accordion title="400 captcha_required">
+Faltou o cabeçalho `X-Captcha-Token`.
+</Accordion>
+</Accordions>
+
+## e agora?
+
+<Cards>
+  <Card icon={<Shapes />} title="conceitos" href="/docs/conceitos">
+    O que quer dizer cada `state` e cada `estimate`.
+  </Card>
+  <Card icon={<Smartphone />} title="app do paciente" href="/docs/app-do-paciente">
+    O caminho completo, até o check-in.
+  </Card>
+  <Card icon={<TriangleExclamationPoint />} title="erros" href="/docs/erros">
+    Como tratar cada erro.
+  </Card>
+</Cards>

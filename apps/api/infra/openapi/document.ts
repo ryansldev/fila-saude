@@ -1,6 +1,7 @@
 import swagger from "@fastify/swagger";
 import type { FastifyInstance } from "fastify";
 import { createJsonSchemaTransform, jsonSchemaTransformObject } from "fastify-type-provider-zod";
+import { TAGS } from "infra/openapi/schemas";
 import { isPanelAuth } from "infra/panel/guard";
 import { apiVersion, isUnder } from "infra/routes/versions";
 
@@ -28,6 +29,14 @@ export function registerOpenApi(app: FastifyInstance) {
         version: "",
         description: "API da central de filas: app do paciente, painel da unidade e TV.",
       },
+      // Os grupos da referência, nesta ordem (as docs usam a ordem e os nomes daqui).
+      tags: [
+        { name: TAGS.municipality, description: "Dados públicos, sem login: municípios, unidades, serviços e agenda" },
+        { name: TAGS.patient, description: "O app do paciente, com o login da central" },
+        { name: TAGS.panel, description: "A equipe da unidade, com o login do painel" },
+        { name: TAGS.tv, description: "A TV da unidade, com o token dela" },
+        { name: TAGS.system, description: "Saúde da API e a página do captcha" },
+      ],
       servers: [
         {
           url: "http://{municipality}.localhost:3333",

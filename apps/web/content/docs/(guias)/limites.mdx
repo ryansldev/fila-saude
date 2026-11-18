@@ -1,42 +1,36 @@
 ---
-title: Limites
-description: Senha errada, captcha e CPFs informados na inscrição.
+title: muitas tentativas
+description: Quando a API pede para esperar ou pede o captcha, e o que mostrar à pessoa.
+icon: Gauge
 ---
 
-Os valores abaixo são de partida e podem ser reajustados com o uso real.
+Para proteger as contas, às vezes a API pede para esperar ou pede o captcha. Quando a recusa traz uma
+`message`, mostre ela à pessoa; quando não traz, use um texto seu.
 
-## Login
+## no login
 
-Valem para o login do app (`/v1/auth/sign-in/username`) e do painel (`/v1/panel/auth/sign-in/username`).
-Todas as recusas são **429**, com uma `message` em português para mostrar à pessoa:
+Vale para o app e para o painel. Todas as recusas são **429**.
 
-| Código | Quando | O que fazer |
-| --- | --- | --- |
-| `login_locked` | 5 erros seguidos do mesmo login e do mesmo IP | Esperar 15 minutos. O dono do login, de outro IP, continua entrando |
-| `captcha_required` | Passaram 30 erros numa hora nesse login, somando todos os IPs | Mostrar o captcha e reenviar com o token |
-| `captcha_failed` | O token do captcha foi recusado, ou a verificação está fora do ar | Avisar a pessoa e deixar ela tentar de novo; não reenvie sozinho |
-| `login_busy` | Outro pedido do mesmo login ainda está sendo conferido | Esperar alguns segundos |
-| `too_many_attempts` | Muitos pedidos em poucos segundos (limitador do próprio login) | Esperar alguns segundos |
-
-Contam como erro a senha errada e o token de captcha recusado. Corpo inválido e login ou senha vazios
-não contam. Só acertar a senha zera o bloqueio de 15 minutos; espaçar os erros não escapa. Acertar não
-zera o teto de 30 por hora.
-
-## Captcha
-
-O captcha é o Cloudflare Turnstile. O token resolvido vai no cabeçalho `X-Captcha-Token` e vale uma vez.
-O app nativo abre a página do widget (`GET /v1/captcha`) numa WebView.
-
-A **inscrição em sessão pública** pelo app sempre pede o captcha, com outros status que o login:
-
-| Resposta | O que fazer |
+| Código | Faça |
 | --- | --- |
-| 400 `captcha_required` | Mostrar o captcha e reenviar com o token |
-| 400 `captcha_failed` | O token foi recusado: avisar a pessoa, sem reenviar sozinho |
-| 503 `captcha_unavailable` | A verificação está fora do ar: tentar de novo mais tarde |
+| `login_locked` | Peça para esperar alguns minutos e tentar de novo |
+| `captcha_required` | Mostre o captcha e reenvie com o token em `X-Captcha-Token` |
+| `captcha_failed` | Avise que a verificação falhou e deixe a pessoa tentar de novo |
+| `login_busy` | Espere alguns segundos e tente de novo |
+| `too_many_attempts` | Espere alguns segundos e tente de novo |
 
-## CPFs de outras pessoas
+<Callout type="warn" title="deixe a pessoa decidir">
+  Não tente de novo sozinho: mostre a mensagem e espere a pessoa tocar de novo.
+</Callout>
 
-Quando a pessoa se inscreve por outra (na sessão, na lista de espera ou na conferência antes do
-questionário), cada conta pode informar até **20 CPFs por hora**, em janela deslizante. Passado o limite,
-a resposta é 429 `cpf_lookup_limit`.
+## na inscrição
+
+A inscrição em sessão pública sempre pede o captcha. No app nativo, abra a página do widget
+([`GET /v1/captcha`](/docs/api/atual/sistema/captcha-get)) numa WebView.
+
+| Resposta | Faça |
+| --- | --- |
+| 400 `captcha_required` | Mostre o captcha e reenvie com o token |
+| 400 `captcha_failed` | Avise e deixe a pessoa tentar de novo |
+| 503 `captcha_unavailable` | Peça para tentar mais tarde |
+| 429 `cpf_lookup_limit` | Peça para tentar mais tarde |
