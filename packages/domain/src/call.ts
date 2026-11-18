@@ -10,11 +10,17 @@ type Cmd = { stationId: string };
  * confirmar ou reclassificar o risco de quem sai dela (RN-TRI-03, RN-RISCO-01); `refer`, com vermelho,
  * encaminha à emergência e tira da fila desta unidade (AD-059).
  */
-type CmdClose = Cmd & { confirmedRisk?: RiskLevel; refer?: boolean };
+type CmdClose = Cmd & {
+  confirmedRisk?: RiskLevel;
+  refer?: boolean;
+  /** RN-PERF-05: quem opera classifica o risco (enfermeiro). Sem isso (técnico), fecha o acolhimento. */
+  classifies?: boolean;
+};
 
 const MIN = 60_000;
 const EVENT_CALL = "Estação chama o próximo";
 const EVENT_CLOSE = "Estação chama o próximo ou toca Finalizar";
+const EVENT_WELCOMED = "Técnico finaliza o acolhimento na triagem";
 const EVENT_NO_SHOW = '"Não compareceu"';
 
 const withStation = (day: SessionDay, stationId: string, partial: Partial<Station>): SessionDay => ({
@@ -116,6 +122,8 @@ function requireShowUp(
  * emergência só com vermelho (AD-059).
  */
 function invalidRisk(item: QueueItem | undefined, cmd: CmdClose): ErrorCode | null {
+  // RN-PERF-05: classificar é do enfermeiro (Cofen 661/2021).
+  if (cmd.classifies === false && (cmd.confirmedRisk !== undefined || cmd.refer)) return "forbidden_transition";
   if (cmd.refer && cmd.confirmedRisk !== "emergency") return "forbidden_transition";
   if (cmd.confirmedRisk === undefined) return null;
   return item?.state !== "called" || item.stage !== "triage" ? "forbidden_transition" : null;
@@ -133,7 +141,20 @@ function closeCalled(
   now: number,
   confirmedRisk?: RiskLevel,
   refer = false,
+  classifies = true,
 ): { day: SessionDay; events: Event[] } {
+  // RN-PERF-05: o técnico fecha o acolhimento na triagem; a pessoa volta presente à triagem, marcada
+  // como acolhida, e quem classifica a chama antes dos outros.
+  if (!classifies && item.stage === "triage") {
+    if (applyTransition(ITEM_TRANSITIONS, item.state, EVENT_WELCOMED) !== "present") {
+      throw new Error(`contrato: ${item.state} não volta do acolhimento`);
+    }
+    const free = withStation(day, station.id, { calledItemId: null });
+    return {
+      day: withItem(free, { ...item, state: "present", welcomed: true }),
+      events: [{ kind: "welcomed", ...base(day, item, station.id), data: { at: now } }],
+    };
+  }
   if (applyTransition(ITEM_TRANSITIONS, item.state, EVENT_CLOSE) !== "done_in_stage") {
     throw new Error(`contrato: ${item.state} não encerra`);
   }
@@ -146,8 +167,11 @@ function closeCalled(
   ];
   // O risco confirmado fica no item do dia, inclusive de quem é encaminhado: o dia e a entrada concordam.
   // A API grava entry.confirmedRisk (INV-07: só agendador ou triagem).
+  const classified: QueueItem = item.welcomed ? { ...item, welcomed: false } : item;
   const confirmed: QueueItem =
-    confirmedRisk === undefined ? item : { ...item, risk: confirmedRisk, confirmedUrgency: isUrgent(confirmedRisk) };
+    confirmedRisk === undefined
+      ? classified
+      : { ...classified, risk: confirmedRisk, confirmedUrgency: isUrgent(confirmedRisk) };
   if (confirmedRisk !== undefined) {
     events.push({
       kind: "risk_confirmed",
@@ -193,11 +217,11 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     const present = requireShowUp(current, station, previous, now);
     if (!present.ok) return failure("no_show_up");
     current = present.day;
-    const closed = closeCalled(current, station, previous, now, cmd.confirmedRisk, cmd.refer);
+    const closed = closeCalled(current, station, previous, now, cmd.confirmedRisk, cmd.refer, cmd.classifies);
     current = closed.day;
     events.push(...closed.events);
   }
-  const next = eligible(current, station.id)[0];
+  const next = eligible(current, station.id, { classifies: cmd.classifies ?? true })[0];
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").
   if (!next) return events.length > 0 ? ok(current, events) : failure("none_eligible");
   if (applyTransition(ITEM_TRANSITIONS, next.state, EVENT_CALL) !== "called") {
@@ -240,7 +264,7 @@ export function finish(day: SessionDay, cmd: CmdClose, now: number): Result<Sess
   if (invalid) return failure(invalid);
   const present = requireShowUp(day, found.station, found.item, now);
   if (!present.ok) return failure("no_show_up");
-  const closed = closeCalled(present.day, found.station, found.item, now, cmd.confirmedRisk, cmd.refer);
+  const closed = closeCalled(present.day, found.station, found.item, now, cmd.confirmedRisk, cmd.refer, cmd.classifies);
   return ok(closed.day, closed.events);
 }
 

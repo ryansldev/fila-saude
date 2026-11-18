@@ -946,6 +946,15 @@ export const ITEM_TRANSITIONS: Transition<ItemState>[] = [
   },
   {
     de: "called",
+    event: "Técnico finaliza o acolhimento na triagem",
+    for: "present",
+    condition: "—",
+    effects: "Volta à triagem como acolhida; quem classifica a chama antes dos outros (RN-PERF-05)",
+    rule: "RN-PERF-05",
+    spec: "chamada",
+  },
+  {
+    de: "called",
     event: '"Não compareceu"',
     for: "present",
     condition: "Pulos no dia = 0",

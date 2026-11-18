@@ -199,7 +199,9 @@ function Called({
   const phase = calledPhase(called);
   const form = called.triage;
   // As cores aparecem sempre na triagem (não dependem da ficha); sem cor, não finaliza (H3).
-  const needsColor = needsClassify(op.station.stage, true, color);
+  // RN-PERF-05: só quem classifica (enfermeiro) vê as cores; o técnico finaliza o acolhimento sem cor.
+  const classifies = op.classifies;
+  const needsColor = needsClassify(op.station.stage, classifies, color);
   return (
     <>
       <section
@@ -284,7 +286,7 @@ function Called({
           aria-label="Fechar o atendimento"
           className="flex flex-col gap-3 rounded-2xl border border-[var(--ds-line)] bg-white p-4"
         >
-          {triage ? (
+          {triage && classifies ? (
             <fieldset className="flex flex-col gap-3">
               <legend className="mb-3 font-extrabold text-slate-900">Classifique o risco</legend>
               <div className="grid grid-cols-2 gap-2.5 pt-1 sm:grid-cols-3 xl:grid-cols-5">
@@ -336,10 +338,10 @@ function Called({
                 disabled={sending || needsColor}
                 onClick={() => onCommand("finish")}
               >
-                só finalizar
+                {triage && !classifies ? "Finalizar acolhimento" : "só finalizar"}
               </Button>
               <Button icon={CheckIcon} disabled={sending || needsColor} onClick={() => onCommand("call")}>
-                Finalizar e chamar o próximo
+                {triage && !classifies ? "Finalizar acolhimento e chamar o próximo" : "Finalizar e chamar o próximo"}
               </Button>
             </div>
           </div>

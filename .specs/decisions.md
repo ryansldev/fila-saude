@@ -66,6 +66,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-058 | Triagem pelo Manchester padrão (cinco cores) | ativa |
 | AD-059 | Vermelho fica na unidade; encaminhar à emergência é à parte | ativa |
 | AD-060 | Refazer o questionário em casa no dia, com alerta de declaração falsa | ativa |
+| AD-061 | Acolhimento do técnico volta para o enfermeiro classificar | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -307,6 +308,10 @@ Vermelho na triagem põe a pessoa em 1º lugar no atendimento desta unidade, à 
 ### AD-060 · Refazer o questionário em casa no dia, com alerta de declaração falsa
 2026-11-17 · ativa · Muda: RN-RISCO-03, RN-PIORA-01 (substitui a provisória I9)
 Quem está na fila do dia ainda em casa refaz o questionário pelo app e o risco sugerido sobe na fila, como a RN-PIORA-01 já dizia; na unidade continua valendo "meus sintomas pioraram". A 1ª pergunta do questionário (inscrição, lista e refazer) avisa que as respostas mudam a ordem da fila e que informar sintoma falso para passar na frente pode ser crime de falsidade ideológica (art. 299 do Código Penal); o texto aguarda a revisão jurídica (D5). **Por quê:** decisão sua, 2026-11-17 ("precisamos seguir a spec. MAS, devemos alertar do crime de falsidade ideológica pra ninguém passar um sintoma ou algo do tipo que não seja verdade").
+
+### AD-061 · Acolhimento do técnico volta para o enfermeiro classificar
+2026-11-17 · ativa · Muda: RN-PERF-05, RN-TRI-03
+O técnico de enfermagem chama na estação de triagem para o acolhimento e os sinais vitais, mas não manda cor (a API recusa). Ao finalizar, a pessoa volta presente à fila da triagem, marcada como acolhida; quem classifica (enfermeiro) a chama antes dos outros e a manda para o atendimento com a cor. O técnico não chama de novo quem já acolheu. **Por quê:** decisão sua, 2026-11-17 ("volta para o enfermeiro"): a classificação de risco é ato privativo do enfermeiro (Cofen 661/2021) e a pessoa não pode ir ao atendimento sem ela.
 
 ## Arquitetura
 

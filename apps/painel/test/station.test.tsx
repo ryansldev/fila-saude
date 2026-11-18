@@ -33,6 +33,7 @@ function operation(partial: Partial<StationOperation> = {}): StationOperation {
     onTheWay: [{ ticket: "C-003", name: "Carla" }],
     oldest: { presentSince: ago(12), targetTimeMin: 30 },
     now: new Date(NOW).toISOString(),
+    classifies: true,
     ...partial,
   };
 }
@@ -92,6 +93,13 @@ describe("PainelDaEstacao", () => {
     return { ...o, called };
   };
   const finishing = () => screen.getByRole("button", { name: /Finalizar e chamar o próximo/ }) as HTMLButtonElement;
+
+  it("RN-PERF-05: o técnico não vê as cores e finaliza o acolhimento sem cor", () => {
+    render(<StationPanel op={{ ...inRoom(operation()), classifies: false }} {...props} />);
+    expect(screen.queryByText("Classifique o risco")).toBeNull();
+    const done = screen.getByRole("button", { name: /^Finalizar acolhimento$/ }) as HTMLButtonElement;
+    expect(done.disabled).toBe(false);
+  });
 
   it("H3: na triagem, sem cor não finaliza; com cor, finaliza", () => {
     const { rerender } = render(<StationPanel op={inRoom(operation())} {...props} />);

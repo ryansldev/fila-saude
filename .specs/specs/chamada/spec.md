@@ -104,6 +104,7 @@ Entrada na fila do dia (por etapa):
 | Chamado | Compareceu | — | (mesmo) | Grava a entrada na sala; Rechamar e Não compareceu deixam de valer; a tolerância para |
 | Chamado | Desfazer compareceu | Compareceu marcado | (mesmo) | Volta a esperar a pessoa entrar |
 | Chamado | Estação chama o próximo ou toca Finalizar | — | Atendido na etapa | Há outra etapa: Presente nela, mesmo número. Senão: entrada Concluída |
+| Chamado | Técnico finaliza o acolhimento na triagem | — | Presente | Volta à triagem como acolhida; quem classifica a chama antes dos outros (RN-PERF-05) |
 | Chamado | "Não compareceu" | Pulos no dia = 0 | Presente | Pulos = 1; aplica janela protegida |
 | Chamado | "Não compareceu" | Pulos no dia = 1 | Remoto | Pulos = 2; push |
 | Chamado | "Não compareceu" | Pulos no dia = 2 | Saiu da fila | Pulos = 3; falta; entrada Encerrada sem atendimento; push |

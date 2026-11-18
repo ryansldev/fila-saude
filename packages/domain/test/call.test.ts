@@ -449,6 +449,25 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
     return call(d, "t1", T + MIN);
   }
 
+  it("RN-PERF-05: o técnico finaliza o acolhimento sem cor; a pessoa volta à triagem para o enfermeiro classificar", () => {
+    const d = enter(caioInTriage(), "duda");
+    const welcomed = apply(finish(inRoom(d, "t1"), { stationId: "t1", classifies: false }, T + 5 * MIN));
+    expect(item(welcomed, "caio")).toMatchObject({ stage: "triage", state: "present", welcomed: true });
+    // Quem não classifica não chama de novo quem já acolheu; quem classifica chama os acolhidos primeiro.
+    expect(eligible(welcomed, "t1", { classifies: false }).map((i) => i.id)).toEqual(["duda"]);
+    expect(eligible(welcomed, "t1", { classifies: true }).map((i) => i.id)).toEqual(["caio", "duda"]);
+    // O enfermeiro classifica e a pessoa segue para o atendimento, sem a marca de acolhida.
+    const nurse = apply(callNext(welcomed, { stationId: "t1", classifies: true }, T + 6 * MIN));
+    const done = apply(finish(inRoom(nurse, "t1"), { stationId: "t1", confirmedRisk: "attention" }, T + 8 * MIN));
+    expect(item(done, "caio")).toMatchObject({ stage: "care", risk: "attention" });
+    expect(item(done, "caio").welcomed).toBeFalsy();
+  });
+
+  it("RN-PERF-05: quem não classifica não manda cor", () => {
+    const r = finish(inRoom(caioInTriage(), "t1"), { stationId: "t1", confirmedRisk: "urgent", classifies: false }, T);
+    expect(r).toEqual({ ok: false, error: "forbidden_transition" });
+  });
+
   it("RN-TRI-03/04: urgência confirmada na triagem é a 1ª do atendimento", () => {
     const r = finish(inRoom(caioInTriage(), "t1"), { stationId: "t1", confirmedRisk: "urgent" }, T + 5 * MIN);
     const d = apply(r);

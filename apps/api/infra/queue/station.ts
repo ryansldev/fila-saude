@@ -75,11 +75,12 @@ async function build(
   s: { id: string; service: string; state: string } | null,
   day: SessionDay | null,
   now: number,
+  classifies: boolean,
   notice: StationOperation["notice"] = null,
 ): Promise<StationOperation> {
   const est = day?.stations.find((x) => x.id === e.id);
   const item = est?.calledItemId ? day?.items.find((i) => i.id === est.calledItemId) : undefined;
-  const queue = day && est ? eligible(day, e.id) : [];
+  const queue = day && est ? eligible(day, e.id, { classifies }) : [];
   const remote = day ? day.items.filter((i) => i.state === "remote" && i.stage === e.stage) : [];
   const onTheWay = [...remote].sort((a, b) => a.number - b.number).slice(0, IN_QUEUE);
   const upcoming = queue.slice(0, IN_QUEUE);
@@ -120,14 +121,19 @@ async function build(
     toleranceMin: day?.config.toleranceMin ?? 0,
     notice,
     now: new Date(now).toISOString(),
+    // RN-PERF-05: quem opera classifica o risco (enfermeiro); o técnico só acolhe.
+    classifies: e.stage === "triage" && classifies,
   };
 }
+
+/** RN-PERF-05: só o enfermeiro confirma o nível de risco (Cofen 661/2021). */
+const canClassify = (ctx: ActionContext, unitId: string) => allowed(ctx.actor.profiles, "confirm_risk_level", unitId);
 
 export async function stationOperation(ctx: ActionContext, stationId: string): Promise<StationOperation> {
   const e = await requireStation(ctx.db, stationId);
   if (!(await allowed(ctx.actor.profiles, OPERATE, e.unitId, caveatsOf(e)))) throw new ApiError(403, "no_permission");
   const s = await openSession(ctx.db, stationId);
-  return build(ctx.db, e, s, s ? await readDay(ctx.db, s.id) : null, ctx.now);
+  return build(ctx.db, e, s, s ? await readDay(ctx.db, s.id) : null, ctx.now, await canClassify(ctx, e.unitId));
 }
 
 // Itens que ficaram finais nesta ação fecham a entrada (desfechoDaEntrada).
@@ -154,7 +160,7 @@ const COMMANDS: Record<
   StationCommand,
   (
     d: SessionDay,
-    cmd: { stationId: string; confirmedRisk?: RiskLevel; refer?: boolean },
+    cmd: { stationId: string; confirmedRisk?: RiskLevel; refer?: boolean; classifies?: boolean },
     now: number,
   ) => Result<SessionDay>
 > = {
@@ -175,6 +181,9 @@ export async function commandInStation(
 ): Promise<StationOperation> {
   const { confirmedRisk, refer } = body;
   const e = await requireStation(ctx.db, stationId);
+  const classifies = await canClassify(ctx, e.unitId);
+  if (!classifies && (confirmedRisk !== undefined || refer))
+    throw new ApiError(403, "no_permission", undefined, "A classificação de risco é do enfermeiro.");
   // A auditoria diz sobre quem o comando caiu (`before`) e quem ficou chamado depois (`after`).
   let before: string | null = null;
   return runAction(
@@ -195,15 +204,16 @@ export async function commandInStation(
         const closes = command === "call" || command === "finish";
         const called = c.day.stations.find((x) => x.id === stationId)?.calledItemId;
         before = c.day.items.find((i) => i.id === called)?.ticket ?? null;
-        if (e.stage === "triage" && closes && called && confirmedRisk === undefined) {
+        // O técnico fecha sem cor: a pessoa volta para o enfermeiro classificar (RN-PERF-05).
+        if (classifies && e.stage === "triage" && closes && called && confirmedRisk === undefined) {
           throw new ApiError(422, "classify_risk", undefined, "Escolha a cor da classificação de risco.");
         }
         const extra =
           closes && called ? { ...(confirmedRisk ? { confirmedRisk } : {}), ...(refer ? { refer } : {}) } : {};
-        const r = COMMANDS[command](c.day, { stationId, ...extra }, ctx.now);
+        const r = COMMANDS[command](c.day, { stationId, ...extra, classifies }, ctx.now);
         if (!r.ok) {
           if (r.error === "none_eligible" && command === "call") {
-            return { result: await build(tx, e, s, c.day, ctx.now, "nobody_waiting") };
+            return { result: await build(tx, e, s, c.day, ctx.now, classifies, "nobody_waiting") };
           }
           if (r.error === "no_show_up") {
             throw new ApiError(409, r.error, undefined, "Marque Compareceu antes de classificar.");
@@ -216,7 +226,7 @@ export async function commandInStation(
           day,
           entries: closeEntries(day, withConfirmedRisk(c.entries, r.events)),
           events: r.events,
-          result: await build(tx, e, s, day, ctx.now, nobody ? "nobody_waiting" : null),
+          result: await build(tx, e, s, day, ctx.now, classifies, nobody ? "nobody_waiting" : null),
         };
       });
     },

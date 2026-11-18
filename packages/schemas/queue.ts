@@ -97,6 +97,8 @@ export const stationOperationSchema = z.object({
   oldest: z.object({ presentSince: z.iso.datetime(), targetTimeMin: z.number().int().min(0) }).nullable(),
   /** Hora do servidor: o cronômetro conta por ela (o relógio do computador pode estar errado). */
   now: z.iso.datetime(),
+  /** RN-PERF-05: quem opera classifica o risco (enfermeiro); o técnico só acolhe e finaliza sem cor. */
+  classifies: z.boolean(),
 });
 export type StationOperation = z.infer<typeof stationOperationSchema>;
 

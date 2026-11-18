@@ -48,6 +48,11 @@ export type QueueItem = {
    */
   presentSince?: number | null;
   attendedInStages: Stage[];
+  /**
+   * RN-PERF-05: o técnico fez o acolhimento na triagem e a pessoa espera o enfermeiro classificar.
+   * Opcional: dias gravados antes do campo não o têm.
+   */
+  welcomed?: boolean;
   /** Preenchido quando o item vai a "Saiu da fila"; `null` nos outros estados. */
   exitReason: ExitReason | null;
 };
@@ -148,13 +153,15 @@ function callOrder(day: SessionDay, set: QueueItem[]): QueueItem[] {
 }
 
 /** Presentes da etapa que a estação atende, dos serviços dela, em ordem de chamada com a janela protegida. */
-export function eligible(day: SessionDay, stationId: string): QueueItem[] {
+export function eligible(day: SessionDay, stationId: string, operator: { classifies?: boolean } = {}): QueueItem[] {
   const station = day.stations.find((e) => e.id === stationId);
   if (!station?.services.includes(day.serviceId)) return [];
-  return callOrder(
-    day,
-    day.items.filter((i) => i.state === "present" && i.stage === station.stage),
-  );
+  const present = day.items.filter((i) => i.state === "present" && i.stage === station.stage);
+  // RN-PERF-05: acolhido pelo técnico espera quem classifica (vem antes para ele); o técnico não o chama de novo.
+  const classifies = operator.classifies ?? true;
+  const welcomed = present.filter((i) => i.welcomed);
+  const others = present.filter((i) => !i.welcomed);
+  return classifies ? [...callOrder(day, welcomed), ...callOrder(day, others)] : callOrder(day, others);
 }
 
 /** A hora `em` cai num período de contingência registrado (AD-033). */

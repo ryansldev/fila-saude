@@ -34,6 +34,7 @@ export type EventKind =
   | "priority_removed"
   | "priority_given"
   | "risk_confirmed"
+  | "welcomed"
   | "referred_to_emergency"
   | "risk_suggested"
   | "left"

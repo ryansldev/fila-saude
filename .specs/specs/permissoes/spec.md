@@ -16,7 +16,8 @@ QUANDO a recepção dar ou tirar prioridade, informar risco alto no balcão, anu
 QUANDO alguém cadastrar ou mudar a equipe do painel, O SISTEMA DEVE aceitar só se: o ator tem Gestão SMS (cadastra qualquer pessoa); ou o ator é Gerente da UBS e todas as ocupações e funções da pessoa ficam nas unidades que ele gerencia, sem função de gestão (só "Agendar"). Ninguém concede o que não pode conceder. O mesmo vale para mudar as atribuições de quem já existe: antes e depois da mudança.
 
 **RN-PERF-05 · Classificação de risco**
-A classificação de risco é ato privativo do enfermeiro (Resolução Cofen 661/2021). O técnico de enfermagem pode chamar na estação de triagem para o acolhimento e a aferição de sinais vitais, mas não confirma o nível de risco.
+A classificação de risco é ato privativo do enfermeiro (Resolução Cofen 661/2021). O técnico de enfermagem pode chamar na estação de triagem para o acolhimento e a aferição de sinais vitais, mas não confirma o nível de risco: ao finalizar, a pessoa volta à triagem como acolhida e o enfermeiro a chama antes dos outros para classificar.
+*Decisões: AD-061.*
 
 ## Matriz
 
