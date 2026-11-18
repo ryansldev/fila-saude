@@ -15,5 +15,7 @@ describe("AD-062: página do captcha para a WebView do app", () => {
     expect(html).toContain("https://challenges.cloudflare.com/turnstile/v0/api.js");
     expect(html).toContain("1x00000000000000000000AA");
     expect(html).toContain("ReactNativeWebView");
+    // A WebView do app tem 80 px: o widget (65 px) cabe sem margem em cima e embaixo.
+    expect(html).not.toMatch(/padding:\s*16px/);
   });
 });

@@ -45,7 +45,7 @@ export function captchaPage(siteKey: string): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Confirmação</title>
-<style>html,body{margin:0;background:#fff}body{display:flex;justify-content:center;padding:16px}</style>
+<style>html,body{margin:0;padding:0;background:#fff}body{display:flex;justify-content:center;padding-top:4px}</style>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=start&render=explicit" async defer></script>
 </head>
 <body>

@@ -26,7 +26,8 @@ export function trustProxyOption(proxies: string[]): string[] | false {
 export function webRequest(req: FastifyRequest): Request {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
-    if (value === undefined || DROPPED_HEADERS.has(key)) continue;
+    // Pseudo-cabeçalhos do HTTP/2 (`:authority`, `:path`…) não são nomes válidos num `Headers`.
+    if (value === undefined || DROPPED_HEADERS.has(key) || key.startsWith(":")) continue;
     for (const item of Array.isArray(value) ? value : [value]) headers.append(key, item);
   }
   // Sem IP (a conexão caiu no meio do pedido), vai sem o cabeçalho, e não com "undefined".

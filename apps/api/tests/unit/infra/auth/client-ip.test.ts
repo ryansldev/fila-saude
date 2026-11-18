@@ -71,4 +71,17 @@ describe("AD-064: IP confiável do cliente", () => {
     );
     expect(host).toBe("api.exemplo.gov.br");
   });
+
+  it("no HTTP/2, os pseudo-cabeçalhos (:authority) não quebram a cópia e dão o host", () => {
+    const req = {
+      headers: { ":authority": "api.exemplo.gov.br", ":method": "POST", ":path": "/v1/auth/x", ":scheme": "https" },
+      ip: "203.0.113.7",
+      url: "/v1/auth/x",
+      protocol: "https",
+      method: "GET",
+    } as unknown as Parameters<typeof webRequest>[0];
+    const r = webRequest(req);
+    expect(new URL(r.url).host).toBe("api.exemplo.gov.br");
+    expect(r.headers.get("x-forwarded-for")).toBe("203.0.113.7");
+  });
 });
