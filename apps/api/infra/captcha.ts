@@ -1,3 +1,4 @@
+import { attemptErrors } from "infra/auth/attempts";
 import env from "infra/env";
 
 export { CAPTCHA_HEADER } from "@fila-saude/schemas/captcha";
@@ -8,11 +9,14 @@ const TEST_TOKEN = "teste-captcha-ok";
 const SITEVERIFY = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 /**
- * O resultado do captcha: `missing` (sem token), `ok`, `rejected` (a Cloudflare recusou o token) ou
- * `unavailable` (a Cloudflare não respondeu). Os dois últimos não deixam passar (falha fechada), mas só
- * `rejected` é culpa de quem mandou.
+ * O resultado do captcha: `missing` (sem token), `ok`, `rejected` (token inválido), `expired` (vencido ou
+ * já usado) ou `unavailable` (a Cloudflare não respondeu, ou a nossa configuração está errada). Nenhum
+ * deixa passar (falha fechada), mas só `rejected` é culpa de quem mandou.
  */
-export type CaptchaResult = "missing" | "ok" | "rejected" | "unavailable";
+export type CaptchaResult = "missing" | "ok" | "rejected" | "expired" | "unavailable";
+
+// Códigos da Cloudflare que dizem que a nossa configuração (segredo, pedido) está errada: vão para o log.
+const CONFIG_ERRORS = ["missing-input-secret", "invalid-input-secret", "bad-request"];
 
 /** Confere o token na Cloudflare. */
 export async function turnstileVerify(
@@ -28,9 +32,13 @@ export async function turnstileVerify(
     const answer = (await r.json()) as { success?: unknown; "error-codes"?: unknown };
     if (answer.success === true) return "ok";
     if (answer.success !== false) return "unavailable";
-    // `internal-error` é da Cloudflare, não do token: não conta como erro de quem mandou.
-    const codes = Array.isArray(answer["error-codes"]) ? answer["error-codes"] : [];
-    return codes.includes("internal-error") ? "unavailable" : "rejected";
+    const codes: unknown[] = Array.isArray(answer["error-codes"]) ? answer["error-codes"] : [];
+    if (codes.includes("invalid-input-response")) return "rejected";
+    if (codes.includes("timeout-or-duplicate")) return "expired";
+    if (codes.some((c) => CONFIG_ERRORS.includes(String(c))))
+      attemptErrors.log(new Error(`turnstile: ${codes.join(", ")}`), "configuração do captcha");
+    // `internal-error`, erro de configuração ou código desconhecido: não é culpa de quem mandou.
+    return "unavailable";
   } catch {
     return "unavailable";
   }

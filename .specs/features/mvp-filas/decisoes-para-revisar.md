@@ -336,3 +336,13 @@ Ao terminar a troca (ver [nomes no código](../../specs/nomes-no-codigo.md)).
 | NC2 | Migrações recriadas do zero | `0000_central` e `0000_municipal` substituem as 15 antigas. Banco antigo não migra: o migrador para com "recrie o banco" ao ver migração fora do journal; apague os bancos `fila_*` do `postgres-dev` e rode `npm run dev:seed` | Migrações de rename sobre as antigas | Nenhum enquanto não há piloto; com dados reais seria inaceitável |
 | NC3 | Códigos que eram só em português | `email_in_use`, `invalid_credentials`, `password_too_short`/`_long`, `immutable_field`, `birth_date_verified`, `person_mismatch`, `invalid_response`, `invalid_phone`, `invalid_rrule`, `occurrence_not_found`; avisos `pending`/`sent`/`failed`/`no_device`; lista de sessões com `?from=&until=`; campo `selfHarm` na sugestão do agendador. Endereços das telas seguem em português (`/inscricao/lista`, `/inscricao/refazer`) | Outros nomes | Baixo: troca em um lugar e nos testes |
 | NC4 | Ressalvas da matriz e logins de exemplo | Ficam em português: a ressalva é o texto da spec (`"atendimento"`), o login é o que a pessoa digita (`recepcao`) | Chaves em inglês | Baixo |
+
+## Captcha e tentativas: detalhes das rodadas de review (2026-11-18)
+
+Decisões tomadas durante os code reviews da AD-062 a AD-065.
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| CP1 | Respostas da Cloudflare | Só `invalid-input-response` conta como erro no par (token inventado). `timeout-or-duplicate` (token vencido ou repetido) e a Cloudflare sem responder ou com a nossa configuração errada (`invalid-input-secret` e afins, que vão para o log) devolvem a vaga sem contar. Todos respondem `captcha_failed` no login | Contar tudo como erro, ou nada | Baixo: no pior caso, um atacante resolve captchas de verdade e erra sem gastar o par (o teto segue contando) |
+| CP2 | Cloudflare fora do ar na inscrição | 503 `captcha_unavailable` ("a verificação está fora do ar agora"), separado de `captcha_failed` (400), para o paciente não achar que errou e o monitoramento ver a queda | O mesmo `captcha_failed` | Baixo: só o texto e o status mudam |
+| CP3 | Fila por chave em cada instância | Até 20 pedidos da mesma chave esperam; além disso, a reserva responde "ocupado" (429). Contra uma enxurrada maior numa só conta, o dono também ouve "espere alguns segundos" enquanto ela dura | Fila sem limite (a espera cresce sem fim) | Médio: um ataque grande numa conta a deixa lenta ou "ocupada" para o dono enquanto dura |

@@ -16,7 +16,8 @@ export type Change<S, T> = { state: S | null; expiresAt: number; result: T };
 export interface AttemptStore {
   /**
    * `refusable`: o pedido pode ser recusado com `AttemptsBusy` quando há fila demais na chave (só as
-   * reservas, antes de conferir a senha). Registrar o que já aconteceu (uma senha errada) nunca é recusado.
+   * reservas, antes de conferir a senha). Registrar o que já aconteceu (uma senha errada) não é recusado pela
+   * fila e insiste 3 vezes quando outra instância segura a linha; depois disso, falha e vai para o log.
    */
   update<S, T>(
     key: string,

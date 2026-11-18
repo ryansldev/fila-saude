@@ -342,4 +342,19 @@ describe("AD-064: contagem pelo par (login, IP) e teto por login", () => {
         body: { error: "captcha_failed" },
       });
   });
+
+  it("token vencido ou repetido não gasta tentativa do par", async () => {
+    const { loginLockout } = await import("infra/auth/login-lockout");
+    const hooks = loginLockout(
+      () => "gestor",
+      new MemoryStore(),
+      undefined,
+      async () => "expired" as const,
+    );
+    for (let i = 0; i < 30; i++) await attempt(hooks, `198.51.100.${i}`);
+    for (let i = 0; i < 8; i++)
+      await expect(hooks.before(ctxOf("203.0.113.9", "x", { "x-captcha-token": "velho" }))).rejects.toMatchObject({
+        body: { error: "captcha_failed" },
+      });
+  });
 });

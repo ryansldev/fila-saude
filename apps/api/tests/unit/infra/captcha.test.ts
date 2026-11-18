@@ -17,9 +17,14 @@ describe("AD-062: conferência do Turnstile na Cloudflare", () => {
   });
 
   it("recusa quando a Cloudflare recusa ou não responde", async () => {
-    expect(await turnstileVerify("s", "tok", "1.1.1.1", answer({ success: false }) as unknown as typeof fetch)).toBe(
-      "rejected",
-    );
+    expect(
+      await turnstileVerify(
+        "s",
+        "tok",
+        "1.1.1.1",
+        answer({ success: false, "error-codes": ["invalid-input-response"] }) as unknown as typeof fetch,
+      ),
+    ).toBe("rejected");
     const down = (async () => {
       throw new Error("rede");
     }) as unknown as typeof fetch;
@@ -40,5 +45,14 @@ describe("AD-062: conferência do Turnstile na Cloudflare", () => {
     expect(await turnstileVerify("s", "tok", "1.1.1.1", internal)).toBe("unavailable");
     const invalid = answer({ success: false, "error-codes": ["invalid-input-response"] }) as unknown as typeof fetch;
     expect(await turnstileVerify("s", "tok", "1.1.1.1", invalid)).toBe("rejected");
+  });
+
+  it("só token inválido é culpa de quem mandou; vencido ou repetido é 'vencido'; erro de configuração nosso é 'indisponível'", async () => {
+    const codes = (c: string[]) => answer({ success: false, "error-codes": c }) as unknown as typeof fetch;
+    expect(await turnstileVerify("s", "tok", "1.1.1.1", codes(["invalid-input-response"]))).toBe("rejected");
+    expect(await turnstileVerify("s", "tok", "1.1.1.1", codes(["timeout-or-duplicate"]))).toBe("expired");
+    expect(await turnstileVerify("s", "tok", "1.1.1.1", codes(["invalid-input-secret"]))).toBe("unavailable");
+    expect(await turnstileVerify("s", "tok", "1.1.1.1", codes(["missing-input-secret"]))).toBe("unavailable");
+    expect(await turnstileVerify("s", "tok", "1.1.1.1", codes(["bad-request"]))).toBe("unavailable");
   });
 });

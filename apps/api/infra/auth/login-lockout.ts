@@ -204,8 +204,8 @@ export function loginLockout(
         }
         const captcha = await captchaCheck(ctx);
         if (captcha !== "ok") {
-          // Token recusado pela Cloudflare conta como erro no par (tokens inventados sem fim bloqueiam o IP
-          // em 5); sem resposta da Cloudflare, não é culpa de ninguém e só devolve a vaga.
+          // Token inválido conta como erro no par (tokens inventados sem fim bloqueiam o IP em 5); vencido,
+          // repetido ou a Cloudflare sem responder não é culpa de quem mandou e só devolve a vaga.
           if (captcha === "rejected") await pairs.fail(pair(ctx, scope), r, now).catch(onError);
           else await giveBack();
           return refuse(REFUSALS.captchaFailed);
