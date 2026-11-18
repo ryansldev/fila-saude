@@ -349,7 +349,7 @@ Decisões tomadas durante os code reviews da AD-062 a AD-065.
 
 ## Docs da API: schemas no Fastify (2026-11-18)
 
-Decisões da migração das rotas para o schema no Fastify (DOC2, [plano](../docs-api/plan.md)).
+Decisões da migração das rotas para o schema no Fastify (DOC2, [plano](../../arquivo/planos/docs-api/plan.md)).
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |

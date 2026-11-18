@@ -22,7 +22,7 @@ Aprovadas em 2026-11-18:
 | DOC4 | A referência cobre toda a `/v1` menos `/v1/test` (PD-19), agrupada por público: Município, Paciente, Painel, TV |
 | DOC5 | Texto em português; caminhos e campos em inglês |
 
-DOC2 e DOC3 viram AD em `decisions.md` na Task 8. O que eu decidir sozinho no caminho vai para `decisoes-para-revisar.md`.
+DOC1 a DOC5 viraram a AD-066, a AD-067 e a AD-068 em `decisions.md`. O que eu decidir sozinho no caminho vai para `decisoes-para-revisar.md`.
 
 ## Global Constraints
 
@@ -109,7 +109,7 @@ Em cada rota, o `validate(x, req.body)` vira `schema.body`, e o `validate(y, res
 
 ### Task 7: Painel e app continuam iguais
 
-- [ ] `npm run test:painel`, `npm run test:mobile`, `npm -w @fila-saude/schemas run test`: nada muda para quem chama a API, mas a Task 2 mexe em todas as rotas. Rodar o [roteiro](../mvp-filas/roteiro-v01.md) nos formulários com erro por campo (cadastro, login, unidade, sessão) para ver as mensagens aparecendo no lugar certo.
+- [ ] `npm run test:painel`, `npm run test:mobile`, `npm -w @fila-saude/schemas run test`: nada muda para quem chama a API, mas a Task 2 mexe em todas as rotas. Rodar o [roteiro](../../../features/mvp-filas/roteiro-v01.md) nos formulários com erro por campo (cadastro, login, unidade, sessão) para ver as mensagens aparecendo no lugar certo.
 
 ### Task 8: CI e limpeza
 
@@ -122,4 +122,4 @@ Em cada rota, o `validate(x, req.body)` vira `schema.body`, e o `validate(y, res
 
 - Os cabeçalhos `Deprecation`/`Sunset` no código: só fazem sentido quando houver uma v2. A política fica escrita agora (DOC3).
 - Docs do app e do painel para o usuário final (outra feature).
-- Deploy e domínio do `apps/web` (junto com a [hospedagem](../mvp-filas/discovery-hospedagem.md)).
+- Deploy e domínio do `apps/web` (junto com a [hospedagem](../../../features/mvp-filas/discovery-hospedagem.md)).
