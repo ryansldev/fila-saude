@@ -1,0 +1,51 @@
+import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { Tenant, TenantSource } from "infra/database/tenants";
+import { ApiError } from "infra/errors";
+import { type ResolutionConfig, resolveTenant } from "./resolve";
+
+declare module "fastify" {
+  interface FastifyRequest {
+    // Preenchido só por `app.exigirTenant`; rotas da raiz (auth central, status) o deixam null.
+    tenant: Tenant | null;
+  }
+  interface FastifyInstance {
+    requireTenant: (req: FastifyRequest) => Promise<void>;
+  }
+}
+
+// `pools`: `TenantsPools` no modo multi, `FixedTenant` no single (veja `tenantSource`).
+export type TenantPluginOptions = { pools: TenantSource; config: ResolutionConfig };
+
+// PD-15: só rotas `…/municipalities/:slug/…` (pasta `municipalities/_slug`) levam o município no caminho.
+// Um `:slug` em outra rota não é município e não entra na resolução.
+const MUNICIPALITY_ROUTE = /\/municipalities\/:slug(\/|$)/;
+
+function pathSlug(req: FastifyRequest): string | undefined {
+  if (!MUNICIPALITY_ROUTE.test(req.routeOptions.url ?? "")) return undefined;
+  const slug = (req.params as { slug?: unknown } | undefined)?.slug;
+  return typeof slug === "string" ? slug : undefined;
+}
+
+// PD-15: resolução preguiçosa. Só as rotas que declaram `preHandler: app.exigirTenant` resolvem o
+// tenant e consultam o catálogo; as da raiz nunca tocam no catálogo nem falham por falta de tenant.
+// Desconhecido, suspenso, criando, host raiz e subdomínio malformado respondem o mesmo
+// `404 unknown_municipality`, para não revelar se o município existe.
+async function tenantPlugin(app: FastifyInstance, options: TenantPluginOptions) {
+  app.decorateRequest("tenant", null);
+
+  app.decorate("requireTenant", async (req: FastifyRequest) => {
+    const resolution = resolveTenant({ host: req.headers.host, pathSlug: pathSlug(req) }, options.config);
+    if ("error" in resolution) {
+      if (resolution.error === "municipality_mismatch") throw new ApiError(400, "municipality_mismatch");
+      throw new ApiError(404, "unknown_municipality");
+    }
+    const tenant = await options.pools.get(resolution.slug);
+    if (!tenant) throw new ApiError(404, "unknown_municipality");
+    req.tenant = tenant;
+  });
+}
+
+// Equivale ao `fastify-plugin`: decorações visíveis em todo o app, não só neste escopo.
+Object.assign(tenantPlugin, { [Symbol.for("skip-override")]: true });
+
+export default tenantPlugin;

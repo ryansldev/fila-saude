@@ -1,0 +1,92 @@
+import { createHmac } from "node:crypto";
+import { eq, sql } from "drizzle-orm";
+import { AttemptsBusy, PostgresStore, SlidingLimit } from "infra/auth/attempts";
+import { Lockout } from "infra/auth/login-lockout";
+import database from "infra/database";
+import { attempt } from "infra/database/central/schema/attempt";
+import env from "infra/env";
+import { describe, expect, it } from "vitest";
+
+const key = () => `teste:${crypto.randomUUID()}`;
+const MIN = 60_000;
+
+describe("AD-063: contagem de tentativas no Postgres", () => {
+  it("a tabela é UNLOGGED (não vai para o WAL, o backup nem as réplicas)", async () => {
+    const r = await database.execute<{ relpersistence: string }>(
+      sql`select relpersistence from pg_class where relname = 'attempt'`,
+    );
+    expect(r.rows[0]?.relpersistence).toBe("u");
+  });
+
+  it("guarda só o HMAC da chave, nunca o CPF ou o login", async () => {
+    const k = `cpf:${Math.floor(Math.random() * 1e11)}`;
+    await new SlidingLimit({ name: "teste", max: 3, windowMs: MIN }, new PostgresStore()).take(k, Date.now());
+    const hashed = createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:teste:${k}`).digest("hex");
+    expect(await database.select().from(attempt).where(eq(attempt.key, hashed))).toHaveLength(1);
+    expect(await database.select().from(attempt).where(eq(attempt.key, k))).toHaveLength(0);
+  });
+
+  it("vale entre instâncias: dois contadores sobre o mesmo banco somam juntos, em paralelo", async () => {
+    const k = key();
+    const options = { max: 5, blockMs: 15 * MIN, reservationMs: MIN };
+    const a = new Lockout(options, new PostgresStore());
+    const b = new Lockout(options, new PostgresStore());
+    const now = Date.now();
+    const all = await Promise.all(Array.from({ length: 20 }, (_, i) => (i % 2 ? a : b).reserve(k, now)));
+    expect(all.filter((r) => r !== "busy" && r !== "blocked")).toHaveLength(5);
+  });
+
+  it("a limpeza apaga as linhas vencidas e deixa as outras", async () => {
+    const store = new PostgresStore();
+    const limit = new SlidingLimit({ name: "teste", max: 3, windowMs: MIN }, store);
+    const old = key();
+    const fresh = key();
+    const now = Date.now();
+    await limit.take(old, now - 2 * MIN);
+    await limit.take(fresh, now);
+    await store.cleanup(now);
+    const hash = (k: string) => createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:teste:${k}`).digest("hex");
+    expect(
+      await database
+        .select()
+        .from(attempt)
+        .where(eq(attempt.key, hash(old))),
+    ).toHaveLength(0);
+    expect(
+      await database
+        .select()
+        .from(attempt)
+        .where(eq(attempt.key, hash(fresh))),
+    ).toHaveLength(1);
+  });
+
+  it("uma enxurrada na mesma chave não enfileira sem fim: passado o limite da fila, a instância responde 'ocupado'", async () => {
+    const store = new PostgresStore();
+    const limit = new SlidingLimit({ name: "teste", max: 1000, windowMs: MIN }, store);
+    const k = key();
+    const now = Date.now();
+    const results = await Promise.allSettled(Array.from({ length: 200 }, () => limit.take(k, now)));
+    const busy = results.filter((r) => r.status === "rejected" && r.reason instanceof AttemptsBusy);
+    expect(busy.length).toBeGreaterThan(0);
+    expect(results.every((r) => r.status === "fulfilled" || r.reason instanceof AttemptsBusy)).toBe(true);
+  });
+
+  it("linha travada por mais de 2 s em outra instância: o pedido sai como 'ocupado', não como erro do servidor", async () => {
+    const k = key();
+    const limit = new SlidingLimit({ name: "teste", max: 5, windowMs: MIN }, new PostgresStore());
+    await limit.take(k, Date.now());
+    const hashed = createHmac("sha256", env.BETTER_AUTH_SECRET).update(`sliding:teste:${k}`).digest("hex");
+    let release: () => void = () => {};
+    const held = new Promise<void>((r) => (release = r));
+    const locking = database.transaction(async (tx) => {
+      await tx.select().from(attempt).where(eq(attempt.key, hashed)).for("update");
+      await held;
+    });
+    await new Promise((r) => setTimeout(r, 100));
+    await expect(
+      new SlidingLimit({ name: "teste", max: 5, windowMs: MIN }, new PostgresStore()).take(k, Date.now()),
+    ).rejects.toBeInstanceOf(AttemptsBusy);
+    release();
+    await locking;
+  }, 10_000);
+});

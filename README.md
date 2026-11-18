@@ -10,8 +10,11 @@ Monorepo com a API (Fastify), o frontend (Next.js) e pacotes compartilhados. O g
 fila-saude/
 ├── apps/
 │   ├── api/           # API REST (Fastify + Drizzle + PostgreSQL)
-│   └── web/           # Frontend (Next.js + React + Tailwind CSS)
+│   ├── painel/        # Painel da equipe e estação de chamada (Next.js)
+│   ├── mobile/        # App do paciente (Expo + Expo Router)
+│   └── web/           # Landing (Next.js + React + Tailwind CSS)
 └── packages/
+    ├── domain/        # Regras de domínio puras (@fila-saude/domain)
     └── schemas/       # Schemas Zod compartilhados (@fila-saude/schemas)
 ```
 
@@ -54,11 +57,25 @@ Exemplo (`apps/api/.env.development` e `apps/api/.env.test`):
 ```env
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
-POSTGRES_DB=postgres_dev
+POSTGRES_DB=fila_central
 POSTGRES_PORT=5432
 POSTGRES_HOST=localhost
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres_dev
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fila_central
+TENANT_DATABASE_URL_TEMPLATE=postgresql://postgres:postgres@localhost:5432/{database}
+TENANT_BASE_DOMAIN=localhost
+TENANT_MODE=multi
+CENTRAL_URL=http://localhost:3333
+MAILER=database
+TENANT_CACHE_TTL_MS=60000
+AUTH_JWT_TTL=15m
+PANEL_ORIGIN_TEMPLATE=http://{slug}.localhost:3000
 ```
+
+**Em produção, atrás de um proxy reverso** (Caddy, nginx), defina `TRUSTED_PROXIES` com o IP ou a faixa do proxy, separados por vírgula (ex.: `TRUSTED_PROXIES=loopback` para o proxy na mesma máquina; também valem `127.0.0.1`, `10.0.0.0/8`, `linklocal` e `uniquelocal`). Sem isso, a API vê todo mundo com o IP do proxy, e o limite de tentativas vale para todos juntos. Vazio (padrão), vale o IP da conexão e o `X-Forwarded-For` é ignorado.
+
+**Captcha (Cloudflare Turnstile, AD-062):** `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Sem elas, valem as chaves de teste da Cloudflare (sempre passam); em produção, a API não sobe com as de teste.
+
+`POSTGRES_DB` é o banco central (`fila_central`); cada município tem o próprio banco `fila_t_<slug>`, cuja URL sai de `TENANT_DATABASE_URL_TEMPLATE`.
 
 ### 3. Subir o banco de dados
 
@@ -70,13 +87,15 @@ Isso inicia um container PostgreSQL 18 via Docker Compose (`apps/api/infra/compo
 
 Ao rodar `npm run dev`, `npm run dev -w @fila-saude/api` ou `npm test`, o PostgreSQL é iniciado automaticamente.
 
-### 4. Aplicar o schema do banco (quando houver migrations)
+### 4. Aplicar as migrations
 
 ```bash
-npm run db:push      # sincroniza o schema com o banco
-npm run db:generate  # gera arquivos de migration
-npm run db:migrate   # executa migrations pendentes
+npm run db:migrate   # cria fila_central se faltar, migra o central e todos os municípios
 ```
+
+Um município que falhar fica com `migracao_erro` no central e o comando sai com código 1; rodar de novo retoma.
+
+Os testes (`npm test`) criam e migram `fila_central` sozinhos.
 
 ## Desenvolvimento
 
@@ -97,6 +116,14 @@ Para rodar apenas um workspace:
 npm run dev -w @fila-saude/api
 npm run dev -w @fila-saude/web
 ```
+
+### App do paciente (Expo)
+
+```bash
+EXPO_PUBLIC_API_URL=http://<ip-da-maquina>:3333 npm run dev:mobile
+```
+
+Abra no Expo Go (ou num emulador). No emulador Android, use `http://10.0.2.2:3333`. O roteiro completo da v0.1 está em [`.specs/features/mvp-filas/roteiro-v01.md`](.specs/features/mvp-filas/roteiro-v01.md).
 
 ## API
 
@@ -157,9 +184,10 @@ npm run test:coverage  # cobertura de código
 | `services:up`       | Sobe o PostgreSQL via Docker                   |
 | `services:stop`     | Para os containers                             |
 | `services:down`     | Remove os containers                           |
-| `db:push`           | Sincroniza schema Drizzle com o banco          |
-| `db:generate`       | Gera migrations Drizzle                        |
-| `db:migrate`        | Executa migrations                             |
+| `db:generate:central`   | Gera migrations do banco central           |
+| `db:generate:municipal` | Gera migrations dos bancos dos municípios  |
+| `db:migrate`            | Migra o central e todos os municípios      |
+| `db:migrate:central`    | Aplica migrations no banco central         |
 | `commit`            | Commit interativo com Commitizen               |
 
 ## CI
@@ -180,4 +208,4 @@ Em pull requests, o GitHub Actions executa:
 
 ## Licença
 
-[MIT](LICENSE)
+[AGPL-3.0](LICENSE). O código é aberto; a central, o app publicado e a marca "Fila Saúde" são operados pela empresa, e cada município contrata o serviço. Versões até o commit `687d0d9` foram publicadas sob MIT.

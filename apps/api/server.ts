@@ -1,18 +1,10 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import autoload from "@fastify/autoload";
-import Fastify from "fastify";
+import env from "infra/env";
+import { buildApp } from "./app";
 
-const app = Fastify({
-  logger: true,
-});
-
-app.register(autoload, {
-  dir: path.join(path.dirname(fileURLToPath(import.meta.url)), "routes"),
-});
+const app = await buildApp();
 
 try {
-  await app.listen({ port: 3333 });
+  await app.listen({ port: env.PORT, host: env.HOST });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

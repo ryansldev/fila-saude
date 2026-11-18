@@ -9,26 +9,32 @@
     "services:stop": "docker compose -f infra/compose.yml stop",
     "services:down": "docker compose -f infra/compose.yml down",
     "services:wait:database": "tsx infra/scripts/wait-for-postgres.ts",
-    "db:push": "drizzle-kit push",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "test": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run\"",
+    "db:generate:central": "drizzle-kit generate --config drizzle.central.config.ts",
+    "db:generate:municipal": "drizzle-kit generate --config drizzle.municipal.config.ts",
+    "db:migrate": "tsx infra/scripts/db-migrate.ts",
+    "db:migrate:central": "drizzle-kit migrate --config drizzle.central.config.ts",
+    "tenant:create": "tsx infra/scripts/tenant-create.ts",
+    "test": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run $VITEST_ARGS\"",
     "test:watch": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest watch\"",
-    "test:coverage": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run --coverage\""
+    "test:coverage": "npm run services:up && concurrently -n node,vitest --hide node -k -s command-vitest \"tsx --env-file=.env.test server.ts\" \"vitest run --coverage\"",
+    "dev:seed": "npm run services:up && npm run services:wait:database && NODE_ENV=development tsx infra/scripts/dev-seed.ts"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
     "node": "24.x"
   },
   "dependencies": {
     "@fastify/autoload": "^6.3.1",
+    "@fila-saude/domain": "^1.0.0",
+    "@fila-saude/schemas": "^1.0.0",
     "async-retry": "^1.3.3",
     "better-auth": "^1.6.23",
     "concurrently": "^10.0.3",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.8.5",
+    "lru-cache": "11.5.3",
     "pg": "^8.22.0",
     "zod": "^4.4.3"
   },

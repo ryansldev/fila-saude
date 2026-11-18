@@ -10,5 +10,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: "package.json"
+          cache: "npm"
       - run: npm ci
       - run: npm run test
+  packages:
+    name: ${{ matrix.suite }}
+    runs-on: ubuntu-latest
+    strategy:
+      # Cada suíte roda e responde por si: uma falha não esconde as outras.
+      fail-fast: false
+      matrix:
+        suite: ["@fila-saude/domain", "@fila-saude/painel", "@fila-saude/mobile", "@fila-saude/design", "@fila-saude/schemas"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "npm"
+      - run: npm ci
+      - run: npm -w ${{ matrix.suite }} run test

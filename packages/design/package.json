@@ -1,0 +1,19 @@
+{
+  "name": "@fila-saude/design",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./tokens.css": "./tokens.css"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "gen": "tsx scripts/generate-css.ts"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.9"
+  }
+}

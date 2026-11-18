@@ -17,6 +17,9 @@
     "exactOptionalPropertyTypes": true,
 
     "strict": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "ignoreDeprecations": "6.0",
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,

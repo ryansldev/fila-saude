@@ -24,11 +24,22 @@
     "services:up": "npm -w @fila-saude/api run services:up",
     "services:stop": "npm -w @fila-saude/api run services:stop",
     "services:down": "npm -w @fila-saude/api run services:down",
-    "db:push": "npm -w @fila-saude/api run db:push",
-    "db:generate": "npm -w @fila-saude/api run db:generate",
+    "db:generate:central": "npm -w @fila-saude/api run db:generate:central",
+    "db:generate:municipal": "npm -w @fila-saude/api run db:generate:municipal",
     "db:migrate": "npm -w @fila-saude/api run db:migrate",
+    "db:migrate:central": "npm -w @fila-saude/api run db:migrate:central",
+    "tenant:create": "npm -w @fila-saude/api run tenant:create --",
+    "specs:check": "node scripts/specs-check.mjs",
+    "specs:gen": "node scripts/specs-gen.mjs",
     "prepare": "husky",
-    "commit": "cz"
+    "commit": "cz",
+    "test:domain": "npm -w @fila-saude/domain run test",
+    "test:painel": "npm -w @fila-saude/painel run test",
+    "dev:seed": "npm -w @fila-saude/api run dev:seed",
+    "test:mobile": "npm -w @fila-saude/mobile run test",
+    "dev:mobile": "npm -w @fila-saude/mobile run start",
+    "design:gen": "npm -w @fila-saude/design run gen",
+    "test:design": "npm -w @fila-saude/design run test"
   },
   "engines": {
     "node": "24.x"
@@ -37,7 +48,7 @@
     "type": "git",
     "url": "git+https://github.com/ryansldev/fila-saude.git"
   },
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/ryansldev/fila-saude/issues"
@@ -51,5 +62,11 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
+  },
+  "overrides": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "minimatch@>=7.0.0 <11.0.1": "^11.0.1",
+    "esbuild": "^0.28.0"
   }
 }

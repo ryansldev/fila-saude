@@ -12,8 +12,8 @@ export function HeroSection() {
             chega de esperar <span className="text-primary">horas no postinho.</span>
           </h1>
           <p className="mx-auto max-w-lg text-lg leading-8 text-gray-600 sm:text-xl sm:leading-9 md:max-w-xl md:text-xl md:leading-9 lg:mx-0 lg:max-w-xl lg:text-2xl lg:leading-10">
-            Entra na fila pelo celular, espera em casa e só vai à unidade quando a vez estiver perto. Grátis e open
-            source.
+            Entra na fila pelo celular, espera em casa e só vai à unidade quando a vez estiver perto. Grátis pra você e
+            open source.
           </p>
         </div>
 
