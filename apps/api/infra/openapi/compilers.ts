@@ -11,7 +11,7 @@ function zod(schema: unknown, method: string, url: string): ZodType {
 
 // DOC2 / PD-22: o Fastify valida params, query e corpo com o schema Zod da rota; o erro é o mesmo
 // `invalid_input` com campos do `validate()` (o Fastify repassa o `ApiError` ao `handleError`).
-// Id inválido no caminho é recurso inexistente: 404, como o `pathId`.
+// Id inválido no caminho é recurso inexistente: 404.
 export const validatorCompiler: FastifySchemaCompiler<ZodType> = ({ schema, method, url, httpPart }) => {
   const checked = zod(schema, method, url);
   return (data) => {

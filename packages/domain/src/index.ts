@@ -112,7 +112,7 @@ export {
 export type { Occurrence, Series, Window } from "./recurrence.ts";
 export { expand, MATERIALIZATION_WINDOW_DAYS, materializationWindow } from "./recurrence.ts";
 export type { ErrorCode, Event, EventKind, Result } from "./result.ts";
-export { failure, ok } from "./result.ts";
+export { ERROR_CODES, failure, ok } from "./result.ts";
 export type { ServiceMode } from "./service.ts";
 export { canChangeRequiresTriage, changeServiceMode, countActive } from "./service.ts";
 export type { CmdReserve } from "./session.ts";

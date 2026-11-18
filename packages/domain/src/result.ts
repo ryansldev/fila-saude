@@ -1,19 +1,23 @@
-export type ErrorCode =
-  | "forbidden_transition"
-  | "no_slot"
-  | "duplicate"
-  | "emergency"
-  | "regulated_service"
-  | "session_closed"
-  | "none_eligible"
-  | "station_busy"
-  | "station_has_call"
-  | "no_show_up"
-  | "invalid_qr"
-  | "referral_pending"
-  | "no_permission"
-  | "past_deadline"
-  | "pending_check";
+// Códigos de erro do domínio; a API os devolve como 409 (PD-22).
+export const ERROR_CODES = [
+  "forbidden_transition",
+  "no_slot",
+  "duplicate",
+  "emergency",
+  "regulated_service",
+  "session_closed",
+  "none_eligible",
+  "station_busy",
+  "station_has_call",
+  "no_show_up",
+  "invalid_qr",
+  "referral_pending",
+  "no_permission",
+  "past_deadline",
+  "pending_check",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
 
 export type EventKind =
   | "entry_created"

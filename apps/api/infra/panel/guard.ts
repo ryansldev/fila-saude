@@ -1,5 +1,5 @@
 import { type Action, conditions } from "@fila-saude/domain";
-import type { FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { ApiError } from "infra/errors";
 import type { ScopedProfile } from "./profiles";
 import { staffUser } from "./session";
@@ -59,4 +59,24 @@ export function require(action: Action, options: Options = {}) {
 export async function requireLogin(req: FastifyRequest) {
   if (!req.tenant) await req.server.requireTenant(req);
   if (!(await staffUser(req))) throw new ApiError(401, "not_authenticated");
+}
+
+// Leituras de configuração de uma unidade (`units/:unitId/…`): o `unitId` já passou pelo schema.
+export const canConfigureUnit = require("configure_services_sessions_stations_tv", {
+  unit: (req) => (req.params as { unitId: string }).unitId,
+});
+
+// DOC2: toda rota do painel (fora o login) confere a sessão no `preValidation`, antes do schema:
+// sem login é sempre 401, com qualquer corpo, query ou caminho.
+export function panelLogin(app: FastifyInstance) {
+  app.addHook("onRoute", (route) => {
+    if (!route.url.startsWith("/v1/panel/") || isPanelAuth(route.url)) return;
+    const own = route.preValidation ? [route.preValidation].flat() : [];
+    route.preValidation = [requireLogin, ...own];
+  });
+}
+
+// As rotas do better-auth do painel (`/v1/panel/auth/*`), que fazem o próprio login.
+export function isPanelAuth(url: string) {
+  return url === "/v1/panel/auth" || url.startsWith("/v1/panel/auth/");
 }

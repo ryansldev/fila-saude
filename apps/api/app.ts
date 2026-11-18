@@ -13,6 +13,7 @@ import { startSweep } from "infra/notices/sweep";
 import { serializerCompiler, validatorCompiler } from "infra/openapi/compilers";
 import { registerRoutes } from "infra/panel/action";
 import { panelCors } from "infra/panel/cors";
+import { panelLogin } from "infra/panel/guard";
 import { activeMunicipalities } from "infra/queue/app";
 import tenantPlugin from "infra/tenant/plugin";
 
@@ -35,6 +36,7 @@ export async function buildApp(options: { logger?: boolean } = {}): Promise<Fast
   app.setErrorHandler(handleError);
   app.setNotFoundHandler(notFound);
   registerRoutes(app);
+  panelLogin(app);
   panelCors(app);
 
   // T1.7 / PD-03: um pool por município, em LRU; fechado junto com o app. No modo single (PD-12), um
