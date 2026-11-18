@@ -21,14 +21,22 @@ export const idSchema = z.string().regex(UUID_PATTERN).describe("uuid");
 
 type ErrorCodes = Partial<Record<400 | 401 | 403 | 404 | 409 | 429 | 503, readonly string[]>>;
 
+// PD-22: o corpo de erro, um componente só na referência (`#/components/schemas/ApiError`).
+const apiErrorSchema = errorSchema.meta({ id: "ApiError" });
+
 // PD-22: respostas de erro da rota, com os códigos possíveis em cada status (os mapas se somam).
-export function apiErrors(...maps: ErrorCodes[]): Record<string, typeof errorSchema> {
+export function apiErrors(...maps: ErrorCodes[]) {
   const byStatus = new Map<string, string[]>();
   for (const map of maps) {
     for (const [status, codes] of Object.entries(map))
       byStatus.set(status, [...(byStatus.get(status) ?? []), ...codes]);
   }
-  return Object.fromEntries([...byStatus].map(([status, codes]) => [status, errorSchema.describe(codes.join(", "))]));
+  return Object.fromEntries(
+    [...byStatus].map(([status, codes]) => [
+      status,
+      { description: codes.join(", "), content: { "application/json": { schema: apiErrorSchema } } },
+    ]),
+  );
 }
 
 // PD-22: recusas do domínio (`Result` com erro) viram 409 com o código.

@@ -30,7 +30,7 @@ DOC2 e DOC3 viram AD em `decisions.md` na Task 8. O que eu decidir sozinho no ca
 - **Comportamento da API igual para quem chama:** mesmos status, mesmo corpo de erro (`{ error, message?, fields? }`, PD-22), mensagens em português. Os testes de integração atuais (364) passam sem mudar as asserções. Se algum precisar mudar, isso vai para `decisoes-para-revisar.md`.
 - Next 16: ler `node_modules/next/dist/docs/` antes de criar rota ou layout no `apps/web`.
 - Testes da API pedem o Docker Desktop no ar (`systemctl --user start docker-desktop`).
-- O `v1.json` é gerado: ninguém edita à mão. Ele fica no git (como as tabelas do `specs:gen`) e o CI confere se está atualizado.
+- O `v1.json` é gerado: ninguém edita à mão. Ele fica no git (como as tabelas do `specs:gen`), e o `openapi.test.ts` falha se ele ficar para trás das rotas.
 - Branch nova a partir da `main` depois do merge do PR #33 (nada novo entra na `feat/v0.1`).
 - Code review (`/code-review`) antes de cada commit.
 
@@ -45,7 +45,7 @@ DOC2 e DOC3 viram AD em `decisions.md` na Task 8. O que eu decidir sozinho no ca
 7. **Ordem dos hooks:** o Fastify valida o schema antes do `preHandler`. Rota que hoje autentica no `preHandler` (`requireTenant`, `requirePatient`, `requireLogin`) e valida dentro do handler passa a autenticar no `preValidation`, para que pedido sem login com corpo inválido continue 401/404, e não vire 400. → Task 2, um teste por grupo.
 8. **Id inválido no caminho:** continua 404 `not_found`, como o `pathId`: o validador transforma erro em `params` em 404. → Task 1.
 9. **Query e params chegam como texto:** schema com número na query usa `z.coerce`, como o `validate()` já pedia. → Task 2.
-10. **`v1.json` desatualizado:** o CI falha se `docs:openapi --check` encontrar diferença. → Task 8.
+10. **`v1.json` desatualizado:** o `openapi.test.ts` compara o arquivo do git com o documento das rotas. → Task 3.
 
 ---
 
@@ -77,7 +77,7 @@ Em cada rota, o `validate(x, req.body)` vira `schema.body`, e o `validate(y, res
 **Files:** `apps/api/scripts/openapi.ts`; script `docs:openapi` no `package.json` da raiz; saída `apps/api/openapi/v1.json`; Test `apps/api/tests/integration/v1/openapi.test.ts`.
 
 - [ ] Testes vermelhos: o documento passa num validador de OpenAPI 3.1 (`@scalar/openapi-parser`); nenhum caminho `/v1/test`; `components.schemas.ApiError` citado nas respostas de erro; `securitySchemes` com `patientBearer`, `patientCookie` (o app na web), `panelCookie` (`fila-painel`) e `tvBearer`; `servers` com a variável `{municipality}`; as tags do DOC4.
-- [ ] O script sobe o app com `buildApp({ logger: false })` sem `listen`. Se o `buildApp` exigir banco só para montar as rotas, separar a montagem da conexão, sem abrir conexão para gerar o arquivo. Depois o script chama `app.swagger()` e grava o arquivo ordenado; com `--check`, só compara.
+- [ ] O script sobe o app com `buildApp({ background: false, openapi: true })` sem `listen` (nenhuma conexão com o banco), chama `app.swagger()` e grava o arquivo no formato do Biome. O swagger só é registrado nos testes e no script.
 - [ ] Decidir as rotas do better-auth (Review Focus 6) e anotar em `decisoes-para-revisar.md`.
 - [ ] Commit `feat(api): generate the v1 openapi document`.
 
@@ -113,7 +113,7 @@ Em cada rota, o `validate(x, req.body)` vira `schema.body`, e o `validate(y, res
 
 ### Task 8: CI e limpeza
 
-- [ ] `.github/workflows/tests.yml`: `npm run docs:openapi -- --check` e o `next build` do `apps/web`.
+- [ ] `.github/workflows/tests.yml`: o `next build` do `apps/web` (o `v1.json` já é conferido pelo `npm test`).
 - [ ] DOC2 e DOC3 viram AD em `decisions.md`; `npm run specs:check` limpo.
 - [ ] `STATE.md`: trocar a linha do próximo passo. Este plano vai para `.specs/arquivo/planos/docs-api/`.
 - [ ] `/code-review` no diff e `git status` sem arquivo solto.
