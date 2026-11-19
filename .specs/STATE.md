@@ -13,7 +13,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 
 ## Esperando você
 
-- **Docs da API:** abrir o PR da `feat/docs-api`; revisar DA1 a DA12 (sem a DA7, que virou a AD-069) em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (a que muda comportamento: sem login, o painel responde 401 antes de olhar o corpo); clicar no [roteiro](features/mvp-filas/roteiro-v01.md) os formulários com erro por campo (cadastro, login, unidade, sessão), porque todas as rotas mudaram por dentro.
+- **Docs da API: [PR #34](https://github.com/ryansldev/fila-saude/pull/34) aberto** (merge só você faz); revisar DA1 a DA12 (sem a DA7, que virou a AD-069) em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (a que muda comportamento: sem login, o painel responde 401 antes de olhar o corpo); clicar no [roteiro](features/mvp-filas/roteiro-v01.md) os formulários com erro por campo (cadastro, login, unidade, sessão), porque todas as rotas mudaram por dentro.
 - Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC, CP). Tentativas de login e captcha prontos (AD-062 a AD-065; valores de partida, a reajustar com o piloto). **RV7** (80+ e os outros grupos legais) pede sua decisão.
 - **CA1:** e-mail obrigatório no cadastro, opcional ou fora? (muda a API).
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.
