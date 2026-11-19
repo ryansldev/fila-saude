@@ -107,8 +107,8 @@ export const SIGN_UP_ERRORS: ErrorCodes[] = [
   },
 ];
 
-// O painel acha o município só pelo Host (sem caminho): não há `municipality_mismatch`.
-const PANEL_TENANT_ERRORS: ErrorCodes = { 404: ["unknown_municipality"] };
+// O painel e a TV acham o município só pelo Host (sem caminho): não há `municipality_mismatch`.
+export const HOST_TENANT_ERRORS: ErrorCodes = { 404: ["unknown_municipality"] };
 
 // T1.9: a sessão do painel (cookie `fila-painel`).
 export const PANEL = [{ panelCookie: [] }];
@@ -141,7 +141,7 @@ export function panelSchema<const S extends PanelRoute>(route: S) {
     security: PANEL,
     response: {
       ...response,
-      ...apiErrors(PANEL_TENANT_ERRORS, PANEL_ERRORS, route.params ? PATH_ID_ERRORS : {}, input, errors ?? {}),
+      ...apiErrors(HOST_TENANT_ERRORS, PANEL_ERRORS, route.params ? PATH_ID_ERRORS : {}, input, errors ?? {}),
     } as S["response"],
   } as Omit<S, "errors">;
 }

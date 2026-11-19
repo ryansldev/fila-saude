@@ -7918,10 +7918,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "404": {
             "description": "unknown_municipality",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -8063,10 +8059,6 @@
                 }
               }
             }
-          },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
             "description": "tv_not_paired",

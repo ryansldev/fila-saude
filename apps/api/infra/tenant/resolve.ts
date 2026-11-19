@@ -1,4 +1,4 @@
-import { validateSlug } from "./slug";
+import { isReservedSlug, validateSlug } from "./slug";
 
 export type ResolutionConfig = { mode: "multi" | "single"; domainBase: string; fixedSlug?: string };
 export type ResolutionEntry = { host: string | undefined; pathSlug: string | undefined };
@@ -40,5 +40,5 @@ function hostSlug(host: string | undefined, domainBase: string): string | null {
 
   const sub = withoutPort.slice(0, -suffix.length);
   // `validateSlug` já recusa ponto (subdomínio duplo), vazio e IPv4 (começa com dígito).
-  return validateSlug(sub) ? sub : null;
+  return validateSlug(sub) && !isReservedSlug(sub) ? sub : null;
 }

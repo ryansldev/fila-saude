@@ -21,7 +21,7 @@ const written = Object.keys(docs).map((version) => path.join(dir, `${version}.js
 for (const [version, doc] of Object.entries(docs))
   await writeFile(path.join(dir, `${version}.json`), JSON.stringify(doc));
 for (const name of await readdir(dir)) {
-  if (/^v\d+\.json$/.test(name) && !written.includes(path.join(dir, name))) await rm(path.join(dir, name));
+  if (/^v[1-9]\d*\.json$/.test(name) && !written.includes(path.join(dir, name))) await rm(path.join(dir, name));
 }
 execFileSync("npx", ["biome", "format", "--write", ...written], { stdio: "ignore" });
 console.log(`gravado ${written.map((f) => path.relative(process.cwd(), f)).join(", ")}`);

@@ -31,6 +31,13 @@ describe("resolveTenant", () => {
       expect(resolveTenant(by("www.filasaude.com.br"), production)).toEqual({ error: "no_tenant" });
     });
 
+    it("AD-069: nome reservado só vale para o Host; pelo caminho e no modo single, resolve normalmente", () => {
+      expect(resolveTenant(by(undefined, "admin"), production)).toEqual({ slug: "admin" });
+      expect(
+        resolveTenant(by("x.prefeitura.gov.br"), { mode: "single", domainBase: "localhost", fixedSlug: "admin" }),
+      ).toEqual({ slug: "admin" });
+    });
+
     it("AD-069: a homologação, com o domínio base `homolog.filasaude.com.br`, segue o mesmo desenho", () => {
       expect(resolveTenant(by("pref-a.homolog.filasaude.com.br"), homolog)).toEqual({ slug: "pref-a" });
       expect(resolveTenant(by("api.homolog.filasaude.com.br", "pref-a"), homolog)).toEqual({ slug: "pref-a" });

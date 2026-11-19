@@ -6,7 +6,8 @@ import path from "node:path";
 export const OPENAPI_DIR = path.join(process.cwd(), "../api/openapi");
 
 export const API_VERSIONS: string[] = readdirSync(OPENAPI_DIR)
-  .map((name) => /^(v(\d+))\.json$/.exec(name))
+  // A mesma regra da API (`infra/routes/versions.ts`): `v1`, `v2`…, sem `v0` nem zero à esquerda.
+  .map((name) => /^(v([1-9]\d*))\.json$/.exec(name))
   .filter((m): m is RegExpExecArray => m !== null)
   .sort((a, b) => Number(a[2]) - Number(b[2]))
   .map((m) => m[1] as string);

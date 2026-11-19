@@ -11,7 +11,7 @@ import { schemaMunicipal, type TenantDb } from "infra/database/tenants";
 import { ApiError } from "infra/errors";
 import { grantAssignments } from "infra/panel/profiles";
 import { Pool } from "pg";
-import { databaseForSlug, validateSlug } from "./slug";
+import { databaseForSlug, isReservedSlug, validateSlug } from "./slug";
 
 export type ManagerData = { login: string; name: string; password: string };
 export type TenantData = { slug: string; name: string; uf: string; timeZone?: string; manager?: ManagerData | null };
@@ -40,7 +40,8 @@ export async function createTenant(
   deps: { central: Db; template: string },
 ): Promise<{ municipalityId: string; managerId?: string }> {
   const { central, template } = deps;
-  if (!validateSlug(data.slug)) {
+  // AD-069: nome reservado (`api`, `www`…) é host do produto, não município.
+  if (!validateSlug(data.slug) || isReservedSlug(data.slug)) {
     throw new ApiError(400, "invalid_slug");
   }
   const database = databaseForSlug(data.slug);

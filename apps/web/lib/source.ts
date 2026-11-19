@@ -91,7 +91,12 @@ const versions: Record<string, VersionSource> = Object.fromEntries(
 
 export const source = loader(
   { docs: docs.toFumadocsSource(), ...versions },
-  { baseUrl: "/docs", plugins: [openapis[0]?.server.loaderPlugin() ?? [], lucideIconsPlugin()].flat() },
+  {
+    baseUrl: "/docs",
+    // O plugin da referência é uma função do `fumadocs-openapi`, a mesma em qualquer servidor: um basta para
+    // as páginas de todas as versões (cada página traz o próprio documento).
+    plugins: [openapis[0]?.server.loaderPlugin() ?? [], lucideIconsPlugin()].flat(),
+  },
 );
 
 // O Markdown de uma página: o guia como foi escrito; a rota da referência, pelo título e o documento.
