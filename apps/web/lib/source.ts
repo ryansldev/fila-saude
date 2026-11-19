@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { llms, loader, type VirtualFile } from "fumadocs-core/source";
 import { lucideIconsPlugin } from "fumadocs-core/source/plugins/lucide-icons";
 import { metaSchema, pageSchema } from "fumadocs-core/source/schema";
+import { applyMdxPreset } from "fumadocs-mdx/config";
 import { defineDocs } from "fumadocs-mdx/macro";
 import { z } from "zod";
 import { openapiFile } from "@/lib/api-versions";
 import { openapis } from "@/lib/openapi";
+import { remarkApiUrl } from "@/lib/remark-api-url";
 
 // Endereço sem acento nem maiúscula ("Município" vira "municipio").
 const slugify = (name: string) =>
@@ -24,6 +26,8 @@ const docs = defineDocs({
     // `section`: a seção mostrada acima do título; `hero`: a página traz o próprio cabeçalho (a introdução).
     schema: pageSchema.extend({ section: z.string().optional(), hero: z.boolean().optional() }),
     postprocess: { includeProcessedMarkdown: true },
+    // AD-069: `{{API_URL}}` e `{{PANEL_URL}}` viram os endereços do ambiente.
+    mdxOptions: applyMdxPreset({ remarkPlugins: (plugins) => [remarkApiUrl, ...plugins] }),
   },
   meta: { schema: metaSchema },
 });

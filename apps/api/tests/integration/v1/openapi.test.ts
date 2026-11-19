@@ -113,6 +113,15 @@ describe("documentos OpenAPI (AD-066, AD-068)", () => {
   it("PD-15: o servidor do município tem a variável {municipality}", () => {
     const tenant = doc.servers.find((s) => s.url.includes("{municipality}"));
     expect(tenant?.variables?.municipality?.default).toBe("exemplo");
+    // AD-069: produção, homologação e dev (o painel e a TV no subdomínio do município; o app em `api.`).
+    expect(doc.servers.map((s) => s.url)).toEqual([
+      "https://{municipality}.filasaude.com.br",
+      "https://api.filasaude.com.br",
+      "https://{municipality}.homolog.filasaude.com.br",
+      "https://api.homolog.filasaude.com.br",
+      "http://{municipality}.localhost:3333",
+      "http://localhost:3333",
+    ]);
   });
 
   it("transform: o corpo mostra a entrada (texto) e a resposta a saída", () => {

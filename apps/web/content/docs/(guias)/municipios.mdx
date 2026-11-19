@@ -12,14 +12,14 @@ Cada município tem os próprios dados. Toda rota de um município precisa dizer
 O app do paciente fala com a central, que atende todos os municípios. O município vai no caminho:
 
 ```bash
-curl http://localhost:3333/v1/municipalities/exemplo/schedule
+curl {{API_URL}}/v1/municipalities/exemplo/schedule
 ```
 </Tab>
 <Tab value="no endereço (painel e TV)">
 O painel e a TV ficam no endereço do município. O subdomínio diz qual é:
 
 ```bash
-curl https://exemplo.<domínio>/v1/panel/units
+curl {{PANEL_URL}}/v1/panel/units
 ```
 </Tab>
 </Tabs>

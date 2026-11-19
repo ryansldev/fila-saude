@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const multi = { mode: "multi" as const, domainBase: "localhost" };
 const production = { mode: "multi" as const, domainBase: "filasaude.com.br" };
 const single = { mode: "single" as const, domainBase: "localhost", fixedSlug: "pref-a" };
+const homolog = { mode: "multi" as const, domainBase: "homolog.filasaude.com.br" };
 
 function by(host: string | undefined, pathSlug?: string) {
   return { host, pathSlug };
@@ -22,6 +23,17 @@ describe("resolveTenant", () => {
     it("domínio de produção → slug", () => {
       expect(resolveTenant(by("pref-a.filasaude.com.br"), production)).toEqual({ slug: "pref-a" });
       expect(resolveTenant(by("pref-a.filasaude.com.br:443"), production)).toEqual({ slug: "pref-a" });
+    });
+
+    it("AD-069: `api.` é o host da central, não um município: o município vem do caminho", () => {
+      expect(resolveTenant(by("api.filasaude.com.br", "pref-a"), production)).toEqual({ slug: "pref-a" });
+      expect(resolveTenant(by("api.filasaude.com.br"), production)).toEqual({ error: "no_tenant" });
+      expect(resolveTenant(by("www.filasaude.com.br"), production)).toEqual({ error: "no_tenant" });
+    });
+
+    it("AD-069: a homologação, com o domínio base `homolog.filasaude.com.br`, segue o mesmo desenho", () => {
+      expect(resolveTenant(by("pref-a.homolog.filasaude.com.br"), homolog)).toEqual({ slug: "pref-a" });
+      expect(resolveTenant(by("api.homolog.filasaude.com.br", "pref-a"), homolog)).toEqual({ slug: "pref-a" });
     });
 
     it("maiúsculas no Host não mudam o resultado", () => {

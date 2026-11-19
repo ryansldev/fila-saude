@@ -5,7 +5,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 ## Onde estamos (2026-11-18)
 
 - **v0.1 na `main`** (PR #33, fatias 0 a 4). Falta a fatia 5 (pré-cadastro).
-- **Branch `feat/docs-api`: docs públicas em `/docs` do `apps/web`** (AD-066 a AD-068): guias e a referência da API v1, gerada das rotas (`npm run docs:openapi`). Todas as rotas declaram o schema Zod no Fastify. [Plano executado](arquivo/planos/docs-api/plan.md).
+- **Branch `feat/docs-api`: docs públicas em `/docs` do `apps/web`** (AD-066 a AD-069; domínios de produção e homologação definidos): guias e a referência da API v1, gerada das rotas (`npm run docs:openapi`). Todas as rotas declaram o schema Zod no Fastify. [Plano executado](arquivo/planos/docs-api/plan.md).
 - **Revisão de UI com o design system em andamento.** Feitas no painel: Agendamento, Fila do dia, QR de entrada e unidade no menu, Estação (com "Compareceu"), TV. No app: página da unidade, entrar, criar conta, aba "hoje" (bilhete), mapa das unidades, inscrição (com a relação para outra pessoa). Designs em [features/design-system/](features/design-system/).
 - **Código em inglês** pela tabela de [nomes no código](specs/nomes-no-codigo.md); telas e specs em português. Migrações recriadas do zero (NC2); o banco de dev já está no conjunto novo (2026-11-18).
 - **Code review das fatias 0 a 4 feito em duas rodadas (2026-11-17)**, com os achados corrigidos; daqui em diante, review antes de cada commit.
@@ -13,7 +13,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 
 ## Esperando você
 
-- **Docs da API:** abrir o PR da `feat/docs-api`; revisar DA1 a DA8 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (a que muda comportamento: sem login, o painel responde 401 antes de olhar o corpo); clicar no [roteiro](features/mvp-filas/roteiro-v01.md) os formulários com erro por campo (cadastro, login, unidade, sessão), porque todas as rotas mudaram por dentro.
+- **Docs da API:** abrir o PR da `feat/docs-api`; revisar DA1 a DA12 (sem a DA7, que virou a AD-069) em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (a que muda comportamento: sem login, o painel responde 401 antes de olhar o corpo); clicar no [roteiro](features/mvp-filas/roteiro-v01.md) os formulários com erro por campo (cadastro, login, unidade, sessão), porque todas as rotas mudaram por dentro.
 - Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC, CP). Tentativas de login e captcha prontos (AD-062 a AD-065; valores de partida, a reajustar com o piloto). **RV7** (80+ e os outros grupos legais) pede sua decisão.
 - **CA1:** e-mail obrigatório no cadastro, opcional ou fora? (muda a API).
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.

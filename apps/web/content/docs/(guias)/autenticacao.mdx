@@ -18,7 +18,7 @@ Há três jeitos de entrar. Cada rota da [referência](/docs/referencia) diz qua
 ### entrar
 
 ```bash
-curl -i http://localhost:3333/v1/auth/sign-in/username \
+curl -i {{API_URL}}/v1/auth/sign-in/username \
   -H "content-type: application/json" \
   -d '{ "username": "11144477735", "password": "exemplo123" }'
 ```
@@ -47,7 +47,7 @@ CPF ou senha errados respondem 401 `invalid_credentials`.
 Pelo subdomínio do município ([municípios](/docs/municipios)):
 
 ```bash
-curl -i https://exemplo.<domínio>/v1/panel/auth/sign-in/username \
+curl -i {{PANEL_URL}}/v1/panel/auth/sign-in/username \
   -H "content-type: application/json" \
   -d '{ "username": "gestor", "password": "…" }'
 ```

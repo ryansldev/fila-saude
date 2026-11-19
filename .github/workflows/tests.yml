@@ -20,7 +20,7 @@ jobs:
       # Cada suíte roda e responde por si: uma falha não esconde as outras.
       fail-fast: false
       matrix:
-        suite: ["@fila-saude/domain", "@fila-saude/painel", "@fila-saude/mobile", "@fila-saude/design", "@fila-saude/schemas"]
+        suite: ["@fila-saude/domain", "@fila-saude/painel", "@fila-saude/mobile", "@fila-saude/design", "@fila-saude/schemas", "@fila-saude/web"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

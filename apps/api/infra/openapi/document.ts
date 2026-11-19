@@ -37,13 +37,26 @@ export function registerOpenApi(app: FastifyInstance) {
         { name: TAGS.tv, description: "A TV da unidade, com o token dela" },
         { name: TAGS.system, description: "Saúde da API e a página do captcha" },
       ],
+      // AD-069: produção, homologação e dev (o app em `api.`; o painel e a TV no subdomínio do município).
       servers: [
         {
-          url: "http://{municipality}.localhost:3333",
+          url: "https://{municipality}.filasaude.com.br",
           description: "Painel e TV: o município vem do subdomínio",
           variables: { municipality: { default: "exemplo" } },
         },
-        { url: "http://localhost:3333", description: "App do paciente: o município vem do caminho" },
+        { url: "https://api.filasaude.com.br", description: "App do paciente: o município vem do caminho" },
+        {
+          url: "https://{municipality}.homolog.filasaude.com.br",
+          description: "Homologação: painel e TV",
+          variables: { municipality: { default: "exemplo" } },
+        },
+        { url: "https://api.homolog.filasaude.com.br", description: "Homologação: app do paciente" },
+        {
+          url: "http://{municipality}.localhost:3333",
+          description: "Dev: painel e TV na API local",
+          variables: { municipality: { default: "exemplo" } },
+        },
+        { url: "http://localhost:3333", description: "Dev: app do paciente na API local" },
       ],
       components: {
         securitySchemes: {

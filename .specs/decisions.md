@@ -74,6 +74,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-066 | Docs públicas com Fumadocs no site, referência gerada do OpenAPI | ativa |
 | AD-067 | Schemas Zod declarados nas rotas do Fastify | ativa |
 | AD-068 | Versões da API: o que quebra vai para uma nova, a anterior fica 6 meses | ativa |
+| AD-069 | Domínios de produção: `api.filasaude.com.br` e `<município>.filasaude.com.br` | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -347,6 +348,10 @@ Cada rota declara os schemas de `packages/schemas` no próprio Fastify (`params`
 ### AD-068 · Versões da API: o que quebra vai para uma nova, a anterior fica 6 meses
 2026-11-18 · ativa
 A versão é um número no começo do caminho (`/v1`, `/v2`… `/v{n}`), sem nenhuma versão tratada como fixa. Mudança que só acrescenta (rota nova, campo novo na resposta, campo opcional no corpo) fica na versão atual. Mudança que quebra vai para a próxima (`/v{n+1}`), lançada junto com o app que já a usa. A anterior continua no ar por 6 meses depois disso, com os cabeçalhos `Deprecation` e `Sunset`. Como cada versão vira um documento e uma referência está na DA9 das [decisões para revisar](features/mvp-filas/decisoes-para-revisar.md). **Por quê:** decisão sua, 2026-11-18 (DOC3 do [plano das docs](arquivo/planos/docs-api/plan.md)): o app antigo continua no celular de quem não atualizou, e a mudança no app sai junto com a da API, então os 6 meses contam do lançamento. "v1 e v2 não são fixas, as vezes podemos estar na v5" (2026-11-18).
+
+### AD-069 · Domínios de produção: `api.filasaude.com.br` e `<município>.filasaude.com.br`
+2026-11-18 · ativa
+O app do paciente fala com a API em `https://api.filasaude.com.br` (o município no caminho); o painel e a TV, em `https://<município>.filasaude.com.br` (o município no subdomínio). A homologação segue o mesmo desenho em `https://api.homolog.filasaude.com.br` e `https://<município>.homolog.filasaude.com.br`. As docs mostram os endereços de produção, os locais em dev e os de homologação no build dela (`DOCS_API_URL` e `DOCS_PANEL_URL`), sem endereço fixo nos guias (`{{API_URL}}` e `{{PANEL_URL}}`); a referência da API lista os três ambientes. **Por quê:** decisão sua, 2026-11-18 ("exatamente isso"), ao ver que as docs mostravam `localhost` fixo; a homologação, "pode seguir com esses endereços de homolog". Substitui a DA7 das decisões para revisar.
 
 ## Arquitetura
 
