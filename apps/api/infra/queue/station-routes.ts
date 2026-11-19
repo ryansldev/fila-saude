@@ -7,7 +7,7 @@ import {
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { validate } from "infra/errors";
-import { DOMAIN_CONFLICT, idParams, panelSchema } from "infra/openapi/schemas";
+import { CONFLICT_CODES, idParams, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 import { commandInStation, OPERATE } from "./station";
 
@@ -29,7 +29,8 @@ export function commandRoute(command: string) {
     // Sem corpo, o Fastify entrega `null`: o comando vale com as opções padrão.
     body: commandBodySchema.nullable(),
     response: { 200: stationOperationSchema },
-    errors: { 404: ["not_found"], 409: DOMAIN_CONFLICT },
+    // A triagem fecha o chamado com a cor do risco: sem ela, 422 `classify_risk`.
+    errors: { 404: ["not_found"], 409: CONFLICT_CODES, 422: ["classify_risk"] },
   });
   return async (app: FastifyInstance) => {
     app

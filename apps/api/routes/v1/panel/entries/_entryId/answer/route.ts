@@ -1,7 +1,7 @@
 import { registeredAnswerSchema, schedulerAnswerSchema } from "@fila-saude/schemas/queue";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
-import { DOMAIN_CONFLICT, idParams, panelSchema } from "infra/openapi/schemas";
+import { CONFLICT_CODES, idParams, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 import { answerByScheduler, SCHEDULE } from "infra/queue/scheduling";
 
@@ -12,7 +12,7 @@ export default async function (app: FastifyInstance) {
     params: idParams("entryId"),
     body: schedulerAnswerSchema,
     response: { 200: registeredAnswerSchema },
-    errors: { 404: ["not_found"], 409: DOMAIN_CONFLICT },
+    errors: { 404: ["not_found"], 409: CONFLICT_CODES },
   });
   app
     .withTypeProvider<ZodTypeProvider>()

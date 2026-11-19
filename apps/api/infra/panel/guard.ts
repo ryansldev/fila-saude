@@ -67,8 +67,9 @@ export const canConfigureUnit = require("configure_services_sessions_stations_tv
   unit: (req) => (req.params as { unitId: string }).unitId,
 });
 
-// DOC2: toda rota do painel (fora o login) confere a sessão no `preValidation`, antes do schema:
-// sem login é sempre 401, com qualquer corpo, query ou caminho.
+// AD-067: toda rota do painel (fora o login) confere a sessão no `preValidation`, antes do schema: sem
+// login é 401 com qualquer corpo, query ou caminho. Só o corpo que nem é JSON (ou de tipo não aceito) o
+// Fastify recusa antes, ao ler o pedido (400 `invalid_input`).
 export function panelLogin(app: FastifyInstance) {
   app.addHook("onRoute", (route) => {
     if (!isPanelRoute(route.url) || isPanelAuth(route.url)) return;

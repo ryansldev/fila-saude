@@ -30,7 +30,9 @@ export function panelCors(app: FastifyInstance) {
       return;
     }
     const mutation = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
-    if (mutation && isPanelRoute(req.url)) {
+    // A rota registrada, e não o caminho cru: o roteador decodifica `%70anel` para `panel` (CSRF).
+    const route = req.routeOptions.url ?? req.url;
+    if (mutation && isPanelRoute(route)) {
       return reply.status(403).send({ error: "no_permission" });
     }
   });

@@ -54,4 +54,16 @@ describe("CORS do painel", () => {
     });
     expect(outside.headers.get("access-control-allow-origin")).toBeNull();
   });
+
+  it("CSRF: mutação do painel vinda de outra origem é recusada, mesmo com o caminho codificado", async () => {
+    const cookie = await orchestrator.loginManager(a);
+    for (const path of ["/v1/panel/units", "/v1/%70anel/units", "/v1/panel/%75nits"]) {
+      const r = await fetch(`${orchestrator.tenantOrigin(a)}${path}`, {
+        method: "POST",
+        headers: { origin: "http://evil.com", cookie, "content-type": "application/json" },
+        body: JSON.stringify({ name: "Invadida" }),
+      });
+      expect([path, r.status]).toEqual([path, 403]);
+    }
+  });
 });

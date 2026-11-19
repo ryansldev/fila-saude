@@ -3,7 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { STAFF } from "infra/config/common";
 import { createUser, listUsers } from "infra/config/users";
-import { DOMAIN_CONFLICT, panelSchema } from "infra/openapi/schemas";
+import { CONFLICT_CODES, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 import z from "zod";
 
@@ -14,7 +14,7 @@ export default async function (app: FastifyInstance) {
     summary: "Criar pessoa na equipe",
     body: staffUserInputSchema,
     response: { 201: staffUserSchema },
-    errors: { 409: DOMAIN_CONFLICT },
+    errors: { 409: CONFLICT_CODES },
   });
   typed.post("/", { config: { action: STAFF }, schema: create }, async (req, reply) =>
     reply.status(201).send(await createUser(await panelContext(req), req.body)),

@@ -4,7 +4,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { patientOf } from "infra/auth/patient-session";
 import {
   apiErrors,
-  DOMAIN_CONFLICT,
+  CONFLICT_CODES,
   PATIENT,
   PATIENT_IN_MUNICIPALITY_ERRORS,
   slugParams,
@@ -26,7 +26,7 @@ export default async function (app: FastifyInstance) {
         body: checkInInputSchema,
         response: {
           200: checkInSchema,
-          ...apiErrors(...PATIENT_IN_MUNICIPALITY_ERRORS, { 400: ["invalid_input"], 409: DOMAIN_CONFLICT }),
+          ...apiErrors(...PATIENT_IN_MUNICIPALITY_ERRORS, { 400: ["invalid_input"], 409: CONFLICT_CODES }),
         },
       },
     },

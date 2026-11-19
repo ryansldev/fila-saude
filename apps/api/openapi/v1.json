@@ -165,7 +165,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -219,7 +219,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -273,7 +273,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -330,7 +330,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -452,7 +452,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -506,7 +506,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -993,7 +993,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "429": {
@@ -1153,7 +1153,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "429": {
@@ -1256,7 +1256,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "429": {
@@ -1380,7 +1380,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado)",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -1427,7 +1427,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -1439,11 +1439,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -1561,10 +1561,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -1656,7 +1652,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -1668,7 +1664,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -1790,7 +1786,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -1802,11 +1798,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -1990,7 +1986,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -2002,11 +1998,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2171,10 +2167,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -2184,7 +2176,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2379,7 +2371,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input, reason_required",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -2391,11 +2383,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2480,10 +2472,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -2493,11 +2481,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2671,10 +2659,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -2684,11 +2668,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2862,10 +2846,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -2875,11 +2855,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3053,10 +3033,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -3066,7 +3042,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3168,7 +3144,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -3180,11 +3156,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3264,7 +3240,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -3276,7 +3252,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3296,10 +3272,6 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "204": { "description": "Sem corpo" },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -3309,11 +3281,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3529,7 +3501,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -3541,11 +3513,15 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "422": {
+            "description": "classify_risk",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3761,7 +3737,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -3773,11 +3749,15 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "422": {
+            "description": "classify_risk",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3993,7 +3973,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -4005,11 +3985,15 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "422": {
+            "description": "classify_risk",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4201,10 +4185,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -4214,7 +4194,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4430,7 +4410,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -4442,11 +4422,15 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "422": {
+            "description": "classify_risk",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4662,7 +4646,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -4674,11 +4658,15 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "422": {
+            "description": "classify_risk",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4894,7 +4882,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -4906,11 +4894,15 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "422": {
+            "description": "classify_risk",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4944,10 +4936,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -4957,7 +4945,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -5202,7 +5190,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -5355,10 +5343,6 @@
                 }
               }
             }
-          },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
             "description": "not_authenticated",
@@ -5519,10 +5503,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -5532,7 +5512,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -5783,7 +5763,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -5795,7 +5775,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -5815,10 +5795,6 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "204": { "description": "Sem corpo" },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -5828,11 +5804,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -5926,10 +5902,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -5939,7 +5911,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -5980,10 +5952,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -5993,7 +5961,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6061,10 +6029,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -6074,7 +6038,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6157,7 +6121,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -6169,7 +6133,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6237,10 +6201,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -6250,7 +6210,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado)",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6387,7 +6347,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -6399,11 +6359,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6510,7 +6470,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -6522,7 +6482,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado)",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6603,7 +6563,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -6615,7 +6575,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6672,10 +6632,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -6685,7 +6641,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado)",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6802,10 +6758,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -6815,7 +6767,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7054,10 +7006,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -7067,7 +7015,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7114,7 +7062,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -7126,7 +7074,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), invalid_code",
+            "description": "unknown_municipality, not_found, invalid_code",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7183,10 +7131,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -7196,7 +7140,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado)",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7289,10 +7233,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -7302,7 +7242,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7346,10 +7286,6 @@
                 }
               }
             }
-          },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
             "description": "not_authenticated",
@@ -7516,7 +7452,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -7532,7 +7468,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7618,10 +7554,6 @@
               }
             }
           },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -7653,10 +7585,6 @@
         "security": [{ "panelCookie": [] }],
         "responses": {
           "204": { "description": "Sem corpo" },
-          "400": {
-            "description": "municipality_mismatch",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
-          },
           "401": {
             "description": "not_authenticated",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
@@ -7666,11 +7594,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7832,7 +7760,7 @@
             }
           },
           "400": {
-            "description": "municipality_mismatch, invalid_input",
+            "description": "invalid_input",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "401": {
@@ -7844,11 +7772,11 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "404": {
-            "description": "unknown_municipality, not_found (id malformado), not_found",
+            "description": "unknown_municipality, not_found",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "forbidden_transition, no_slot, duplicate, emergency, regulated_service, session_closed, none_eligible, station_busy, station_has_call, no_show_up, invalid_qr, referral_pending, no_permission, past_deadline, pending_check",
+            "description": "birth_date_verified, cpf_in_use, duplicate, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }

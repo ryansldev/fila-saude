@@ -1,11 +1,10 @@
-import { readFileSync } from "node:fs";
 import { llms, loader, type VirtualFile } from "fumadocs-core/source";
 import { lucideIconsPlugin } from "fumadocs-core/source/plugins/lucide-icons";
 import { metaSchema, pageSchema } from "fumadocs-core/source/schema";
 import { applyMdxPreset } from "fumadocs-mdx/config";
 import { defineDocs } from "fumadocs-mdx/macro";
 import { z } from "zod";
-import { openapiFile } from "@/lib/api-versions";
+import { asMarkdown } from "@/lib/llms-markdown";
 import { openapis } from "@/lib/openapi";
 import { remarkApiUrl } from "@/lib/remark-api-url";
 
@@ -37,9 +36,11 @@ type OpenApiDoc = {
   paths: Record<string, Record<string, { tags?: string[] }>>;
 };
 
-// Os grupos (tags) do documento, na ordem que a API declara (ou na ordem em que aparecem).
-function groupsOf(version: string): string[] {
-  const doc = JSON.parse(readFileSync(openapiFile(version), "utf8")) as OpenApiDoc;
+// Os grupos (tags) do documento que o servidor da referência já carregou, na ordem que a API declara (ou
+// na ordem em que aparecem).
+async function groupsOf(version: string, server: (typeof openapis)[number]["server"]): Promise<string[]> {
+  const doc = (await server.getSchemas())[version]?.bundled as unknown as OpenApiDoc | undefined;
+  if (!doc) return [];
   const seen = Object.values(doc.paths).flatMap((methods) => Object.values(methods).flatMap((op) => op.tags ?? []));
   return [...new Set([...(doc.tags?.map((t) => t.name) ?? []), ...seen])].filter((t) => seen.includes(t));
 }
@@ -60,7 +61,7 @@ async function versionSource(version: string, server: (typeof openapis)[number][
             .toLowerCase()
         : slugify(output.item.name),
   });
-  const groups = groupsOf(version);
+  const groups = await groupsOf(version, server);
   const meta: VirtualFile[] = [
     {
       type: "meta",
@@ -91,15 +92,6 @@ export const source = loader(
   { docs: docs.toFumadocsSource(), ...versions },
   { baseUrl: "/docs", plugins: [openapis[0]?.server.loaderPlugin() ?? [], lucideIconsPlugin()].flat() },
 );
-
-// Os componentes de layout em Markdown puro: o herói sai (o subtítulo já vai junto) e o fluxo vira uma lista.
-function asMarkdown(text: string): string {
-  return text
-    .replace(/<Hero[\s\S]*?\/>\n*/g, "")
-    .replace(/<Flow steps=\{(\[[\s\S]*?\])\} \/>/g, (_, steps: string) =>
-      (JSON.parse(steps) as string[]).map((step, i) => `${i + 1}. ${step}`).join("\n"),
-    );
-}
 
 // O Markdown de uma página: o guia como foi escrito; a rota da referência, pelo título e o documento.
 export const docsLlms = llms(source, {

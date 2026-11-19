@@ -1,7 +1,7 @@
 import { attendanceInputSchema, sessionQueueSchema } from "@fila-saude/schemas/queue";
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
-import { DOMAIN_CONFLICT, idParams, panelSchema } from "infra/openapi/schemas";
+import { CONFLICT_CODES, idParams, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 import { markAttendanceInQueue } from "infra/queue/panel";
 
@@ -11,7 +11,8 @@ export default async function (app: FastifyInstance) {
     params: idParams("sessionId"),
     body: attendanceInputSchema,
     response: { 200: sessionQueueSchema },
-    errors: { 404: ["not_found"], 409: DOMAIN_CONFLICT },
+    // A conferência que não bate pede o motivo (`reason`): sem ele, 400 `reason_required`.
+    errors: { 400: ["reason_required"], 404: ["not_found"], 409: CONFLICT_CODES },
   });
   app
     .withTypeProvider<ZodTypeProvider>()

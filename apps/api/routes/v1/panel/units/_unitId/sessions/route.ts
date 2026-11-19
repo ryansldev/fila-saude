@@ -3,7 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { CONFIGURE } from "infra/config/common";
 import { createSession, listSessions } from "infra/config/sessions";
-import { DOMAIN_CONFLICT, idParams, panelSchema } from "infra/openapi/schemas";
+import { CONFLICT_CODES, idParams, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 import { canConfigureUnit } from "infra/panel/guard";
 import z from "zod";
@@ -18,7 +18,7 @@ export default async function (app: FastifyInstance) {
     params,
     body: sessionInputSchema,
     response: { 201: sessionSchema },
-    errors: { 404: ["not_found"], 409: DOMAIN_CONFLICT },
+    errors: { 404: ["not_found"], 409: CONFLICT_CODES },
   });
   typed.post("/", { config: { action: CONFIGURE }, schema: create }, async (req, reply) =>
     reply.status(201).send(await createSession(await panelContext(req), req.params.unitId, req.body)),

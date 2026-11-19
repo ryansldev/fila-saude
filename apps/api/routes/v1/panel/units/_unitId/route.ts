@@ -4,7 +4,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { UNITS_AND_RULES } from "infra/config/common";
 import { canSeeUnit, editUnit, readUnit, removeUnit } from "infra/config/units";
 import { ApiError } from "infra/errors";
-import { DOMAIN_CONFLICT, idParams, NO_CONTENT, panelSchema } from "infra/openapi/schemas";
+import { CONFLICT_CODES, idParams, NO_CONTENT, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 
 export default async function (app: FastifyInstance) {
@@ -35,7 +35,7 @@ export default async function (app: FastifyInstance) {
     summary: "Remover a unidade",
     params,
     response: { 204: NO_CONTENT },
-    errors: { 404: ["not_found"], 409: DOMAIN_CONFLICT },
+    errors: { 404: ["not_found"], 409: CONFLICT_CODES },
   });
   typed.delete("/", { config: { action: UNITS_AND_RULES }, schema: remove }, async (req, reply) => {
     await removeUnit(await panelContext(req), req.params.unitId);

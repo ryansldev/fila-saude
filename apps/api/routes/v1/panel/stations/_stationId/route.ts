@@ -3,7 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { CONFIGURE } from "infra/config/common";
 import { archiveStation, editStation } from "infra/config/stations";
-import { DOMAIN_CONFLICT, idParams, NO_CONTENT, panelSchema } from "infra/openapi/schemas";
+import { CONFLICT_CODES, idParams, NO_CONTENT, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 
 export default async function (app: FastifyInstance) {
@@ -23,7 +23,7 @@ export default async function (app: FastifyInstance) {
     summary: "Arquivar a estação",
     params,
     response: { 204: NO_CONTENT },
-    errors: { 404: ["not_found"], 409: DOMAIN_CONFLICT },
+    errors: { 404: ["not_found"], 409: CONFLICT_CODES },
   });
   typed.delete("/", { config: { action: CONFIGURE }, schema: archive }, async (req, reply) => {
     await archiveStation(await panelContext(req), req.params.stationId);

@@ -19,7 +19,7 @@ export const slugParams = z.object({ slug: z.string().describe("Município (ex.:
 // Id no caminho (uuid sem conferir a versão); malformado responde 404 (ver `compilers.ts`).
 export const idSchema = z.string().regex(UUID_PATTERN).describe("uuid");
 
-type ErrorCodes = Partial<Record<400 | 401 | 403 | 404 | 409 | 429 | 503, readonly string[]>>;
+type ErrorCodes = Partial<Record<400 | 401 | 403 | 404 | 409 | 422 | 429 | 503, readonly string[]>>;
 
 // PD-22: o corpo de erro, um componente só na referência (`#/components/schemas/ApiError`).
 const apiErrorSchema = errorSchema.meta({ id: "ApiError" });
@@ -29,7 +29,7 @@ export function apiErrors(...maps: ErrorCodes[]) {
   const byStatus = new Map<string, string[]>();
   for (const map of maps) {
     for (const [status, codes] of Object.entries(map))
-      byStatus.set(status, [...(byStatus.get(status) ?? []), ...codes]);
+      byStatus.set(status, [...new Set([...(byStatus.get(status) ?? []), ...codes])]);
   }
   return Object.fromEntries(
     [...byStatus].map(([status, codes]) => [
@@ -39,14 +39,43 @@ export function apiErrors(...maps: ErrorCodes[]) {
   );
 }
 
-// PD-22: recusas do domínio (`Result` com erro) viram 409 com o código.
-export const DOMAIN_CONFLICT = ERROR_CODES;
+// Os 409 que a própria API lança (fora as recusas do domínio): `error-codes.test.ts` falha se um novo
+// ficar de fora.
+const API_CONFLICTS = [
+  "birth_date_verified",
+  "cpf_in_use",
+  "last_manager",
+  "limit_per_account",
+  "login_in_use",
+  "municipality_exists",
+  "outdated_version",
+  "own_account_cpf",
+  "person_has_account",
+  "person_mismatch",
+  "prefix_in_use",
+  "private_session",
+  "referral_coming_soon",
+  "remove_self",
+  "service_has_entries",
+  "service_in_triage_station",
+  "session_has_patients",
+  "session_open",
+  "slots_below_taken",
+  "station_in_use",
+  "unit_has_entries",
+  "unit_has_sessions",
+];
+
+// PD-22: os códigos de 409: as recusas do domínio (`Result` com erro), as da API e `duplicate` (dois
+// pedidos iguais ao mesmo tempo, ou a pessoa já inscrita). A referência lista todos em cada rota que
+// pode dar 409 (DA5).
+export const CONFLICT_CODES: readonly string[] = [...new Set([...ERROR_CODES, ...API_CONFLICTS, "duplicate"])].sort();
 
 // PD-15: erros do `requireTenant`.
 export const TENANT_ERRORS: ErrorCodes = { 400: ["municipality_mismatch"], 404: ["unknown_municipality"] };
 
 // Id malformado no caminho.
-export const PATH_ID_ERRORS: ErrorCodes = { 404: ["not_found (id malformado)"] };
+export const PATH_ID_ERRORS: ErrorCodes = { 404: ["not_found"] };
 
 // PD-33: a sessão do paciente (cookie no navegador, bearer no app nativo).
 export const PATIENT = [{ patientBearer: [] }, { patientCookie: [] }];
@@ -62,7 +91,7 @@ export const PATIENT_IN_MUNICIPALITY_ERRORS: ErrorCodes[] = [TENANT_ERRORS, PATI
 export const entryParams = slugParams.extend({ entryId: idSchema });
 export const ENTRY_COMMAND_ERRORS: ErrorCodes[] = [
   ...PATIENT_IN_MUNICIPALITY_ERRORS,
-  { 404: ["not_found"], 409: DOMAIN_CONFLICT },
+  { 404: ["not_found"], 409: CONFLICT_CODES },
 ];
 
 // Inscrição e lista de espera pelo app (a pessoa por CPF tem limite, AD-065).
@@ -72,10 +101,13 @@ export const SIGN_UP_ERRORS: ErrorCodes[] = [
   {
     400: ["invalid_input"],
     404: ["not_found"],
-    409: DOMAIN_CONFLICT,
+    409: CONFLICT_CODES,
     429: ["cpf_lookup_limit"],
   },
 ];
+
+// O painel acha o município só pelo Host (sem caminho): não há `municipality_mismatch`.
+const PANEL_TENANT_ERRORS: ErrorCodes = { 404: ["unknown_municipality"] };
 
 // T1.9: a sessão do painel (cookie `fila-painel`).
 export const PANEL = [{ panelCookie: [] }];
@@ -108,7 +140,7 @@ export function panelSchema<const S extends PanelRoute>(route: S) {
     security: PANEL,
     response: {
       ...response,
-      ...apiErrors(TENANT_ERRORS, PANEL_ERRORS, route.params ? PATH_ID_ERRORS : {}, input, errors ?? {}),
+      ...apiErrors(PANEL_TENANT_ERRORS, PANEL_ERRORS, route.params ? PATH_ID_ERRORS : {}, input, errors ?? {}),
     } as S["response"],
   } as Omit<S, "errors">;
 }
