@@ -47,3 +47,6 @@ export const unitTvSchema = z.object({
   online: z.boolean(),
 });
 export type UnitTv = z.infer<typeof unitTvSchema>;
+
+// RN-TV-01: TV pareada ou revogada.
+export const tvRefSchema = z.object({ id: z.string() });

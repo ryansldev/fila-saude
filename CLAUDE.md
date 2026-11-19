@@ -14,8 +14,8 @@ Central de filas para o atendimento público (UBS, policlínicas): o paciente es
 ## Comandos
 
 - `npm run dev` (API :3333 e painel em `http://exemplo.localhost:3000`, senha `exemplo123`); `npm run dev:seed` recria os dados de exemplo; `npm run dev:mobile` (Metro).
-- Testes: `npm test` (API; **pede o Docker Desktop**: `systemctl --user start docker-desktop`), `npm run test:domain`, `test:painel`, `test:mobile`, `test:design`, e `npm -w @fila-saude/schemas run test`.
-- `npm run lint`; `npm run specs:check` (IDs, decisões, tabelas geradas); `npm run specs:gen` (tabelas das specs a partir de `packages/domain`); `npm run design:gen` (o `tokens.css` do painel).
+- Testes: `npm test` (API; **pede o Docker Desktop**: `systemctl --user start docker-desktop`), `npm run test:domain`, `test:painel`, `test:mobile`, `test:design`, `test:web`, e `npm -w @fila-saude/schemas run test`.
+- `npm run lint`; `npm run specs:check` (IDs, decisões, tabelas geradas); `npm run specs:gen` (tabelas das specs a partir de `packages/domain`); `npm run design:gen` (o `tokens.css` do painel); `npm run docs:openapi` (um `apps/api/openapi/v{n}.json` por versão da API, a referência; rode ao mudar uma rota).
 
 ## Regras
 
@@ -24,7 +24,7 @@ Central de filas para o atendimento público (UBS, policlínicas): o paciente es
 - **Design system**: todo botão vem do kit. Painel: `components/ui/` (nenhum `<button>` fora dele, sem `variant=`/`size=`). App: `src/components/ui.tsx` (nenhum `<Pressable` fora dele). Os testes `design-system.test.ts` travam isso. Protótipos também usam as classes reais (`.ds-btn-*`).
 - **Evite "Info · Info · Info"**: em geral, várias informações viram pílulas, ícones ou cartões. Há exceções, quando o "·" é o melhor (ex.: Agendamento, "Odontologia · 3", "Ana Souza · 68 anos"); o que o design aprovado da tela decidiu vale, e o review não aponta isso como erro.
 - O painel é estilo iFood (relevo leve); o app, estilo Duolingo (minúsculas, relevo). O **Dr. Lino** fica sobre fundo branco ou o cinza-claro da aba "hoje" (o jaleco é transparente), sem caixa branca visível em volta; nunca em fundo colorido ou escuro. **Nomes de pessoas** sempre com a primeira letra maiúscula (`properName`/`firstName` em `packages/domain/src/names.ts`, usados no app, no painel e na API), mesmo no app em minúsculas.
-- Textos para o usuário em português do Brasil; código (nomes, campos da API e do banco) em inglês pela tabela de [nomes no código](.specs/specs/nomes-no-codigo.md); commits em inglês (Conventional Commits, até 100 caracteres, minúsculas).
+- Textos para o usuário em português do Brasil; código (nomes, campos da API e do banco) em inglês pela tabela de [nomes no código](.specs/specs/nomes-no-codigo.md); commits em inglês (Conventional Commits, título até 100 caracteres, minúsculas) e **sempre com um corpo detalhado**: o que mudou, por quê e o que fica de fora, em itens curtos.
 - Decisões que a IA toma sozinha vão para `.specs/features/mvp-filas/decisoes-para-revisar.md` (contexto, o que fez, alternativa, custo se errado).
 
 ## Onde fica cada coisa nas specs

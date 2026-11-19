@@ -1,0 +1,38 @@
+---
+title: municípios
+description: Cada município tem os próprios dados; a API sabe de qual você fala pelo endereço.
+icon: Landmark
+section: fundamentos
+---
+
+Cada município tem os próprios dados. Toda rota de um município precisa dizer qual é, de um destes jeitos:
+
+<Tabs items={["no caminho (app)", "no endereço (painel e TV)"]}>
+<Tab value="no caminho (app)">
+O app do paciente fala com a central, que atende todos os municípios. O município vai no caminho:
+
+```bash
+curl {{API_URL}}/v1/municipalities/exemplo/schedule
+```
+</Tab>
+<Tab value="no endereço (painel e TV)">
+O painel e a TV ficam no endereço do município. O subdomínio diz qual é:
+
+```bash
+curl {{PANEL_URL}}/v1/panel/units
+```
+</Tab>
+</Tabs>
+
+O `slug` é o nome curto do município, como `exemplo`. A lista está em
+[`GET /v1/municipalities`](/docs/api/atual/municipio/municipalities-get).
+
+## município que não existe
+
+Se o município não existe ou não está ativo, a resposta é:
+
+```json title="404"
+{ "error": "unknown_municipality" }
+```
+
+Se o endereço e o caminho apontarem municípios diferentes, a resposta é 400 `municipality_mismatch`.

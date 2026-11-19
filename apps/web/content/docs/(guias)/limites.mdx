@@ -1,0 +1,37 @@
+---
+title: muitas tentativas
+description: Quando a API pede para esperar ou pede o captcha, e o que mostrar à pessoa.
+icon: Gauge
+section: fundamentos
+---
+
+Para proteger as contas, às vezes a API pede para esperar ou pede o captcha. Quando a recusa traz uma
+`message`, mostre ela à pessoa; quando não traz, use um texto seu.
+
+## no login
+
+Vale para o app e para o painel. Todas as recusas são **429**.
+
+| Código | Faça |
+| --- | --- |
+| `login_locked` | Peça para esperar alguns minutos e tentar de novo |
+| `captcha_required` | Mostre o captcha e reenvie com o token em `X-Captcha-Token` |
+| `captcha_failed` | Avise que a verificação falhou e deixe a pessoa tentar de novo |
+| `login_busy` | Espere alguns segundos e tente de novo |
+| `too_many_attempts` | Espere alguns segundos e tente de novo |
+
+<Callout type="warn" title="deixe a pessoa decidir">
+  Não tente de novo sozinho: mostre a mensagem e espere a pessoa tocar de novo.
+</Callout>
+
+## na inscrição
+
+A inscrição em sessão pública sempre pede o captcha. No app nativo, abra a página do widget
+([`GET /v1/captcha`](/docs/api/atual/sistema/captcha-get)) numa WebView.
+
+| Resposta | Faça |
+| --- | --- |
+| 400 `captcha_required` | Mostre o captcha e reenvie com o token |
+| 400 `captcha_failed` | Avise e deixe a pessoa tentar de novo |
+| 503 `captcha_unavailable` | Peça para tentar mais tarde |
+| 429 `cpf_lookup_limit` | Peça para tentar mais tarde |

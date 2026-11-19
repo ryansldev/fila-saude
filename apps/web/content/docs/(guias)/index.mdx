@@ -1,0 +1,56 @@
+---
+title: introdução
+description: O paciente espera em casa e a unidade chama na hora certa. Aqui você integra o app, o painel e a TV com a API.
+icon: House
+hero: true
+---
+
+<Hero
+  section="começar"
+  title="a fila do posto, do celular"
+  lead="O paciente espera em casa e a unidade chama na hora certa. Aqui você integra o app, o painel e a TV com a API."
+  speech="oi! eu sou o Dr. Lino."
+  detail="Em 5 minutos você faz a primeira inscrição pela API. Bora?"
+  primary={{ href: "/docs/inicio-rapido", label: "começar pelo início rápido" }}
+  secondary={{ href: "/docs/conceitos", label: "ver os conceitos" }}
+/>
+
+## como funciona
+
+<Flow steps={["se inscreve", "espera em casa", "check-in pelo QR", "é chamado"]} />
+
+O paciente se inscreve pelo app e espera em casa. No dia, o app mostra a posição e avisa a hora de sair.
+Na unidade, ele lê o QR da recepção, e o profissional chama pela estação: a TV mostra a senha.
+
+## por onde começar
+
+<Cards>
+  <Card icon={<Rocket />} title="início rápido" href="/docs/inicio-rapido">
+    Faça sua primeira inscrição em 5 chamadas.
+  </Card>
+  <Card icon={<Shapes />} title="conceitos" href="/docs/conceitos">
+    Entenda município, sessão, inscrição e fila do dia.
+  </Card>
+</Cards>
+
+## escolha o que você vai construir
+
+<Cards>
+  <Card icon={<Smartphone />} title="app do paciente" href="/docs/app-do-paciente">
+    Agenda, inscrição, posição na fila e check-in.
+  </Card>
+  <Card icon={<LayoutDashboard />} title="painel da unidade" href="/docs/painel">
+    Configurar, agendar e chamar.
+  </Card>
+  <Card icon={<Tv />} title="TV da unidade" href="/docs/tv">
+    Parear e mostrar as chamadas.
+  </Card>
+  <Card icon={<Braces />} title="referência da API" href="/docs/referencia">
+    Cada rota, com exemplos.
+  </Card>
+</Cards>
+
+<Callout title="código aberto">
+  O Fila Saúde é código aberto, no [GitHub](https://github.com/ryansldev/fila-saude). Usa IA? O índice está
+  em [`/llms.txt`](/llms.txt), e as docs inteiras, em [`/llms-full.txt`](/llms-full.txt).
+</Callout>

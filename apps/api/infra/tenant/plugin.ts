@@ -26,14 +26,15 @@ function pathSlug(req: FastifyRequest): string | undefined {
   return typeof slug === "string" ? slug : undefined;
 }
 
-// PD-15: resolução preguiçosa. Só as rotas que declaram `preHandler: app.exigirTenant` resolvem o
-// tenant e consultam o catálogo; as da raiz nunca tocam no catálogo nem falham por falta de tenant.
+// PD-15: resolução preguiçosa. Só as rotas `municipalities/:slug` (pelo hook `onRoute` abaixo, no
+// `preValidation`) e as que chamam `app.requireTenant` resolvem o tenant e consultam o catálogo; as da raiz nunca tocam no catálogo nem falham por falta de tenant.
 // Desconhecido, suspenso, criando, host raiz e subdomínio malformado respondem o mesmo
 // `404 unknown_municipality`, para não revelar se o município existe.
 async function tenantPlugin(app: FastifyInstance, options: TenantPluginOptions) {
   app.decorateRequest("tenant", null);
 
   app.decorate("requireTenant", async (req: FastifyRequest) => {
+    if (req.tenant) return;
     const resolution = resolveTenant({ host: req.headers.host, pathSlug: pathSlug(req) }, options.config);
     if ("error" in resolution) {
       if (resolution.error === "municipality_mismatch") throw new ApiError(400, "municipality_mismatch");
@@ -42,6 +43,14 @@ async function tenantPlugin(app: FastifyInstance, options: TenantPluginOptions) 
     const tenant = await options.pools.get(resolution.slug);
     if (!tenant) throw new ApiError(404, "unknown_municipality");
     req.tenant = tenant;
+  });
+
+  // PD-15 / DOC2: toda rota `municipalities/:slug` resolve o município antes da validação do schema,
+  // para que município desconhecido seja sempre 404, mesmo com corpo ou query inválidos.
+  app.addHook("onRoute", (route) => {
+    if (!MUNICIPALITY_ROUTE.test(route.url)) return;
+    const own = route.preValidation ? [route.preValidation].flat() : [];
+    route.preValidation = [app.requireTenant, ...own];
   });
 }
 

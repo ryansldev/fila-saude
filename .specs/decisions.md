@@ -71,6 +71,10 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-063 | Contagem de tentativas no Postgres (UNLOGGED, chave em HMAC) | ativa |
 | AD-064 | Bloqueio do login pelo par (login, IP), com teto por login que pede captcha | ativa |
 | AD-065 | Regras e valores das tentativas de login e de CPFs informados | ativa |
+| AD-066 | Docs públicas com Fumadocs no site, referência gerada do OpenAPI | ativa |
+| AD-067 | Schemas Zod declarados nas rotas do Fastify | ativa |
+| AD-068 | Versões da API: o que quebra vai para uma nova, a anterior fica 6 meses | ativa |
+| AD-069 | Domínios de produção: `api.filasaude.com.br` e `<município>.filasaude.com.br` | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -332,6 +336,22 @@ A contagem de senhas erradas e de CPFs informados fica numa tabela UNLOGGED (`at
 ### AD-065 · Regras e valores das tentativas de login e de CPFs informados
 2026-11-18 · ativa · Muda: RN-ID-04, RN-ID-07
 **Login** (app pelo CPF, painel pelo login do município; o login por e-mail fica fechado nos dois): 5 senhas erradas seguidas do mesmo par (login, IP) bloqueiam o par por 15 min inteiros (AD-064). Não há janela: só acertar zera, e espaçar os erros não escapa (até 7 dias sem tentativa, AD-063). Só senha errada conta; corpo inválido e login ou senha vazios, não. A tentativa é reservada antes de conferir a senha: pedidos em paralelo não passam do limite e ouvem "espere alguns segundos"; cada pedido solta a própria reserva, que vence em 1 min se o pedido cair. Teto por login: 30 senhas erradas por hora, somando os IPs; passado o teto, o login pede captcha (AD-062), e acertar não zera o teto; quem erra depois de resolver o captcha também conta (a janela segue cheia enquanto o ataque continua), e um token que a Cloudflare recusa conta como erro no par (com a Cloudflare sem responder, não conta). Sem IP no pedido, esses pedidos dividem um par. **Inscrição:** 20 CPFs de outras pessoas por conta por hora, em janela deslizante (a resposta diz se o CPF tem conta). **Os valores são de partida** (5, 15 min, 30 por hora, 20 por hora), sem medição com uso real; reajustar com o piloto se for preciso. **Por quê:** decisão sua, 2026-11-18 ("siga a convenção base e depois reajustamos se necessário"); era a NC5 das decisões para revisar. Discoveries: [armazenamento](features/mvp-filas/discovery-tentativas-armazenamento.md), [captcha](features/mvp-filas/discovery-captcha.md), [IP](features/mvp-filas/discovery-bloqueio-por-ip.md).
+
+### AD-066 · Docs públicas com Fumadocs no site, referência gerada do OpenAPI
+2026-11-18 · ativa
+As docs ficam no `apps/web`, em `/docs`, com o Fumadocs (o mesmo Next 16 + Tailwind do site). São guias em MDX, em português, para quem integra, e a referência de cada rota da API, gerada dos `apps/api/openapi/v{n}.json`, um por versão (`npm run docs:openapi`), que sai das próprias rotas. A referência cobre toda a `/v1` menos as rotas de teste e as do better-auth (o login entra nos guias), agrupada por quem usa: Município, Paciente, Painel, TV e Sistema. Caminhos e campos ficam em inglês, como no código. **Por quê:** decisão sua, 2026-11-18 (DOC1, DOC4 e DOC5 do [plano das docs](arquivo/planos/docs-api/plan.md)): mesma pilha do site, sem serviço pago, e a referência não fica para trás do código.
+
+### AD-067 · Schemas Zod declarados nas rotas do Fastify
+2026-11-18 · ativa
+Cada rota declara os schemas de `packages/schemas` no próprio Fastify (`params`, `querystring`, `body`, `response`). O Fastify valida a entrada antes do handler, com o mesmo erro `invalid_input` com campos de antes; id malformado no caminho é 404. A resposta passa pelo schema (fora dele é 500 com log). O município e o login do painel são conferidos antes do schema, no `preValidation`. Um teste falha se uma rota da `/v1` ficar sem schema, e outro se o `v1.json` no git ficar para trás das rotas. **Por quê:** decisão sua, 2026-11-18 (DOC2 do [plano das docs](arquivo/planos/docs-api/plan.md)), entre declarar no Fastify, manter um catálogo à parte ou exportar a descrição de cada rota: o schema que valida é o que documenta, sem lista para manter.
+
+### AD-068 · Versões da API: o que quebra vai para uma nova, a anterior fica 6 meses
+2026-11-18 · ativa
+A versão é um número no começo do caminho (`/v1`, `/v2`… `/v{n}`), sem nenhuma versão tratada como fixa. Mudança que só acrescenta (rota nova, campo novo na resposta, campo opcional no corpo) fica na versão atual. Mudança que quebra vai para a próxima (`/v{n+1}`), lançada junto com o app que já a usa. A anterior continua no ar por 6 meses depois disso, com os cabeçalhos `Deprecation` e `Sunset`. Como cada versão vira um documento e uma referência está na DA9 das [decisões para revisar](features/mvp-filas/decisoes-para-revisar.md). **Por quê:** decisão sua, 2026-11-18 (DOC3 do [plano das docs](arquivo/planos/docs-api/plan.md)): o app antigo continua no celular de quem não atualizou, e a mudança no app sai junto com a da API, então os 6 meses contam do lançamento. "v1 e v2 não são fixas, as vezes podemos estar na v5" (2026-11-18).
+
+### AD-069 · Domínios de produção: `api.filasaude.com.br` e `<município>.filasaude.com.br`
+2026-11-18 · ativa
+O app do paciente fala com a API em `https://api.filasaude.com.br` (o município no caminho); o painel e a TV, em `https://<município>.filasaude.com.br` (o município no subdomínio). A homologação segue o mesmo desenho em `https://api.homolog.filasaude.com.br` e `https://<município>.homolog.filasaude.com.br`. As docs mostram os endereços de produção, os locais em dev e os de homologação no build dela (`DOCS_API_URL` e `DOCS_PANEL_URL`), sem endereço fixo nos guias (`{{API_URL}}` e `{{PANEL_URL}}`); a referência da API lista os três ambientes. **Por quê:** decisão sua, 2026-11-18 ("exatamente isso"), ao ver que as docs mostravam `localhost` fixo; a homologação, "pode seguir com esses endereços de homolog". Substitui a DA7 das decisões para revisar.
 
 ## Arquitetura
 

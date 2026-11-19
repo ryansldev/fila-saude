@@ -10,15 +10,22 @@ import { tenantSource } from "infra/database/tenants";
 import env from "infra/env";
 import { handleError, notFound } from "infra/errors";
 import { startSweep } from "infra/notices/sweep";
+import { serializerCompiler, validatorCompiler } from "infra/openapi/compilers";
+import { registerOpenApi } from "infra/openapi/document";
 import { registerRoutes } from "infra/panel/action";
 import { panelCors } from "infra/panel/cors";
+import { panelLogin } from "infra/panel/guard";
 import { activeMunicipalities } from "infra/queue/app";
 import tenantPlugin from "infra/tenant/plugin";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 // Monta o app sem `listen` (servidor e testes de infra usam o mesmo).
-export async function buildApp(options: { logger?: boolean } = {}): Promise<FastifyInstance> {
+// `background: false` não liga a varredura dos avisos; `openapi` monta a referência da API (nos testes e
+// no `npm run docs:openapi`; produção não a serve).
+export async function buildApp(
+  options: { logger?: boolean; background?: boolean; openapi?: boolean } = {},
+): Promise<FastifyInstance> {
   // AD-064: só os proxies de TRUSTED_PROXIES informam o IP do cliente (`req.ip`); sem eles, vale a conexão.
   const app = Fastify({
     logger: options.logger ?? true,
@@ -28,9 +35,13 @@ export async function buildApp(options: { logger?: boolean } = {}): Promise<Fast
   // AD-063: erros da contagem de tentativas que não derrubam o pedido vão para o log do app.
   attemptErrors.log = (err, what) => app.log.error({ err }, what);
 
+  // DOC2: as rotas declaram os schemas Zod no Fastify (validação, resposta e a referência da API).
+  app.setValidatorCompiler(validatorCompiler);
+  app.setSerializerCompiler(serializerCompiler);
   app.setErrorHandler(handleError);
   app.setNotFoundHandler(notFound);
   registerRoutes(app);
+  panelLogin(app);
   panelCors(app);
 
   // T1.7 / PD-03: um pool por município, em LRU; fechado junto com o app. No modo single (PD-12), um
@@ -48,7 +59,7 @@ export async function buildApp(options: { logger?: boolean } = {}): Promise<Fast
   app.addHook("onClose", () => pools.close());
 
   // PD-50: avisos do tempo e envio dos push; fora dos testes (lá a função é chamada direto).
-  if (process.env.NODE_ENV !== "test") {
+  if (process.env.NODE_ENV !== "test" && options.background !== false) {
     const stop = startSweep(
       async () => (env.TENANT_SLUG ? [env.TENANT_SLUG] : (await activeMunicipalities()).map((m) => m.slug)),
       async (slug) => (await pools.get(slug))?.db ?? null,
@@ -67,6 +78,9 @@ export async function buildApp(options: { logger?: boolean } = {}): Promise<Fast
     },
   });
   patientPlugin(app);
+
+  // DOC2: a referência da API (`npm run docs:openapi`) sai das rotas registradas daqui em diante.
+  if (options.openapi ?? process.env.NODE_ENV === "test") registerOpenApi(app);
 
   // `routeParams`: pastas `_slug` viram `:slug` (PD-15, `/v1/municipalities/:slug/…`).
   app.register(autoload, { dir: path.join(root, "routes"), routeParams: true });

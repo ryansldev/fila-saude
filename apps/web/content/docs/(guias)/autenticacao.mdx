@@ -1,0 +1,73 @@
+---
+title: autenticação
+description: O login do paciente, o da equipe e o token da TV.
+icon: KeyRound
+section: fundamentos
+---
+
+Há três jeitos de entrar. Cada rota da [referência](/docs/referencia) diz qual pede.
+
+| Quem | Como entra | Como manda nas rotas |
+| --- | --- | --- |
+| Paciente | CPF e senha, na central (vale em todos os municípios) | `Authorization: Bearer <token>` |
+| Equipe | Login e senha, no painel do município | Cookie da sessão |
+| TV | Registra-se e é pareada pela equipe | `Authorization: Bearer <token>` |
+
+<Tabs items={["paciente", "equipe", "TV"]}>
+<Tab value="paciente">
+### entrar
+
+```bash
+curl -i {{API_URL}}/v1/auth/sign-in/username \
+  -H "content-type: application/json" \
+  -d '{ "username": "11144477735", "password": "exemplo123" }'
+```
+
+O token volta no cabeçalho `set-auth-token`. Mande-o em `Authorization: Bearer <token>` nas rotas do
+paciente. No app pela web, a sessão fica num cookie que a API define (`better-auth.session_token`; em
+https, `__Secure-better-auth.session_token`), sem cabeçalho.
+
+CPF ou senha errados respondem 401 `invalid_credentials`.
+
+### criar a conta
+
+`POST /v1/auth/sign-up/email`, com `name`, `cpf`, `email`, `phone`, `birthDate` (`AAAA-MM-DD`) e
+`password`.
+
+| Resposta | Quer dizer |
+| --- | --- |
+| 400 `invalid_cpf` | O CPF não é válido |
+| 400 `invalid_input` | Algum campo está errado; veja `fields` |
+| 409 `cpf_in_use` | Já existe uma conta com esse CPF |
+| 409 `email_in_use` | Já existe uma conta com esse e-mail |
+</Tab>
+<Tab value="equipe">
+### entrar
+
+Pelo subdomínio do município ([municípios](/docs/municipios)):
+
+```bash
+curl -i {{PANEL_URL}}/v1/panel/auth/sign-in/username \
+  -H "content-type: application/json" \
+  -d '{ "username": "gestor", "password": "…" }'
+```
+
+A sessão fica num cookie que a API define (`fila-painel.session_token`; em https,
+`__Secure-fila-painel.session_token`). No navegador, mande os pedidos com `credentials: "include"`.
+
+Sem a sessão, as rotas do painel respondem 401 `not_authenticated`. Sem permissão para a ação, 403
+`no_permission`.
+</Tab>
+<Tab value="TV">
+A TV não tem login: registra-se em `POST /v1/tv`, ganha um token e é pareada pela equipe. Daí em diante,
+manda `Authorization: Bearer <token>` em `GET /v1/tv/screen`. O passo a passo está em [TV da unidade](/docs/tv).
+</Tab>
+</Tabs>
+
+<Callout type="warn" title="errou a senha várias vezes?">
+  O login pode pedir para esperar ou pedir o captcha. Veja o que fazer em
+  [muitas tentativas](/docs/limites).
+</Callout>
+
+As rotas de login não estão na referência. Os códigos delas estão aqui e em
+[muitas tentativas](/docs/limites).

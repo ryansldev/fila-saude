@@ -20,7 +20,7 @@ jobs:
       # Cada suíte roda e responde por si: uma falha não esconde as outras.
       fail-fast: false
       matrix:
-        suite: ["@fila-saude/domain", "@fila-saude/painel", "@fila-saude/mobile", "@fila-saude/design", "@fila-saude/schemas"]
+        suite: ["@fila-saude/domain", "@fila-saude/painel", "@fila-saude/mobile", "@fila-saude/design", "@fila-saude/schemas", "@fila-saude/web"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,3 +29,15 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: npm -w ${{ matrix.suite }} run test
+  web:
+    name: "@fila-saude/web (next build)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: "package.json"
+          cache: "npm"
+      - run: npm ci
+      # O site e as docs (AD-066): a referência da API sai de apps/api/openapi/v1.json.
+      - run: npm -w @fila-saude/web run build

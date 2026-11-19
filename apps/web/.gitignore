@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# fumadocs-mdx (gerado)
+/.source/
+
 # production
 /build
 

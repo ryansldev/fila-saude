@@ -127,6 +127,13 @@ describe("createTenant", () => {
     expect(validateSlug("pref-a-1")).toBe(true);
   });
 
+  it("AD-069: não se cria município com nome reservado (api, www, homolog…)", async () => {
+    for (const slug of ["api", "www", "homolog"]) {
+      await expect(createTenant({ slug, name: "X", uf: "SP" }, deps)).rejects.toEqual(apiError(400, "invalid_slug"));
+      expect(await slugRows(slug)).toHaveLength(0);
+    }
+  });
+
   it("slug repetido é recusado", async () => {
     const { slug, municipalityId } = await orchestrator.createMunicipality();
 

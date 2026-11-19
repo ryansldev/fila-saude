@@ -1,17 +1,22 @@
 import { registeredAnswerSchema, schedulerAnswerSchema } from "@fila-saude/schemas/queue";
 import type { FastifyInstance } from "fastify";
-import { pathId } from "infra/config/common";
-import { validate } from "infra/errors";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { CONFLICT_CODES, idParams, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
 import { answerByScheduler, SCHEDULE } from "infra/queue/scheduling";
 
 // RN-CONF-02: confirmou, recusou ou sem contato, registrado pelo agendador depois de ligar.
 export default async function (app: FastifyInstance) {
-  app.post("/", { config: { action: SCHEDULE } }, async (req) => {
-    const { answer } = validate(schedulerAnswerSchema, req.body);
-    return validate(
-      registeredAnswerSchema,
-      await answerByScheduler(await panelContext(req), pathId(req, "entryId"), answer),
-    );
+  const schema = panelSchema({
+    summary: "Registrar a resposta do paciente à ligação",
+    params: idParams("entryId"),
+    body: schedulerAnswerSchema,
+    response: { 200: registeredAnswerSchema },
+    errors: { 404: ["not_found"], 409: CONFLICT_CODES },
   });
+  app
+    .withTypeProvider<ZodTypeProvider>()
+    .post("/", { config: { action: SCHEDULE }, schema }, async (req) =>
+      answerByScheduler(await panelContext(req), req.params.entryId, req.body.answer),
+    );
 }

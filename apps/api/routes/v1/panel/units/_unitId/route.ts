@@ -1,27 +1,44 @@
 import { unitEditSchema, unitSchema } from "@fila-saude/schemas/unit";
 import type { FastifyInstance } from "fastify";
-import { pathId, UNITS_AND_RULES } from "infra/config/common";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { UNITS_AND_RULES } from "infra/config/common";
 import { canSeeUnit, editUnit, readUnit, removeUnit } from "infra/config/units";
-import { ApiError, validate } from "infra/errors";
+import { ApiError } from "infra/errors";
+import { CONFLICT_CODES, idParams, NO_CONTENT, panelSchema } from "infra/openapi/schemas";
 import { panelContext } from "infra/panel/action";
-import { requireLogin } from "infra/panel/guard";
 
 export default async function (app: FastifyInstance) {
-  app.get("/", { preHandler: requireLogin }, async (req) => {
+  const typed = app.withTypeProvider<ZodTypeProvider>();
+  const params = idParams("unitId");
+  const read = panelSchema({
+    summary: "Unidade",
+    params,
+    response: { 200: unitSchema },
+    errors: { 404: ["not_found"] },
+  });
+  typed.get("/", { schema: read }, async (req) => {
     const ctx = await panelContext(req);
-    const id = pathId(req, "unitId");
-    if (!canSeeUnit(ctx, id)) throw new ApiError(403, "no_permission");
-    return readUnit(ctx, id);
+    if (!canSeeUnit(ctx, req.params.unitId)) throw new ApiError(403, "no_permission");
+    return readUnit(ctx, req.params.unitId);
   });
-
-  app.patch("/", { config: { action: UNITS_AND_RULES } }, async (req) => {
-    const data = validate(unitEditSchema, req.body);
-    const u = await editUnit(await panelContext(req), pathId(req, "unitId"), data);
-    return validate(unitSchema, u);
+  const edit = panelSchema({
+    summary: "Editar a unidade",
+    params,
+    body: unitEditSchema,
+    response: { 200: unitSchema },
+    errors: { 404: ["not_found"] },
   });
-
-  app.delete("/", { config: { action: UNITS_AND_RULES } }, async (req, reply) => {
-    await removeUnit(await panelContext(req), pathId(req, "unitId"));
-    return reply.status(204).send();
+  typed.patch("/", { config: { action: UNITS_AND_RULES }, schema: edit }, async (req) =>
+    editUnit(await panelContext(req), req.params.unitId, req.body),
+  );
+  const remove = panelSchema({
+    summary: "Remover a unidade",
+    params,
+    response: { 204: NO_CONTENT },
+    errors: { 404: ["not_found"], 409: CONFLICT_CODES },
+  });
+  typed.delete("/", { config: { action: UNITS_AND_RULES }, schema: remove }, async (req, reply) => {
+    await removeUnit(await panelContext(req), req.params.unitId);
+    return reply.status(204).send(null);
   });
 }

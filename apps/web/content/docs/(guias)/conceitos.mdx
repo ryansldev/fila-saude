@@ -1,0 +1,73 @@
+---
+title: conceitos
+description: As palavras que você vai ver na API, e o que cada estado quer dizer.
+icon: Shapes
+section: começar
+---
+
+## do município à fila
+
+```txt
+município
+└── unidade          (UBS, policlínica)
+    └── serviço      (clínico geral, odontologia…)
+        └── sessão   (um dia de atendimento, com vagas)
+            └── fila do dia, chamada pelas estações
+```
+
+| Palavra | O que é |
+| --- | --- |
+| **Município** | A prefeitura. Cada uma tem os próprios dados ([municípios](/docs/municipios)). |
+| **Unidade** | Uma UBS ou policlínica, com endereço e horário. |
+| **Serviço** | O que a unidade oferece. Cada serviço diz como se entra nele: livre, com requisição ou pela regulação. |
+| **Sessão** | Um dia de atendimento de um serviço. Na **pública**, o paciente se inscreve sozinho. Na **privada**, a equipe escolhe quem vai, pela lista de espera. |
+| **Inscrição** | Uma pessoa num serviço: na lista de espera, numa sessão ou na reserva. Na API, `entry`. Uma pessoa tem só uma inscrição ativa por serviço. |
+| **Fila do dia** | Quando a sessão abre, as inscrições confirmadas viram a fila. Pode ter triagem antes do atendimento. |
+| **Senha** | O código da pessoa na fila, como `C-012`. |
+| **Estação** | Um consultório ou sala de triagem. É dali que o profissional chama. |
+| **Risco** | O app sugere o nível pelas respostas: urgente, atenção ou rotina. Com sinal de alarme, a pessoa não entra na fila: o app manda ligar 192. A triagem confirma o nível. |
+
+## estados da inscrição
+
+O campo `state`, em [`GET /mine`](/docs/api/atual/paciente/municipalities-slug-mine-get) e nas respostas
+de inscrição:
+
+| `state` | Quer dizer |
+| --- | --- |
+| `awaiting_referral` | Esperando a unidade aceitar a requisição |
+| `waiting` | Na lista de espera, sem dia marcado |
+| `allocated` | Ganhou um dia e precisa confirmar até `confirmationDeadline` |
+| `confirmed` | Vaga confirmada |
+| `in_reserve` | Na reserva de uma sessão lotada |
+| `in_queue` | Na fila do dia |
+| `reassigned` | Perdeu o atendimento por causa da unidade e tem preferência |
+| `completed` | Atendida |
+| `cancelled` | Cancelada |
+| `closed_without_care` | Encerrada sem atendimento |
+| `archived` | Arquivada pela unidade |
+
+## na fila do dia
+
+Com `state` em `in_queue`, dois campos contam onde a pessoa está.
+
+| `itemState` | Quer dizer |
+| --- | --- |
+| `remote` | Em casa |
+| `present` | Na unidade |
+| `called` | Chamada |
+| `done_in_stage` | Terminou uma etapa, como a triagem |
+| `left_queue` | Saiu da fila |
+| `reassigned` | A sessão foi cancelada ou encerrada antes da vez dela |
+
+| `estimate.kind` | Mostre |
+| --- | --- |
+| `position` | A posição (`position`) e os minutos (`minutes`) |
+| `come_now` | "Venha agora" |
+| `awaiting_start` | Que a fila ainda não abriu |
+| `called` | Que foi chamada |
+| `manual_mode` | Que a unidade está chamando pelo papel |
+| `out_of_queue` | Que está fora da fila |
+
+<Callout title="hora de sair">
+  Quando `leaveHome` vira `true`, mostre o aviso de sair de casa. É o mesmo que vai pelo push.
+</Callout>

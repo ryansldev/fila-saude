@@ -39,7 +39,9 @@
     "test:mobile": "npm -w @fila-saude/mobile run test",
     "dev:mobile": "npm -w @fila-saude/mobile run start",
     "design:gen": "npm -w @fila-saude/design run gen",
-    "test:design": "npm -w @fila-saude/design run test"
+    "test:design": "npm -w @fila-saude/design run test",
+    "docs:openapi": "npm -w @fila-saude/api run docs:openapi",
+    "test:web": "npm -w @fila-saude/web run test"
   },
   "engines": {
     "node": "24.x"

@@ -1,4 +1,4 @@
-import { validateSlug } from "./slug";
+import { isReservedSlug, validateSlug } from "./slug";
 
 export type ResolutionConfig = { mode: "multi" | "single"; domainBase: string; fixedSlug?: string };
 export type ResolutionEntry = { host: string | undefined; pathSlug: string | undefined };
@@ -27,8 +27,8 @@ export function resolveTenant(entry: ResolutionEntry, config: ResolutionConfig):
   return { error: "no_tenant" };
 }
 
-// `pref-a.localhost:3333` → `pref-a`. Host raiz, IP, outro domínio, subdomínio duplo ou fora do
-// formato de slug → null. Comparação sem diferenciar maiúsculas (nomes DNS não diferenciam).
+// `pref-a.localhost:3333` → `pref-a`. Host raiz, IP, outro domínio, subdomínio duplo, rótulo reservado
+// (`api.`, a central: AD-069) ou fora do formato de slug → null. Comparação sem diferenciar maiúsculas (nomes DNS não diferenciam).
 function hostSlug(host: string | undefined, domainBase: string): string | null {
   if (!host) return null;
   // IPv6 literal (`[::1]:3333`) nunca é subdomínio.
@@ -40,5 +40,5 @@ function hostSlug(host: string | undefined, domainBase: string): string | null {
 
   const sub = withoutPort.slice(0, -suffix.length);
   // `validateSlug` já recusa ponto (subdomínio duplo), vazio e IPv4 (começa com dígito).
-  return validateSlug(sub) ? sub : null;
+  return validateSlug(sub) && !isReservedSlug(sub) ? sub : null;
 }

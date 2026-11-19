@@ -1,0 +1,110 @@
+---
+title: app do paciente
+description: "Do mapa ao check-in: o caminho do paciente, rota por rota."
+icon: Smartphone
+section: integrar
+---
+
+O app fala com a central. O município vai no caminho (`/v1/municipalities/{slug}/…`), e o login vale em
+todos. Fora as rotas do grupo Município, toda rota pede o token do paciente
+([autenticação](/docs/autenticacao)).
+
+## 1. escolher onde e quando
+
+Sem login: o paciente explora antes de entrar.
+
+| Para | Chame |
+| --- | --- |
+| Listar os municípios | [`GET /municipalities`](/docs/api/atual/municipio/municipalities-get) |
+| Mostrar as unidades no mapa | [`GET …/units`](/docs/api/atual/municipio/municipalities-slug-units-get) |
+| Ver os serviços de uma unidade | [`GET …/units/{unitId}/services`](/docs/api/atual/municipio/municipalities-slug-units-unitid-services-get) |
+| Ver os dias com vaga | [`GET …/schedule`](/docs/api/atual/municipio/municipalities-slug-schedule-get) |
+
+## 2. inscrever-se
+
+O serviço diz o caminho:
+
+<Tabs items={["sessão pública", "lista de espera"]}>
+<Tab value="sessão pública">
+O paciente escolhe um dia e se inscreve, para si ou para outra pessoa.
+
+1. Ao escolher para quem, confira antes: [`POST …/sign-ups/check`](/docs/api/atual/paciente/municipalities-slug-sessions-sessionid-sign-ups-check-post).
+   Nada é gravado.
+2. Depois das perguntas, inscreva: [`POST …/sign-ups`](/docs/api/atual/paciente/municipalities-slug-sessions-sessionid-sign-ups-post),
+   com o captcha em `X-Captcha-Token`.
+
+Com vaga, a inscrição fica `confirmed`. Sessão cheia: `in_reserve`.
+</Tab>
+<Tab value="lista de espera">
+O paciente entra na lista do serviço, sem escolher o dia. A equipe marca o dia depois.
+
+Chame [`POST …/services/{serviceId}/entries`](/docs/api/atual/paciente/municipalities-slug-services-serviceid-entries-post),
+com o mesmo corpo. A inscrição fica `waiting` e, quando a equipe marcar, `allocated`.
+</Tab>
+</Tabs>
+
+## 3. acompanhar
+
+[`GET …/mine`](/docs/api/atual/paciente/municipalities-slug-mine-get) traz as inscrições, com estado, senha e posição. Chame
+de tempos em tempos com a tela aberta. Os estados estão em [conceitos](/docs/conceitos#estados-da-inscrição).
+
+Para avisar com o app fechado, registre o aparelho em [`PUT /patient/push`](/docs/api/atual/paciente/patient-push-put). Ao
+sair da conta, use o [`DELETE`](/docs/api/atual/paciente/patient-push-delete).
+
+## 4. responder
+
+| Quando | Chame |
+| --- | --- |
+| Ganhou um dia: confirmar | [`POST …/entries/{entryId}/confirm`](/docs/api/atual/paciente/municipalities-slug-entries-entryid-confirm-post) |
+| Ganhou um dia: recusar | [`POST …/entries/{entryId}/refuse`](/docs/api/atual/paciente/municipalities-slug-entries-entryid-refuse-post) |
+| Os sintomas mudaram | [`POST …/entries/{entryId}/questionnaire`](/docs/api/atual/paciente/municipalities-slug-entries-entryid-questionnaire-post) |
+| Não vai poder ir | [`POST …/entries/{entryId}/cancel`](/docs/api/atual/paciente/municipalities-slug-entries-entryid-cancel-post) |
+
+## 5. no dia
+
+<Steps>
+<Step>
+### sair de casa
+
+Quando `leaveHome` vira `true`, ou `estimate.kind` é `come_now`, é hora de ir.
+</Step>
+<Step>
+### fazer check-in
+
+Na unidade, o app lê o QR da recepção e manda o `unitId` e os códigos lidos (`tokens`) para
+[`POST …/check-in`](/docs/api/atual/paciente/municipalities-slug-check-in-post). Uma leitura vale para todas as pessoas da conta.
+A resposta traz uma linha por pessoa:
+
+| `result` | Mostre |
+| --- | --- |
+| `present` | Que deu certo |
+| `pending_check` | Que precisa passar na recepção (o motivo está em `pendingChecks`) |
+| `already_in_unit` | Que já estava na unidade |
+| `called` | Que já foi chamada |
+</Step>
+<Step>
+### sair um pouco
+
+"Vou sair" volta a pessoa para casa sem perder o lugar:
+[`POST …/entries/{entryId}/leaving`](/docs/api/atual/paciente/municipalities-slug-entries-entryid-leaving-post).
+</Step>
+<Step>
+### ser chamado
+
+`itemState` vira `called`, e `call` traz a sala e a hora.
+</Step>
+</Steps>
+
+## deu errado?
+
+<Accordions>
+<Accordion title="409 duplicate">
+A pessoa já tem uma inscrição nesse serviço. Mostre a que existe.
+</Accordion>
+<Accordion title="429 cpf_lookup_limit">
+Peça para tentar mais tarde.
+</Accordion>
+<Accordion title="400 captcha_failed">
+O captcha não passou. Avise a pessoa e deixe ela tentar de novo.
+</Accordion>
+</Accordions>

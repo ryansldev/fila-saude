@@ -1,0 +1,67 @@
+---
+title: ambiente local
+description: Suba a API com um município de exemplo e teste tudo na sua máquina.
+icon: Terminal
+section: começar
+---
+
+Você precisa de **Node.js 24** e **Docker**.
+
+<Steps>
+<Step>
+### baixe o código
+
+```bash
+git clone https://github.com/ryansldev/fila-saude.git
+cd fila-saude
+npm install
+```
+</Step>
+<Step>
+### crie os dados de exemplo
+
+```bash
+npm run dev:seed
+```
+
+Cria o município `exemplo`, com unidades, sessões, equipe e pacientes. Rode de novo para começar do zero.
+</Step>
+<Step>
+### suba tudo
+
+```bash
+npm run dev
+```
+
+| O quê | Onde |
+| --- | --- |
+| API | `http://localhost:3333` |
+| Painel | `http://exemplo.localhost:3000` |
+| Site e docs | `http://localhost:3001` |
+</Step>
+</Steps>
+
+## contas de exemplo
+
+A senha de todas é `exemplo123`.
+
+| Quem | Login |
+| --- | --- |
+| Gestora do município, no painel | `gestor` |
+| Ana Souza, paciente | CPF `52998224725` |
+| Bruno Lima, paciente | CPF `11144477735` |
+| Carla Dias, paciente gestante | CPF `39053344705` |
+
+<Callout title="captcha">
+  Na API local, o captcha aceita qualquer valor em `X-Captcha-Token`, como `XXXX.DUMMY.TOKEN.XXXX`.
+</Callout>
+
+## mudou uma rota?
+
+Gere a referência de novo:
+
+```bash
+npm run docs:openapi
+```
+
+Os testes da API avisam se você esquecer.

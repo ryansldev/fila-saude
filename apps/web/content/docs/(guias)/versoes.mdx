@@ -1,0 +1,27 @@
+---
+title: versões
+description: Como a API muda sem quebrar o seu código.
+icon: GitBranch
+section: fundamentos
+---
+
+A versão vem no começo do caminho: `/v1`, `/v2`, e assim por diante. A aba **API** no topo mostra a
+referência de cada uma.
+
+## o que muda, e onde
+
+<Cards>
+  <Card title="acrescentar fica na mesma versão">
+    Rota nova, campo novo na resposta ou campo opcional no corpo.
+  </Card>
+  <Card title="quebrar vira a próxima versão">
+    Tirar ou renomear campo, mudar tipo, tornar obrigatório ou mudar o sentido de um código.
+  </Card>
+</Cards>
+
+A versão nova sai junto com o app que a usa. **A anterior fica no ar por 6 meses** depois disso. Nesse
+tempo, as respostas dela trazem os cabeçalhos `Deprecation` e `Sunset`, com a data em que ela sai.
+
+<Callout title="no seu código">
+  Ignore os campos que você não conhece. Eles podem aparecer a qualquer momento.
+</Callout>

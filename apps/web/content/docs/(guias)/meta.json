@@ -1,0 +1,24 @@
+{
+  "title": "guias",
+  "description": "Como integrar com o Fila Saúde",
+  "icon": "BookOpen",
+  "root": true,
+  "pages": [
+    "---começar---",
+    "index",
+    "inicio-rapido",
+    "conceitos",
+    "ambiente-local",
+    "---integrar---",
+    "app-do-paciente",
+    "painel",
+    "tv",
+    "referencia",
+    "---fundamentos---",
+    "municipios",
+    "autenticacao",
+    "erros",
+    "limites",
+    "versoes"
+  ]
+}

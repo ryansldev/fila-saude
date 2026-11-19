@@ -1,10 +1,13 @@
 import { statusSchema } from "@fila-saude/schemas/status";
 import { sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import database, { pool } from "infra/database";
+import { TAGS } from "infra/openapi/schemas";
 
 export default async function (app: FastifyInstance) {
-  app.get("/", async () => {
+  const schema = { tags: [TAGS.system], summary: "Saúde da API", response: { 200: statusSchema } };
+  app.withTypeProvider<ZodTypeProvider>().get("/", { schema }, async () => {
     const updatedAt = new Date().toISOString();
 
     const databaseResult = await database.transaction(async (tx) => {
