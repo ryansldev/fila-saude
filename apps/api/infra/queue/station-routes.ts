@@ -29,8 +29,12 @@ export function commandRoute(command: string) {
     // Sem corpo, o Fastify entrega `null`: o comando vale com as opções padrão.
     body: commandBodySchema.nullable(),
     response: { 200: stationOperationSchema },
-    // A triagem fecha o chamado com a cor do risco: sem ela, 422 `classify_risk`.
-    errors: { 404: ["not_found"], 409: CONFLICT_CODES, 422: ["classify_risk"] },
+    // Na triagem, chamar o próximo e finalizar fecham o chamado com a cor do risco: sem ela, 422.
+    errors: {
+      404: ["not_found"],
+      409: CONFLICT_CODES,
+      ...(cmd === "call" || cmd === "finish" ? { 422: ["classify_risk"] } : {}),
+    },
   });
   return async (app: FastifyInstance) => {
     app

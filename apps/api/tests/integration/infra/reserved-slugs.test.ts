@@ -5,10 +5,15 @@ import { reservedMunicipalities } from "infra/tenant/reserved";
 import orchestrator from "tests/orchestrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-beforeAll(() => orchestrator.waitForAllServices());
-afterAll(() => database.delete(municipality).where(inArray(municipality.slug, ["admin"])));
+// Limpa antes e depois: uma execução interrompida não deixa o "admin" para a próxima.
+const clean = () => database.delete(municipality).where(inArray(municipality.slug, ["admin"]));
+beforeAll(async () => {
+  await orchestrator.waitForAllServices();
+  await clean();
+});
+afterAll(clean);
 
-// AD-069 / DA12: um município com nome reservado (de antes da regra) sumiria sem aviso; a API recusa subir.
+// AD-069 / DA12: um município com nome reservado (de antes da regra) sumiria sem aviso; a API avisa ao subir.
 describe("municípios com nome reservado no catálogo", () => {
   it("sem nenhum: lista vazia", async () => {
     expect(await reservedMunicipalities(database)).toEqual([]);

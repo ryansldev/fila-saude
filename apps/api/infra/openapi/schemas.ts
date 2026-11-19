@@ -44,6 +44,7 @@ export function apiErrors(...maps: ErrorCodes[]) {
 const API_CONFLICTS = [
   "birth_date_verified",
   "cpf_in_use",
+  "email_in_use",
   "last_manager",
   "limit_per_account",
   "login_in_use",

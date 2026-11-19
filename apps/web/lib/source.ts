@@ -40,7 +40,8 @@ type OpenApiDoc = {
 // na ordem em que aparecem).
 async function groupsOf(version: string, server: (typeof openapis)[number]["server"]): Promise<string[]> {
   const doc = (await server.getSchemas())[version]?.bundled as unknown as OpenApiDoc | undefined;
-  if (!doc) return [];
+  // Sem o documento, a referência perderia os títulos e a ordem dos grupos calada: melhor falhar o build.
+  if (!doc) throw new Error(`documento OpenAPI da ${version} não encontrado no servidor da referência`);
   const seen = Object.values(doc.paths).flatMap((methods) => Object.values(methods).flatMap((op) => op.tags ?? []));
   return [...new Set([...(doc.tags?.map((t) => t.name) ?? []), ...seen])].filter((t) => seen.includes(t));
 }

@@ -11,5 +11,6 @@ describe("asMarkdown", () => {
     expect(asMarkdown('<Flow steps={["se inscreve", "espera"]} />')).toBe("1. se inscreve\n2. espera");
     expect(asMarkdown("<Flow steps={['a', 'b',]} />")).toBe("1. a\n2. b");
     expect(asMarkdown('<Flow steps={["diga \\"oi\\""]} />')).toBe('1. diga "oi"');
+    expect(asMarkdown('<Flow steps={[`linha 1\nlinha 2`, "b"]} />')).toBe("1. linha 1\nlinha 2\n2. b");
   });
 });

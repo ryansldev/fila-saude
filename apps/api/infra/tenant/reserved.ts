@@ -4,7 +4,7 @@ import { municipality } from "infra/database/central/schema/municipality";
 import { RESERVED_SLUGS } from "./slug";
 
 // AD-069 / DA12: municípios do catálogo com nome reservado (criados antes da regra). O Host deles não
-// resolve mais, então a API recusa subir enquanto existir algum (`server.ts`).
+// resolve mais; o `server.ts` avisa no log ao subir.
 export async function reservedMunicipalities(db: typeof database): Promise<string[]> {
   const rows = await db
     .select({ slug: municipality.slug })

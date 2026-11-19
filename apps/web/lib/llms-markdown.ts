@@ -3,8 +3,8 @@
 export function asMarkdown(text: string): string {
   return text.replace(/<Hero[\s\S]*?\/>\n*/g, "").replace(/<Flow steps=\{\[([\s\S]*?)\]\} \/>/g, (_, items: string) =>
     // Cada passo entre aspas (duplas, simples ou crase), sem depender de JSON estrito; `\"` vira `"`.
-    [...items.matchAll(/(["'`])((?:\\.|(?!\1).)*)\1/g)]
-      .map((m, i) => `${i + 1}. ${(m[2] ?? "").replace(/\\(.)/g, "$1")}`)
+    [...items.matchAll(/(["'`])((?:\\[\s\S]|(?!\1)[\s\S])*)\1/g)]
+      .map((m, i) => `${i + 1}. ${(m[2] ?? "").replace(/\\([\s\S])/g, "$1")}`)
       .join("\n"),
   );
 }
