@@ -1,6 +1,6 @@
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
-import { expoMessage, staleNotices } from "infra/notices/sweep";
-import { describe, expect, it } from "vitest";
+import { expoMessage, expoSenderWith, staleNotices } from "infra/notices/sweep";
+import { describe, expect, it, vi } from "vitest";
 
 describe("mensagem para a Expo", () => {
   it("vai pelo canal Android da fila (importância máxima no app), com som e prioridade alta", () => {
@@ -16,42 +16,67 @@ describe("mensagem para a Expo", () => {
   });
 });
 
-describe("chamadas que perderam a hora antes do envio (G14)", () => {
-  // O histórico da entrada no banco, em ordem de criação, com qualquer estado (enviado, pendente, falhou).
-  const n = (id: string, kind: string, entryId: string | null = "e1") => ({ id, kind, entryId });
+describe("chamadas que perderam a hora antes do envio (AD-074)", () => {
+  // O histórico da entrada no banco, em ordem de criação, com o estado de cada aviso.
+  const n = (id: string, kind: string, state = "pending", entryId: string | null = "e1") => ({
+    id,
+    kind,
+    state,
+    entryId,
+  });
   const claim = (ids: string[], history: ReturnType<typeof n>[]) =>
     staleNotices(
       history.filter((h) => ids.includes(h.id)),
       history,
     );
 
-  it("das chamadas da entrada só vale a última: 'sua vez' e rechamadas no mesmo lote, vai a última", () => {
-    const h = [n("a", "your_turn"), n("b", "recalled"), n("c", "recalled")];
-    expect(claim(["a", "b", "c"], h)).toEqual(new Set(["a", "b"]));
+  it("chamada seguida de outra já enviada ou ainda pendente (no lote, em outra rodada ou esperando nova tentativa) não sai", () => {
+    expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "sent")])).toEqual(new Set(["a"]));
+    expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "pending")])).toEqual(new Set(["a"]));
+    // Atrasadas juntas (a Expo caiu): vai só a última, não uma rajada.
+    expect(claim(["a", "b", "c"], [n("a", "your_turn"), n("b", "recalled"), n("c", "recalled")])).toEqual(
+      new Set(["a", "b"]),
+    );
   });
 
-  it("chamada seguida de 'pulado' sai: vai só o 'pulado'", () => {
-    const h = [n("a", "your_turn"), n("b", "recalled"), n("c", "skipped")];
-    expect(claim(["a", "b", "c"], h)).toEqual(new Set(["a", "b"]));
+  it("chamada mais nova que desistiu ou também perdeu a hora não tira a anterior", () => {
+    expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "failed")])).toEqual(new Set());
+    expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "stale")])).toEqual(new Set());
+    expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "no_device")])).toEqual(new Set());
   });
 
-  it("'sua vez' que falhou e volta sozinho depois de um 'pulado' já enviado não sai", () => {
-    const h = [n("a", "your_turn"), n("b", "skipped")];
-    expect(claim(["a"], h)).toEqual(new Set(["a"]));
+  it("chamada seguida de 'pulado' (em qualquer estado) não sai", () => {
+    expect(claim(["a"], [n("a", "your_turn"), n("b", "skipped", "sent")])).toEqual(new Set(["a"]));
+    expect(claim(["a", "b"], [n("a", "your_turn"), n("b", "skipped")])).toEqual(new Set(["a"]));
   });
 
-  it("chamada que volta depois de uma rechamada já enviada não sai", () => {
-    const h = [n("a", "your_turn"), n("b", "recalled")];
-    expect(claim(["a"], h)).toEqual(new Set(["a"]));
-  });
-
-  it("rechamada depois de um 'sua vez' já enviado vale; chamada depois do 'pulado' também", () => {
-    expect(claim(["b"], [n("a", "your_turn"), n("b", "recalled")])).toEqual(new Set());
-    expect(claim(["b"], [n("a", "skipped"), n("b", "your_turn")])).toEqual(new Set());
+  it("chamada depois do 'pulado' (chamado de novo mais tarde) vale", () => {
+    expect(claim(["b"], [n("a", "skipped", "sent"), n("b", "your_turn")])).toEqual(new Set());
   });
 
   it("cada entrada por si; avisos sem entrada e de outros tipos ficam", () => {
-    const h = [n("a", "your_turn", "e1"), n("b", "recalled", "e2"), n("c", "skipped", "e2"), n("d", "come_now", null)];
+    const h = [
+      n("a", "your_turn", "pending", "e1"),
+      n("b", "recalled", "pending", "e2"),
+      n("c", "skipped", "pending", "e2"),
+      n("d", "come_now", "pending", null),
+    ];
     expect(claim(["a", "b", "c", "d"], h)).toEqual(new Set(["b"]));
+  });
+});
+
+describe("envio à Expo", () => {
+  it("desiste da Expo que não responde (o desligamento da API não fica preso)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      (_url: string, init: RequestInit) =>
+        new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new Error("tempo esgotado")))),
+    );
+    try {
+      const r = await expoSenderWith(20)([{ for: "ExponentPushToken[x]", title: "t", body: "b", data: {} }]);
+      expect(r).toEqual([{ ok: false, error: "tempo esgotado" }]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

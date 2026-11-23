@@ -79,6 +79,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-071 | `google-services.json` fora do git; no EAS, variável de arquivo | ativa |
 | AD-072 | Rechamar também manda push | ativa |
 | AD-073 | Push no Android: sempre o coração azul, sem imagem grande | ativa |
+| AD-074 | Push sai na hora do evento; chamada que perdeu a hora não sai | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -372,6 +373,10 @@ Cada rechamada vira um aviso "chamando você de novo! senha X", com a sala e a u
 ### AD-073 · Push no Android: sempre o coração azul, sem imagem grande
 2026-11-23 · ativa · Muda: G13
 Todo aviso de push no Android leva só o símbolo do coração com a cruz (o do painel), como ícone pequeno (`assets/notification-icon.png`, branco) pintado com o azul `#1a6fd1` (`color` do plugin `expo-notifications`). Sem imagem grande (`largeIcon`). **Por quê:** você, 2026-11-23: "use sempre o símbolo do coração azul" e "precisa estar em todas notificações push". Com título e texto, a Expo manda uma mensagem de notificação do FCM: com o app fechado ou em segundo plano quem mostra é o Android, que usa o ícone pequeno do manifesto e ignora a imagem grande; ela só aparecia com o app aberto. A proposta com o Dr. Lino como imagem grande foi recusada. Avisos só de dados, com uma tarefa em segundo plano montando cada aviso, ficam de fora: mais código, e o Android pode atrasar no modo soneca.
+
+### AD-074 · Push sai na hora do evento; chamada que perdeu a hora não sai
+2026-11-23 · ativa · Muda: AD-070 (G7), G14
+O aviso continua gravado na outbox, na mesma transação do evento (PD-49). Logo depois da resposta de cada escrita com município que deu certo, a API envia os pendentes dele, sem segurar a resposta (`sendAfterWrites`, hook `onResponse`); pedidos durante um envio do mesmo município viram uma rodada a mais. A varredura de 60 s (G7) fica para as novas tentativas e os avisos do tempo ("saia de casa", "venha agora"). No envio, olhando o histórico da entrada no banco, não sai a chamada ("sua vez" ou rechamada) seguida de um "pulado" nem a seguida de uma chamada que ainda vale (enviada ou pendente); fica como `stale`. Com o envio na hora, chamada e rechamada saem cada uma no seu momento; só as atrasadas juntas (a Expo caiu, envio que falhou) viram uma, a última. Limite: uma chamada sem evento mais novo ainda sai nas novas tentativas (2, 4, 8 e 16 min), mesmo se o paciente já foi atendido. A Expo tem 10 s para responder; no desligamento, a API espera os envios em andamento e não começa outros. **Por quê:** você, 2026-11-23 ("faz o envio na hora do evento"): com a varredura, o "é a sua vez!" chegava até 60 s depois, e os avisos do mesmo minuto chegavam juntos e fora de ordem. Substitui a G14.
 
 ## Arquitetura
 

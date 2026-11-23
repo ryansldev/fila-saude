@@ -50,7 +50,7 @@ async function generateTimeNotices(db: TenantDb, now: number, onError: (error: u
   }
 }
 
-// T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "no_device"; chamada sem valor, "stale";
+// T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "no_device"; chamada que perdeu a hora, "stale";
 // falha volta com espera crescente (2, 4, 8, 16 min) até desistir.
 // Outbox: uma transação curta reserva o lote (empurra a próxima tentativa por `CLAIM_MS`, para nenhuma
 // outra rodada pegá-lo), o envio à Expo acontece fora de transação e outra transação curta grava o
@@ -60,13 +60,17 @@ const CLAIM_MS = 5 * 60_000;
 
 const CALL_KINDS = new Set(["your_turn", "recalled"]);
 
-type NoticeRef = { id: string; kind: string; entryId: string | null };
+type NoticeRef = { id: string; kind: string; state: string; entryId: string | null };
+
+// Chamada mais nova que ainda vale: já enviada ou pendente (no lote, em outra rodada ou esperando nova tentativa).
+const LIVE = new Set(["sent", "pending"]);
 
 /**
- * G14: a varredura junta o último minuto (G7) e um envio que falha volta minutos depois, então uma
- * chamada pode chegar ao envio já sem valor. Recebe o lote reservado e o histórico das mesmas entradas no
- * banco (qualquer estado, em ordem de criação) e devolve as chamadas que saem sem envio: das chamadas
- * ("sua vez" e rechamadas) de uma entrada só vale a última, e nenhuma depois de um "pulado" mais novo.
+ * AD-074: o envio sai na hora do evento, mas um envio que falha volta minutos depois, a varredura roda em
+ * paralelo e a Expo pode cair. Recebe o lote reservado e o histórico das mesmas entradas no banco (em ordem
+ * de criação) e devolve as chamadas ("sua vez" e rechamadas) que perderam a hora: as seguidas de um "pulado"
+ * (em qualquer estado) e as seguidas de uma chamada que ainda vale. Com o envio na hora, chamada e rechamada
+ * saem cada uma no seu momento; só as atrasadas juntas viram uma (a última).
  */
 export function staleNotices(claimed: NoticeRef[], history: NoticeRef[]): Set<string> {
   const stale = new Set<string>();
@@ -74,12 +78,13 @@ export function staleNotices(claimed: NoticeRef[], history: NoticeRef[]): Set<st
     if (!a.entryId || !CALL_KINDS.has(a.kind)) continue;
     const same = history.filter((x) => x.entryId === a.entryId);
     const later = same.slice(same.findIndex((x) => x.id === a.id) + 1);
-    if (later.some((x) => CALL_KINDS.has(x.kind) || x.kind === "skipped")) stale.add(a.id);
+    if (later.some((x) => x.kind === "skipped" || (CALL_KINDS.has(x.kind) && LIVE.has(x.state)))) stale.add(a.id);
   }
   return stale;
 }
 
-async function sendPending(db: TenantDb, now: number, send: Sender): Promise<void> {
+/** Envia os pendentes vencidos do município (a varredura e o envio na hora do evento, AD-074). */
+export async function sendPending(db: TenantDb, now: number, send: Sender): Promise<void> {
   const claimed = await db.transaction(async (tx) => {
     const rows = await tx
       .select()
@@ -112,7 +117,7 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
     entries.length === 0
       ? []
       : await db
-          .select({ id: notice.id, kind: notice.kind, entryId: notice.entryId })
+          .select({ id: notice.id, kind: notice.kind, state: notice.state, entryId: notice.entryId })
           .from(notice)
           .where(inArray(notice.entryId, entries))
           .orderBy(asc(notice.createdAt), asc(notice.id));
@@ -207,37 +212,45 @@ export const expoMessage = (e: Sending) => ({
   channelId: PUSH_CHANNEL,
 });
 
-/** Envio pelo serviço de push da Expo, em lotes de 100 (limite da Expo). */
-export const expoSender: Sender = async (list) => {
-  const exit: SendingResult[] = [];
-  for (let i = 0; i < list.length; i += 100) {
-    const batch = list.slice(i, i + 100);
-    try {
-      const r = await fetch(EXPO_URL, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(batch.map(expoMessage)),
-      });
-      const body = (await r.json().catch(() => null)) as { data?: ExpoTicket[] } | null;
-      if (!r.ok || !body?.data) {
-        exit.push(...batch.map(() => ({ ok: false as const, error: `expo ${r.status}` })));
-        continue;
+// Sem resposta da Expo em 10 s, desiste (volta na próxima tentativa); o desligamento da API não fica preso.
+const EXPO_TIMEOUT_MS = 10_000;
+
+/** Envio pelo serviço de push da Expo, em lotes de 100 (limite da Expo), com prazo por lote. */
+export const expoSenderWith =
+  (timeoutMs: number): Sender =>
+  async (list) => {
+    const exit: SendingResult[] = [];
+    for (let i = 0; i < list.length; i += 100) {
+      const batch = list.slice(i, i + 100);
+      try {
+        const r = await fetch(EXPO_URL, {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify(batch.map(expoMessage)),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        const body = (await r.json().catch(() => null)) as { data?: ExpoTicket[] } | null;
+        if (!r.ok || !body?.data) {
+          exit.push(...batch.map(() => ({ ok: false as const, error: `expo ${r.status}` })));
+          continue;
+        }
+        for (const t of body.data) {
+          if (t.status === "ok") exit.push({ ok: true });
+          else
+            exit.push({
+              ok: false,
+              error: t.message ?? "erro",
+              invalidToken: t.details?.error === "DeviceNotRegistered",
+            });
+        }
+      } catch (err) {
+        exit.push(...batch.map(() => ({ ok: false as const, error: err instanceof Error ? err.message : "rede" })));
       }
-      for (const t of body.data) {
-        if (t.status === "ok") exit.push({ ok: true });
-        else
-          exit.push({
-            ok: false,
-            error: t.message ?? "erro",
-            invalidToken: t.details?.error === "DeviceNotRegistered",
-          });
-      }
-    } catch (err) {
-      exit.push(...batch.map(() => ({ ok: false as const, error: err instanceof Error ? err.message : "rede" })));
     }
-  }
-  return exit;
-};
+    return exit;
+  };
+
+export const expoSender: Sender = expoSenderWith(EXPO_TIMEOUT_MS);
 
 /**
  * PD-50: na v0.1 a varredura roda dentro do processo da API, a cada minuto, município por município.

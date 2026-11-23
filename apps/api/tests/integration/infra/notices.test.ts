@@ -122,7 +122,8 @@ describe("avisos por push (T3.8, T2.4)", () => {
       "queue_opened:ExponentPushToken[Carla]",
       "recalled:ExponentPushToken[Ana]",
     ]);
-    // G14: "sua vez" e as duas rechamadas no mesmo lote: das chamadas da entrada só vai a última.
+    // AD-074: aqui nada saiu na hora (os testes não ligam o envio na hora), então "sua vez" e as duas
+    // rechamadas chegam atrasadas juntas: vai só a última, as outras ficam como `stale`.
     const calls = (await notices()).filter((a) => a.patientId === accounts.Ana?.patientId && a.kind !== "queue_opened");
     expect(calls.map((a) => `${a.kind}:${a.state}`)).toEqual(["your_turn:stale", "recalled:stale", "recalled:sent"]);
     const byKind = Object.fromEntries((await notices()).map((a) => [`${a.kind}:${a.patientId}`, a.state]));
