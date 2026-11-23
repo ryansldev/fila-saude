@@ -36,8 +36,11 @@ export function noticeScreen(state: NoticeState): NoticeScreen {
 /**
  * Logo depois de entrar, explica os avisos antes do pedido do celular, uma vez só. No Android 13+ quem
  * nunca foi perguntado chega como negado que ainda pode pedir (o celular não distingue), então conta também.
+ * No Android 12 ou mais antigo, negado é desligado nos ajustes (o pedido não mostra nada); no iPhone
+ * (`androidApi` nulo), negado já foi perguntado.
  */
-export function explainNoticesFirst(state: NoticeState, explained: boolean): boolean {
+export function explainNoticesFirst(state: NoticeState, explained: boolean, androidApi: number | null): boolean {
   if (explained) return false;
-  return state.kind === "ask" || (state.kind === "off" && state.canRequest);
+  if (state.kind === "ask") return true;
+  return state.kind === "off" && state.canRequest && androidApi !== null && androidApi >= 33;
 }

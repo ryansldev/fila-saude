@@ -60,21 +60,21 @@ const CLAIM_MS = 5 * 60_000;
 
 const CALL_KINDS = new Set(["your_turn", "recalled"]);
 
+type NoticeRef = { id: string; kind: string; entryId: string | null };
+
 /**
- * A varredura junta o último minuto (G7), então uma chamada pode chegar ao envio já sem valor. Recebe os
- * pendentes em ordem de criação e devolve os que saem sem envio: a rechamada que vem junto de uma chamada
- * da mesma entrada ainda não enviada (vai só a primeira) e a chamada ou rechamada seguida de "pulado".
+ * G14: a varredura junta o último minuto (G7) e um envio que falha volta minutos depois, então uma
+ * chamada pode chegar ao envio já sem valor. Recebe o lote reservado e o histórico das mesmas entradas no
+ * banco (qualquer estado, em ordem de criação) e devolve as chamadas que saem sem envio: das chamadas
+ * ("sua vez" e rechamadas) de uma entrada só vale a última, e nenhuma depois de um "pulado" mais novo.
  */
-export function staleNotices(pending: { id: string; kind: string; entryId: string | null }[]): Set<string> {
+export function staleNotices(claimed: NoticeRef[], history: NoticeRef[]): Set<string> {
   const stale = new Set<string>();
-  for (const a of pending) {
+  for (const a of claimed) {
     if (!a.entryId || !CALL_KINDS.has(a.kind)) continue;
-    const same = pending.filter((x) => x.entryId === a.entryId);
-    const at = same.indexOf(a);
-    const earlierCall =
-      a.kind === "recalled" && same.slice(0, at).some((x) => CALL_KINDS.has(x.kind) && !stale.has(x.id));
-    const laterSkip = same.slice(at + 1).some((x) => x.kind === "skipped");
-    if (earlierCall || laterSkip) stale.add(a.id);
+    const same = history.filter((x) => x.entryId === a.entryId);
+    const later = same.slice(same.findIndex((x) => x.id === a.id) + 1);
+    if (later.some((x) => CALL_KINDS.has(x.kind) || x.kind === "skipped")) stale.add(a.id);
   }
   return stale;
 }
@@ -107,7 +107,16 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
     return rows;
   });
   if (claimed.length === 0) return;
-  const stale = staleNotices(claimed);
+  const entries = [...new Set(claimed.flatMap((a) => (a.entryId && CALL_KINDS.has(a.kind) ? [a.entryId] : [])))];
+  const history =
+    entries.length === 0
+      ? []
+      : await db
+          .select({ id: notice.id, kind: notice.kind, entryId: notice.entryId })
+          .from(notice)
+          .where(inArray(notice.entryId, entries))
+          .orderBy(asc(notice.createdAt), asc(notice.id));
+  const stale = staleNotices(claimed, history);
   if (stale.size > 0)
     await db
       .update(notice)

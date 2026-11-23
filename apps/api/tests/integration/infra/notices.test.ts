@@ -120,14 +120,14 @@ describe("avisos por push (T3.8, T2.4)", () => {
       "come_now:ExponentPushToken[Carla]",
       "queue_opened:ExponentPushToken[Ana]",
       "queue_opened:ExponentPushToken[Carla]",
-      "your_turn:ExponentPushToken[Ana]",
+      "recalled:ExponentPushToken[Ana]",
     ]);
-    // As rechamadas chegaram junto do "sua vez" ainda não enviado: sai só ele.
-    const recalls = (await notices()).filter((a) => a.kind === "recalled");
-    expect(recalls.map((a) => a.state)).toEqual(["stale", "stale"]);
+    // G14: "sua vez" e as duas rechamadas no mesmo lote: das chamadas da entrada só vai a última.
+    const calls = (await notices()).filter((a) => a.patientId === accounts.Ana?.patientId && a.kind !== "queue_opened");
+    expect(calls.map((a) => `${a.kind}:${a.state}`)).toEqual(["your_turn:stale", "recalled:stale", "recalled:sent"]);
     const byKind = Object.fromEntries((await notices()).map((a) => [`${a.kind}:${a.patientId}`, a.state]));
     expect(byKind[`your_turn:${accounts.Bruno?.patientId}`]).toBe("no_device");
-    expect(byKind[`your_turn:${accounts.Ana?.patientId}`]).toBe("sent");
+    expect(byKind[`your_turn:${accounts.Ana?.patientId}`]).toBe("stale");
 
     const other = sender();
     await sweepMunicipality(db(), Date.now(), other.send);
