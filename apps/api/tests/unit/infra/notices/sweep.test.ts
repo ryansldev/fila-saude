@@ -18,17 +18,37 @@ describe("mensagem para a Expo", () => {
 
 describe("chamadas que perderam a hora antes do envio (AD-074)", () => {
   // O histórico da entrada no banco, em ordem de criação, com o estado de cada aviso.
-  const n = (id: string, kind: string, state = "pending", entryId: string | null = "e1") => ({
+  // A chave do aviso leva o item da fila (`sua_vez:<item>:<hora>`), como o outbox grava.
+  const n = (id: string, kind: string, state = "pending", entryId: string | null = "e1", item = `${entryId}-care`) => ({
     id,
     kind,
     state,
     entryId,
+    key: `${kind === "recalled" ? "rechamada" : kind === "your_turn" ? "sua_vez" : kind}:${item}:1`,
   });
-  const claim = (ids: string[], history: ReturnType<typeof n>[]) =>
+  // Itens que a fila ainda espera entrar na sala (`awaitedItems` do domínio).
+  const claim = (ids: string[], history: ReturnType<typeof n>[], awaited = new Set(["e1-care", "e2-care"])) =>
     staleNotices(
       history.filter((h) => ids.includes(h.id)),
       history,
+      awaited,
     );
+
+  it("chamada de quem a fila não espera mais (atendido, pulado, já na sala) não sai", () => {
+    expect(claim(["a"], [n("a", "your_turn")], new Set())).toEqual(new Set(["a"]));
+    expect(claim(["a"], [n("a", "recalled")], new Set(["e2-care"]))).toEqual(new Set(["a"]));
+    expect(claim(["a"], [n("a", "your_turn")], new Set(["e1-care"]))).toEqual(new Set());
+  });
+
+  it("chamada de uma etapa que já passou (triagem) não sai quando a pessoa é chamada na sala", () => {
+    const h = [n("a", "your_turn", "pending", "e1", "e1-triage")];
+    expect(claim(["a"], h, new Set(["e1-care"]))).toEqual(new Set(["a"]));
+  });
+
+  it("outros avisos não dependem de a pessoa estar chamada", () => {
+    expect(claim(["a"], [n("a", "skipped")], new Set())).toEqual(new Set());
+    expect(claim(["a"], [n("a", "come_now")], new Set())).toEqual(new Set());
+  });
 
   it("chamada seguida de outra já enviada ou ainda pendente (no lote, em outra rodada ou esperando nova tentativa) não sai", () => {
     expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "sent")])).toEqual(new Set(["a"]));

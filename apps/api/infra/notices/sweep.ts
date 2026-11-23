@@ -1,11 +1,14 @@
-import { comeNowNotices, leaveHomeNotices } from "@fila-saude/domain";
+import { awaitedItems, comeNowNotices, leaveHomeNotices } from "@fila-saude/domain";
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import database from "infra/database";
 import { pushDevice } from "infra/database/central/schema/push";
+import { entry } from "infra/database/municipal/schema/entry";
 import { notice } from "infra/database/municipal/schema/notice";
 import { session } from "infra/database/municipal/schema/session";
+import { sessionDay } from "infra/database/municipal/schema/session-day";
 import type { TenantDb } from "infra/database/tenants";
+import { noticeItem } from "infra/notices/outbox";
 import { inSession } from "infra/queue/day";
 
 export type Sending = { for: string; title: string; body: string; data: Record<string, string> };
@@ -60,7 +63,7 @@ const CLAIM_MS = 5 * 60_000;
 
 const CALL_KINDS = new Set(["your_turn", "recalled"]);
 
-type NoticeRef = { id: string; kind: string; state: string; entryId: string | null };
+type NoticeRef = { id: string; kind: string; state: string; entryId: string | null; key: string };
 
 // Chamada mais nova que ainda vale: já enviada ou pendente (no lote, em outra rodada ou esperando nova tentativa).
 const LIVE = new Set(["sent", "pending"]);
@@ -69,18 +72,35 @@ const LIVE = new Set(["sent", "pending"]);
  * AD-074: o envio sai na hora do evento, mas um envio que falha volta minutos depois, a varredura roda em
  * paralelo e a Expo pode cair. Recebe o lote reservado e o histórico das mesmas entradas no banco (em ordem
  * de criação) e devolve as chamadas ("sua vez" e rechamadas) que perderam a hora: as seguidas de um "pulado"
- * (em qualquer estado) e as seguidas de uma chamada que ainda vale. Com o envio na hora, chamada e rechamada
- * saem cada uma no seu momento; só as atrasadas juntas viram uma (a última).
+ * (em qualquer estado), as seguidas de uma chamada que ainda vale e as de um item que a fila não espera mais
+ * entrar na sala (`awaitedItems`: atendido, pulado, já na sala, ou chamado agora em outra etapa). Com o envio na hora, chamada e rechamada saem cada uma no seu
+ * momento; só as atrasadas juntas viram uma (a última).
  */
-export function staleNotices(claimed: NoticeRef[], history: NoticeRef[]): Set<string> {
+export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], awaited: Set<string>): Set<string> {
   const stale = new Set<string>();
   for (const a of claimed) {
     if (!a.entryId || !CALL_KINDS.has(a.kind)) continue;
+    const item = noticeItem(a.key);
+    if (!item || !awaited.has(item)) {
+      stale.add(a.id);
+      continue;
+    }
     const same = history.filter((x) => x.entryId === a.entryId);
     const later = same.slice(same.findIndex((x) => x.id === a.id) + 1);
     if (later.some((x) => x.kind === "skipped" || (CALL_KINDS.has(x.kind) && LIVE.has(x.state)))) stale.add(a.id);
   }
   return stale;
+}
+
+/**
+ * Os itens que a fila ainda espera entrar na sala, nas sessões das entradas dadas (`awaitedItems`). Lido
+ * fora da trava da sessão: uma mudança da fila entre esta leitura e o envio ainda deixa sair um aviso.
+ */
+async function awaitedCallItems(db: TenantDb, entryIds: string[]): Promise<Set<string>> {
+  if (entryIds.length === 0) return new Set();
+  const sessions = db.selectDistinct({ id: entry.sessionId }).from(entry).where(inArray(entry.id, entryIds));
+  const days = await db.select({ day: sessionDay.day }).from(sessionDay).where(inArray(sessionDay.sessionId, sessions));
+  return new Set(days.flatMap((d) => [...awaitedItems(d.day)]));
 }
 
 /** Envia os pendentes vencidos do município (a varredura e o envio na hora do evento, AD-074). */
@@ -117,11 +137,11 @@ export async function sendPending(db: TenantDb, now: number, send: Sender): Prom
     entries.length === 0
       ? []
       : await db
-          .select({ id: notice.id, kind: notice.kind, state: notice.state, entryId: notice.entryId })
+          .select({ id: notice.id, kind: notice.kind, state: notice.state, entryId: notice.entryId, key: notice.key })
           .from(notice)
           .where(inArray(notice.entryId, entries))
           .orderBy(asc(notice.createdAt), asc(notice.id));
-  const stale = staleNotices(claimed, history);
+  const stale = staleNotices(claimed, history, await awaitedCallItems(db, entries));
   if (stale.size > 0)
     await db
       .update(notice)

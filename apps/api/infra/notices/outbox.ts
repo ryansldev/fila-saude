@@ -9,6 +9,16 @@ type Context = { unit: string; ticket: string; station: (id: string | undefined)
 
 const min = (s: string) => s.toLowerCase();
 
+// A chave dos avisos de chamada leva o item da fila; `noticeItem` a lê de volta (AD-074).
+const YOUR_TURN_KEY = "sua_vez";
+const RECALL_KEY = "rechamada";
+
+/** O item da fila de um aviso de chamada ("sua vez" ou rechamada), pela chave; `null` nos outros. */
+export function noticeItem(key: string): string | null {
+  const [prefix, item] = key.split(":");
+  return (prefix === YOUR_TURN_KEY || prefix === RECALL_KEY) && item ? item : null;
+}
+
 /**
  * T3.8 / RN-NOT-01: o que cada evento da fila diz ao paciente, só ação e local, nunca sintoma.
  * A chave identifica o evento: o mesmo evento nunca vira dois avisos.
@@ -20,14 +30,14 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
     case "called":
       return {
         kind: "your_turn",
-        key: `sua_vez:${item}:${d.at}`,
+        key: `${YOUR_TURN_KEY}:${item}:${d.at}`,
         title: `é a sua vez! senha ${ctx.ticket}`,
         body: `vá para ${min(ctx.station(ev.stationId))} na ${ctx.unit}.`,
       };
     case "recalled":
       return {
         kind: "recalled",
-        key: `rechamada:${item}:${d.at}`,
+        key: `${RECALL_KEY}:${item}:${d.at}`,
         title: `chamando você de novo! senha ${ctx.ticket}`,
         body: `vá para ${min(ctx.station(ev.stationId))} na ${ctx.unit}.`,
       };

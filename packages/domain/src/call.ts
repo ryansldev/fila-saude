@@ -76,6 +76,18 @@ const withCall = (day: SessionDay, idx: number, partial: { showedUpAt?: number }
   }),
 });
 
+/**
+ * Quem a fila ainda espera entrar na sala: item chamado (`called`) sem o "Compareceu" na última chamada.
+ * Os avisos de chamada só saem para eles (AD-074): atendido, pulado ou já na sala, o aviso perdeu a hora.
+ */
+export function awaitedItems(day: SessionDay): Set<string> {
+  const awaited = new Set<string>();
+  for (const i of day.items) {
+    if (i.state === "called" && (day.calls[lastCall(day, i.id)]?.showedUpAt ?? null) === null) awaited.add(i.id);
+  }
+  return awaited;
+}
+
 /** Hora do "Compareceu" de quem está chamado na estação, ou `null`. */
 export function showedUpAt(day: SessionDay, stationId: string): number | null {
   const found = calledInStation(day, stationId);

@@ -163,6 +163,39 @@ describe("avisos por push (T3.8, T2.4)", () => {
       .where(eq(notice.id, skip?.id as string));
     expect(sent?.state).toBe("sent");
   });
+  it("AD-074: a nova tentativa de uma chamada só sai enquanto a fila espera a pessoa entrar na sala", async () => {
+    // Bruno foi chamado na sala 2 (sem aparelho naquela hora); agora tem aparelho.
+    const r = await app("PUT", "/v1/patient/push", accounts.Bruno?.cookie, { token: "ExponentPushToken[Bruno]" });
+    expect(r.status).toBe(200);
+    const day = await readDay(db(), c.sessionId);
+    const bruno = day?.items.find((i) => i.entryId === entries.Bruno);
+    const [mine] = await db()
+      .insert(notice)
+      .values({
+        key: `sua_vez:${bruno?.id}:${Date.now()}`,
+        patientId: accounts.Bruno?.patientId as string,
+        entryId: entries.Bruno,
+        kind: "your_turn",
+        title: "é a sua vez!",
+        body: "sala 2",
+      })
+      .returning({ id: notice.id });
+    const id = mine?.id as string;
+    const state = async () => (await db().select().from(notice).where(eq(notice.id, id)))[0];
+
+    // O envio falha: volta como nova tentativa.
+    const now = Date.now();
+    await sweepMunicipality(db(), now, sender(true).send);
+    expect(await state()).toMatchObject({ state: "pending", attempts: 1 });
+
+    // Bruno entrou na sala ("Compareceu") antes da nova tentativa: o aviso perdeu a hora.
+    await c.request("POST", `/v1/panel/stations/${c.e2}/showed-up`, c.nurse, {});
+    const after = sender();
+    await sweepMunicipality(db(), now + 10 * 60_000, after.send);
+    expect(after.sent).toEqual([]);
+    expect((await state())?.state).toBe("stale");
+  });
+
   it("o envio acontece fora da transação: durante o envio o aviso não fica travado, e sai uma vez só", async () => {
     const [mine] = await db()
       .insert(notice)

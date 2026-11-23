@@ -10,7 +10,8 @@ import { municipalityWithUnit } from "tests/panel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 // AD-074: o push sai logo depois do pedido que gravou o aviso, sem esperar a varredura de 60 s. Um app
-// mínimo com o hook de verdade, o banco do município e a outbox; "chamar grava o aviso" está em notices.test.
+// mínimo com o hook de verdade, o banco do município e a outbox; "chamar grava o aviso" e a regra das
+// chamadas (só enquanto a pessoa está chamada) estão em notices.test.
 let slug: string;
 let patientId: string;
 let app: FastifyInstance;
@@ -60,22 +61,22 @@ afterAll(async () => {
 
 describe("envio na hora do evento (AD-074)", () => {
   it("escrita que deu certo: o aviso sai logo depois da resposta, sem a varredura", async () => {
-    expect((await app.inject({ method: "POST", url: "/write/your_turn/200" })).statusCode).toBe(200);
+    expect((await app.inject({ method: "POST", url: "/write/queue_opened/200" })).statusCode).toBe(200);
     await app.sendNow.idle(slug);
-    expect(sent.map((x) => `${x.data.kind}:${x.for}`)).toEqual(["your_turn:ExponentPushToken[Ana]"]);
-    const [row] = await db().select().from(notice).where(eq(notice.kind, "your_turn"));
+    expect(sent.map((x) => `${x.data.kind}:${x.for}`)).toEqual(["queue_opened:ExponentPushToken[Ana]"]);
+    const [row] = await db().select().from(notice).where(eq(notice.kind, "queue_opened"));
     expect(row?.state).toBe("sent");
   });
 
   it("leitura ou escrita com erro não disparam; a próxima escrita leva o que ficou, na ordem", async () => {
-    await app.inject({ method: "GET", url: "/read/recalled" });
+    await app.inject({ method: "GET", url: "/read/leave_home" });
     await app.inject({ method: "POST", url: "/write/skipped/409" });
     await app.sendNow.idle(slug);
-    expect(sent.map((x) => x.data.kind)).toEqual(["your_turn"]);
+    expect(sent.map((x) => x.data.kind)).toEqual(["queue_opened"]);
 
     await app.inject({ method: "POST", url: "/write/come_now/200" });
     await app.sendNow.idle(slug);
-    expect(sent.map((x) => x.data.kind)).toEqual(["your_turn", "recalled", "skipped", "come_now"]);
+    expect(sent.map((x) => x.data.kind)).toEqual(["queue_opened", "leave_home", "skipped", "come_now"]);
     const states = await db().select().from(notice).orderBy(asc(notice.createdAt));
     expect(states.every((n) => n.state === "sent")).toBe(true);
   });
