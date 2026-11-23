@@ -7,12 +7,12 @@ import { destinationWithoutAccount, KEY_ONBOARDING } from "@/lib/onboarding";
 import { useSession } from "@/lib/session";
 import { read } from "@/lib/storage";
 
+const ANDROID_API = Platform.OS === "android" ? Number(Platform.Version) : null;
+
 /**
  * Sem conta → boas-vindas (ou entrar, se já viu o "conhecer o app"); avisos que ainda dá para pedir → explicar (uma vez);
  * sem município → escolher; senão, minha fila.
  */
-const ANDROID_API = Platform.OS === "android" ? Number(Platform.Version) : null;
-
 export default function Start() {
   const s = useSession();
   const withoutAccount = s.ready && s.notices !== null && !s.token;

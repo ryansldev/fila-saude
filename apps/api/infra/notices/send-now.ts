@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { TenantDb } from "infra/database/tenants";
 import { type Sender, sendPending } from "infra/notices/sweep";
 
 declare module "fastify" {
@@ -67,17 +68,25 @@ export function coalesce(log: (error: unknown, key: string) => void): SendNow {
 
 /**
  * Liga o envio na hora do evento: depois de cada escrita com município que deu certo, envia os pendentes
- * dele, sem segurar a resposta. Sem `send` (testes contra o servidor, scripts), não envia nada.
+ * dele, sem segurar a resposta. O banco vem de `pool` pelo slug na hora do envio (o pool do pedido pode ter
+ * saído do cache). Sem `send` (testes contra o servidor, scripts), não envia nada.
  */
-export function sendAfterWrites(app: FastifyInstance, send: Sender | null): void {
+export function sendAfterWrites(
+  app: FastifyInstance,
+  send: Sender | null,
+  pool: (slug: string) => Promise<TenantDb | null>,
+): void {
   const now = coalesce((error, slug) => app.log.error({ err: error, slug }, "envio na hora"));
   app.decorate("sendNow", now);
   if (!send) return;
   // Antes dos `onClose` (que fecham os bancos), espera os envios em andamento.
   app.addHook("preClose", async () => now.close());
   app.addHook("onResponse", async (req, reply) => {
-    const tenant = req.tenant;
-    if (!tenant || !sendsAfter(req.method, reply.statusCode)) return;
-    now(tenant.slug, () => sendPending(tenant.db, Date.now(), send));
+    const slug = req.tenant?.slug;
+    if (!slug || !sendsAfter(req.method, reply.statusCode)) return;
+    now(slug, async () => {
+      const db = await pool(slug);
+      if (db) await sendPending(db, Date.now(), send);
+    });
   });
 }

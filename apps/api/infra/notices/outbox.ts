@@ -9,14 +9,24 @@ type Context = { unit: string; ticket: string; station: (id: string | undefined)
 
 const min = (s: string) => s.toLowerCase();
 
-// A chave dos avisos de chamada leva o item da fila; `noticeItem` a lê de volta (AD-074).
+// A chave dos avisos de chamada e de tempo leva o item da fila; `noticeTarget` a lê de volta (AD-074).
 const YOUR_TURN_KEY = "sua_vez";
 const RECALL_KEY = "rechamada";
+const LEAVE_HOME_KEY = "saia_de_casa";
+const COME_NOW_KEY = "venha_agora";
 
-/** O item da fila de um aviso de chamada ("sua vez" ou rechamada), pela chave; `null` nos outros. */
-export function noticeItem(key: string): string | null {
-  const [prefix, item] = key.split(":");
-  return (prefix === YOUR_TURN_KEY || prefix === RECALL_KEY) && item ? item : null;
+export type NoticeTarget = { kind: "call"; item: string } | { kind: "waiting"; item: string; stage: string };
+
+/**
+ * O que o aviso supõe da fila, pela chave: chamada ("sua vez", rechamada) supõe o item chamado; "saia de
+ * casa" e "venha agora" supõem o item esperando naquela etapa. `null` nos outros avisos.
+ */
+export function noticeTarget(key: string): NoticeTarget | null {
+  const [prefix, item, stage] = key.split(":");
+  if (!item) return null;
+  if (prefix === YOUR_TURN_KEY || prefix === RECALL_KEY) return { kind: "call", item };
+  if ((prefix === LEAVE_HOME_KEY || prefix === COME_NOW_KEY) && stage) return { kind: "waiting", item, stage };
+  return null;
 }
 
 /**
@@ -67,14 +77,14 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
     case "leave_home":
       return {
         kind: "leave_home",
-        key: `saia_de_casa:${item}:${d.stage}`,
+        key: `${LEAVE_HOME_KEY}:${item}:${d.stage}`,
         title: "hora de sair de casa",
         body: `faltam cerca de ${d.minutes} min para a sua vez na ${ctx.unit}. ao chegar, leia o QR da TV.`,
       };
     case "come_now":
       return {
         kind: "come_now",
-        key: `venha_agora:${item}:${d.stage}:${d.at}`, // "Vou sair" recomeça (AD-057)
+        key: `${COME_NOW_KEY}:${item}:${d.stage}:${d.at}`, // "Vou sair" recomeça (AD-057)
         title: "venha agora",
         body: `você é o próximo na ${ctx.unit}. ao chegar, leia o QR da TV.`,
       };

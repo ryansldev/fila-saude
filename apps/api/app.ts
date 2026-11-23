@@ -63,14 +63,16 @@ export async function buildApp(
   // PD-50: avisos do tempo e envio dos push; fora dos testes (lá a função é chamada direto).
   const background = process.env.NODE_ENV !== "test" && options.background !== false;
   // AD-074: o push sai logo depois do pedido que gravou o aviso; a varredura fica para o resto.
-  sendAfterWrites(app, options.sender ?? (background ? expoSender : null));
+  const poolOf = async (slug: string) => (await pools.get(slug))?.db ?? null;
+  sendAfterWrites(app, options.sender ?? (background ? expoSender : null), poolOf);
   if (background) {
     const stop = startSweep(
       async () => (env.TENANT_SLUG ? [env.TENANT_SLUG] : (await activeMunicipalities()).map((m) => m.slug)),
-      async (slug) => (await pools.get(slug))?.db ?? null,
+      poolOf,
       (error, slug) => app.log.error({ err: error, slug }, "varredura"),
     );
-    app.addHook("onClose", async () => stop());
+    // Antes dos `onClose` (que fecham os bancos), espera a rodada em andamento.
+    app.addHook("preClose", async () => stop());
   }
 
   // PD-15: `app.requireTenant` resolve o tenant pelo Host e pelo caminho (`municipalities/:slug`).

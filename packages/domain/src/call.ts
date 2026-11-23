@@ -1,6 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { eligible, type QueueItem, type SessionDay, type Station, stayEligible } from "./queue.ts";
+import { eligible, type QueueItem, type SessionDay, type Stage, type Station, stayEligible } from "./queue.ts";
 import { type ErrorCode, type Event, failure, ok, type Result } from "./result.ts";
 
 type Cmd = { stationId: string };
@@ -86,6 +86,14 @@ export function awaitedItems(day: SessionDay): Set<string> {
     if (i.state === "called" && (day.calls[lastCall(day, i.id)]?.showedUpAt ?? null) === null) awaited.add(i.id);
   }
   return awaited;
+}
+
+/**
+ * Quem ainda espera na fila (em casa ou presente), com a etapa em que espera. Os avisos de tempo ("saia de
+ * casa", "venha agora") só saem para eles, na mesma etapa (AD-074).
+ */
+export function waitingItems(day: SessionDay): Map<string, Stage> {
+  return new Map(day.items.filter((i) => i.state === "remote" || i.state === "present").map((i) => [i.id, i.stage]));
 }
 
 /** Hora do "Compareceu" de quem está chamado na estação, ou `null`. */

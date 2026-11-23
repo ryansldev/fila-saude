@@ -1,4 +1,4 @@
-import { awaitedItems, comeNowNotices, leaveHomeNotices } from "@fila-saude/domain";
+import { awaitedItems, comeNowNotices, leaveHomeNotices, waitingItems } from "@fila-saude/domain";
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import database from "infra/database";
@@ -8,7 +8,7 @@ import { notice } from "infra/database/municipal/schema/notice";
 import { session } from "infra/database/municipal/schema/session";
 import { sessionDay } from "infra/database/municipal/schema/session-day";
 import type { TenantDb } from "infra/database/tenants";
-import { noticeItem } from "infra/notices/outbox";
+import { noticeTarget } from "infra/notices/outbox";
 import { inSession } from "infra/queue/day";
 
 export type Sending = { for: string; title: string; body: string; data: Record<string, string> };
@@ -68,20 +68,28 @@ type NoticeRef = { id: string; kind: string; state: string; entryId: string | nu
 // Chamada mais nova que ainda vale: já enviada ou pendente (no lote, em outra rodada ou esperando nova tentativa).
 const LIVE = new Set(["sent", "pending"]);
 
+/** O que a fila do dia mostra agora: quem ela espera entrar na sala e quem espera na fila, com a etapa. */
+export type QueueNow = { awaited: Set<string>; waiting: Map<string, string> };
+
 /**
  * AD-074: o envio sai na hora do evento, mas um envio que falha volta minutos depois, a varredura roda em
- * paralelo e a Expo pode cair. Recebe o lote reservado e o histórico das mesmas entradas no banco (em ordem
- * de criação) e devolve as chamadas ("sua vez" e rechamadas) que perderam a hora: as seguidas de um "pulado"
- * (em qualquer estado), as seguidas de uma chamada que ainda vale e as de um item que a fila não espera mais
- * entrar na sala (`awaitedItems`: atendido, pulado, já na sala, ou chamado agora em outra etapa). Com o envio na hora, chamada e rechamada saem cada uma no seu
- * momento; só as atrasadas juntas viram uma (a última).
+ * paralelo e a Expo pode cair. Recebe o lote reservado, o histórico das mesmas entradas no banco (em ordem de
+ * criação) e o estado da fila, e devolve os avisos que perderam a hora:
+ * - chamadas ("sua vez", rechamada) seguidas de um "pulado" (em qualquer estado) ou de uma chamada que ainda
+ *   vale, ou de um item que a fila não espera mais entrar na sala (atendido, pulado, já na sala, outra etapa);
+ * - "saia de casa" e "venha agora" de quem não espera mais na fila naquela etapa (chamado, atendido, saiu).
+ * Com o envio na hora, chamada e rechamada saem cada uma no seu momento; só as atrasadas juntas viram uma.
  */
-export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], awaited: Set<string>): Set<string> {
+export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: QueueNow): Set<string> {
   const stale = new Set<string>();
   for (const a of claimed) {
-    if (!a.entryId || !CALL_KINDS.has(a.kind)) continue;
-    const item = noticeItem(a.key);
-    if (!item || !awaited.has(item)) {
+    const target = noticeTarget(a.key);
+    if (!a.entryId || !target) continue;
+    if (target.kind === "waiting") {
+      if (queue.waiting.get(target.item) !== target.stage) stale.add(a.id);
+      continue;
+    }
+    if (!queue.awaited.has(target.item)) {
       stale.add(a.id);
       continue;
     }
@@ -93,14 +101,19 @@ export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], awaited
 }
 
 /**
- * Os itens que a fila ainda espera entrar na sala, nas sessões das entradas dadas (`awaitedItems`). Lido
- * fora da trava da sessão: uma mudança da fila entre esta leitura e o envio ainda deixa sair um aviso.
+ * O estado da fila nas sessões das entradas dadas (`awaitedItems` e `waitingItems` do domínio). Lido fora da
+ * trava da sessão: uma mudança da fila entre esta leitura e o envio ainda deixa sair um aviso.
  */
-async function awaitedCallItems(db: TenantDb, entryIds: string[]): Promise<Set<string>> {
-  if (entryIds.length === 0) return new Set();
+async function queueNow(db: TenantDb, entryIds: string[]): Promise<QueueNow> {
+  const queue: QueueNow = { awaited: new Set(), waiting: new Map() };
+  if (entryIds.length === 0) return queue;
   const sessions = db.selectDistinct({ id: entry.sessionId }).from(entry).where(inArray(entry.id, entryIds));
   const days = await db.select({ day: sessionDay.day }).from(sessionDay).where(inArray(sessionDay.sessionId, sessions));
-  return new Set(days.flatMap((d) => [...awaitedItems(d.day)]));
+  for (const { day } of days) {
+    for (const i of awaitedItems(day)) queue.awaited.add(i);
+    for (const [i, stage] of waitingItems(day)) queue.waiting.set(i, stage);
+  }
+  return queue;
 }
 
 /** Envia os pendentes vencidos do município (a varredura e o envio na hora do evento, AD-074). */
@@ -132,7 +145,35 @@ export async function sendPending(db: TenantDb, now: number, send: Sender): Prom
     return rows;
   });
   if (claimed.length === 0) return;
-  const entries = [...new Set(claimed.flatMap((a) => (a.entryId && CALL_KINDS.has(a.kind) ? [a.entryId] : [])))];
+  try {
+    await deliver(db, now, send, claimed);
+  } catch (error) {
+    // Erro depois da reserva (banco, Expo): devolve o que ficou reservado na hora, sem esperar a reserva
+    // de 5 min vencer; o aviso já resolvido não está mais "pending" e não volta.
+    await db
+      .update(notice)
+      .set({ nextAttemptAt: new Date(now) })
+      .where(
+        and(
+          eq(notice.state, "pending"),
+          inArray(
+            notice.id,
+            claimed.map((a) => a.id),
+          ),
+        ),
+      )
+      .catch(() => {});
+    throw error;
+  }
+}
+
+async function deliver(
+  db: TenantDb,
+  now: number,
+  send: Sender,
+  claimed: (typeof notice.$inferSelect)[],
+): Promise<void> {
+  const entries = [...new Set(claimed.flatMap((a) => (a.entryId && noticeTarget(a.key) ? [a.entryId] : [])))];
   const history =
     entries.length === 0
       ? []
@@ -141,7 +182,7 @@ export async function sendPending(db: TenantDb, now: number, send: Sender): Prom
           .from(notice)
           .where(inArray(notice.entryId, entries))
           .orderBy(asc(notice.createdAt), asc(notice.id));
-  const stale = staleNotices(claimed, history, await awaitedCallItems(db, entries));
+  const stale = staleNotices(claimed, history, await queueNow(db, entries));
   if (stale.size > 0)
     await db
       .update(notice)
@@ -254,6 +295,13 @@ export const expoSenderWith =
           exit.push(...batch.map(() => ({ ok: false as const, error: `expo ${r.status}` })));
           continue;
         }
+        // Uma resposta por aviso, na ordem: com outro número, nada garante qual é de qual (e um
+        // `DeviceNotRegistered` apagaria o aparelho de outra pessoa). O lote todo volta para nova tentativa.
+        if (body.data.length !== batch.length) {
+          const error = `expo: ${body.data.length} respostas para ${batch.length} avisos`;
+          exit.push(...batch.map(() => ({ ok: false as const, error })));
+          continue;
+        }
         for (const t of body.data) {
           if (t.status === "ok") exit.push({ ok: true });
           else
@@ -274,7 +322,7 @@ export const expoSender: Sender = expoSenderWith(EXPO_TIMEOUT_MS);
 
 /**
  * PD-50: na v0.1 a varredura roda dentro do processo da API, a cada minuto, município por município.
- * Devolve a função que para o intervalo.
+ * Devolve a função que para o intervalo e espera a rodada em andamento (antes de fechar os bancos).
  */
 export function startSweep(
   slugs: () => Promise<string[]>,
@@ -282,11 +330,9 @@ export function startSweep(
   log: (error: unknown, slug: string) => void,
   send: Sender = expoSender,
   intervalMs = 60_000,
-): () => void {
-  let running = false;
+): () => Promise<void> {
+  let current: Promise<void> | null = null;
   const round = async () => {
-    if (running) return;
-    running = true;
     try {
       for (const slug of await slugs()) {
         const db = await database(slug);
@@ -294,10 +340,16 @@ export function startSweep(
       }
     } catch (e) {
       log(e, "*");
-    } finally {
-      running = false;
     }
   };
-  const id = setInterval(round, intervalMs);
-  return () => clearInterval(id);
+  const id = setInterval(() => {
+    if (current) return;
+    current = round().finally(() => {
+      current = null;
+    });
+  }, intervalMs);
+  return async () => {
+    clearInterval(id);
+    await current;
+  };
 }

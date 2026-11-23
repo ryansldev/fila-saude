@@ -16,6 +16,7 @@ let slug: string;
 let patientId: string;
 let app: FastifyInstance;
 const sent: Sending[] = [];
+let failing = false;
 const db = () => orchestrator.municipalityDatabase(slug);
 
 beforeAll(async () => {
@@ -34,10 +35,16 @@ beforeAll(async () => {
   app.addHook("onRequest", async (req) => {
     req.tenant = { slug, municipalityId: null, timeZone: "America/Manaus", db: db() };
   });
-  sendAfterWrites(app, async (list) => {
-    sent.push(...list);
-    return list.map(() => ({ ok: true as const }));
-  });
+  sendAfterWrites(
+    app,
+    async (list) => {
+      if (failing) throw new Error("expo fora do ar");
+      sent.push(...list);
+      return list.map(() => ({ ok: true as const }));
+    },
+    // O banco é buscado pelo slug na hora do envio (o pool do pedido pode ter sido fechado).
+    async (s) => (s === slug ? db() : null),
+  );
   // Grava um aviso pendente, como a rota de chamar faz na transação da fila, e responde `status`.
   const writes = async (kind: string, status: number) => {
     await db()
@@ -79,5 +86,17 @@ describe("envio na hora do evento (AD-074)", () => {
     expect(sent.map((x) => x.data.kind)).toEqual(["queue_opened", "leave_home", "skipped", "come_now"]);
     const states = await db().select().from(notice).orderBy(asc(notice.createdAt));
     expect(states.every((n) => n.state === "sent")).toBe(true);
+  });
+
+  it("erro depois da reserva devolve o aviso na hora, sem esperar a reserva de 5 min vencer", async () => {
+    failing = true;
+    await app.inject({ method: "POST", url: "/write/skipped/200" });
+    await app.sendNow.idle(slug);
+    failing = false;
+    const [row] = await db().select().from(notice).where(eq(notice.state, "pending"));
+    expect(row?.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now());
+    await app.inject({ method: "POST", url: "/write/leave_home/200" });
+    await app.sendNow.idle(slug);
+    expect(sent.map((x) => x.data.kind).slice(-2)).toEqual(["skipped", "leave_home"]);
   });
 });

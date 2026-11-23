@@ -10,6 +10,7 @@ import {
   showedUpAt,
   toleranceExceeded,
   undoShowedUp,
+  waitingItems,
 } from "../src/call.ts";
 import { checkIn, DEFAULT_CONFIG, eligible, leaving, type SessionDay, type Station } from "../src/queue.ts";
 import type { Result } from "../src/result.ts";
@@ -674,5 +675,18 @@ describe("quem a fila ainda espera entrar na sala (avisos de chamada, AD-074)", 
     const waiting = enter(dayWith(["ana"]), "ana");
     expect(awaitedItems(waiting)).toEqual(new Set());
     expect(awaitedItems(skip(call(waiting), "e1", T + 20 * MIN))).toEqual(new Set());
+  });
+});
+
+describe("quem ainda espera na fila, por etapa (avisos de tempo, AD-074)", () => {
+  it("em casa ou presente: espera na etapa; chamado ou fora da fila: não", () => {
+    const waiting = enter(dayWith(["ana", "bia"]), "ana");
+    expect(waitingItems(waiting)).toEqual(
+      new Map([
+        ["ana", "care"],
+        ["bia", "care"],
+      ]),
+    );
+    expect(waitingItems(call(waiting)).has("ana")).toBe(false);
   });
 });
