@@ -82,20 +82,34 @@ export type QueueNow = { awaited: Set<string>; waiting: Map<string, string> };
  */
 export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: QueueNow): Set<string> {
   const stale = new Set<string>();
+  const laterOf = (a: NoticeRef) => {
+    const same = history.filter((x) => x.entryId === a.entryId);
+    return same.slice(same.findIndex((x) => x.id === a.id) + 1);
+  };
+  const liveCall = (x: NoticeRef) => CALL_KINDS.has(x.kind) && LIVE.has(x.state);
   for (const a of claimed) {
+    if (!a.entryId) continue;
+    // Um "pulado" antigo não sai depois de uma chamada mais nova que ainda vale.
+    if (a.kind === "skipped") {
+      if (laterOf(a).some(liveCall)) stale.add(a.id);
+      continue;
+    }
     const target = noticeTarget(a.key);
-    if (!a.entryId || !target) continue;
+    if (!target) continue;
     if (target.kind === "waiting") {
-      if (queue.waiting.get(target.item) !== target.stage) stale.add(a.id);
+      // "Saia de casa" não sai depois de um "venha agora" da mesma etapa que ainda vale.
+      const comeNowAfter = laterOf(a).some((x) => {
+        const t = noticeTarget(x.key);
+        return x.kind === "come_now" && LIVE.has(x.state) && t?.kind === "waiting" && t.stage === target.stage;
+      });
+      if (queue.waiting.get(target.item) !== target.stage || (a.kind === "leave_home" && comeNowAfter)) stale.add(a.id);
       continue;
     }
     if (!queue.awaited.has(target.item)) {
       stale.add(a.id);
       continue;
     }
-    const same = history.filter((x) => x.entryId === a.entryId);
-    const later = same.slice(same.findIndex((x) => x.id === a.id) + 1);
-    if (later.some((x) => x.kind === "skipped" || (CALL_KINDS.has(x.kind) && LIVE.has(x.state)))) stale.add(a.id);
+    if (laterOf(a).some((x) => x.kind === "skipped" || liveCall(x))) stale.add(a.id);
   }
   return stale;
 }
@@ -126,21 +140,19 @@ async function queueNow(db: TenantDb, entryIds: string[]): Promise<QueueNow> {
 }
 
 /**
- * Erro no meio do envio. Antes da chamada à Expo, conta como tentativa, com a mesma espera crescente (sem
- * repetir a cada pedido). Depois dela, `null`: a reserva vence sozinha (o aviso pode já ter chegado).
+ * Erro no meio do envio: sempre conta como tentativa (até desistir). Antes da chamada à Expo, com a mesma
+ * espera crescente (sem repetir a cada pedido); depois dela, sem mudar a hora: a reserva de 5 min vence
+ * sozinha (o aviso pode já ter chegado).
  */
 export function afterError(
   calledExpo: boolean,
   attempts: number,
   now: number,
-): { attempts: number; state: "pending" | "failed"; nextAttemptAt: Date } | null {
-  if (calledExpo) return null;
+): { attempts: number; state: "pending" | "failed"; nextAttemptAt?: Date } {
   const next = attempts + 1;
-  return {
-    attempts: next,
-    state: next >= MAX_ATTEMPTS ? "failed" : "pending",
-    nextAttemptAt: new Date(now + 2 ** next * 60_000),
-  };
+  const state = next >= MAX_ATTEMPTS ? "failed" : "pending";
+  if (calledExpo) return { attempts: next, state };
+  return { attempts: next, state, nextAttemptAt: new Date(now + 2 ** next * 60_000) };
 }
 
 /** Envia os pendentes vencidos do município (a varredura e o envio na hora do evento, AD-074). */
@@ -178,11 +190,9 @@ export async function sendPending(db: TenantDb, now: number, send: Sender): Prom
   } catch (error) {
     const update = (a: (typeof claimed)[number]) => afterError(progress.calledExpo, a.attempts, now);
     for (const a of claimed) {
-      const change = update(a);
-      if (!change) continue;
       await db
         .update(notice)
-        .set({ ...change, lastError: error instanceof Error ? error.message : "erro" })
+        .set({ ...update(a), lastError: error instanceof Error ? error.message : "erro" })
         .where(and(eq(notice.id, a.id), eq(notice.state, "pending")))
         .catch(() => {});
     }
@@ -197,7 +207,9 @@ async function deliver(
   claimed: (typeof notice.$inferSelect)[],
   progress: { calledExpo: boolean },
 ): Promise<void> {
-  const entries = [...new Set(claimed.flatMap((a) => (a.entryId && noticeTarget(a.key) ? [a.entryId] : [])))];
+  const entries = [
+    ...new Set(claimed.flatMap((a) => (a.entryId && (noticeTarget(a.key) || a.kind === "skipped") ? [a.entryId] : []))),
+  ];
   const history =
     entries.length === 0
       ? []
@@ -309,15 +321,29 @@ export const expoSenderWith =
     for (let i = 0; i < list.length; i += 100) {
       const batch = list.slice(i, i + 100);
       try {
-        const r = await fetch(EXPO_URL, {
-          method: "POST",
-          headers: { "content-type": "application/json", accept: "application/json" },
-          body: JSON.stringify(batch.map(expoMessage)),
-          signal: AbortSignal.timeout(timeoutMs),
-        });
+        // O prazo vale até a Expo responder; depois de um 200 ela já aceitou o lote, e cortar a leitura do
+        // corpo faria o lote todo sair de novo.
+        const abort = new AbortController();
+        const timer = setTimeout(() => abort.abort(new Error("tempo esgotado")), timeoutMs);
+        let r: Response;
+        try {
+          r = await fetch(EXPO_URL, {
+            method: "POST",
+            headers: { "content-type": "application/json", accept: "application/json" },
+            body: JSON.stringify(batch.map(expoMessage)),
+            signal: abort.signal,
+          });
+        } finally {
+          clearTimeout(timer);
+        }
         const body = (await r.json().catch(() => null)) as { data?: ExpoTicket[] } | null;
-        if (!r.ok || !body?.data) {
+        if (!r.ok) {
           exit.push(...batch.map(() => ({ ok: false as const, error: `expo ${r.status}` })));
+          continue;
+        }
+        if (!body?.data) {
+          // Aceito (200), sem os recibos: conta como enviado, para nada sair duas vezes.
+          exit.push(...batch.map(() => ({ ok: true as const })));
           continue;
         }
         // Uma resposta por aviso, na ordem: com outro número, nada garante qual é de qual (e um

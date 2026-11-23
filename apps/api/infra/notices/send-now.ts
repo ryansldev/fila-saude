@@ -79,8 +79,9 @@ export function sendAfterWrites(
   const now = coalesce((error, slug) => app.log.error({ err: error, slug }, "envio na hora"));
   app.decorate("sendNow", now);
   if (!send) return;
-  // Antes dos `onClose` (que fecham os bancos), espera os envios em andamento.
-  app.addHook("preClose", async () => now.close());
+  // No `onClose` os pedidos em andamento já terminaram (e dispararam o envio deles); este hook roda antes
+  // do que fecha os bancos, registrado antes (o Fastify roda os `onClose` do último para o primeiro).
+  app.addHook("onClose", async () => now.close());
   app.addHook("onResponse", async (req, reply) => {
     const slug = req.tenant?.slug;
     if (!slug || !sendsAfter(req.method, reply.statusCode)) return;
