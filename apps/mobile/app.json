@@ -2,6 +2,7 @@
   "expo": {
     "name": "Fila Saúde",
     "slug": "fila-saude",
+    "owner": "fila-saude",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "br.com.filasaude.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -32,11 +34,22 @@
         }
       ],
       "expo-font",
-      ["expo-notifications", { "color": "#1a6fd1" }]
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#1a6fd1"
+        }
+      ]
     ],
     "scheme": "filasaude",
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "844592cf-39fd-4463-999b-8ac4f074a76a"
+      }
     }
   }
 }

@@ -24,6 +24,13 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
         title: `é a sua vez! senha ${ctx.ticket}`,
         body: `vá para ${min(ctx.station(ev.stationId))} na ${ctx.unit}.`,
       };
+    case "recalled":
+      return {
+        kind: "recalled",
+        key: `rechamada:${item}:${d.at}`,
+        title: `chamando você de novo! senha ${ctx.ticket}`,
+        body: `vá para ${min(ctx.station(ev.stationId))} na ${ctx.unit}.`,
+      };
     case "skipped": {
       const body =
         d.for === "left_queue"

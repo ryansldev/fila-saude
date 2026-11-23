@@ -96,6 +96,17 @@ describe("avisos por push (T3.8, T2.4)", () => {
     expect(a?.body).toMatch(/sala 1/);
   });
 
+  it("rechamar avisa de novo, um aviso por rechamada", async () => {
+    await c.request("POST", `/v1/panel/stations/${c.e1}/recall`, c.nurse, {});
+    await c.request("POST", `/v1/panel/stations/${c.e1}/recall`, c.nurse, {});
+    const recalls = (await notices()).filter((x) => x.kind === "recalled");
+    expect(recalls).toHaveLength(2);
+    expect(recalls[0]).toMatchObject({ patientId: accounts.Ana?.patientId, state: "pending" });
+    expect(recalls[0]?.title).toMatch(/chamando você de novo/);
+    expect(`${recalls[0]?.title} ${recalls[0]?.body}`).toMatch(/C-001/);
+    expect(recalls[0]?.body).toMatch(/sala 1/);
+  });
+
   it("a varredura gera 'venha agora' e 'saia de casa' uma vez só e envia; sem token fica no_device", async () => {
     await c.request("POST", `/v1/panel/stations/${c.e2}/call`, c.nurse, {});
     const e = sender();
@@ -109,6 +120,8 @@ describe("avisos por push (T3.8, T2.4)", () => {
       "come_now:ExponentPushToken[Carla]",
       "queue_opened:ExponentPushToken[Ana]",
       "queue_opened:ExponentPushToken[Carla]",
+      "recalled:ExponentPushToken[Ana]",
+      "recalled:ExponentPushToken[Ana]",
       "your_turn:ExponentPushToken[Ana]",
     ]);
     const byKind = Object.fromEntries((await notices()).map((a) => [`${a.kind}:${a.patientId}`, a.state]));
@@ -118,7 +131,7 @@ describe("avisos por push (T3.8, T2.4)", () => {
     const other = sender();
     await sweepMunicipality(db(), Date.now(), other.send);
     expect(other.sent).toEqual([]);
-    expect((await notices()).length).toBe(8); // 4 da abertura + sua vez (2), venha agora, saia de casa
+    expect((await notices()).length).toBe(10); // 4 da abertura + sua vez (2), 2 rechamadas, venha agora, saia de casa
   });
 
   it("AD-057: a varredura grava a hora do 'venha agora' no dia; o prazo de chegada conta dela", async () => {
@@ -129,7 +142,7 @@ describe("avisos por push (T3.8, T2.4)", () => {
 
   it("'você foi pulado' com nova tentativa quando o envio falha", async () => {
     await c.request("POST", `/v1/panel/stations/${c.e1}/no-show`, c.nurse, {});
-    expect(await patientOf("Ana")).toEqual(["queue_opened", "your_turn", "skipped"]);
+    expect(await patientOf("Ana")).toEqual(["queue_opened", "your_turn", "recalled", "recalled", "skipped"]);
     const now = Date.now();
     await sweepMunicipality(db(), now, sender(true).send);
     const [skip] = (await notices()).filter((a) => a.kind === "skipped");

@@ -1,9 +1,10 @@
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import MapView, { type LatLng, Marker, type Region } from "react-native-maps";
 import { UnitPin } from "@/components/pin";
 import { COLOR } from "@/components/ui";
-import { MAP_STYLE } from "@/lib/map";
+import { MAP_STYLE, nativeMap } from "@/lib/map";
 import { MAP_HEIGHT, type MapProps } from "./map.types";
 
 // Região que mostra todos os pontos, com folga nas bordas.
@@ -20,7 +21,21 @@ function regionOf(points: LatLng[]): Region {
   };
 }
 
-/** Mapa de verdade (react-native-maps): Apple Maps no iPhone, Google Maps no Android. */
+/**
+ * Sem a chave do Google Maps no Android (build próprio), não há mapa: a tela mostra só a lista.
+ * Lê a config que o Metro serve: no build de desenvolvimento, a chave do `.env` de quem roda o Metro
+ * precisa ser a mesma do build (G12), senão o Google Maps abre sem chave e trava. Na loja a config vem do build.
+ */
+export const hasMap = nativeMap({
+  os: Platform.OS,
+  expoGo: Constants.executionEnvironment === ExecutionEnvironment.StoreClient,
+  mapsKey: Constants.expoConfig?.android?.config?.googleMaps?.apiKey,
+});
+
+/**
+ * Mapa de verdade (react-native-maps): Apple Maps no iPhone, Google Maps no Android. Quem usa confere
+ * `hasMap` antes (sem a chave do Google, o app travaria).
+ */
 export default function UnitsMap({
   pins: fresh,
   here,

@@ -4,6 +4,28 @@ Decisões tomadas durante a implementação autônoma das fases 1 e 2 (a partir 
 
 Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se errado**.
 
+## Alinhamento de 2026-11-19 (respostas e perguntas em aberto)
+
+Aprovadas e levadas à **AD-070**: CA1, F1 (idoso), S5, RV1, RV2, PD-21, G7, I3. As que você não comentou continuam abaixo, para você ver. As que você comentou ficam aqui **só anotadas, sem mudança no código** até voltarmos a elas:
+
+| # | Sua resposta | O que fica para quando voltarmos |
+| --- | --- | --- |
+| RV7 | "O que a lei mandar" | O Estatuto da Pessoa Idosa (Lei 10.741/2003, art. 3º, § 2º, incluído pela Lei 13.466/2017) dá aos 80+ prioridade especial **sobre os demais idosos**; a Lei 10.048/2000 não ordena os outros grupos entre si. Ou seja: 80+ só antes dos 60–79, o contrário do código de hoje. Mudar a regra (spec e domínio) e confirmar com o advogado (D5) |
+| G9/G10 | A estimativa vem dos atendimentos já feitos na mesma sessão (ou em sessões parecidas); sem nenhum, uma estimativa inicial fixa definida por quem criou a sessão; a partir do 1º atendimento, ele já conta | Redesenhar o tempo médio (RN-ETA) com essa regra: valor inicial na sessão, troca pelo dado real no 1º atendimento, uso de sessões parecidas |
+| H4 | Gosta da triagem atendendo só uma sessão, mas não sabe se é válido: em UPA uma sala de triagem atende vários problemas | Investigar como as UBS e UPAs do piloto organizam a triagem (junto do D4) |
+| L3 | Não entendeu | Explicado na conversa de 2026-11-19; aguarda a sua resposta |
+| E1, E2 (encerramento) | Não entendeu | Explicado na conversa de 2026-11-19; aguarda a sua resposta |
+| E4 (encerramento) | Pediu mais explicação | Explicado na conversa de 2026-11-19; aguarda a sua resposta |
+| I10 | "Faça isso": aplicar a regra do titular (RN-ID-06) no alerta de faltas | A fazer, numa branch própria (com `titularDaFalta` e as faltas numa tabela) |
+| E3 (papéis) | "Talvez possamos repensar" | Rever quem vê a resposta sobre pensamentos de tirar a própria vida (técnico de enfermagem hoje vê) |
+| P1 | "Talvez valha um middleware" | Conferir as ressalvas (`condicoes()`) num hook comum das rotas do painel, em vez de cada rota lembrar |
+| R2 | "Por que não?" (liberar o login de quem saiu da equipe) | Explicado na conversa de 2026-11-19; aguarda a sua resposta |
+| PD-17 | O login do paciente deve ficar mais complexo depois | Rever junto com o login do paciente; nada agora |
+| CP3 | Tem como contornar? | Explicado na conversa de 2026-11-19; aguarda a sua resposta |
+| DA1 | "Vamos rever" | Rever o 401 antes da validação do corpo no painel |
+| DA4 | Verificar os dados antes de rodar scripts | Um script que grave no banco confere os dados com os schemas antes; anotar no guia de scripts quando houver |
+| F10 | Não entendeu | Explicado na conversa de 2026-11-19; aguarda a sua resposta |
+
 ## Lacunas das specs encontradas no domínio (fase 1A)
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
@@ -14,6 +36,7 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 | G7 | Código de erro para estação desconhecida | Inconsistente (`nenhum_elegivel` em um lugar, `transicao_proibida` em outro) | Um código próprio (`estacao_desconhecida`) | Mensagem de erro confusa na API |
 | G8 | "Aguardando início" (RN-ETA-02) | Esconde a posição; o protótipo mostrava | Mostrar a posição sem o tempo | O paciente não vê a posição antes da abertura |
 | G9 | Tempo médio inicial | Um valor por etapa na unidade; a spec sugere por serviço | Por serviço | Estimativa pior no início do dia |
+| G12 | Mapa no build próprio do Android | O Google Maps trava o app sem chave (o Expo Go traz a dele). Sem `GOOGLE_MAPS_ANDROID_API_KEY` no build, a aba de unidades não mostra o mapa, só a lista (o suporte fica no código); com a chave, o Google Maps com o nosso estilo. O app sabe se tem chave pela config que o Metro serve: em dev, a chave precisa estar no `.env` de quem roda o Metro igual ao build | Exigir a chave e travar o build sem ela; ou o mapa simplificado da web | Baixo: sem a chave, a aba fica só com a lista. Fora do v0.1 (você, 2026-11-20: "não é uma feat tão relevante"): fica só a lista; a chave volta com o pré-pagamento do Google Cloud ou a conta da empresa |
 | G10 | Média do dia (RN-ETA-05) | Não desconta períodos de contingência nem estação parada | Descontar | Média inflada depois de uma queda |
 | G11 | Tempo para "saia de casa" (RN-ETA-03): "abaixo de" | `<` estrito (spec), não `<=` (protótipo) | `<=` | Diferença de um minuto |
 
@@ -33,7 +56,6 @@ Formato: **contexto** · **o que foi feito** · **alternativa** · **custa se er
 | S2 | Sessão pública lotada | Quem tenta se inscrever vai para a lista de reserva (RN-PUB-02). O teste do protótipo esperava um erro "lotada" | Recusar com "lotada" | Muda a mensagem no app |
 | S3 | Foto do encaminhamento aceita | Quem chama a função informa; não fica guardado na entrada | Guardar na entrada | Só a forma do dado |
 | S4 | Número na sessão pública (RN-FILA-01 diz "hora da inscrição") | Ordena pela data de entrada original; não há campo "inscrita em". Para inscrição nova é a mesma coisa | Guardar a hora da inscrição na entrada | Remanejado de sessão pública ou troca da reserva fica com o número da data antiga |
-| S5 | Prioridade declarada no balcão | A recepção já confere na hora (RN-ENC-06 diz que "pode dar a prioridade na 1ª presença") | Deixar pendente para conferir depois | Prioridade passa a valer sem conferência explícita |
 
 ## Encerramento, faltas e remanejados (fase 1A, Task 10)
 
@@ -53,7 +75,6 @@ A revisão de toda a fase 1A encontrou falhas na ligação entre a fila do dia e
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
-| F1 | Idoso (60+ e 80+) e a pendência "prioridade" no check-in | Idoso **não** gera pendência de conferência de prioridade: vem da data de nascimento, que a conferência de identidade já cobre. Gestante, PcD, colo etc. continuam pendentes até a recepção conferir | Idoso também pendente (como estava) | Se a UBS quiser conferir idade à parte, todo idoso com app volta a passar no balcão em toda ida |
 | F2 | Quem entra na fila com a sessão já aberta (inscrição, reserva, regulado) | Só conta como "vez passada" a chamada feita depois de a pessoa entrar na fila | Contar todas (como estava, gerava falta injusta) | Nenhum conhecido |
 | F3 | Conferência da prioridade | Fica guardada na entrada e vale nas próximas idas até o prazo (AD-024); a idade é recalculada no dia de cada sessão | Foto tirada na criação da entrada | Nenhum conhecido |
 
@@ -84,7 +105,6 @@ Os planos detalhados ([1B](../../arquivo/planos/mvp-filas/plano-fase-1b-fundacao
 | PD | Resumo | Por que olhar |
 | --- | --- | --- |
 | PD-17 | O login do paciente feito na central vale no município por um JWT EdDSA de 15 min, conferido pelo JWKS da central | Fecha o item em aberto do plan. Muda o app (troca sessão por token) e o prazo de bloqueio de conta |
-| PD-21 | Senha com no mínimo 8 caracteres; 5 erros seguidos bloqueiam a conta por 15 min; limite por IP | É regra de produto (RN-ID-04 não fixa os números) |
 | PD-15 | No app, o município vai no caminho (`/v1/municipalities/:slug/…`); no web, no subdomínio | Define o formato de todas as rotas do app |
 | PD-27 | "Esta e as seguintes": sessões futuras com pacientes ficam como estão e passam para a série nova | Comportamento visível ao admin |
 | PD-29 | TV pareada por código de 6 dígitos válido por 10 min; até o SSE, consulta o estado a cada 5 s | Detalhe de operação na unidade |
@@ -146,7 +166,7 @@ Execução rápida, como a fatia 0. Q3 e Q5 aprovadas em 2026-11-12 (AD-055; RN-
 
 ## Fatia 2 da v0.1 (2026-11-13)
 
-Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](../../arquivo/planos/mvp-filas/plano-fatia-2-na-unidade.md) (PD-47 a PD-50). **G6 precisa de você** (conta na Expo).
+Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](../../arquivo/planos/mvp-filas/plano-fatia-2-na-unidade.md) (PD-47 a PD-50). G6: projeto EAS criado (AD-071).
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
@@ -154,9 +174,8 @@ Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](../.
 | G2 | Rechamar na TV (RN-CHAM-02) | A chamada no domínio ganhou `rechamadas` (horários); a TV anuncia cada uma como chamada nova. O horário da chamada e a tolerância não mudam | Uma lista de anúncios à parte, só na API | Baixo |
 | G3 | Quando sai o "venha agora" | Pela regra do domínio: remoto sem ninguém na frente na etapa. A tabela de notificações diz "venha agora (urgente confirmado)"; o domínio não exige urgência | Só para urgente confirmado (fatia 3, triagem) | Mais avisos "venha agora" do que a spec prevê |
 | G4 | "Saia de casa" e "venha agora" juntos | Quem já é o próximo recebe só o "venha agora"; o "saia de casa" fica marcado como dado | Mandar os dois | Nenhum conhecido |
-| G5 | Quais eventos viram push agora | Sua vez, pulado, saia de casa, venha agora. Rechamar não manda push (a TV e a tela já mostram). Sessão aberta, cancelada, remanejada e os da lista de espera ficam para as fatias que os criam | Push em toda mudança | O paciente não recebe "sua vez não chegou hoje" por push ainda |
-| G6 | **Push no celular de verdade** | O app pede a permissão e registra o token da Expo, mas o token exige o `projectId` de um projeto EAS (`EXPO_PUBLIC_EAS_PROJECT_ID`), e o Expo Go no Android não recebe push remoto (desde o SDK 53): precisa de um build de desenvolvimento (`eas build --profile development`). Sem projeto, o app segue só com a consulta da tela | Notificação local disparada pela consulta (só com o app aberto) | **Precisa de você:** criar a conta/projeto na Expo (da empresa, junto com o D10) |
-| G7 | Varredura e envio (T2.4 enxuta) | Dentro do processo da API, a cada 60 s; trava consultiva na geração; envio com `SKIP LOCKED`; 5 tentativas com espera 2, 4, 8, 16 min; token recusado pela Expo (`DeviceNotRegistered`) é apagado. Sem teste de duas instâncias ao mesmo tempo | Processo próprio do worker (T2.4 completa) | Médio em produção: vira processo próprio antes do piloto |
+| G5 | Quais eventos viram push agora | Sua vez, pulado, saia de casa, venha agora e, desde a AD-072, a rechamada. Sessão aberta, cancelada, remanejada e os da lista de espera ficam para as fatias que os criam | Push em toda mudança | O paciente não recebe "sua vez não chegou hoje" por push ainda |
+| G6 | **Push no celular de verdade** | O app pede a permissão e registra o token da Expo, mas o token exige o `projectId` de um projeto EAS (`EXPO_PUBLIC_EAS_PROJECT_ID`), e o Expo Go no Android não recebe push remoto (desde o SDK 53): precisa de um build de desenvolvimento (`eas build --profile development`). Sem projeto, o app segue só com a consulta da tela | Notificação local disparada pela consulta (só com o app aberto) | Projeto EAS na organização `fila-saude` (AD-071); push testado no aparelho com o build de desenvolvimento (2026-11-20); o `google-services.json` vem da variável secreta do EAS |
 | G8 | Onde fica o token de push | Central (`dispositivo_push`), entrou na lista de colunas permitidas do INV-11 (não é dado clínico nem da fila); o mesmo aparelho logado em outra conta passa a avisar só a conta nova | No município | Baixo |
 | G9 | Destaque da TV | Lido da config da unidade (`destaqueTvSegundos`, padrão 10 s); a TV consulta a cada 2 s, então o anúncio pode atrasar até 2 s | SSE (D1/D3) | Baixo |
 
@@ -170,8 +189,6 @@ Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, p
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
-| RV1 | CPF já cadastrado informado de novo | "Outra pessoa": mesma data de nascimento e mesmo primeiro nome (sem acento); "para mim": mesma data. Senão `409 pessoa_divergente`, sem dizer o que diverge | Só a data; ou exigir a recepção | Quem digitou o nome de outro jeito (apelido) precisa corrigir |
-| RV2 | Limite por conta | Até 5 inscrições ativas por conta em cada sessão (`limite_por_conta`) | Captcha (RN-ID-07 completo) | Família grande precisa da recepção |
 | RV3 | Remover estação | Recusado se estiver em sessão planejada ou aberta (`estacao_em_uso`) | Tirar das planejadas automaticamente | Precisa editar as sessões futuras antes |
 | RV4 | Conferência de documento | Painel mostra nascimento e CPF `•••.982.247-••`; "não confere" pede o motivo | CPF inteiro | Baixo |
 | RV5 | Nascimento depois da verificação | A conta verificada não muda a data pelo app (`birth_date_verified`); só a recepção | Desfazer a verificação | Correção de data pede ida à recepção |
@@ -183,7 +200,7 @@ Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, p
 
 | # | Pergunta | Hoje |
 | --- | --- | --- |
-| RV7 | 80+ vem antes de todos os grupos de prioridade legal, ou só antes dos idosos 60–79? | Antes de todos |
+| RV7 | 80+ vem antes de todos os grupos de prioridade legal, ou só antes dos idosos 60–79? | Antes de todos. **Você (2026-11-19): o que a lei mandar** (ver o alinhamento no topo) |
 | RV8 | Quem passa da triagem ao atendimento entra com a janela protegida (fica atrás dos K presentes)? RN-TRI-04 diz que vale a posição original | Entra com a janela |
 | RV9 | Alocar paciente confirma o risco sugerido (vira urgência confirmada)? E1 diz que só o enfermeiro confirma | Confirma |
 | RV10 | Quem perde a vez vai para o fim de todos os presentes, ou só do seu nível de risco/prioridade? | Fim do seu nível |
@@ -216,7 +233,6 @@ Execução rápida. Plano: [plano-fatia-4-privada](../../arquivo/planos/mvp-fila
 | --- | --- | --- | --- | --- |
 | I1 | Onde o paciente entra na lista | Na página da unidade, "serviços com lista de espera" (ativos, modo livre) | Uma aba própria "lista de espera" | Baixo |
 | I2 | Serviço com requisição antes da T5.2 | A API recusa (`409 requisicao_em_breve`) e o app explica | Criar "aguardando encaminhamento" sem a foto | Baixo |
-| I3 | Vínculo e pré-cadastro (RN-LE-01) | Não exigidos até a fatia 5, como na inscrição pública | — | Médio no piloto |
 | I4 | Alerta ao agendador (RN-RISCO-03) | Visual: urgente sugerido não alocado no topo da sugestão com selo; a tela de Agendamento mostra a contagem por serviço e uma faixa (não no menu, que não consulta a API) | Push ou e-mail para a equipe; contagem no menu | Baixo |
 | I5 | "Remover" e "trocar" (RN-AL-04) | Remover = recusa em nome do paciente (volta à lista com a data original, não é sugerido de novo para a sessão); trocar = remover + alocar | Uma transição própria "desalocar" que não marca a sessão como recusada | Baixo |
 | I6 | "Sem contato" (RN-CONF-02) | Só anota a tentativa (auditoria e "última tentativa" na lista de ligação) | Liberar a vaga após N tentativas | Baixo |
@@ -298,7 +314,6 @@ Design: [app-cadastro.md](../design-system/app-cadastro.md).
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
-| CA1 | E-mail | Continua obrigatório (a API pede), com o texto "para avisos da sua conta" no lugar de "serve para recuperar a senha" | Opcional ou fora do cadastro (muda a API) | Baixo: quem não tem e-mail não cria conta pelo app |
 | CA2 | CPF já com conta | Volta à tela do CPF com o erro e "entrar com este CPF" (abre o "entrar" com o CPF preenchido) | Só o erro | Baixo |
 | CA3 | "confira" | Tela com o resumo e "corrigir" por linha antes de criar a conta | Criar direto da tela do e-mail | Baixo: um toque a mais |
 

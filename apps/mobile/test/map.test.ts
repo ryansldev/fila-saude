@@ -1,6 +1,6 @@
 import { COLOR } from "@fila-saude/design";
 import { describe, expect, it } from "vitest";
-import { MAP_STYLE, pinAppearance } from "@/lib/map";
+import { MAP_STYLE, nativeMap, pinAppearance } from "@/lib/map";
 
 type Rule = (typeof MAP_STYLE)[number];
 const rules = (featureType: string, elementType?: string) =>
@@ -47,5 +47,21 @@ describe("o pino da unidade", () => {
   it("a escolhida cresce e mostra o nome", () => {
     expect(pinAppearance(true, true)).toMatchObject({ size: 42, name: true, color: COLOR.green });
     expect(pinAppearance(false, true)).toMatchObject({ size: 42, name: true, color: COLOR.action });
+  });
+});
+
+describe("mapa de verdade ou nenhum", () => {
+  it("iPhone: Apple Maps, sem chave", () => {
+    expect(nativeMap({ os: "ios", expoGo: false, mapsKey: undefined })).toBe(true);
+  });
+
+  it("Android no Expo Go: a chave é a do Expo Go", () => {
+    expect(nativeMap({ os: "android", expoGo: true, mapsKey: undefined })).toBe(true);
+  });
+
+  it("Android no build próprio: Google Maps só com a chave; sem ela, sem mapa (só a lista), sem travar o app", () => {
+    expect(nativeMap({ os: "android", expoGo: false, mapsKey: "AIza-chave" })).toBe(true);
+    expect(nativeMap({ os: "android", expoGo: false, mapsKey: undefined })).toBe(false);
+    expect(nativeMap({ os: "android", expoGo: false, mapsKey: "" })).toBe(false);
   });
 });

@@ -60,3 +60,12 @@ export function pinAppearance(open: boolean, chosen: boolean): PinAppearance {
     name: chosen,
   };
 }
+
+/**
+ * O react-native-maps no Android é o Google Maps, que trava o app sem a chave no build. No Expo Go a chave
+ * é a dele; num build próprio, só com `GOOGLE_MAPS_ANDROID_API_KEY`. Sem ela, a aba mostra só a lista.
+ */
+export function nativeMap(env: { os: string; expoGo: boolean; mapsKey: string | undefined }): boolean {
+  if (env.os !== "android" || env.expoGo) return true;
+  return Boolean(env.mapsKey);
+}

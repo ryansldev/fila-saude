@@ -57,6 +57,7 @@ QUANDO duas chamadas acontecerem ao mesmo tempo, O SISTEMA DEVE enfileirá-las; 
 | Saia de casa (tempo estimado abaixo do limite) | Paciente | Push |
 | Venha agora (remoto sem ninguém na frente, AD-056) | Paciente | Push |
 | Sua vez: senha, serviço e sala | Paciente | Push + TV |
+| Chamado de novo (rechamada): senha e sala | Paciente | Push + TV |
 | Você foi pulado / perdeu a vez | Paciente | Push |
 | Sessão cancelada, remarcada, aguardando nova data ou "escolha outra data" | Paciente | Push |
 | Vaga liberada para quem está na lista de reserva | Paciente | Push |

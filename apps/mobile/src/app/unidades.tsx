@@ -5,7 +5,7 @@ import { Building2, Footprints, LocateFixed } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Linking, Platform, Text, View } from "react-native";
 import { PatientTabs } from "@/components/care";
-import UnitsMap from "@/components/map";
+import UnitsMap, { hasMap } from "@/components/map";
 import type { MapPin } from "@/components/map.types";
 import {
   Avatar,
@@ -226,7 +226,7 @@ export default function Units() {
         />
       ) : null}
       {units === null && !error ? <Loading text="buscando as unidades…" /> : null}
-      {units && pins.length > 0 ? (
+      {hasMap && units && pins.length > 0 ? (
         <>
           <UnitsMap
             pins={pins}

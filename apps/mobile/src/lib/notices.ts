@@ -32,3 +32,12 @@ export function noticeScreen(state: NoticeState): NoticeScreen {
     hint: "na próxima tela, toque em “permitir”.",
   };
 }
+
+/**
+ * Logo depois de entrar, explica os avisos antes do pedido do celular, uma vez só. No Android 13+ quem
+ * nunca foi perguntado chega como negado que ainda pode pedir (o celular não distingue), então conta também.
+ */
+export function explainNoticesFirst(state: NoticeState, explained: boolean): boolean {
+  if (explained) return false;
+  return state.kind === "ask" || (state.kind === "off" && state.canRequest);
+}
