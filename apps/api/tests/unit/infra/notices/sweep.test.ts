@@ -104,9 +104,18 @@ describe("chamadas que perderam a hora antes do envio (AD-074)", () => {
     expect(staleNotices([leave], [leave, come("sent", "triage")], queue)).toEqual(new Set());
   });
 
-  it("'pulado' antigo não sai depois de uma chamada mais nova que ainda vale", () => {
-    expect(claim(["a"], [n("a", "skipped"), n("b", "your_turn", "sent")])).toEqual(new Set(["a"]));
-    expect(claim(["a"], [n("a", "skipped"), n("b", "your_turn", "failed")])).toEqual(new Set());
+  it("'pulado' antigo não sai depois de uma chamada mais nova, em qualquer estado (a pessoa foi chamada de novo)", () => {
+    for (const state of ["sent", "pending", "failed", "stale"])
+      expect(claim(["a"], [n("a", "skipped"), n("b", "your_turn", state)])).toEqual(new Set(["a"]));
+    expect(claim(["a"], [n("a", "skipped")])).toEqual(new Set());
+  });
+
+  it("'venha agora' antigo não sai depois de outro 'venha agora' da mesma etapa que ainda vale ('Vou sair' recomeça)", () => {
+    const old1 = { id: "a", kind: "come_now", state: "pending", entryId: "e1", key: "venha_agora:i1:care:1" };
+    const new1 = (state: string) => ({ id: "b", kind: "come_now", state, entryId: "e1", key: "venha_agora:i1:care:9" });
+    const queue = { awaited: new Set<string>(), waiting: new Map([["i1", "care"]]) };
+    expect(staleNotices([old1], [old1, new1("sent")], queue)).toEqual(new Set(["a"]));
+    expect(staleNotices([old1], [old1, new1("failed")], queue)).toEqual(new Set());
   });
 
   it("chamada depois do 'pulado' (chamado de novo mais tarde) vale", () => {
@@ -125,6 +134,16 @@ describe("chamadas que perderam a hora antes do envio (AD-074)", () => {
 });
 
 describe("envio à Expo", () => {
+  it("200 e o corpo trava: depois do prazo do corpo conta como enviado (o desligamento não fica preso)", async () => {
+    vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json: () => new Promise(() => {}) }));
+    try {
+      const r = await expoSenderWith(20)([{ for: "ExponentPushToken[x]", title: "t", body: "b", data: {} }]);
+      expect(r).toEqual([{ ok: true }]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("a Expo aceitou (200) mas o corpo não chega: conta como enviado, sem reenviar o lote todo", async () => {
     vi.stubGlobal("fetch", async () => ({
       ok: true,
@@ -269,6 +288,7 @@ describe("erro no meio do envio", () => {
 
   it("depois de chamar a Expo: conta a tentativa mas deixa a reserva vencer (o aviso pode já ter chegado)", () => {
     expect(afterError(true, 0, now)).toEqual({ attempts: 1, state: "pending" });
-    expect(afterError(true, 4, now)).toEqual({ attempts: 5, state: "failed" });
+    // Esgotado depois da Expo: talvez tenha chegado; não é "failed" (falha de entrega).
+    expect(afterError(true, 4, now)).toEqual({ attempts: 5, state: "unconfirmed" });
   });
 });

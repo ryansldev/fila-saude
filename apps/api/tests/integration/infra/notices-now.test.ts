@@ -112,4 +112,23 @@ describe("envio na hora do evento (AD-074)", () => {
     expect(rows.map((r) => r.kind)).toEqual(["your_turn", "skipped", "recalled"]);
     expect(new Set(rows.map((r) => r.seq)).size).toBe(3);
   });
+
+  it("mais avisos que um lote (100): a mesma rodada envia todos, sem esperar a varredura", async () => {
+    const batch = `lote-${randomUUID()}`;
+    await db()
+      .insert(notice)
+      .values(
+        Array.from({ length: 150 }, (_, i) => ({
+          key: `${batch}:${i}`,
+          patientId,
+          entryId: randomUUID(),
+          kind: "queue_opened",
+          title: batch,
+          body: "b",
+        })),
+      );
+    await app.inject({ method: "POST", url: "/write/queue_opened/200" });
+    await app.sendNow.idle(slug);
+    expect(sent.filter((x) => x.title === batch)).toHaveLength(150);
+  });
 });

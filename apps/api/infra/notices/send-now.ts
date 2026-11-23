@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import type { TenantDb } from "infra/database/tenants";
-import { type Sender, sendPending } from "infra/notices/sweep";
+import { SEND_BATCH, type Sender, sendPending } from "infra/notices/sweep";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -87,7 +87,10 @@ export function sendAfterWrites(
     if (!slug || !sendsAfter(req.method, reply.statusCode)) return;
     now(slug, async () => {
       const db = await pool(slug);
-      if (db) await sendPending(db, Date.now(), send);
+      if (!db) return;
+      // Lote cheio: pode haver mais (depois de uma queda da Expo, por exemplo); segue até esvaziar.
+      let claimed = SEND_BATCH;
+      while (claimed === SEND_BATCH) claimed = await sendPending(db, Date.now(), send);
     });
   });
 }

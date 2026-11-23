@@ -13,7 +13,10 @@ export const notice = pgTable(
     kind: text("kind").notNull(),
     title: text("title").notNull(),
     body: text("body").notNull(),
-    /** pending → sent | no_device | failed (desistiu depois das tentativas) | stale (chamada sem valor ao enviar). */
+    /**
+     * pending → sent | no_device | failed (desistiu depois das tentativas) | stale (perdeu a hora ao enviar) |
+     * unconfirmed (desistiu depois de chamar a Expo: pode ter chegado).
+     */
     state: text("state").notNull().default("pending"),
     attempts: integer("attempts").notNull().default(0),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),

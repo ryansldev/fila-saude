@@ -89,20 +89,21 @@ export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: 
   const liveCall = (x: NoticeRef) => CALL_KINDS.has(x.kind) && LIVE.has(x.state);
   for (const a of claimed) {
     if (!a.entryId) continue;
-    // Um "pulado" antigo não sai depois de uma chamada mais nova que ainda vale.
+    // Um "pulado" antigo não sai depois de uma chamada mais nova, em qualquer estado: a pessoa foi chamada de novo.
     if (a.kind === "skipped") {
-      if (laterOf(a).some(liveCall)) stale.add(a.id);
+      if (laterOf(a).some((x) => CALL_KINDS.has(x.kind))) stale.add(a.id);
       continue;
     }
     const target = noticeTarget(a.key);
     if (!target) continue;
     if (target.kind === "waiting") {
-      // "Saia de casa" não sai depois de um "venha agora" da mesma etapa que ainda vale.
+      // "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" da mesma etapa que
+      // ainda vale ("Vou sair" recomeça o aviso, AD-057).
       const comeNowAfter = laterOf(a).some((x) => {
         const t = noticeTarget(x.key);
         return x.kind === "come_now" && LIVE.has(x.state) && t?.kind === "waiting" && t.stage === target.stage;
       });
-      if (queue.waiting.get(target.item) !== target.stage || (a.kind === "leave_home" && comeNowAfter)) stale.add(a.id);
+      if (queue.waiting.get(target.item) !== target.stage || comeNowAfter) stale.add(a.id);
       continue;
     }
     if (!queue.awaited.has(target.item)) {
@@ -148,15 +149,20 @@ export function afterError(
   calledExpo: boolean,
   attempts: number,
   now: number,
-): { attempts: number; state: "pending" | "failed"; nextAttemptAt?: Date } {
+): { attempts: number; state: "pending" | "failed" | "unconfirmed"; nextAttemptAt?: Date } {
   const next = attempts + 1;
-  const state = next >= MAX_ATTEMPTS ? "failed" : "pending";
-  if (calledExpo) return { attempts: next, state };
+  const done = next >= MAX_ATTEMPTS;
+  // Depois da Expo, esgotado não é falha de entrega: o aviso pode ter chegado.
+  if (calledExpo) return { attempts: next, state: done ? "unconfirmed" : "pending" };
+  const state = done ? "failed" : "pending";
   return { attempts: next, state, nextAttemptAt: new Date(now + 2 ** next * 60_000) };
 }
 
-/** Envia os pendentes vencidos do município (a varredura e o envio na hora do evento, AD-074). */
-export async function sendPending(db: TenantDb, now: number, send: Sender): Promise<void> {
+/** O tamanho do lote de envio: quem recebe um lote cheio pode chamar de novo. */
+export const SEND_BATCH = BATCH;
+
+/** Envia um lote dos pendentes vencidos do município; devolve quantos reservou (até `SEND_BATCH`). */
+export async function sendPending(db: TenantDb, now: number, send: Sender): Promise<number> {
   const claimed = await db.transaction(async (tx) => {
     const rows = await tx
       .select()
@@ -183,10 +189,11 @@ export async function sendPending(db: TenantDb, now: number, send: Sender): Prom
     }
     return rows;
   });
-  if (claimed.length === 0) return;
+  if (claimed.length === 0) return 0;
   const progress = { calledExpo: false };
   try {
     await deliver(db, now, send, claimed, progress);
+    return claimed.length;
   } catch (error) {
     const update = (a: (typeof claimed)[number]) => afterError(progress.calledExpo, a.attempts, now);
     for (const a of claimed) {
@@ -336,13 +343,17 @@ export const expoSenderWith =
         } finally {
           clearTimeout(timer);
         }
-        const body = (await r.json().catch(() => null)) as { data?: ExpoTicket[] } | null;
+        // O corpo tem o seu próprio prazo: travado depois de um 200, conta como aceito (abaixo).
+        const body = (await Promise.race([
+          r.json().catch(() => null),
+          new Promise<null>((done) => setTimeout(() => done(null), timeoutMs).unref?.()),
+        ])) as { data?: ExpoTicket[] } | null;
         if (!r.ok) {
           exit.push(...batch.map(() => ({ ok: false as const, error: `expo ${r.status}` })));
           continue;
         }
         if (!body?.data) {
-          // Aceito (200), sem os recibos: conta como enviado, para nada sair duas vezes.
+          // Aceito (200), sem os recibos (corpo ilegível ou travado): conta como enviado, para nada sair duas vezes.
           exit.push(...batch.map(() => ({ ok: true as const })));
           continue;
         }
