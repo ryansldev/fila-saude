@@ -1,5 +1,5 @@
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
-import { expoMessage, expoSenderWith, staleNotices, startSweep } from "infra/notices/sweep";
+import { afterError, expoMessage, expoSenderWith, queueFrom, staleNotices, startSweep } from "infra/notices/sweep";
 import { describe, expect, it, vi } from "vitest";
 
 describe("mensagem para a Expo", () => {
@@ -170,5 +170,66 @@ describe("desligar a varredura", () => {
     open();
     await done;
     expect(stopped).toBe(true);
+  });
+});
+
+describe("o estado da fila para os avisos (AD-074)", () => {
+  const day = (state: string, items: { id: string; state: string; stage?: string }[], calls: object[] = []) =>
+    ({ state, items: items.map((i) => ({ stage: "care", ...i })), calls }) as unknown as Parameters<
+      typeof queueFrom
+    >[0][number];
+
+  it("chamados sem 'Compareceu' e quem está em casa, por etapa", () => {
+    const q = queueFrom([
+      day(
+        "open",
+        [
+          { id: "a", state: "called" },
+          { id: "b", state: "remote", stage: "triage" },
+          { id: "c", state: "present" },
+        ],
+        [{ itemId: "a", stage: "care", stationId: "e1", at: 1 }],
+      ),
+    ]);
+    expect(q.awaited).toEqual(new Set(["a"]));
+    expect(q.waiting).toEqual(new Map([["b", "triage"]]));
+  });
+
+  it("sessão fechada ou cancelada não espera ninguém", () => {
+    const q = queueFrom([
+      day(
+        "closed",
+        [
+          { id: "a", state: "called" },
+          { id: "b", state: "remote" },
+        ],
+        [{ itemId: "a", stage: "care", stationId: "e1", at: 1 }],
+      ),
+      day("cancelled", [{ id: "c", state: "remote" }]),
+    ]);
+    expect(q.awaited).toEqual(new Set());
+    expect(q.waiting).toEqual(new Map());
+  });
+});
+
+describe("erro no meio do envio", () => {
+  const now = 1_000_000;
+
+  it("antes de chamar a Expo: conta como tentativa, com a espera crescente (sem martelar a cada pedido)", () => {
+    expect(afterError(false, 0, now)).toEqual({
+      attempts: 1,
+      state: "pending",
+      nextAttemptAt: new Date(now + 2 * 60_000),
+    });
+    expect(afterError(false, 2, now)).toEqual({
+      attempts: 3,
+      state: "pending",
+      nextAttemptAt: new Date(now + 8 * 60_000),
+    });
+    expect(afterError(false, 4, now)?.state).toBe("failed");
+  });
+
+  it("depois de chamar a Expo: deixa a reserva vencer (o aviso pode já ter chegado; nada sai duas vezes)", () => {
+    expect(afterError(true, 0, now)).toBeNull();
   });
 });

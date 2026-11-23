@@ -1,4 +1,4 @@
-import { awaitedItems, comeNowNotices, leaveHomeNotices, waitingItems } from "@fila-saude/domain";
+import { awaitedItems, comeNowNotices, leaveHomeNotices, remoteItems, type SessionDay } from "@fila-saude/domain";
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import database from "infra/database";
@@ -101,19 +101,46 @@ export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: 
 }
 
 /**
- * O estado da fila nas sessões das entradas dadas (`awaitedItems` e `waitingItems` do domínio). Lido fora da
- * trava da sessão: uma mudança da fila entre esta leitura e o envio ainda deixa sair um aviso.
+ * O estado da fila para os avisos (AD-074): quem as sessões abertas esperam entrar na sala (`awaitedItems`) e
+ * quem espera em casa, por etapa (`remoteItems`). Sessão fechada ou cancelada não espera ninguém.
  */
-async function queueNow(db: TenantDb, entryIds: string[]): Promise<QueueNow> {
+export function queueFrom(days: SessionDay[]): QueueNow {
   const queue: QueueNow = { awaited: new Set(), waiting: new Map() };
-  if (entryIds.length === 0) return queue;
-  const sessions = db.selectDistinct({ id: entry.sessionId }).from(entry).where(inArray(entry.id, entryIds));
-  const days = await db.select({ day: sessionDay.day }).from(sessionDay).where(inArray(sessionDay.sessionId, sessions));
-  for (const { day } of days) {
+  for (const day of days) {
+    if (day.state !== "open") continue;
     for (const i of awaitedItems(day)) queue.awaited.add(i);
-    for (const [i, stage] of waitingItems(day)) queue.waiting.set(i, stage);
+    for (const [i, stage] of remoteItems(day)) queue.waiting.set(i, stage);
   }
   return queue;
+}
+
+/**
+ * O estado da fila nas sessões das entradas dadas. Lido fora da trava da sessão: uma mudança da fila entre
+ * esta leitura e o envio ainda deixa sair um aviso.
+ */
+async function queueNow(db: TenantDb, entryIds: string[]): Promise<QueueNow> {
+  if (entryIds.length === 0) return queueFrom([]);
+  const sessions = db.selectDistinct({ id: entry.sessionId }).from(entry).where(inArray(entry.id, entryIds));
+  const days = await db.select({ day: sessionDay.day }).from(sessionDay).where(inArray(sessionDay.sessionId, sessions));
+  return queueFrom(days.map((d) => d.day));
+}
+
+/**
+ * Erro no meio do envio. Antes da chamada à Expo, conta como tentativa, com a mesma espera crescente (sem
+ * repetir a cada pedido). Depois dela, `null`: a reserva vence sozinha (o aviso pode já ter chegado).
+ */
+export function afterError(
+  calledExpo: boolean,
+  attempts: number,
+  now: number,
+): { attempts: number; state: "pending" | "failed"; nextAttemptAt: Date } | null {
+  if (calledExpo) return null;
+  const next = attempts + 1;
+  return {
+    attempts: next,
+    state: next >= MAX_ATTEMPTS ? "failed" : "pending",
+    nextAttemptAt: new Date(now + 2 ** next * 60_000),
+  };
 }
 
 /** Envia os pendentes vencidos do município (a varredura e o envio na hora do evento, AD-074). */
@@ -128,7 +155,7 @@ export async function sendPending(db: TenantDb, now: number, send: Sender): Prom
           lte(notice.nextAttemptAt, sql`greatest(${new Date(now).toISOString()}::timestamptz, now())`),
         ),
       )
-      .orderBy(asc(notice.createdAt))
+      .orderBy(asc(notice.seq))
       .limit(BATCH)
       .for("update", { skipLocked: true });
     if (rows.length > 0) {
@@ -145,24 +172,20 @@ export async function sendPending(db: TenantDb, now: number, send: Sender): Prom
     return rows;
   });
   if (claimed.length === 0) return;
+  const progress = { calledExpo: false };
   try {
-    await deliver(db, now, send, claimed);
+    await deliver(db, now, send, claimed, progress);
   } catch (error) {
-    // Erro depois da reserva (banco, Expo): devolve o que ficou reservado na hora, sem esperar a reserva
-    // de 5 min vencer; o aviso já resolvido não está mais "pending" e não volta.
-    await db
-      .update(notice)
-      .set({ nextAttemptAt: new Date(now) })
-      .where(
-        and(
-          eq(notice.state, "pending"),
-          inArray(
-            notice.id,
-            claimed.map((a) => a.id),
-          ),
-        ),
-      )
-      .catch(() => {});
+    const update = (a: (typeof claimed)[number]) => afterError(progress.calledExpo, a.attempts, now);
+    for (const a of claimed) {
+      const change = update(a);
+      if (!change) continue;
+      await db
+        .update(notice)
+        .set({ ...change, lastError: error instanceof Error ? error.message : "erro" })
+        .where(and(eq(notice.id, a.id), eq(notice.state, "pending")))
+        .catch(() => {});
+    }
     throw error;
   }
 }
@@ -172,6 +195,7 @@ async function deliver(
   now: number,
   send: Sender,
   claimed: (typeof notice.$inferSelect)[],
+  progress: { calledExpo: boolean },
 ): Promise<void> {
   const entries = [...new Set(claimed.flatMap((a) => (a.entryId && noticeTarget(a.key) ? [a.entryId] : [])))];
   const history =
@@ -181,7 +205,7 @@ async function deliver(
           .select({ id: notice.id, kind: notice.kind, state: notice.state, entryId: notice.entryId, key: notice.key })
           .from(notice)
           .where(inArray(notice.entryId, entries))
-          .orderBy(asc(notice.createdAt), asc(notice.id));
+          .orderBy(asc(notice.seq));
   const stale = staleNotices(claimed, history, await queueNow(db, entries));
   if (stale.size > 0)
     await db
@@ -205,6 +229,7 @@ async function deliver(
       });
     }
   }
+  progress.calledExpo = sendings.length > 0;
   const results = sendings.length > 0 ? await send(sendings.map((e) => e.sending)) : [];
   const invalid = sendings.filter((_, i) => {
     const r = results[i];

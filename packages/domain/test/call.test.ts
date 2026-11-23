@@ -6,11 +6,11 @@ import {
   finish,
   noShow,
   recall,
+  remoteItems,
   showedUp,
   showedUpAt,
   toleranceExceeded,
   undoShowedUp,
-  waitingItems,
 } from "../src/call.ts";
 import { checkIn, DEFAULT_CONFIG, eligible, leaving, type SessionDay, type Station } from "../src/queue.ts";
 import type { Result } from "../src/result.ts";
@@ -678,15 +678,17 @@ describe("quem a fila ainda espera entrar na sala (avisos de chamada, AD-074)", 
   });
 });
 
-describe("quem ainda espera na fila, por etapa (avisos de tempo, AD-074)", () => {
-  it("em casa ou presente: espera na etapa; chamado ou fora da fila: não", () => {
-    const waiting = enter(dayWith(["ana", "bia"]), "ana");
-    expect(waitingItems(waiting)).toEqual(
+describe("quem ainda espera em casa, por etapa (avisos de tempo, AD-074)", () => {
+  it("em casa: espera na etapa; presente na unidade, chamado ou fora da fila: não", () => {
+    const day = dayWith(["ana", "bia"]);
+    expect(remoteItems(day)).toEqual(
       new Map([
         ["ana", "care"],
         ["bia", "care"],
       ]),
     );
-    expect(waitingItems(call(waiting)).has("ana")).toBe(false);
+    const arrived = enter(day, "ana");
+    expect(remoteItems(arrived)).toEqual(new Map([["bia", "care"]]));
+    expect(remoteItems(call(arrived)).has("ana")).toBe(false);
   });
 });

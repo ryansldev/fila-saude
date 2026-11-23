@@ -5,11 +5,11 @@ export {
   finish,
   noShow,
   recall,
+  remoteItems,
   showedUp,
   showedUpAt,
   toleranceExceeded,
   undoShowedUp,
-  waitingItems,
 } from "./call.ts";
 export {
   cancel,

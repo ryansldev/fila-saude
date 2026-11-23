@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { asc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { notice } from "infra/database/municipal/schema/notice";
 import { sendAfterWrites } from "infra/notices/send-now";
@@ -88,15 +88,28 @@ describe("envio na hora do evento (AD-074)", () => {
     expect(states.every((n) => n.state === "sent")).toBe(true);
   });
 
-  it("erro depois da reserva devolve o aviso na hora, sem esperar a reserva de 5 min vencer", async () => {
+  it("erro na chamada à Expo: o aviso fica reservado (pode já ter chegado), sem reenvio no pedido seguinte", async () => {
     failing = true;
     await app.inject({ method: "POST", url: "/write/skipped/200" });
     await app.sendNow.idle(slug);
     failing = false;
-    const [row] = await db().select().from(notice).where(eq(notice.state, "pending"));
-    expect(row?.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now());
+    const [row] = await db().select().from(notice).where(eq(notice.kind, "skipped")).orderBy(desc(notice.seq)).limit(1);
+    expect(row?.state).toBe("pending");
+    expect(row?.nextAttemptAt.getTime()).toBeGreaterThan(Date.now() + 60_000);
+    const before = sent.length;
     await app.inject({ method: "POST", url: "/write/leave_home/200" });
     await app.sendNow.idle(slug);
-    expect(sent.map((x) => x.data.kind).slice(-2)).toEqual(["skipped", "leave_home"]);
+    expect(sent.slice(before).map((x) => x.data.kind)).toEqual(["leave_home"]);
+  });
+
+  it("avisos gravados na mesma transação ficam na ordem em que foram gravados", async () => {
+    const entryId = randomUUID();
+    await db().transaction(async (tx) => {
+      for (const kind of ["your_turn", "skipped", "recalled"])
+        await tx.insert(notice).values({ key: randomUUID(), patientId, entryId, kind, title: kind, body: "b" });
+    });
+    const rows = await db().select().from(notice).where(eq(notice.entryId, entryId)).orderBy(asc(notice.seq));
+    expect(rows.map((r) => r.kind)).toEqual(["your_turn", "skipped", "recalled"]);
+    expect(new Set(rows.map((r) => r.seq)).size).toBe(3);
   });
 });

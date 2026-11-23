@@ -89,11 +89,11 @@ export function awaitedItems(day: SessionDay): Set<string> {
 }
 
 /**
- * Quem ainda espera na fila (em casa ou presente), com a etapa em que espera. Os avisos de tempo ("saia de
- * casa", "venha agora") só saem para eles, na mesma etapa (AD-074).
+ * Quem ainda espera em casa (remoto), com a etapa em que espera. Os avisos de tempo ("saia de casa", "venha
+ * agora") só saem para eles, na mesma etapa (AD-074): quem já chegou à unidade não precisa mais deles.
  */
-export function waitingItems(day: SessionDay): Map<string, Stage> {
-  return new Map(day.items.filter((i) => i.state === "remote" || i.state === "present").map((i) => [i.id, i.stage]));
+export function remoteItems(day: SessionDay): Map<string, Stage> {
+  return new Map(day.items.filter((i) => i.state === "remote").map((i) => [i.id, i.stage]));
 }
 
 /** Hora do "Compareceu" de quem está chamado na estação, ou `null`. */

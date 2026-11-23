@@ -1,0 +1,2 @@
+ALTER TABLE "notice" ADD COLUMN "seq" bigint NOT NULL GENERATED ALWAYS AS IDENTITY (sequence name "notice_seq_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 9223372036854775807 START WITH 1 CACHE 1);--> statement-breakpoint
+CREATE INDEX "notice_entry_idx" ON "notice" USING btree ("entry_id");

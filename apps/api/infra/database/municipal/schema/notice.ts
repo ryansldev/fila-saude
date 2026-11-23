@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigint, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 // PD-49 / T2.4: outbox dos avisos ao paciente. Nasce na mesma transação do evento da fila; a chave
 // única garante que cada aviso sai uma vez só (T3.8). Texto sem dado clínico (RN-NOT-01).
@@ -20,6 +20,8 @@ export const notice = pgTable(
     lastError: text("last_error"),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Ordem de gravação (AD-074): `created_at` é a hora do começo da transação e empata entre avisos gravados juntos. */
+    seq: bigint("seq", { mode: "number" }).generatedAlwaysAsIdentity().notNull(),
   },
-  (t) => [index("pending_notice_idx").on(t.state, t.nextAttemptAt)],
+  (t) => [index("pending_notice_idx").on(t.state, t.nextAttemptAt), index("notice_entry_idx").on(t.entryId)],
 );
