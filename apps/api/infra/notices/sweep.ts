@@ -50,7 +50,7 @@ async function generateTimeNotices(db: TenantDb, now: number, onError: (error: u
   }
 }
 
-// T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "no_device";
+// T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "no_device"; chamada sem valor, "stale";
 // falha volta com espera crescente (2, 4, 8, 16 min) até desistir.
 // Outbox: uma transação curta reserva o lote (empurra a próxima tentativa por `CLAIM_MS`, para nenhuma
 // outra rodada pegá-lo), o envio à Expo acontece fora de transação e outra transação curta grava o
@@ -58,8 +58,29 @@ async function generateTimeNotices(db: TenantDb, now: number, onError: (error: u
 // o aviso volta só quando a reserva vence (no máximo um envio a mais, não um a cada rodada).
 const CLAIM_MS = 5 * 60_000;
 
+const CALL_KINDS = new Set(["your_turn", "recalled"]);
+
+/**
+ * A varredura junta o último minuto (G7), então uma chamada pode chegar ao envio já sem valor. Recebe os
+ * pendentes em ordem de criação e devolve os que saem sem envio: a rechamada que vem junto de uma chamada
+ * da mesma entrada ainda não enviada (vai só a primeira) e a chamada ou rechamada seguida de "pulado".
+ */
+export function staleNotices(pending: { id: string; kind: string; entryId: string | null }[]): Set<string> {
+  const stale = new Set<string>();
+  for (const a of pending) {
+    if (!a.entryId || !CALL_KINDS.has(a.kind)) continue;
+    const same = pending.filter((x) => x.entryId === a.entryId);
+    const at = same.indexOf(a);
+    const earlierCall =
+      a.kind === "recalled" && same.slice(0, at).some((x) => CALL_KINDS.has(x.kind) && !stale.has(x.id));
+    const laterSkip = same.slice(at + 1).some((x) => x.kind === "skipped");
+    if (earlierCall || laterSkip) stale.add(a.id);
+  }
+  return stale;
+}
+
 async function sendPending(db: TenantDb, now: number, send: Sender): Promise<void> {
-  const pending = await db.transaction(async (tx) => {
+  const claimed = await db.transaction(async (tx) => {
     const rows = await tx
       .select()
       .from(notice)
@@ -85,6 +106,14 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
     }
     return rows;
   });
+  if (claimed.length === 0) return;
+  const stale = staleNotices(claimed);
+  if (stale.size > 0)
+    await db
+      .update(notice)
+      .set({ state: "stale" })
+      .where(inArray(notice.id, [...stale]));
+  const pending = claimed.filter((a) => !stale.has(a.id));
   if (pending.length === 0) return;
 
   const accounts = [...new Set(pending.map((a) => a.patientId))];

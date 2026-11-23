@@ -63,9 +63,26 @@ export function pinAppearance(open: boolean, chosen: boolean): PinAppearance {
 
 /**
  * O react-native-maps no Android é o Google Maps, que trava o app sem a chave no build. No Expo Go a chave
- * é a dele; num build próprio, só com `GOOGLE_MAPS_ANDROID_API_KEY`. Sem ela, a aba mostra só a lista.
+ * é a dele; num build próprio, só se o build levou `GOOGLE_MAPS_ANDROID_API_KEY`. Sem ela, a aba mostra só a lista.
  */
-export function nativeMap(env: { os: string; expoGo: boolean; mapsKey: string | undefined }): boolean {
+export function nativeMap(env: { os: string; expoGo: boolean; builtWithMaps: boolean }): boolean {
   if (env.os !== "android" || env.expoGo) return true;
-  return Boolean(env.mapsKey);
+  return env.builtWithMaps;
+}
+
+/**
+ * Lê a marca `extra.googleMaps` da config gravada no build (o `app.config.ts` a liga quando há a chave).
+ * A chave em si não serve: a config pública do build não leva `android.config`, e a do Metro, no build de
+ * desenvolvimento, é a da máquina de quem roda, não a do build. No Android a config gravada vem como texto JSON.
+ */
+export function builtWithGoogleMaps(embedded: unknown): boolean {
+  let config = embedded;
+  if (typeof config === "string") {
+    try {
+      config = JSON.parse(config);
+    } catch {
+      return false;
+    }
+  }
+  return (config as { extra?: { googleMaps?: unknown } } | null | undefined)?.extra?.googleMaps === true;
 }

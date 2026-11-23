@@ -1,10 +1,11 @@
+import { requireOptionalNativeModule } from "expo";
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Platform, View } from "react-native";
 import MapView, { type LatLng, Marker, type Region } from "react-native-maps";
 import { UnitPin } from "@/components/pin";
 import { COLOR } from "@/components/ui";
-import { MAP_STYLE, nativeMap } from "@/lib/map";
+import { builtWithGoogleMaps, MAP_STYLE, nativeMap } from "@/lib/map";
 import { MAP_HEIGHT, type MapProps } from "./map.types";
 
 // Região que mostra todos os pontos, com folga nas bordas.
@@ -22,14 +23,16 @@ function regionOf(points: LatLng[]): Region {
 }
 
 /**
- * Sem a chave do Google Maps no Android (build próprio), não há mapa: a tela mostra só a lista.
- * Lê a config que o Metro serve: no build de desenvolvimento, a chave do `.env` de quem roda o Metro
- * precisa ser a mesma do build (G12), senão o Google Maps abre sem chave e trava. Na loja a config vem do build.
+ * Sem a chave do Google Maps no Android (build próprio), não há mapa: a tela mostra só a lista. Lê a config
+ * gravada no build (`ExponentConstants.manifest`), não a `Constants.expoConfig`, que no build de
+ * desenvolvimento vem do Metro e pode não bater com o build (e o Google Maps sem chave trava o app).
  */
 export const hasMap = nativeMap({
   os: Platform.OS,
   expoGo: Constants.executionEnvironment === ExecutionEnvironment.StoreClient,
-  mapsKey: Constants.expoConfig?.android?.config?.googleMaps?.apiKey,
+  builtWithMaps: builtWithGoogleMaps(
+    requireOptionalNativeModule<{ manifest?: unknown }>("ExponentConstants")?.manifest,
+  ),
 });
 
 /**

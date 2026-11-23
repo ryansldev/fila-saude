@@ -14,7 +14,6 @@ export const hasMap = true;
  * Web (e qualquer plataforma sem o mapa nativo): o react-native-maps não roda no navegador. No lugar,
  * um "mapa" simples com os pinos na posição relativa de cada unidade, tocáveis como no celular.
  */
-
 export default function UnitsMap({ pins, here, selected, onTapPin, onTapOutside, height = MAP_HEIGHT }: MapProps) {
   const [width, setWidth] = useState(0);
   const points = [...pins.map((p) => ({ lat: p.lat, lng: p.lng })), ...(here ? [here] : [])];

@@ -120,10 +120,11 @@ describe("avisos por push (T3.8, T2.4)", () => {
       "come_now:ExponentPushToken[Carla]",
       "queue_opened:ExponentPushToken[Ana]",
       "queue_opened:ExponentPushToken[Carla]",
-      "recalled:ExponentPushToken[Ana]",
-      "recalled:ExponentPushToken[Ana]",
       "your_turn:ExponentPushToken[Ana]",
     ]);
+    // As rechamadas chegaram junto do "sua vez" ainda não enviado: sai só ele.
+    const recalls = (await notices()).filter((a) => a.kind === "recalled");
+    expect(recalls.map((a) => a.state)).toEqual(["stale", "stale"]);
     const byKind = Object.fromEntries((await notices()).map((a) => [`${a.kind}:${a.patientId}`, a.state]));
     expect(byKind[`your_turn:${accounts.Bruno?.patientId}`]).toBe("no_device");
     expect(byKind[`your_turn:${accounts.Ana?.patientId}`]).toBe("sent");

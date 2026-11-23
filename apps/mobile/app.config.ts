@@ -7,6 +7,9 @@ import { googleServicesFile } from "./src/lib/push-setup.ts";
 // no EAS Build, a variável de arquivo GOOGLE_SERVICES_JSON (secreta). Sem ele, o build segue sem push.
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
+  // Marca pública de que o build levou a chave do Google Maps: a config gravada no build não leva
+  // `android.config`, e o app decide por ela se mostra o mapa (ver `builtWithGoogleMaps`).
+  extra: { ...config.extra, googleMaps: Boolean(process.env.GOOGLE_MAPS_ANDROID_API_KEY) },
   android: {
     ...config.android,
     googleServicesFile: googleServicesFile(

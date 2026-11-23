@@ -1,6 +1,6 @@
 import { COLOR } from "@fila-saude/design";
 import { describe, expect, it } from "vitest";
-import { MAP_STYLE, nativeMap, pinAppearance } from "@/lib/map";
+import { builtWithGoogleMaps, MAP_STYLE, nativeMap, pinAppearance } from "@/lib/map";
 
 type Rule = (typeof MAP_STYLE)[number];
 const rules = (featureType: string, elementType?: string) =>
@@ -52,16 +52,34 @@ describe("o pino da unidade", () => {
 
 describe("mapa de verdade ou nenhum", () => {
   it("iPhone: Apple Maps, sem chave", () => {
-    expect(nativeMap({ os: "ios", expoGo: false, mapsKey: undefined })).toBe(true);
+    expect(nativeMap({ os: "ios", expoGo: false, builtWithMaps: false })).toBe(true);
   });
 
   it("Android no Expo Go: a chave é a do Expo Go", () => {
-    expect(nativeMap({ os: "android", expoGo: true, mapsKey: undefined })).toBe(true);
+    expect(nativeMap({ os: "android", expoGo: true, builtWithMaps: false })).toBe(true);
   });
 
-  it("Android no build próprio: Google Maps só com a chave; sem ela, sem mapa (só a lista), sem travar o app", () => {
-    expect(nativeMap({ os: "android", expoGo: false, mapsKey: "AIza-chave" })).toBe(true);
-    expect(nativeMap({ os: "android", expoGo: false, mapsKey: undefined })).toBe(false);
-    expect(nativeMap({ os: "android", expoGo: false, mapsKey: "" })).toBe(false);
+  it("Android no build próprio: Google Maps só se o build levou a chave; sem ela, só a lista, sem travar o app", () => {
+    expect(nativeMap({ os: "android", expoGo: false, builtWithMaps: true })).toBe(true);
+    expect(nativeMap({ os: "android", expoGo: false, builtWithMaps: false })).toBe(false);
+  });
+});
+
+describe("o build levou a chave do Google Maps? (a config gravada no build, não a do Metro)", () => {
+  it("no Android a config gravada chega como texto JSON", () => {
+    expect(builtWithGoogleMaps(JSON.stringify({ extra: { googleMaps: true } }))).toBe(true);
+    expect(builtWithGoogleMaps(JSON.stringify({ extra: { googleMaps: false } }))).toBe(false);
+  });
+
+  it("também aceita a config já como objeto", () => {
+    expect(builtWithGoogleMaps({ extra: { googleMaps: true } })).toBe(true);
+  });
+
+  it("sem a marca, sem config ou com texto quebrado: sem mapa", () => {
+    expect(builtWithGoogleMaps(JSON.stringify({ extra: {} }))).toBe(false);
+    expect(builtWithGoogleMaps(undefined)).toBe(false);
+    expect(builtWithGoogleMaps(null)).toBe(false);
+    expect(builtWithGoogleMaps("{quebrado")).toBe(false);
+    expect(builtWithGoogleMaps(JSON.stringify({ extra: { googleMaps: "sim" } }))).toBe(false);
   });
 });
