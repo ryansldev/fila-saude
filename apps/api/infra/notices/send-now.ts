@@ -14,9 +14,12 @@ declare module "fastify" {
  * A varredura de 60 s continua para as novas tentativas e os avisos do tempo ("saia de casa", "venha agora").
  */
 
-/** Escrita que deu certo: pode ter gravado avisos na outbox (o hook só pergunta quando há município). */
-export function sendsAfter(method: string, status: number): boolean {
-  return status < 400 && !["GET", "HEAD", "OPTIONS"].includes(method);
+/**
+ * Escrita: pode ter gravado avisos na outbox, mesmo respondendo com erro (a transação pode ter fechado antes).
+ * O envio é barato e as rodadas do município se juntam. O hook só pergunta quando há município.
+ */
+export function sendsAfter(method: string): boolean {
+  return !["GET", "HEAD", "OPTIONS"].includes(method);
 }
 
 export type SendNow = ((key: string, run: () => Promise<void>) => void) & {
@@ -67,7 +70,7 @@ export function coalesce(log: (error: unknown, key: string) => void): SendNow {
 }
 
 /**
- * Liga o envio na hora do evento: depois de cada escrita com município que deu certo, envia os pendentes
+ * Liga o envio na hora do evento: depois de cada escrita com município, envia os pendentes
  * dele, sem segurar a resposta. O banco vem de `pool` pelo slug na hora do envio (o pool do pedido pode ter
  * saído do cache). Sem `send` (testes contra o servidor, scripts), não envia nada.
  */
@@ -76,21 +79,22 @@ export function sendAfterWrites(
   send: Sender | null,
   pool: (slug: string) => Promise<TenantDb | null>,
 ): void {
-  const now = coalesce((error, slug) => app.log.error({ err: error, slug }, "envio na hora"));
+  const log = (error: unknown, slug: string) => app.log.error({ err: error, slug }, "envio na hora");
+  const now = coalesce(log);
   app.decorate("sendNow", now);
   if (!send) return;
   // No `onClose` os pedidos em andamento já terminaram (e dispararam o envio deles); este hook roda antes
   // do que fecha os bancos, registrado antes (o Fastify roda os `onClose` do último para o primeiro).
   app.addHook("onClose", async () => now.close());
-  app.addHook("onResponse", async (req, reply) => {
+  app.addHook("onResponse", async (req) => {
     const slug = req.tenant?.slug;
-    if (!slug || !sendsAfter(req.method, reply.statusCode)) return;
+    if (!slug || !sendsAfter(req.method)) return;
     now(slug, async () => {
       const db = await pool(slug);
       if (!db) return;
       // Lote cheio: pode haver mais (depois de uma queda da Expo, por exemplo); segue até esvaziar.
       let claimed = SEND_BATCH;
-      while (claimed === SEND_BATCH) claimed = await sendPending(db, Date.now(), send);
+      while (claimed === SEND_BATCH) claimed = await sendPending(db, Date.now(), send, (e) => log(e, slug));
     });
   });
 }

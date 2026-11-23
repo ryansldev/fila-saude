@@ -2,17 +2,12 @@ import { coalesce, sendsAfter } from "infra/notices/send-now";
 import { describe, expect, it } from "vitest";
 
 describe("quais pedidos disparam o envio na hora", () => {
-  it("escrita que deu certo", () => {
-    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) expect(sendsAfter(method, 200)).toBe(true);
-    expect(sendsAfter("POST", 201)).toBe(true);
+  it("qualquer escrita, mesmo com erro na resposta (a transação pode já ter gravado o aviso)", () => {
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) expect(sendsAfter(method)).toBe(true);
   });
 
-  it("leitura ou erro: não (sem município, o hook nem pergunta)", () => {
-    expect(sendsAfter("GET", 200)).toBe(false);
-    expect(sendsAfter("HEAD", 200)).toBe(false);
-    expect(sendsAfter("OPTIONS", 204)).toBe(false);
-    expect(sendsAfter("POST", 409)).toBe(false);
-    expect(sendsAfter("POST", 500)).toBe(false);
+  it("leitura: não", () => {
+    for (const method of ["GET", "HEAD", "OPTIONS"]) expect(sendsAfter(method)).toBe(false);
   });
 });
 

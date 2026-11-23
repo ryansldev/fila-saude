@@ -3,7 +3,7 @@ import { asc, desc, eq } from "drizzle-orm";
 import Fastify, { type FastifyInstance } from "fastify";
 import { notice } from "infra/database/municipal/schema/notice";
 import { sendAfterWrites } from "infra/notices/send-now";
-import type { Sending } from "infra/notices/sweep";
+import { type Sending, sweepMunicipality } from "infra/notices/sweep";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { municipalityWithUnit } from "tests/panel";
@@ -75,11 +75,13 @@ describe("envio na hora do evento (AD-074)", () => {
     expect(row?.state).toBe("sent");
   });
 
-  it("leitura ou escrita com erro não disparam; a próxima escrita leva o que ficou, na ordem", async () => {
+  it("leitura não dispara; escrita, mesmo com erro na resposta, leva o que ficou, na ordem", async () => {
     await app.inject({ method: "GET", url: "/read/leave_home" });
-    await app.inject({ method: "POST", url: "/write/skipped/409" });
     await app.sendNow.idle(slug);
     expect(sent.map((x) => x.data.kind)).toEqual(["queue_opened"]);
+    await app.inject({ method: "POST", url: "/write/skipped/409" });
+    await app.sendNow.idle(slug);
+    expect(sent.map((x) => x.data.kind)).toEqual(["queue_opened", "leave_home", "skipped"]);
 
     await app.inject({ method: "POST", url: "/write/come_now/200" });
     await app.sendNow.idle(slug);
@@ -130,5 +132,27 @@ describe("envio na hora do evento (AD-074)", () => {
     await app.inject({ method: "POST", url: "/write/queue_opened/200" });
     await app.sendNow.idle(slug);
     expect(sent.filter((x) => x.title === batch)).toHaveLength(150);
+  });
+
+  it("a varredura também esvazia mais de um lote (100) na mesma rodada", async () => {
+    const batch = `varredura-${randomUUID()}`;
+    await db()
+      .insert(notice)
+      .values(
+        Array.from({ length: 150 }, (_, i) => ({
+          key: `${batch}:${i}`,
+          patientId,
+          entryId: randomUUID(),
+          kind: "queue_opened",
+          title: batch,
+          body: "b",
+        })),
+      );
+    const swept: Sending[] = [];
+    await sweepMunicipality(db(), Date.now(), async (list) => {
+      swept.push(...list);
+      return list.map(() => ({ ok: true as const }));
+    });
+    expect(swept.filter((x) => x.title === batch)).toHaveLength(150);
   });
 });

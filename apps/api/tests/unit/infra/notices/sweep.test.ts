@@ -77,6 +77,10 @@ describe("chamadas que perderam a hora antes do envio (AD-074)", () => {
     );
   });
 
+  it("chamada mais nova 'unconfirmed' (pode ter chegado) também tira a anterior", () => {
+    expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "unconfirmed")])).toEqual(new Set(["a"]));
+  });
+
   it("chamada mais nova que desistiu ou também perdeu a hora não tira a anterior", () => {
     expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "failed")])).toEqual(new Set());
     expect(claim(["a"], [n("a", "your_turn"), n("b", "recalled", "stale")])).toEqual(new Set());
@@ -144,17 +148,35 @@ describe("envio à Expo", () => {
     }
   });
 
-  it("a Expo aceitou (200) mas o corpo não chega: conta como enviado, sem reenviar o lote todo", async () => {
-    vi.stubGlobal("fetch", async () => ({
-      ok: true,
-      status: 200,
-      json: async () => {
-        throw new Error("corpo interrompido");
+  it("200 com corpo que não é o da Expo (HTML de proxy, `errors`): falha, para tentar de novo", async () => {
+    for (const json of [
+      async () => {
+        throw new Error("não é JSON");
       },
+      async () => ({ errors: [{ code: "INTERNAL" }] }),
+    ]) {
+      vi.stubGlobal("fetch", async () => ({ ok: true, status: 200, json }));
+      try {
+        const r = await expoSenderWith(1000)([{ for: "ExponentPushToken[x]", title: "t", body: "b", data: {} }]);
+        expect(r[0]?.ok).toBe(false);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    }
+  });
+
+  it("erro da Expo (503) não espera o corpo", async () => {
+    vi.stubGlobal("fetch", async () => ({
+      ok: false,
+      status: 503,
+      json: () => new Promise(() => {}),
+      body: { cancel: async () => {} },
     }));
     try {
-      const r = await expoSenderWith(1000)([{ for: "ExponentPushToken[x]", title: "t", body: "b", data: {} }]);
-      expect(r).toEqual([{ ok: true }]);
+      const started = Date.now();
+      const r = await expoSenderWith(5000)([{ for: "ExponentPushToken[x]", title: "t", body: "b", data: {} }]);
+      expect(r).toEqual([{ ok: false, error: "expo 503" }]);
+      expect(Date.now() - started).toBeLessThan(1000);
     } finally {
       vi.unstubAllGlobals();
     }
