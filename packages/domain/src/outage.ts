@@ -27,18 +27,23 @@ export function inManualMode(day: SessionDay): boolean {
 }
 
 /**
- * Sinal recente da unidade. Mais velho que isso, com alguém chamando, pode ser uma queda que ainda não se
- * confirmou (2 min com TV, 10 sem), e a queda volta no tempo até o último sinal: o atraso espera.
+ * Sinal recente da unidade, medido no giro da varredura. Mais velho que isso, com alguém chamando, pode ser uma
+ * queda que ainda não se confirmou (2 min com TV, 10 sem), e a queda volta no tempo até o último sinal: o
+ * atraso espera. A TV grava o sinal a cada 20 s; a estação também, mas a aba em segundo plano pode consultar
+ * só uma vez por minuto (até ~80 s de idade com a unidade no ar).
  */
-export const FRESH_SIGNAL_MS = 90_000;
+export const TV_FRESH_MS = 45_000;
+export const STATION_FRESH_MS = 100_000;
+/** Um giro da varredura (PD-50); parada por mais de 2 giros com o servidor no ar, o sinal visto já não vale. */
+const SWEEP_MS = 60_000;
 
 /**
  * PV5 (AD-076): a cada giro da varredura, o sistema percebe a queda sozinho e guarda o período no dia, e o
  * relógio do prazo de chegada para durante ele, como na queda registrada pela recepção (RN-CONT-03):
  * - unidade que já deu sinal de vida nesta sessão, com estação chamando e sem sinal: abre a queda desde o
  *   último sinal (modo manual) e a fecha quando o sinal volta ou quando ninguém mais chama. Com uma TV que
- *   já deu sinal nesta sessão, só a TV conta, e 2 min sem ela é queda (sem TV não há QR nem chamada à
- *   vista); sem TV (ou com uma TV que ainda não deu sinal, ou desparelhada), contam as estações, com 10 min
+ *   já deu sinal nesta sessão, só a TV conta, e 2 min sem ela é queda (sem a TV ninguém vê as
+ *   chamadas); sem TV (ou com uma TV que ainda não deu sinal, ou desparelhada), contam as estações, com 10 min
  *   de silêncio. Antes do primeiro sinal a unidade ainda não começou, e sem estação chamando ninguém chama:
  *   não é queda. No primeiro giro depois de o servidor reiniciar as estações ainda não voltaram a dar sinal:
  *   espera o giro seguinte;
@@ -74,6 +79,7 @@ export function trackOutage(day: SessionDay, now: number, signal: UnitSignal): S
     outages,
     lastSweepAt: now,
     unitSignalAt: signalAt,
+    signalSource: useTv ? "tv" : "stations",
     ...(live ? { liveSignalAt: signalAt as number } : {}),
     ...(tvLive ? { tvLiveAt: signal.tvSignalAt as number } : {}),
   };
@@ -82,13 +88,21 @@ export function trackOutage(day: SessionDay, now: number, signal: UnitSignal): S
 const callingStations = (day: SessionDay) => day.stations.some((e) => e.open && e.services.includes(day.serviceId));
 
 /**
- * Queda ainda não confirmada: o último sinal visto está parado, alguém chama e a unidade já deu sinal nesta
- * sessão. Pode virar queda que volta no tempo e estende o prazo; até lá, o atraso não é julgado (PV5).
+ * Queda ainda não confirmada: o sinal que conta está parado, alguém chama e a unidade já deu sinal nesta sessão.
+ * Pode virar queda que volta no tempo e estende o prazo; até lá, o atraso não é julgado (PV5). Entre dois giros
+ * o sinal guardado envelhece sem a unidade ter caído, então é parado se: no giro já passava do limite da fonte;
+ * agora passa do limite e mais um giro (caiu logo depois do giro); ou a varredura parou há mais de 2 giros.
+ * Um sinal que volta entre dois giros só conta no giro seguinte.
  */
 export function pendingOutage(day: SessionDay, now: number): boolean {
   const at = day.unitSignalAt;
-  if (at === undefined || inManualMode(day) || day.liveSignalAt === undefined || !callingStations(day)) return false;
-  return at === null || now - at > FRESH_SIGNAL_MS;
+  const sweep = day.lastSweepAt;
+  if (at === undefined || sweep === undefined || inManualMode(day) || day.liveSignalAt === undefined) return false;
+  if (!callingStations(day)) return false;
+  if (at === null) return true;
+  // Dia salvo antes de guardar a fonte: o limite das estações, o mais longo.
+  const fresh = day.signalSource === "tv" ? TV_FRESH_MS : STATION_FRESH_MS;
+  return sweep - at > fresh || now - at > fresh + SWEEP_MS || now - sweep > 2 * SWEEP_MS;
 }
 
 /** O fim da sessão (encerrada ou cancelada) fecha a queda aberta: o dia que acabou não fica em modo manual. */

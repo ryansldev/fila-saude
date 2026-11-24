@@ -111,8 +111,10 @@ export type SessionDay = {
   liveSignalAt?: number;
   /** Último sinal da TV visto nesta sessão: daí em diante só a TV conta (PV5). */
   tvLiveAt?: number;
-  /** O último sinal da fonte que conta, no último giro; o "perdeu a vez" espera um sinal recente. */
+  /** O último sinal da fonte que conta, no último giro; com ele parado, o atraso espera (`pendingOutage`). */
   unitSignalAt?: number | null;
+  /** De onde veio `unitSignalAt` no último giro: a TV ou as estações (cada uma tem a sua folga). */
+  signalSource?: "tv" | "stations";
   nextNumber: number;
   /** Prefixo de senha do serviço (RN-FILA-04), ex.: "C" → "C-001". */
   ticketPrefix: string;
