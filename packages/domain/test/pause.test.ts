@@ -174,6 +174,15 @@ describe("fechar e reabrir a estação (RN-EST-07)", () => {
   });
 });
 
+describe("fechar depois de uma pausa", () => {
+  it("a pausa que já acabou entra no histórico só até a volta; fechar de novo é recusado", () => {
+    let d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: { inMin: 15 } }, T));
+    d = apply(closeStation(d, { stationId: "e1" }, T + 120 * MIN));
+    expect(station(d).stops).toEqual([{ start: T, end: T + 15 * MIN }]);
+    expect(closeStation(d, { stationId: "e1" }, T + 130 * MIN)).toEqual({ ok: false, error: "forbidden_transition" });
+  });
+});
+
 describe("pausa da etapa: quando nenhuma estação chama", () => {
   it("só há pausa da etapa quando todas as estações abertas estão em pausa", () => {
     let d = two(dayWith(["ana"]));
@@ -350,6 +359,34 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
     });
     // A outra vai parar sem hora de volta: conta só uma.
     expect(estimate(staged, "caio", T, AUTO)).toEqual({ kind: "position", position: 3, minutes: 30 });
+  });
+
+  it("pausa sem volta marcada para bem depois da vez: a estação ainda conta na capacidade", () => {
+    const d = two(dayWith(["ana", "bruno", "caio"]));
+    const staged = freeze({
+      ...d,
+      stations: d.stations.map((e) => (e.id === "e2" ? { ...e, pause: { from: T + 120 * MIN, until: null } } : e)),
+    });
+    expect(estimate(staged, "caio", T, AUTO)).toEqual({ kind: "position", position: 3, minutes: 15 });
+  });
+
+  it("na triagem, pausa sem volta do atendimento bem depois da consulta: a previsão da consulta continua", () => {
+    const base = dayWith(["ana", "joao"], {
+      stations: [
+        { id: "tri", stage: "triage", services: ["cli"], open: true, calledItemId: null },
+        {
+          id: "e1",
+          stage: "care",
+          services: ["cli"],
+          open: true,
+          calledItemId: null,
+          pause: { from: T + 300 * MIN, until: null },
+        },
+      ],
+      initialTimeMin: { triage: 5 },
+    });
+    const tri = freeze({ ...base, items: base.items.map((i) => ({ ...i, stage: "triage" as const })) });
+    expect(estimate(tri, "joao", T, AUTO)).toMatchObject({ minutes: 5, query: { minutes: 20 } });
   });
 
   it("com outra estação chamando, a pausa de uma não para a fila nem o 'venha agora'", () => {

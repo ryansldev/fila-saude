@@ -228,7 +228,8 @@ function closeCalled(
  * RN-CHAM-01/02: encerra o chamado anterior desta estação e chama o 1º elegível dela. Na triagem,
  * `confirmedRisk` confirma ou reclassifica o risco de quem sai (RN-TRI-03).
  * Sem elegível, o chamado anterior é finalizado e a estação fica livre (ok, sem evento "chamado");
- * sem chamado anterior (ou estação fechada), `nenhum_elegivel` sem mudar nada. A seleção usa o estado recebido: uma 2ª estação chamando
+ * sem chamado anterior (ou estação fechada), `nenhum_elegivel` sem mudar nada. Em pausa (RN-EST-06), só
+ * finaliza o chamado anterior; sem ele, `station_paused`. A seleção usa o estado recebido: uma 2ª estação chamando
  * sobre o estado devolvido pela 1ª não pega o mesmo paciente (INV-04).
  */
 export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<SessionDay> {
@@ -364,10 +365,11 @@ export function closeStation(day: SessionDay, cmd: Cmd, now: number): Result<Ses
   if (day.state !== "open") return failure("session_closed");
   const station = day.stations.find((e) => e.id === cmd.stationId);
   if (!station) return failure("forbidden_transition");
+  if (!station.open) return failure("forbidden_transition");
   if (station.calledItemId !== null) return failure("station_has_call");
-  // A pausa em curso vira parada encerrada; o tempo fechada conta a partir de agora.
+  // A pausa vira parada encerrada (até a volta, se já acabou); o tempo fechada conta a partir de agora.
   const { pause, ...rest } = station;
-  const stop = pause && pause.from <= now ? { start: pause.from, end: now } : undefined;
+  const stop = pause && pause.from <= now ? { start: pause.from, end: Math.min(pause.until ?? now, now) } : undefined;
   const closed = { ...rest, ...withStop(station, stop), open: false, closedAt: now };
   return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) });
 }

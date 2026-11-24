@@ -7,6 +7,7 @@ import {
   type QueueItem,
   type SessionDay,
   type Stage,
+  type Station,
   stageOrder,
   turnPassed,
 } from "./queue.ts";
@@ -69,6 +70,13 @@ export function averageTime(day: SessionDay, stage: Stage, serviceId: string, no
   if (valid.length < 3) return initial(day, stage);
   return valid.reduce((s, m) => s + m, 0) / valid.length;
 }
+
+/**
+ * Capacidade (PA3): a estação que para sem hora de volta antes da vez (`by`) não conta; a pausa com volta é
+ * passageira e conta. Todas paradas: conta as abertas, para o tempo depois da volta (a pausa da etapa decide).
+ */
+const capacity = (stations: Station[], by: number) =>
+  stations.filter((e) => !stopsForGood(e, by)).length || stations.length;
 
 const open = (day: SessionDay, stage: Stage) =>
   day.stations.filter((e) => e.open && e.stage === stage && e.services.includes(day.serviceId));
@@ -135,9 +143,6 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const stations = open(day, item.stage);
   const first = stations[0];
   if (!first) return { kind: "awaiting_start" };
-  // Capacidade: a estação que vai parar sem hora de volta não conta; a pausa com volta é passageira e conta.
-  // Todas paradas sem volta: conta as abertas, para o tempo depois da volta (a pausa da etapa decide o resto).
-  const n = stations.filter((e) => !stopsForGood(e)).length || stations.length;
 
   const inStage = day.items.filter((i) => inQueue(i) && i.stage === item.stage);
   // AD-076: remoto que perdeu o prazo de chegada perdeu a vez: vai para o fim ao chegar e não está "à
@@ -157,7 +162,9 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
             item,
           );
   if (ahead < 0) return { kind: "awaiting_start" };
-  const queue = (ahead * averageTime(day, item.stage, day.serviceId, now)) / n;
+  const avg = averageTime(day, item.stage, day.serviceId, now);
+  const n = capacity(stations, now + ((ahead * avg) / stations.length) * MIN);
+  const queue = (ahead * avg) / n;
   const { minutes, pause, blocked } = withPause(day, item, ahead, queue, now);
   const comeNow = item.state === "remote" && ahead === 0 && !blocked;
   const primary: Estimate = comeNow
@@ -168,10 +175,8 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   // RN-ETA-01c/AD-009: na triagem, a previsão da consulta vai à parte (inclusive com "venha agora").
   const careStations = open(day, "care");
   if (careStations.length === 0) return primary;
-  // Sem hora de volta na triagem ou no atendimento, não há como prever a consulta.
-  const carePause = stagePause(day, "care", now);
-  if (pause?.until === null || carePause?.until === null) return primary;
-  const nA = careStations.filter((e) => !stopsForGood(e)).length || careStations.length;
+  // Sem hora de volta na triagem, não há como prever a consulta.
+  if (pause?.until === null) return primary;
   // Quem já está na fila do atendimento é atendido antes de X chegar lá (RN-TRI-04: fila nova);
   // da triagem, contam os que vêm antes de X, como na posição (quem perdeu a vez vai para o fim, AD-076).
   const fromTriage = passed(item)
@@ -184,8 +189,13 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const beforeQuery = day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length + fromTriage;
   // A triagem com a pausa dela (o tempo da posição); o atendimento soma a pausa dele se cair na espera.
   const triageWeight = comeNow ? 0 : minutes;
-  const careQueue = (beforeQuery * averageTime(day, "care", day.serviceId, now)) / nA;
   const careStart = now + triageWeight * MIN;
+  const careAvg = averageTime(day, "care", day.serviceId, now);
+  const nA = capacity(careStations, careStart + ((beforeQuery * careAvg) / careStations.length) * MIN);
+  const careQueue = (beforeQuery * careAvg) / nA;
+  const carePause = stagePause(day, "care", now);
+  // Pausa sem hora de volta do atendimento dentro da espera: não há como prever a consulta.
+  if (carePause?.until === null && carePause.from <= careStart + careQueue * MIN) return primary;
   const careExtra =
     carePause && carePause.until !== null && carePause.from <= careStart + careQueue * MIN
       ? Math.max(0, carePause.until - Math.max(carePause.from, careStart)) / MIN

@@ -86,9 +86,9 @@ export function resumedAt(day: SessionDay, e: Station, t: number): number {
   return Math.max(Number.NEGATIVE_INFINITY, ...ends.filter((end) => end <= t));
 }
 
-/** A estação vai parar sem hora de volta (em pausa agora ou marcada): não conta na capacidade da fila. */
-export function stopsForGood(e: Station): boolean {
-  return e.pause !== undefined && e.pause.until === null;
+/** A estação para sem hora de volta até `by` (em pausa ou marcada antes): não conta na capacidade da fila. */
+export function stopsForGood(e: Station, by: number): boolean {
+  return e.pause !== undefined && e.pause.until === null && e.pause.from <= by;
 }
 
 /**
