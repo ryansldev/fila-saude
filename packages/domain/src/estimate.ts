@@ -108,7 +108,7 @@ function withPause(
   const p = stagePause(day, item.stage, now);
   if (!p) return { minutes: queue, blocked: false };
   // O primeiro, já com "venha agora" e a caminho: a pausa avisada começa depois do prazo dele.
-  const onTheWay = item.state === "remote" && ahead === 0 && p.from > now && arrivalDeadlineEnd(day, item) !== null;
+  const onTheWay = item.state === "remote" && ahead === 0 && arrivalDeadlineEnd(day, item) !== null;
   if (onTheWay && lateness(day, item, now) !== "late") return { minutes: queue, blocked: false };
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
   const left = (t: number | null) => (t === null ? 0 : (t - now) / MIN);
@@ -193,7 +193,7 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const careAvg = averageTime(day, "care", day.serviceId, now);
   const nA = capacity(careStations, careStart + ((beforeQuery * careAvg) / careStations.length) * MIN);
   const careQueue = (beforeQuery * careAvg) / nA;
-  const carePause = stagePause(day, "care", now);
+  const carePause = stagePause(day, "care", careStart);
   // Pausa sem hora de volta do atendimento dentro da espera: não há como prever a consulta.
   if (carePause?.until === null && carePause.from <= careStart + careQueue * MIN) return primary;
   const careExtra =

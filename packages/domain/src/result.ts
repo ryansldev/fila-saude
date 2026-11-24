@@ -61,7 +61,11 @@ export type EventKind =
   | "archived"
   | "still_needs"
   | "reactivated"
-  | "cancelled";
+  | "cancelled"
+  | "station_paused"
+  | "station_resumed"
+  | "station_closed"
+  | "station_reopened";
 
 export type Event = {
   kind: EventKind;

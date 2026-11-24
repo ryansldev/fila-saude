@@ -112,6 +112,11 @@ function expectedSince(day: SessionDay, signalAt: number | null, now: number): n
  * agora passa do limite e mais um giro (caiu logo depois do giro); ou a varredura parou há mais de 2 giros.
  * Um sinal que volta entre dois giros só conta no giro seguinte.
  */
+/** Desde quando o sinal que conta está parado (o último sinal, ou a volta da pausa, se veio depois). */
+export function stalledSince(day: SessionDay, now: number): number | null {
+  return day.unitSignalAt === undefined ? null : expectedSince(day, day.unitSignalAt, now);
+}
+
 export function pendingOutage(day: SessionDay, now: number): boolean {
   const at = day.unitSignalAt;
   const sweep = day.lastSweepAt;

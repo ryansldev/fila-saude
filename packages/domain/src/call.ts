@@ -365,13 +365,16 @@ export function closeStation(day: SessionDay, cmd: Cmd, now: number): Result<Ses
   if (day.state !== "open") return failure("session_closed");
   const station = day.stations.find((e) => e.id === cmd.stationId);
   if (!station) return failure("forbidden_transition");
-  if (!station.open) return failure("forbidden_transition");
+  // Já fechada (toque duplo, nova tentativa): nada muda.
+  if (!station.open) return ok(day);
   if (station.calledItemId !== null) return failure("station_has_call");
   // A pausa vira parada encerrada (até a volta, se já acabou); o tempo fechada conta a partir de agora.
   const { pause, ...rest } = station;
   const stop = pause && pause.from <= now ? { start: pause.from, end: Math.min(pause.until ?? now, now) } : undefined;
   const closed = { ...rest, ...withStop(station, stop), open: false, closedAt: now };
-  return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) });
+  return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) }, [
+    { kind: "station_closed", stationId: station.id },
+  ]);
 }
 
 /**

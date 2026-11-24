@@ -2,7 +2,7 @@ import { applyTransition, ITEM_TRANSITIONS, type ItemState, type SessionState } 
 import type { UnitConfig } from "./kinds.ts";
 import type { Origin } from "./list.ts";
 import { type OrderKey, orderItems, type Risk } from "./order.ts";
-import { pendingOutage } from "./outage.ts";
+import { pendingOutage, stalledSince } from "./outage.ts";
 import {
   canGivePriority,
   elderlyLevel,
@@ -268,7 +268,8 @@ export function lateness(day: SessionDay, x: QueueItem, now: number): "on_time" 
   if (now < end) return "late_in_contingency";
   // Sinal da unidade parado desde antes do fim do prazo: pode ser uma queda ainda não confirmada, que volta
   // no tempo e estende o prazo; até lá, o atraso espera (PV5).
-  const signalAt = day.unitSignalAt ?? Number.NEGATIVE_INFINITY;
+  // A queda começaria no último sinal, ou na volta da pausa se veio depois.
+  const signalAt = stalledSince(day, now) ?? Number.NEGATIVE_INFINITY;
   return pendingOutage(day, now) && signalAt < end ? "late_in_contingency" : "late";
 }
 

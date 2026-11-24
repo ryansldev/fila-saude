@@ -1,5 +1,13 @@
 import { inBreak } from "./pause-time.ts";
-import { DEFAULT_CONFIG, extendedDeadlineEnd, lateness, type SessionDay, type Stage, type Station } from "./queue.ts";
+import {
+  DEFAULT_CONFIG,
+  extendedDeadlineEnd,
+  lateness,
+  type QueueItem,
+  type SessionDay,
+  type Stage,
+  type Station,
+} from "./queue.ts";
 import { failure, ok, type Result } from "./result.ts";
 
 export { callingAt, type Pause, pausedAt, stagePause } from "./pause-time.ts";
@@ -26,8 +34,10 @@ const withStation = (day: SessionDay, e: Station): SessionDay => ({
  * com o prazo estendido por uma queda); nulo sem ninguém a caminho.
  */
 function onTheWayUntil(day: SessionDay, stage: Stage, now: number): number | null {
+  // A urgência confirmada não perde a vez pelo prazo: enquanto não chega, ainda está a caminho.
+  const coming = (i: QueueItem) => i.confirmedUrgency || lateness(day, i, now) !== "late";
   const ends = day.items
-    .filter((i) => i.state === "remote" && i.stage === stage && lateness(day, i, now) !== "late")
+    .filter((i) => i.state === "remote" && i.stage === stage && coming(i))
     .map((i) => extendedDeadlineEnd(day, i, now))
     .filter((end): end is number => end !== null);
   return ends.length > 0 ? Math.max(...ends) : null;
@@ -60,7 +70,9 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   // A pausa que acabou sozinha deixa a hora da volta: o silêncio de antes dela não é queda.
   const old = !current && e.pause?.until != null ? { start: e.pause.from, end: e.pause.until } : undefined;
   const since = old === undefined ? {} : { callingSince: Math.max(e.callingSince ?? old.end, old.end) };
-  return ok(withStation(day, { ...e, ...since, ...withStop(e, old), pause: { from, until } }));
+  return ok(withStation(day, { ...e, ...since, ...withStop(e, old), pause: { from, until } }), [
+    { kind: "station_paused", stationId: e.id, data: { from, until } },
+  ]);
 }
 
 /** "Voltar agora" (em pausa) ou "desmarcar a pausa" (ainda não começou): a estação volta a chamar. */
@@ -72,10 +84,11 @@ export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   const { pause, ...rest } = e;
   const started = pause.from <= now ? { start: pause.from, end: now } : undefined;
   const kept = { ...rest, ...withStop(e, started) };
+  const events = [{ kind: "station_resumed" as const, stationId: e.id }];
   // No almoço da sessão, tira a pausa própria, mas a estação só chama no fim do almoço (que já conta como volta).
-  if (inBreak(day, now)) return ok(withStation(day, kept));
+  if (inBreak(day, now)) return ok(withStation(day, kept), events);
   // Pausa que já começou: o silêncio conta da volta (desmarcar antes do início não muda nada).
-  return ok(withStation(day, started ? { ...kept, callingSince: now } : kept));
+  return ok(withStation(day, started ? { ...kept, callingSince: now } : kept), events);
 }
 
 /** Reabrir a estação fechada (fechou por engano): volta a chamar nesta sessão. */
@@ -85,5 +98,7 @@ export function reopenStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   if (!e || e.open) return failure("forbidden_transition");
   const { closedAt, ...rest } = e;
   const closed = closedAt === undefined ? undefined : { start: closedAt, end: now };
-  return ok(withStation(day, { ...rest, ...withStop(e, closed), open: true, callingSince: now }));
+  return ok(withStation(day, { ...rest, ...withStop(e, closed), open: true, callingSince: now }), [
+    { kind: "station_reopened", stationId: e.id },
+  ]);
 }
