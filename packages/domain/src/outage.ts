@@ -78,7 +78,8 @@ export function trackOutage(day: SessionDay, now: number, signal: UnitSignal): S
     const after = Math.max(...outages.map((o) => o.end ?? 0), 0);
     outages = [...outages, { start: Math.max(ref ?? now, after), end: null }];
   }
-  if (open && (live || !calling)) outages = outages.map((o) => (o === open ? { ...o, end: now } : o));
+  // Só o sinal de verdade fecha a queda; a volta de uma pausa apenas adia abrir uma nova.
+  if (open && (signalLive || !calling)) outages = outages.map((o) => (o === open ? { ...o, end: now } : o));
   return {
     ...day,
     outages,

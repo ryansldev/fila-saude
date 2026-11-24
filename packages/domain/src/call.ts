@@ -1,7 +1,7 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
 import { withStop } from "./pause.ts";
-import { pausedAt } from "./pause-time.ts";
+import { inBreak, pausedAt } from "./pause-time.ts";
 import {
   eligible,
   orderKey,
@@ -254,7 +254,10 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   }
   // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
   if (pausedAt(current, station, now)) {
-    return events.length > 0 ? ok(current, events) : failure("station_paused");
+    if (events.length > 0) return ok(current, events);
+    // Sem pausa própria em curso, é o intervalo da sessão (almoço): "voltar agora" não resolve.
+    const own = station.pause && station.pause.from <= now && (station.pause.until ?? Number.POSITIVE_INFINITY) > now;
+    return failure(!own && inBreak(current, now) ? "session_break" : "station_paused");
   }
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true })[0];
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").

@@ -123,7 +123,7 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
     );
     const back = apply(resumeStation(lunch, { stationId: "e1" }, T + 30 * MIN));
     expect(station(back).pause).toBeUndefined();
-    expect(callNext(back, { stationId: "e1" }, T + 30 * MIN)).toEqual({ ok: false, error: "station_paused" });
+    expect(callNext(back, { stationId: "e1" }, T + 30 * MIN)).toEqual({ ok: false, error: "session_break" });
     expect(station(apply(callNext(back, { stationId: "e1" }, T + 60 * MIN))).calledItemId).toBe("ana");
   });
 
@@ -207,6 +207,37 @@ describe("auditoria e quem está a caminho", () => {
     d = apply(pauseStation(d, { stationId: "e1", back: { at: T + 60 * MIN } }, T + 2 * MIN));
     d = freeze({ ...d, contingencies: [{ start: T + 5 * MIN, end: T + 15 * MIN }] });
     expect(estimate(d, "bia", T + 33 * MIN, AUTO)).toEqual({ kind: "come_now" });
+  });
+});
+
+describe("pausa e queda da unidade", () => {
+  it("com queda aberta ou ainda não confirmada não dá para pausar (os prazos de quem vem estão em aberto)", () => {
+    const open = freeze({ ...dayWith(["ana"]), outages: [{ start: T - 5 * MIN, end: null }] });
+    expect(pauseStation(open, { stationId: "e1", back: null }, T)).toEqual({ ok: false, error: "pause_during_outage" });
+    const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
+    let pending = freeze(trackOutage(dayWith(["ana"]), T - 5 * MIN, st(T - 5 * MIN)));
+    pending = freeze(trackOutage(pending, T, st(T - 5 * MIN)));
+    expect(pauseStation(pending, { stationId: "e1", back: null }, T)).toEqual({
+      ok: false,
+      error: "pause_during_outage",
+    });
+  });
+
+  it("a volta de uma estação não fecha a queda aberta: só o sinal de verdade fecha", () => {
+    const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
+    const base = dayWith(["ana"]);
+    const d = freeze({
+      ...base,
+      outages: [{ start: T, end: null }],
+      liveSignalAt: T - MIN,
+      stations: base.stations.map((e) => ({ ...e, callingSince: T + 20 * MIN })),
+    });
+    expect(trackOutage(d, T + 21 * MIN, st(T - MIN)).outages).toEqual([{ start: T, end: null }]);
+  });
+
+  it("no almoço da sessão, chamar diz que é o intervalo (não há pausa própria para tirar)", () => {
+    const d = present(dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] }), "ana");
+    expect(callNext(d, { stationId: "e1" }, T + 10 * MIN)).toEqual({ ok: false, error: "session_break" });
   });
 });
 
@@ -492,8 +523,10 @@ describe("queda percebida com a pausa (QP6)", () => {
     const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
     let d = freeze(trackOutage(dayWith(["ana", "bruno"]), T, st(T)));
     d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 60 } }, T));
-    d = alreadyNotified(d, "ana", T + 64 * MIN, 30);
-    d = apply(pauseStation(d, { stationId: "e1", back: null }, T + 65 * MIN));
+    d = alreadyNotified(d, "ana", T + 60 * MIN, 30);
+    // Giro logo depois da volta (sinal ainda recente pela volta): dá para pausar de novo.
+    d = freeze(trackOutage(d, T + 61 * MIN, st(T)));
+    d = apply(pauseStation(d, { stationId: "e1", back: null }, T + 61 * MIN));
     expect(freeze(trackOutage(d, T + 69 * MIN, st(T))).outages ?? []).toEqual([]);
   });
 

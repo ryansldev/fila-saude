@@ -1,3 +1,4 @@
+import { inManualMode, pendingOutage } from "./outage.ts";
 import { inBreak } from "./pause-time.ts";
 import {
   DEFAULT_CONFIG,
@@ -54,6 +55,8 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e?.open) return failure("forbidden_transition");
+  // Com queda aberta ou por confirmar, o prazo de quem vem pode crescer: não dá para saber quando pausar.
+  if (inManualMode(day) || pendingOutage(day, now)) return failure("pause_during_outage");
   // A pausa marcada ou em curso mantém o início; a que já acabou dá lugar a uma nova.
   const current = e.pause && (e.pause.until === null || e.pause.until > now) ? e.pause : null;
   // Trocar a volta pode com paciente chamado (a estação chama até a pausa começar); pausar, não.
