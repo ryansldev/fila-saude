@@ -68,7 +68,8 @@ export type EventKind =
   | "station_paused"
   | "station_resumed"
   | "station_closed"
-  | "station_reopened";
+  | "station_reopened"
+  | "turn_after_pause";
 
 export type Event = {
   kind: EventKind;

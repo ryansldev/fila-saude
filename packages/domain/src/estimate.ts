@@ -105,11 +105,18 @@ function withPause(
   queue: number,
   now: number,
 ): { minutes: number; pause?: Pause; blocked: boolean } {
+  // Já com "venha agora" e a caminho (PA6): a pausa do consultório começa depois do prazo dele (e espera ele
+  // ser chamado, opção C), então só o almoço da sessão, que não espera ninguém, entra no tempo.
+  const onTheWay =
+    item.state === "remote" && arrivalDeadlineEnd(day, item) !== null && lateness(day, item, now) !== "late";
+  if (onTheWay) {
+    const sessionOnly = { ...day, stations: day.stations.map(({ pause: _, ...e }) => e) };
+    const wait = pausedWait(sessionOnly, item.stage, now, queue * MIN, 0);
+    if (!wait.pause) return { minutes: queue, blocked: false };
+    return { minutes: wait.end === null ? queue : (wait.end - now) / MIN, pause: wait.pause, blocked: false };
+  }
   const p = stagePause(day, item.stage, now);
   if (!p) return { minutes: queue, blocked: false };
-  // O primeiro, já com "venha agora" e a caminho: a pausa avisada começa depois do prazo dele.
-  const onTheWay = item.state === "remote" && ahead === 0 && arrivalDeadlineEnd(day, item) !== null;
-  if (onTheWay && lateness(day, item, now) !== "late") return { minutes: queue, blocked: false };
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
   const remote = item.state === "remote";
   // O primeiro em casa não recebe "venha agora" na pausa nem se o prazo de chegada cair nela.

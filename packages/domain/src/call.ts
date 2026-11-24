@@ -1,7 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { withStop } from "./pause.ts";
-import { inBreak, pausedAt } from "./pause-time.ts";
+import { inBreak, pausedAt, settleDeferredPause, withStop } from "./pause-time.ts";
 import {
   eligible,
   orderKey,
@@ -252,6 +251,11 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     current = closed.day;
     events.push(...closed.events);
   }
+  // Atender antes de pausar (opção C): sem mais ninguém esperando, a pausa começa e ninguém é chamado.
+  if (station.pause?.deferred) {
+    current = settleDeferredPause(current, station.id, now);
+    if (!current.stations.find((e) => e.id === station.id)?.pause?.deferred) return ok(current, events);
+  }
   // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
   if (pausedAt(current, station, now)) {
     if (events.length > 0) return ok(current, events);
@@ -306,7 +310,7 @@ export function finish(day: SessionDay, cmd: CmdClose, now: number): Result<Sess
   const present = requireShowUp(day, found.station, found.item, now);
   if (!present.ok) return failure("no_show_up");
   const closed = closeCalled(present.day, found.station, found.item, now, cmd.confirmedRisk, cmd.refer, cmd.classifies);
-  return ok(closed.day, closed.events);
+  return ok(settleDeferredPause(closed.day, found.station.id, now), closed.events);
 }
 
 /** Linha do contrato escolhida pelos pulos no dia (a transição depende da condição). */
@@ -335,10 +339,21 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   const ids = base(day, item, cmd.stationId);
   const skipped: Event = { kind: "skipped", ...ids, data: { skips, for: to, at: now } };
   const lastCall = day.calls.findLastIndex((c) => c.itemId === item.id);
-  const markSkip = (d: SessionDay): SessionDay => ({
-    ...d,
-    calls: d.calls.map((c, i) => (i === lastCall ? { ...c, noShow: true } : c)),
-  });
+  // Quem não compareceu não segura mais a pausa adiada (opção C); sem mais ninguém, ela começa.
+  const markSkip = (d: SessionDay): SessionDay =>
+    settleDeferredPause(
+      {
+        ...d,
+        calls: d.calls.map((c, i) => (i === lastCall ? { ...c, noShow: true } : c)),
+        stations: d.stations.map((e) =>
+          e.id === cmd.stationId && e.pause?.waitFor
+            ? { ...e, pause: { ...e.pause, waitFor: e.pause.waitFor.filter((id) => id !== item.id) } }
+            : e,
+        ),
+      },
+      cmd.stationId,
+      now,
+    );
 
   if (to === "present") {
     const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, { applyDelay: false });

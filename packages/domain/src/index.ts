@@ -86,13 +86,17 @@ export type { OrderKey, Risk, SuggestionKey } from "./order.ts";
 export { inManualMode, trackOutage, type UnitSignal } from "./outage.ts";
 export {
   callingAt,
+  confirmPause,
   type Pause,
   type PauseBack,
   pausedAt,
+  pauseStartNotices,
   pauseStation,
   reopenStation,
   resumeStation,
+  serveBeforePause,
   stagePause,
+  waitingBeforePause,
 } from "./pause.ts";
 export type { Action, Cell, MatrixRow, Profile } from "./permissions.ts";
 export { can, cellText, conditions, MATRIX, OPERATE_CAVEAT_STAGE, PROFILES } from "./permissions.ts";

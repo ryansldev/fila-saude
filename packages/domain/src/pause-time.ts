@@ -1,4 +1,4 @@
-import type { SessionDay, Stage, Station } from "./queue.ts";
+import type { QueueItem, SessionDay, Stage, Station } from "./queue.ts";
 
 /**
  * Leitura das pausas no tempo (RN-EST-06, RN-SES-06), sem nada de `queue.ts` em tempo de execução: `outage.ts`
@@ -17,12 +17,14 @@ const serves = (day: SessionDay, e: Station, stage: Stage) =>
  * Intervalos em que a estação não chama: as paradas já encerradas, a pausa dela e as pausas planejadas da
  * sessão (vão entre faixas).
  */
-function intervals(day: SessionDay, e: Station): { start: number; end: number }[] {
-  const own = e.pause ? [{ start: e.pause.from, end: e.pause.until ?? NEVER }] : [];
+function intervals(day: SessionDay, e: Station, forCalls = false): { start: number; end: number }[] {
+  // Adiada (atender antes de pausar): a estação ainda chama, mas a fila de casa já conta com a pausa.
+  const own = e.pause && !(forCalls && e.pause.deferred) ? [{ start: e.pause.from, end: e.pause.until ?? NEVER }] : [];
   return [...(e.stops ?? []), ...own, ...(day.breaks ?? []).map((b) => ({ start: b.start, end: b.end }))];
 }
 
-const covering = (day: SessionDay, e: Station, t: number) => intervals(day, e).find((i) => i.start <= t && t < i.end);
+const covering = (day: SessionDay, e: Station, t: number, forCalls = false) =>
+  intervals(day, e, forCalls).find((i) => i.start <= t && t < i.end);
 
 /** Uma pausa planejada da sessão (vão entre faixas) cobre `t`. */
 export const inBreak = (day: SessionDay, t: number) => (day.breaks ?? []).some((b) => b.start <= t && t < b.end);
@@ -55,7 +57,7 @@ function pausedSince(day: SessionDay, e: Station, t: number): number {
 export function pausedBetween(day: SessionDay, e: Station | undefined, a: number, b: number): number {
   // Fechada e ainda não reaberta: o tempo fechada até `b` também não é atendimento.
   const closed = e?.closedAt !== undefined ? [{ start: e.closedAt, end: b }] : [];
-  const all = e ? intervals(day, e) : (day.breaks ?? []);
+  const all = e ? intervals(day, e, true) : (day.breaks ?? []);
   const cut = [...all, ...closed]
     .map((i) => ({ start: Math.max(i.start, a), end: Math.min(i.end, b) }))
     .filter((i) => i.end > i.start)
@@ -72,7 +74,7 @@ export function pausedBetween(day: SessionDay, e: Station | undefined, a: number
 
 /** A estação está em pausa em `t` (a dela ou a planejada da sessão). */
 export function pausedAt(day: SessionDay, e: Station, t: number): boolean {
-  return covering(day, e, t) !== undefined;
+  return covering(day, e, t, true) !== undefined;
 }
 
 /** A estação chama em `t`: aberta (não fechada) e fora de pausa. */
@@ -101,10 +103,41 @@ export function stagePause(day: SessionDay, stage: Stage, now: number): Pause | 
   if (stations.length === 0) return null;
   const starts = stations.flatMap((e) => intervals(day, e).map((i) => i.start)).filter((t) => t > now);
   for (const t of [now, ...[...new Set(starts)].sort((a, b) => a - b)]) {
-    if (!stations.every((e) => pausedAt(day, e, t))) continue;
+    // Conta também a pausa adiada (atender antes de pausar): a fila de casa já conta com ela.
+    if (!stations.every((e) => covering(day, e, t) !== undefined)) continue;
     const from = Math.max(...stations.map((e) => pausedSince(day, e, t)));
     const until = Math.min(...stations.map((e) => resumesAt(day, e, t)));
     return { from, until: until === NEVER ? null : until };
   }
   return null;
+}
+
+/** Guarda uma parada encerrada (pausa ou tempo fechada) no histórico da estação. */
+export function withStop(e: Station, stop: { start: number; end: number } | undefined): Pick<Station, "stops"> {
+  if (!stop || stop.end <= stop.start) return e.stops ? { stops: e.stops } : {};
+  return { stops: [...(e.stops ?? []), stop] };
+}
+
+/**
+ * Opção C (AD-077): quem estava a caminho quando a pausa foi marcada, já chegou e ainda não foi chamado. Só
+ * depois da hora da pausa (antes dela, a estação chama normalmente).
+ */
+export function waitingBeforePause(day: SessionDay, stationId: string, now: number): QueueItem[] {
+  const e = day.stations.find((x) => x.id === stationId);
+  const p = e?.pause;
+  if (!e || !p?.waitFor || p.from > now) return [];
+  const ids = new Set(p.waitFor);
+  return day.items.filter((i) => ids.has(i.id) && i.state === "present" && i.stage === e.stage);
+}
+
+/**
+ * A pausa adiada começa quando não há mais ninguém de `waitFor` esperando (o profissional finalizou): desde
+ * agora, com a mesma duração (a volta anda o mesmo tanto).
+ */
+export function settleDeferredPause(day: SessionDay, stationId: string, now: number): SessionDay {
+  const e = day.stations.find((x) => x.id === stationId);
+  const p = e?.pause;
+  if (!e || !p?.deferred || waitingBeforePause(day, stationId, now).length > 0) return day;
+  const pause = { from: now, until: p.until === null ? null : now + (p.until - p.from) };
+  return { ...day, stations: day.stations.map((x) => (x.id === e.id ? { ...e, pause } : x)) };
 }

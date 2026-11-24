@@ -69,7 +69,11 @@ export type Station = {
   services: string[];
   open: boolean;
   calledItemId: string | null;
-  pause?: { from: number; until: number | null };
+  /**
+   * `waitFor`: quem estava a caminho quando a pausa foi marcada (opção C: chegou e não foi chamado, a estação
+   * pergunta antes de pausar). `deferred`: o profissional escolheu atender antes; a pausa começa ao finalizar.
+   */
+  pause?: { from: number; until: number | null; waitFor?: string[]; deferred?: boolean };
   /** Voltou a chamar ("voltar agora" de uma pausa em curso, ou reaberta): o silêncio de antes não é queda. */
   callingSince?: number;
   /** Paradas já encerradas nesta sessão (pausas e tempo fechada): não contam como atendimento. */

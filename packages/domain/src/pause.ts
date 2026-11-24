@@ -1,21 +1,16 @@
+import { callNext } from "./call.ts";
 import { inManualMode, pendingOutage } from "./outage.ts";
-import { inBreak } from "./pause-time.ts";
+import { inBreak, waitingBeforePause, withStop } from "./pause-time.ts";
 import { DEFAULT_CONFIG, extendedDeadlineEnd, lateness, type SessionDay, type Stage, type Station } from "./queue.ts";
-import { failure, ok, type Result } from "./result.ts";
+import { type Event, failure, ok, type Result } from "./result.ts";
 
-export { callingAt, type Pause, pausedAt, stagePause } from "./pause-time.ts";
+export { callingAt, type Pause, pausedAt, stagePause, waitingBeforePause } from "./pause-time.ts";
 
 type Cmd = { stationId: string };
 /** A volta: num horário, em minutos contados do início da pausa, ou sem hora (nulo). */
 export type PauseBack = { at: number } | { inMin: number } | null;
 
 const MIN = 60_000;
-
-/** Guarda uma parada encerrada (pausa ou tempo fechada) no histórico da estação. */
-export function withStop(e: Station, stop: { start: number; end: number } | undefined): Pick<Station, "stops"> {
-  if (!stop || stop.end <= stop.start) return e.stops ? { stops: e.stops } : {};
-  return { stops: [...(e.stops ?? []), stop] };
-}
 
 const withStation = (day: SessionDay, e: Station): SessionDay => ({
   ...day,
@@ -26,6 +21,17 @@ const withStation = (day: SessionDay, e: Station): SessionDay => ({
  * Quando acaba o prazo de quem da etapa está a caminho (recebeu "venha agora" e não perdeu a vez, inclusive
  * com o prazo estendido por uma queda); nulo sem ninguém a caminho.
  */
+function onTheWayItems(day: SessionDay, stage: Stage, now: number) {
+  // Só segura a pausa quem ainda está no prazo (a urgência confirmada que passou dele também não, PA5).
+  return day.items.filter(
+    (i) =>
+      i.state === "remote" &&
+      i.stage === stage &&
+      extendedDeadlineEnd(day, i, now) !== null &&
+      lateness(day, i, now) !== "late",
+  );
+}
+
 function onTheWayUntil(day: SessionDay, stage: Stage, now: number): number | null {
   // Só segura a pausa quem ainda está no prazo (a urgência confirmada que passou dele também não, PA5).
   const ends = day.items
@@ -61,7 +67,9 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   // A pausa que acabou sozinha deixa a hora da volta: o silêncio de antes dela não é queda.
   const old = e.pause?.until != null ? { start: e.pause.from, end: e.pause.until } : undefined;
   const since = old === undefined ? {} : { callingSince: Math.max(e.callingSince ?? old.end, old.end) };
-  return ok(withStation(day, { ...e, ...since, ...withStop(e, old), pause: { from, until } }), [
+  const waitFor = onTheWayItems(day, e.stage, now).map((i) => i.id);
+  const pause = { from, until, ...(waitFor.length > 0 ? { waitFor } : {}) };
+  return ok(withStation(day, { ...e, ...since, ...withStop(e, old), pause }), [
     { kind: "station_paused", stationId: e.id, data: { from, until } },
   ]);
 }
@@ -92,4 +100,52 @@ export function reopenStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   return ok(withStation(day, { ...rest, ...withStop(e, closed), open: true, callingSince: now }), [
     { kind: "station_reopened", stationId: e.id },
   ]);
+}
+
+/**
+ * Opção C, "atender antes de pausar": chama o próximo (quem chegou no prazo está na frente) e adia a pausa
+ * até o profissional finalizar; ela começa então, com a mesma duração.
+ */
+export function serveBeforePause(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
+  if (day.state !== "open") return failure("session_closed");
+  const e = day.stations.find((x) => x.id === cmd.stationId);
+  if (!e?.pause || waitingBeforePause(day, e.id, now).length === 0) return failure("forbidden_transition");
+  if (e.calledItemId !== null) return failure("station_has_call");
+  return callNext(withStation(day, { ...e, pause: { ...e.pause, deferred: true } }), { stationId: e.id }, now);
+}
+
+/** A justificativa para quem chegou no prazo e ficou para a volta; `waitFor` sai para não repetir. */
+function notifyWaiting(day: SessionDay, e: Station, now: number): { day: SessionDay; events: Event[] } {
+  if (!e.pause?.waitFor || e.pause.deferred || e.pause.from > now) return { day, events: [] };
+  const events: Event[] = waitingBeforePause(day, e.id, now).map((i) => ({
+    kind: "turn_after_pause",
+    itemId: i.id,
+    stationId: e.id,
+    data: { until: e.pause?.until ?? null },
+  }));
+  const { waitFor: _, ...pause } = e.pause;
+  return { day: withStation(day, { ...e, pause }), events };
+}
+
+/** Opção C, "pausar agora": a pausa segue, e quem chegou no prazo recebe a justificativa (uma vez). */
+export function confirmPause(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
+  if (day.state !== "open") return failure("session_closed");
+  const e = day.stations.find((x) => x.id === cmd.stationId);
+  if (!e?.pause) return failure("forbidden_transition");
+  if (!e.pause.waitFor) return ok(day);
+  const r = notifyWaiting(day, e, now);
+  return ok(r.day, r.events);
+}
+
+/** Varredura: a pausa começou sem resposta da estação; a justificativa sai do mesmo jeito, uma vez. */
+export function pauseStartNotices(day: SessionDay, now: number): { day: SessionDay; events: Event[] } {
+  let current = day;
+  const events: Event[] = [];
+  for (const e of day.stations) {
+    const station = current.stations.find((x) => x.id === e.id) as Station;
+    const r = notifyWaiting(current, station, now);
+    current = r.day;
+    events.push(...r.events);
+  }
+  return { day: current, events };
 }
