@@ -266,9 +266,10 @@ export function cancel(
 
 /**
  * RN-CONT-02/03: a recepção registra um período de contingência já terminado. Na sessão aberta,
- * o período passa a valer na regra de atraso e no encerramento. Na sessão encerrada, se o registro
- * é no mesmo dia do encerramento (fuso da unidade), as faltas do encerramento cuja vez passou só
- * dentro de contingência são apagadas e viram remanejadas (única reversão de estado final).
+ * o período passa a valer no prazo de chegada (o relógio para durante ele, AD-076) e no encerramento.
+ * Na sessão encerrada, se o registro é no mesmo dia do encerramento (fuso da unidade), as faltas por
+ * prazo de chegada perdido que, com o relógio parado, ainda estavam no prazo são apagadas e viram
+ * remanejadas (única reversão de estado final). A falta por 2 pulos fica.
  */
 export function registerContingency(
   day: SessionDay,
