@@ -263,7 +263,15 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   // Atender antes de pausar (opção C): sem mais ninguém esperando, a pausa começa e ninguém é chamado.
   if (station.pause?.deferred) {
     current = settleDeferredPause(current, station.id, now);
-    if (!current.stations.find((e) => e.id === station.id)?.pause?.deferred) return ok(current, events);
+    const started = current.stations.find((e) => e.id === station.id)?.pause;
+    if (!started?.deferred) {
+      const paused: Event = {
+        kind: "station_paused",
+        stationId: station.id,
+        data: { from: now, until: started?.until ?? null },
+      };
+      return ok(current, [...events, paused]);
+    }
   } else if (events.length > 0) {
     // A pausa que chegou durante o atendimento começa de fato agora.
     current = afterCallEnds(current, station.id, now);
@@ -382,10 +390,13 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
       cmd.stationId,
       now,
     );
+  // A pausa adiada de outra estação que ficou sem ninguém esperando também começa.
+  const settleAll = (d: SessionDay): SessionDay =>
+    d.stations.reduce((acc, e) => (e.pause?.deferred ? settleDeferredPause(acc, e.id, now) : acc), d);
 
   if (to === "present") {
     const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, { applyDelay: false });
-    return ok(markSkip(eleg.state), [skipped]);
+    return ok(settleAll(markSkip(eleg.state)), [skipped]);
   }
   const outside: QueueItem = {
     ...item,
@@ -396,7 +407,7 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
     exitReason: "skips",
   };
   const current = releaseLocks(withItem(free, outside), item.id);
-  return ok(markSkip(current), [
+  return ok(settleAll(markSkip(current)), [
     skipped,
     { kind: "no_show", ...ids, reason: "não compareceu à chamada" },
     { kind: "left_queue", ...ids },

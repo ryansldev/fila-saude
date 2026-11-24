@@ -80,13 +80,14 @@ export function averageTime(day: SessionDay, stage: Stage, serviceId: string, no
   return valid.reduce((s, m) => s + m, 0) / valid.length;
 }
 
+/** A consulta atravessa o intervalo da sessão. */
+const inBreakBetween = (day: SessionDay, a: number, b: number) =>
+  (day.breaks ?? []).some((x) => x.start < b && x.end > a);
+
 /**
  * Capacidade (PA3): a estação que para sem hora de volta antes da vez (`by`) não conta; a pausa com volta é
  * passageira e conta. Todas paradas: conta as abertas, para o tempo depois da volta (a pausa da etapa decide).
  */
-const inBreakBetween = (day: SessionDay, a: number, b: number) =>
-  (day.breaks ?? []).some((x) => x.start < b && x.end > a);
-
 const capacity = (stations: Station[], by: number) =>
   stations.filter((e) => !stopsForGood(e, by)).length || stations.length;
 

@@ -601,6 +601,17 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     expect(estimate(d, "bia", T + MIN, AUTO)).not.toHaveProperty("pause");
   });
 
+  it("chamar com a pausa adiada e ninguém mais esperando: a pausa começa e a estação recebe o evento", () => {
+    let d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({ ...e, calledItemId: null })),
+      items: d.items.map((i) => (i.id === "bia" ? { ...i, state: "done_in_stage" as const } : i)),
+    });
+    const r = callNext(d, { stationId: "e1" }, T + 40 * MIN);
+    expect(r.ok && r.events.map((e) => e.kind)).toEqual(["station_paused"]);
+  });
+
   it("atender antes de pausar sem ninguém esperando é recusado", () => {
     const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
     expect(serveBeforePause(d, { stationId: "e1" }, T + MIN)).toEqual({ ok: false, error: "forbidden_transition" });
@@ -703,6 +714,29 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
     });
     // 9 à frente × 15 = 135 min de fila: 10 até a 1ª pausa, 90 entre as pausas, 35 depois do almoço (13:35).
     expect(estimate(d, "p9", now, AUTO)).toMatchObject({ position: 10, minutes: 225 });
+  });
+
+  it("pausa que começou e acabou durante uma consulta não aconteceu: não sai do tempo médio", () => {
+    const ids = ["a", "b", "c", "ana", "bruno", "z"];
+    let d = present(dayWith(ids), ...ids);
+    const calls = [-40, -25, -10].map((m, k) => ({
+      itemId: ids[k] as string,
+      stationId: "e1",
+      stage: "care" as const,
+      at: T + m * MIN,
+    }));
+    d = freeze({
+      ...d,
+      items: d.items.map((i) => (["a", "b", "c"].includes(i.id) ? { ...i, state: "done_in_stage" as const } : i)),
+      calls: calls as never,
+    });
+    d = apply(callNext(d, { stationId: "e1" }, T + 20 * MIN));
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({ ...e, pause: { from: T + 30 * MIN, until: T + 40 * MIN } })),
+    });
+    d = apply(callNext(d, { stationId: "e1" }, T + 50 * MIN));
+    expect(station(d).pause).toBeUndefined();
   });
 
   it("o tempo médio descarta a consulta que atravessou o intervalo (não dá para saber quanto foi atendimento)", () => {

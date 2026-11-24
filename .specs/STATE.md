@@ -8,7 +8,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - **Docs públicas da API na `main`** (PR #34; AD-066 a AD-069): guias e a referência da API v1 em `/docs` do `apps/web`, gerada das rotas (`npm run docs:openapi`).
 - **Revisão de UI com o design system em andamento.** Feitas no painel: Agendamento, Fila do dia, QR de entrada e unidade no menu, Estação (com "Compareceu"), TV. No app: página da unidade, entrar, criar conta, aba "hoje" (bilhete), mapa das unidades, inscrição (com a relação para outra pessoa). Designs em [features/design-system/](features/design-system/).
 - **Código em inglês** pela tabela de [nomes no código](specs/nomes-no-codigo.md); telas e specs em português. Migrações recriadas do zero (NC2); o banco de dev já está no conjunto novo (2026-11-18).
-- **Testes (2026-11-24):** API 462, domínio 512, painel 171, app 173, schemas 76, design 9; lint limpo. Review antes de cada commit.
+- **Testes (2026-11-24):** API 462, domínio 514, painel 171, app 173, schemas 76, design 9; lint limpo. Review antes de cada commit.
 
 ## Esperando você
 

@@ -203,7 +203,12 @@ export function afterCallEnds(day: SessionDay, stationId: string, now: number): 
     const { askedAt: _, ...rest } = p;
     return { ...settled, stations: settled.stations.map((x) => (x.id === e.id ? { ...e, pause: rest } : x)) };
   }
-  if (!e || !p || p.deferred || p.from >= now || (p.until !== null && p.until <= now)) return settled;
+  if (!e || !p || p.deferred || p.from >= now) return settled;
+  // Começou e acabou durante a consulta: a pausa não aconteceu (não vira parada no tempo médio).
+  if (p.until !== null && p.until <= now) {
+    const { pause: _, ...rest } = e;
+    return { ...settled, stations: settled.stations.map((x) => (x.id === e.id ? rest : x)) };
+  }
   return {
     ...settled,
     stations: settled.stations.map((x) => (x.id === e.id ? { ...e, pause: { ...p, from: now } } : x)),
