@@ -402,3 +402,39 @@ describe("revisão 2026-11-13: estimativa honesta", () => {
     expect(averageTime(d, "care", "cli", t)).toBe(20);
   });
 });
+
+describe("RV7: em casa, a posição usa as vagas dos idosos, como a chamada (PL2)", () => {
+  const g = (x: string[]) => ({ groups: x as never, verified: false, verifiedAt: null });
+  const pos = (d: ReturnType<typeof dayWith>, id: string) => {
+    const e = estimate(d, id, T, AUTO);
+    return e.kind === "position" ? e.position : e.kind;
+  };
+
+  it("o 80+ fica com a primeira vaga de idoso; a gestante não sai do lugar", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: g(["elderly"]) });
+    d = withItem(d, "gil", { priority: g(["pregnant"]) });
+    d = withItem(d, "ana", { priority: g(["elderly80"]) });
+    expect(pos(d, "ana")).toBe("come_now");
+    expect(pos(d, "gil")).toBe(2);
+    expect(pos(d, "bia")).toBe(3);
+  });
+
+  it("o 80+ já chamado continua com a vaga: a Bia (70) em casa fica no lugar que era dele", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: g(["elderly"]) });
+    d = withItem(d, "gil", { priority: g(["pregnant"]) });
+    d = withItem(d, "ana", { priority: g(["elderly80"]), state: "called" });
+    d = { ...d, calls: [{ itemId: "ana", stage: "care", stationId: "e1", at: T }] };
+    expect(pos(d, "gil")).toBe("come_now");
+    expect(pos(d, "bia")).toBe(2);
+  });
+
+  it("o idoso de 60-79 que também é de outro grupo fica no lugar da senha (PL1)", () => {
+    let d = dayWith(["bia", "ana"]);
+    d = withItem(d, "bia", { priority: g(["elderly", "disability"]) });
+    d = withItem(d, "ana", { priority: g(["elderly80"]) });
+    expect(pos(d, "bia")).toBe("come_now");
+    expect(pos(d, "ana")).toBe(2);
+  });
+});

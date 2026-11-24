@@ -78,7 +78,9 @@ ordem (RN-ORD), aplicada a qualquer conjunto de entradas:
      - nivel de risco vigente: urgente > atencao > rotina
        vigente = confirmado, se houver; senao, sugerido
      - prioridade legal: com prioridade > sem;
-       entre idosos, 80+ antes de 60-79; entre grupos diferentes, empate
+       entre grupos diferentes, empate; entre idosos, 80+ antes de 60-79:
+       na ordem de chamada e na posicao de quem esta em casa, as vagas
+       dos idosos vao primeiro aos 80+ (AD-075)
   4. numero (posicao original), o menor primeiro
 
 chamar proximo = primeiro de ordem(elegiveis)

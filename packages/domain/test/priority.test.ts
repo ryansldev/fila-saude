@@ -20,14 +20,14 @@ const legal = (groups: Group[], verified = false, verifiedAt: number | null = nu
 });
 
 describe("prioridade legal (RN-RISCO-04)", () => {
-  it("RN-RISCO-04: idoso vem da data de nascimento, 80+ acima dos demais", () => {
+  it("RN-RISCO-04: idoso vem da data de nascimento; todo grupo vale o mesmo (o 80+ só na ordem da fila, RV7)", () => {
     const now = at("2026-06-15T15:00:00Z");
     expect(personPriority({ birthDate: "1950-01-01" }, [], now, TIME_ZONE)).toEqual(["elderly"]);
     expect(personPriority({ birthDate: "1940-01-01" }, [], now, TIME_ZONE)).toEqual(["elderly80"]);
     expect(personPriority({ birthDate: "1990-01-01" }, [], now, TIME_ZONE)).toEqual([]);
-    expect(rankPriority(legal(["elderly80"]))).toBe(2);
+    expect(rankPriority(legal(["elderly80"]))).toBe(1);
     expect(rankPriority(legal(["elderly"]))).toBe(1);
-    expect(rankPriority(legal(["elderly", "elderly80"]))).toBe(2);
+    expect(rankPriority(legal(["elderly", "elderly80"]))).toBe(1);
     expect(rankPriority(legal([]))).toBe(0);
   });
 

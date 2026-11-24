@@ -8,7 +8,7 @@ import {
 } from "./contracts.ts";
 import { type Answers, type Classification, isUrgent, type RiskLevel, type UnitConfig } from "./kinds.ts";
 import { sameName } from "./names.ts";
-import { compareSuggestion, type Risk, type SuggestionKey } from "./order.ts";
+import { orderSuggestions, type Risk, type SuggestionKey } from "./order.ts";
 import {
   GROUP_LABEL,
   type Group,
@@ -257,21 +257,15 @@ function reasons(e: Entry, now: number, timeZone: string): string[] {
  * recusado esta sessão), na ordem da sugestão, com os motivos. Nada é alocado aqui (INV-08).
  */
 export function suggest(entries: Entry[], session: SessionSlots, config: UnitConfig, now: number): Suggestion[] {
-  return entries
-    .filter(
-      (e) =>
-        e.serviceId === session.serviceId &&
-        applyTransition(ENTRY_TRANSITIONS, e.state, EVENT_ALLOCATES) === "allocated" &&
-        !e.refusedSessions.includes(session.id),
-    )
-    .sort((a, b) =>
-      compareSuggestion(
-        suggestionKey(a, now, config.timeZone),
-        suggestionKey(b, now, config.timeZone),
-        config.municipalityOrder,
-      ),
-    )
-    .map((e) => ({ entryId: e.id, reasons: reasons(e, now, config.timeZone) }));
+  const filtered = entries.filter(
+    (e) =>
+      e.serviceId === session.serviceId &&
+      applyTransition(ENTRY_TRANSITIONS, e.state, EVENT_ALLOCATES) === "allocated" &&
+      !e.refusedSessions.includes(session.id),
+  );
+  return orderSuggestions(filtered, (e) => suggestionKey(e, now, config.timeZone), config.municipalityOrder).map(
+    (e) => ({ entryId: e.id, reasons: reasons(e, now, config.timeZone) }),
+  );
 }
 
 /** RN-CONF-01: 24 h da alocação, sem passar do início da sessão. */

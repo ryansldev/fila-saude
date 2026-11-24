@@ -1,9 +1,10 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState, type SessionState } from "./contracts.ts";
 import type { UnitConfig } from "./kinds.ts";
 import type { Origin } from "./list.ts";
-import { compareOrder, type OrderKey, type Risk } from "./order.ts";
+import { type OrderKey, orderItems, precedes, type Risk } from "./order.ts";
 import {
   canGivePriority,
+  elderlyLevel,
   expired,
   fromAge,
   type GivePriorityContext,
@@ -128,23 +129,52 @@ const key = (i: QueueItem): OrderKey => ({
   number: i.number,
 });
 
-/** < 0 quando `a` vem antes de `b` em ordem (RN-ORD, sem travas). */
-const before = (day: SessionDay, a: QueueItem, b: QueueItem): number =>
-  compareOrder(key(a), key(b), day.config.municipalityOrder);
+/**
+ * `items` (da etapa `stage`) em ordem(RN-ORD) com as vagas dos idosos (RV7). O 80+ já chamado na etapa
+ * continua com a vaga de idoso que ocupou: senão, chamado ele, o idoso de 60-79 que ele passou voltaria
+ * à frente dos outros grupos, e a ordem mudaria depois de cada chamada. Entram assim os 80+ com chamada
+ * na etapa que não estão em `waiting` (quem ainda espera na etapa) e os de `gone` (já postos à frente).
+ * Uso interno do pacote (estimativa e chamada).
+ */
+export function stageOrder(
+  day: SessionDay,
+  stage: Stage,
+  items: QueueItem[],
+  waiting: QueueItem[] = items,
+  gone: QueueItem[] = [],
+): QueueItem[] {
+  const ids = new Set(items.map((i) => i.id));
+  const waitingIds = new Set(waiting.map((i) => i.id));
+  const goneIds = new Set(gone.map((i) => i.id));
+  const called = new Set(day.calls.filter((c) => c.stage === stage).map((c) => c.itemId));
+  const held = day.items.filter(
+    (i) =>
+      !ids.has(i.id) &&
+      elderlyLevel(i.priority) === 2 &&
+      (goneIds.has(i.id) || (called.has(i.id) && !waitingIds.has(i.id))),
+  );
+  return orderItems([...items, ...held], key, day.config.municipalityOrder).filter((i) => ids.has(i.id));
+}
 
 /**
  * Ordem de chamada real: ordem(RN-ORD) do conjunto, e ninguém passa à frente de quem o trava
- * enquanto o travador está no conjunto (janela protegida). Sem candidato livre (não deveria
- * ocorrer), segue a ordem sem travas em vez de travar a fila (Review Focus 3).
+ * enquanto o travador está no conjunto (janela protegida). A cada passo vai o primeiro da ordem entre
+ * os livres: as vagas dos idosos (RV7) só se repartem entre quem já pode ser chamado, então o 80+
+ * travado atrás de um idoso de 60-79 não tira dele a vaga e não o empurra para trás de outro grupo.
+ * Sem candidato livre (não deveria ocorrer), segue a ordem sem travas em vez de travar a fila
+ * (Review Focus 3).
  */
 function callOrder(day: SessionDay, set: QueueItem[]): QueueItem[] {
-  const sorted = [...set].sort((a, b) => before(day, a, b));
-  const inSet = new Set(sorted.map((i) => i.id));
+  const stage = set[0]?.stage;
+  if (stage === undefined) return [];
+  const inSet = new Set(set.map((i) => i.id));
   const placed: QueueItem[] = [];
   const done = new Set<string>();
   const free = (i: QueueItem) => i.confirmedUrgency || i.lockedBehind.every((t) => !inSet.has(t) || done.has(t));
-  while (placed.length < sorted.length) {
-    const next = sorted.find((i) => !done.has(i.id) && free(i)) ?? sorted.find((i) => !done.has(i.id));
+  while (placed.length < set.length) {
+    const rest = set.filter((i) => !done.has(i.id));
+    const first = (items: QueueItem[]) => stageOrder(day, stage, items, set, placed)[0];
+    const next = first(rest.filter(free)) ?? first(rest);
     if (!next) break;
     placed.push(next);
     done.add(next.id);
@@ -194,7 +224,8 @@ export function callsThatSkipTurn(day: SessionDay, x: QueueItem): Call[] {
     if (x.leftAt !== null && c.at < x.leftAt) return false;
     if (deadlineEnd !== undefined && (deadlineEnd === null || c.at < deadlineEnd)) return false;
     const called = day.items.find((i) => i.id === c.itemId);
-    return called !== undefined && before(day, x, called) < 0;
+    // Só entre os dois (`precedes`): a fila de quando a chamada foi feita não existe mais (RV7).
+    return called !== undefined && precedes(key(x), key(called), day.config.municipalityOrder);
   });
 }
 

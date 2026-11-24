@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import * as domain from "../src/index.ts";
 import {
+  callsThatSkipTurn,
   checkIn,
   DEFAULT_CONFIG,
   eligible,
   givePriority,
   leaving,
   markAttendanceWithoutApp,
+  type QueueItem,
   type SessionDay,
   stayEligible,
   verifyAndMark,
@@ -438,5 +440,62 @@ describe("presenteDesde (Fila do dia: há quanto tempo está na unidade)", () =>
     expect(item(d, "ana").presentSince).toBeNull();
     d = apply(markAttendanceWithoutApp(d, { itemId: "ana" }, T + 120_000));
     expect(item(d, "ana").presentSince).toBe(T + 120_000);
+  });
+});
+
+describe("RV7: 80+ antes dos demais idosos na fila de verdade (Lei 10.741, art. 3º, § 2º)", () => {
+  const groups = (g: QueueItem["priority"]["groups"]) => ({ groups: g, verified: false, verifiedAt: null });
+  // Senhas: bia 1 (70 anos), gil 2 (gestante), ana 3 (85 anos), caio 4 (sem prioridade).
+  const day = () => {
+    let d = dayWith(["bia", "gil", "ana", "caio"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]) });
+    d = withItem(d, "gil", { priority: groups(["pregnant"]) });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]) });
+    // Já presentes, sem as travas da janela protegida (que valem à parte).
+    for (const id of ["bia", "gil", "ana", "caio"]) d = withItem(d, id, { state: "present", presentSince: T });
+    return d;
+  };
+
+  it("a vaga de idoso da senha 1 vai à Ana (85); a Gil fica no lugar dela", () => {
+    expect(order(day())).toEqual(["ana", "gil", "bia", "caio"]);
+  });
+
+  it("a Ana (85) que chega atrás da Bia (70) pela janela não tira a Bia da frente da Gil", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "gil", { priority: groups(["pregnant"]), state: "present", presentSince: T });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]) });
+    expect(order(d)).toEqual(["bia", "gil"]);
+    d = enter(d, "ana");
+    expect(item(d, "ana").lockedBehind).toEqual(["bia"]);
+    expect(order(d)).toEqual(["bia", "gil", "ana"]);
+  });
+
+  it("chamada a Ana (85), a Bia (70) fica no lugar que era da Ana: a ordem não muda depois da chamada", () => {
+    let d = day();
+    d = withItem(d, "ana", { state: "called" });
+    d = freeze({ ...d, calls: [{ itemId: "ana", stage: "care", stationId: "e1", at: T + MIN }] });
+    expect(order(d)).toEqual(["gil", "bia", "caio"]);
+  });
+
+  it("travada atrás da Bia (70), a Ana (85) passa à frente do Caio (70) que veio depois", () => {
+    let d = dayWith(["bia", "caio", "ana"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "caio", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]) });
+    d = enter(d, "ana");
+    expect(order(d)).toEqual(["bia", "ana", "caio"]);
+  });
+});
+
+describe("RV7: perda de vez pelas chamadas já feitas (só entre os dois, sem quem saiu da fila)", () => {
+  const g = (x: QueueItem["priority"]["groups"]) => ({ groups: x, verified: false, verifiedAt: null });
+  it("a Gil (gestante, senha 2) chamada não faz a Ana (85, senha 3) perder a vez, mesmo com a Bia (70) já atendida", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: g(["elderly"]), state: "done_in_stage" });
+    d = withItem(d, "gil", { priority: g(["pregnant"]), state: "called" });
+    d = withItem(d, "ana", { priority: g(["elderly80"]), state: "present", presentSince: T });
+    d = freeze({ ...d, calls: [{ itemId: "gil", stage: "care", stationId: "e1", at: T + MIN }] });
+    expect(callsThatSkipTurn(d, item(d, "ana"))).toEqual([]);
   });
 });

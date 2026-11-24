@@ -66,7 +66,7 @@ O paciente PODE refazer o questionário enquanto espera, na lista ou na fila do 
 
 **RN-RISCO-04 · Prioridade legal**
 A **prioridade legal** é um campo separado, declarado pelo paciente. Grupos (lista fixa no código no MVP; Lei 10.048 com a redação da Lei 14.626/2023): idoso (60+, e 80+ com prioridade especial), gestante, lactante, pessoa com criança de colo, PcD, TEA, pessoa com mobilidade reduzida, doador de sangue, pessoa com obesidade. Grupos de leis estaduais ou municipais entram por mudança de código.
-- **Ordem:** segue a lei, sem regras próprias: maiores de 80 anos antes dos demais idosos; entre grupos diferentes não há hierarquia.
+- **Ordem:** segue a lei, sem regras próprias: maiores de 80 anos antes dos demais idosos; entre grupos diferentes não há hierarquia. Na fila inteira, as vagas ocupadas por idosos vão primeiro aos 80+; os outros grupos ficam no seu lugar (AD-075).
 - **Para outra pessoa:** conta a prioridade da pessoa atendida; se ela é criança de colo, vale "criança de colo"; a do acompanhante não passa para o atendido.
 - **Declaração:** QUANDO o paciente marcar uma prioridade, O SISTEMA DEVE avisar que ela será conferida na unidade com documento e que declaração falsa pode configurar crime (texto validado pelo jurídico). Não há foto de laudo no app.
 - **Conferência:** visual (gestante, criança de colo; idoso vem da data de nascimento) ou por documento (PcD, TEA), na recepção (RN-FILA-05). Conferida, vale nas próximas idas à unidade, exceto as que têm prazo (gestante, lactante, criança de colo), que expiram e são conferidas de novo.
