@@ -111,17 +111,41 @@ function withPause(
   const onTheWay = item.state === "remote" && ahead === 0 && arrivalDeadlineEnd(day, item) !== null;
   if (onTheWay && lateness(day, item, now) !== "late") return { minutes: queue, blocked: false };
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
-  const left = (t: number | null) => (t === null ? 0 : (t - now) / MIN);
-  if (p.from <= now) return { minutes: left(p.until) + queue, pause: p, blocked: true };
-  if (item.state === "remote" && ahead === 0 && p.from < now + deadline) {
-    return { minutes: p.until === null ? queue : left(p.until), pause: p, blocked: true };
-  }
-  // Em casa, a vez vale com o prazo de chegada: o "venha agora" não sai se o prazo cai na pausa.
   const remote = item.state === "remote";
-  if (now + queue * MIN + (remote ? deadline : 0) < p.from) return { minutes: queue, blocked: false };
-  if (p.until === null) return { minutes: queue, pause: p, blocked: false };
-  const withBreak = queue + (p.until - p.from) / MIN;
-  return { minutes: remote ? Math.max(withBreak, left(p.until)) : withBreak, pause: p, blocked: false };
+  // O primeiro em casa não recebe "venha agora" na pausa nem se o prazo de chegada cair nela.
+  const blocked = p.from <= now || (remote && ahead === 0 && p.from < now + deadline);
+  // Em casa, a vez vale com o prazo de chegada (o "venha agora" não sai se o prazo cai na pausa).
+  const wait = pausedWait(day, item.stage, now, queue * MIN, remote ? deadline : 0);
+  if (!wait.pause) return { minutes: queue, blocked };
+  // Sem hora de volta: sem tempo (a pausa vai junto para o app dizer "por tempo indeterminado").
+  if (wait.end === null) return { minutes: queue, pause: wait.pause, blocked };
+  return { minutes: (wait.end - now) / MIN, pause: wait.pause, blocked };
+}
+
+/**
+ * A espera com todas as pausas da etapa no caminho (PA1): a fila anda até cada pausa, para nela e segue na
+ * volta. `lead` é o prazo de chegada de quem está em casa: a vez que cairia a menos dele de uma pausa só sai
+ * na volta. Devolve quando chega a vez (nulo se uma pausa sem hora de volta cair no caminho) e a 1ª pausa.
+ */
+function pausedWait(
+  day: SessionDay,
+  stage: Stage,
+  start: number,
+  work: number,
+  lead: number,
+): { end: number | null; pause?: Pause } {
+  let t = start;
+  let left = work;
+  let first: Pause | undefined;
+  for (let guard = 0; guard < 20; guard++) {
+    const p = stagePause(day, stage, t);
+    if (!p || (p.from > t && t + left + lead < p.from)) return { end: t + left, ...(first ? { pause: first } : {}) };
+    first ??= p;
+    if (p.until === null) return { end: null, pause: first };
+    left = Math.max(0, left - Math.max(0, p.from - t));
+    t = p.until;
+  }
+  return { end: t + left, ...(first ? { pause: first } : {}) };
 }
 
 /**

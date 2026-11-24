@@ -48,21 +48,18 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   if (!e?.open) return failure("forbidden_transition");
   // Com queda aberta ou por confirmar, o prazo de quem vem pode crescer: não dá para saber quando pausar.
   if (inManualMode(day) || pendingOutage(day, now)) return failure("pause_during_outage");
-  // A pausa marcada ou em curso mantém o início; a que já acabou dá lugar a uma nova.
-  const current = e.pause && (e.pause.until === null || e.pause.until > now) ? e.pause : null;
-  // Trocar a volta pode com paciente chamado (a estação chama até a pausa começar); pausar, não.
-  if (!current && e.calledItemId !== null) return failure("station_has_call");
+  // Com pausa marcada ou em curso, é preciso voltar (ou desmarcar) antes de pausar de novo.
+  if (e.pause && (e.pause.until === null || e.pause.until > now)) return failure("station_already_paused");
+  if (e.calledItemId !== null) return failure("station_has_call");
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
   const onTheWay = onTheWayUntil(day, e.stage, now);
-  const from = current?.from ?? (onTheWay === null ? now : Math.max(now + deadline, onTheWay));
+  const from = onTheWay === null ? now : Math.max(now + deadline, onTheWay);
   const back = cmd.back;
-  // Minutos: do início da pausa; trocar a volta da pausa em curso, de agora.
-  const base = current && current.from <= now ? now : from;
-  const until = back === null ? null : "at" in back ? back.at : base + back.inMin * MIN;
-  if (until !== null && !(Number.isFinite(until) && until > Math.max(from, now)))
-    return failure("pause_back_before_start");
+  // Minutos: do início da pausa.
+  const until = back === null ? null : "at" in back ? back.at : from + back.inMin * MIN;
+  if (until !== null && !(Number.isFinite(until) && until > from)) return failure("pause_back_before_start");
   // A pausa que acabou sozinha deixa a hora da volta: o silêncio de antes dela não é queda.
-  const old = !current && e.pause?.until != null ? { start: e.pause.from, end: e.pause.until } : undefined;
+  const old = e.pause?.until != null ? { start: e.pause.from, end: e.pause.until } : undefined;
   const since = old === undefined ? {} : { callingSince: Math.max(e.callingSince ?? old.end, old.end) };
   return ok(withStation(day, { ...e, ...since, ...withStop(e, old), pause: { from, until } }), [
     { kind: "station_paused", stationId: e.id, data: { from, until } },

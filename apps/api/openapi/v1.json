@@ -165,7 +165,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -219,7 +219,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -273,7 +273,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -330,7 +330,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -452,7 +452,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -506,7 +506,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -1002,7 +1002,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "429": {
@@ -1162,7 +1162,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "429": {
@@ -1265,7 +1265,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "429": {
@@ -1452,7 +1452,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -1811,7 +1811,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2011,7 +2011,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2396,7 +2396,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2494,7 +2494,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2681,7 +2681,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -2868,7 +2868,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3169,7 +3169,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3294,7 +3294,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -3526,7 +3526,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "422": {
@@ -3762,7 +3762,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "422": {
@@ -3998,7 +3998,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4431,7 +4431,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4663,7 +4663,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -4895,7 +4895,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -5801,7 +5801,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -6356,7 +6356,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7461,7 +7461,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7591,7 +7591,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }
@@ -7769,7 +7769,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           },
           "409": {
-            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
+            "description": "birth_date_verified, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, unit_has_entries, unit_has_sessions",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
           }
         }

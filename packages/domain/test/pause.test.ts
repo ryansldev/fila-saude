@@ -89,26 +89,11 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
     expect(station(late).pause?.from).toBe(T + 26 * MIN + DEADLINE);
   });
 
-  it("pausar de novo (trocar a volta) mantém o início da pausa", () => {
-    const d = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T - 5 * MIN, 30);
-    let p = apply(pauseStation(d, { stationId: "e1", back: null }, T));
-    p = apply(pauseStation(p, { stationId: "e1", back: { inMin: 30 } }, T + 10 * MIN));
-    expect(station(p).pause).toEqual({ from: T + DEADLINE, until: T + DEADLINE + 30 * MIN });
-  });
-
   it("pausar de novo depois de a pausa acabar: é uma pausa nova, que respeita quem está a caminho", () => {
     let d = apply(pauseStation(dayWith(["ana", "bruno"]), { stationId: "e1", back: { inMin: 30 } }, T));
     d = alreadyNotified(d, "ana", T + 120 * MIN, 30);
     d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 30 } }, T + 125 * MIN));
     expect(station(d).pause).toEqual({ from: T + 155 * MIN, until: T + 185 * MIN });
-  });
-
-  it("trocar a volta com paciente chamado (a estação chama até a pausa começar)", () => {
-    let d = present(alreadyNotified(dayWith(["ana", "bruno", "caio"]), "caio", T - 5 * MIN, 30), "ana");
-    d = apply(pauseStation(d, { stationId: "e1", back: null }, T));
-    d = apply(callNext(d, { stationId: "e1" }, T + 10 * MIN));
-    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 60 } }, T + 12 * MIN));
-    expect(station(d).pause).toEqual({ from: T + DEADLINE, until: T + DEADLINE + 60 * MIN });
   });
 
   it("'voltar agora' recusa a pausa que já acabou; no almoço, tira a pausa própria, mas o almoço segue", () => {
@@ -127,24 +112,24 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
     expect(station(apply(callNext(back, { stationId: "e1" }, T + 60 * MIN))).calledItemId).toBe("ana");
   });
 
-  it("trocar a volta de uma pausa em curso: os minutos contam de agora", () => {
-    let d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
-    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 30 } }, T + 40 * MIN));
-    expect(station(d).pause).toEqual({ from: T, until: T + 70 * MIN });
-  });
-
-  it("trocar a volta de uma pausa em curso para um horário que já passou é recusado", () => {
-    const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
-    expect(pauseStation(d, { stationId: "e1", back: { at: T + 15 * MIN } }, T + 30 * MIN)).toEqual({
-      ok: false,
-      error: "pause_back_before_start",
-    });
-  });
-
   it("no almoço da sessão, dá para desmarcar uma pausa própria que ainda não começou", () => {
     let d = dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] });
     d = freeze({ ...d, stations: d.stations.map((e) => ({ ...e, pause: { from: T + 180 * MIN, until: null } })) });
     expect(station(apply(resumeStation(d, { stationId: "e1" }, T + 30 * MIN))).pause).toBeUndefined();
+  });
+
+  it("com pausa marcada ou em curso, pausar de novo é recusado: volte (ou desmarque) antes", () => {
+    const d = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T - 5 * MIN, 30);
+    const staged = apply(pauseStation(d, { stationId: "e1", back: null }, T));
+    expect(pauseStation(staged, { stationId: "e1", back: { inMin: 30 } }, T + 10 * MIN)).toEqual({
+      ok: false,
+      error: "station_already_paused",
+    });
+    const running = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
+    expect(pauseStation(running, { stationId: "e1", back: { inMin: 30 } }, T + 40 * MIN)).toEqual({
+      ok: false,
+      error: "station_already_paused",
+    });
   });
 
   it("volta com valor inválido é recusada", () => {
@@ -331,6 +316,19 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
     expect(estimate(paused, "joao", T, AUTO)).toMatchObject({ minutes: 65, query: { minutes: 80 } });
     const care = apply(pauseStation(tri, { stationId: "e1", back: null }, T));
     expect(estimate(care, "joao", T, AUTO)).not.toHaveProperty("query");
+  });
+
+  it("espera que atravessa duas pausas soma as duas (PA1)", () => {
+    const ids = Array.from({ length: 10 }, (_, k) => `p${k}`);
+    // 09:50; pausa do consultório das 10:00 às 10:30 e almoço das 12:00 às 13:00.
+    const now = T - 130 * MIN;
+    let d = dayWith(ids, { breaks: [{ start: T, end: T + 60 * MIN }] });
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({ ...e, pause: { from: T - 120 * MIN, until: T - 90 * MIN } })),
+    });
+    // 9 à frente × 15 = 135 min de fila: 10 até a 1ª pausa, 90 entre as pausas, 35 depois do almoço (13:35).
+    expect(estimate(d, "p9", now, AUTO)).toMatchObject({ position: 10, minutes: 225 });
   });
 
   it("o tempo médio de atendimento não conta o almoço como atendimento", () => {
