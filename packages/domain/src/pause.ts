@@ -1,14 +1,6 @@
 import { inManualMode, pendingOutage } from "./outage.ts";
 import { inBreak } from "./pause-time.ts";
-import {
-  DEFAULT_CONFIG,
-  extendedDeadlineEnd,
-  lateness,
-  type QueueItem,
-  type SessionDay,
-  type Stage,
-  type Station,
-} from "./queue.ts";
+import { DEFAULT_CONFIG, extendedDeadlineEnd, lateness, type SessionDay, type Stage, type Station } from "./queue.ts";
 import { failure, ok, type Result } from "./result.ts";
 
 export { callingAt, type Pause, pausedAt, stagePause } from "./pause-time.ts";
@@ -35,10 +27,9 @@ const withStation = (day: SessionDay, e: Station): SessionDay => ({
  * com o prazo estendido por uma queda); nulo sem ninguém a caminho.
  */
 function onTheWayUntil(day: SessionDay, stage: Stage, now: number): number | null {
-  // A urgência confirmada não perde a vez pelo prazo: enquanto não chega, ainda está a caminho.
-  const coming = (i: QueueItem) => i.confirmedUrgency || lateness(day, i, now) !== "late";
+  // Só segura a pausa quem ainda está no prazo (a urgência confirmada que passou dele também não, PA5).
   const ends = day.items
-    .filter((i) => i.state === "remote" && i.stage === stage && coming(i))
+    .filter((i) => i.state === "remote" && i.stage === stage && lateness(day, i, now) !== "late")
     .map((i) => extendedDeadlineEnd(day, i, now))
     .filter((end): end is number => end !== null);
   return ends.length > 0 ? Math.max(...ends) : null;

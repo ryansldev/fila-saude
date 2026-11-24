@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { callNext, closeStation } from "../src/call.ts";
 import { averageTime, comeNowNotices, estimate, leaveHomeNotices } from "../src/estimate.ts";
-import { trackOutage } from "../src/outage.ts";
+import { stalledSince, trackOutage } from "../src/outage.ts";
 import { pauseStation, reopenStation, resumeStation, stagePause } from "../src/pause.ts";
 import { checkIn, lateness, type SessionDay, type Station } from "../src/queue.ts";
 import type { Result } from "../src/result.ts";
@@ -196,10 +196,17 @@ describe("auditoria e quem está a caminho", () => {
     expect(o.ok && o.events).toEqual([{ kind: "station_reopened", stationId: "e1" }]);
   });
 
-  it("urgência confirmada a caminho (não perde a vez pelo prazo): a pausa ainda espera", () => {
+  it("urgência confirmada que passou do prazo sem chegar não segura a pausa (PA5)", () => {
     let d = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T - 35 * MIN, 30);
     d = freeze({ ...d, items: d.items.map((i) => (i.id === "ana" ? { ...i, confirmedUrgency: true } : i)) });
-    expect(station(apply(pauseStation(d, { stationId: "e1", back: null }, T))).pause?.from).toBe(T + DEADLINE);
+    expect(station(apply(pauseStation(d, { stationId: "e1", back: null }, T))).pause?.from).toBe(T);
+  });
+
+  it("sem estação chamando, o sinal parado é o último sinal (não uma hora no futuro)", () => {
+    const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
+    let d = freeze(trackOutage(dayWith(["ana"]), T, st(T)));
+    d = apply(closeStation(d, { stationId: "e1" }, T + MIN));
+    expect(stalledSince(d, T + 2 * MIN)).toBe(T);
   });
 
   it("a caminho com o prazo estendido depois de a pausa começar: continua com 'venha agora'", () => {
