@@ -267,7 +267,7 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     // Outros remotos continuam sem "venha agora" (a pausa segue à frente).
     expect(estimate(d, "caio", T + 35 * MIN, AUTO)).toMatchObject({ kind: "position" });
     d = apply(finish(d, { stationId: "e1" }, T + 46 * MIN));
-    expect(station(d).pause).toEqual({ from: T + 46 * MIN, until: T + 106 * MIN });
+    expect(station(d).pause).toEqual({ from: T + 46 * MIN, until: T + 105 * MIN });
     expect(callNext(d, { stationId: "e1" }, T + 47 * MIN)).toEqual({ ok: false, error: "station_paused" });
   });
 
@@ -275,13 +275,13 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     let d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
     d = apply(callNext(d, { stationId: "e1" }, T + 46 * MIN));
     expect(station(d).calledItemId).toBeNull();
-    expect(station(d).pause).toEqual({ from: T + 46 * MIN, until: T + 106 * MIN });
+    expect(station(d).pause).toEqual({ from: T + 46 * MIN, until: T + 105 * MIN });
   });
 
   it("atender antes de pausar e a Bia não comparece: a pausa começa (ela não segura mais a pausa)", () => {
     let d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
     d = apply(noShow(d, { stationId: "e1" }, T + 36 * MIN));
-    expect(station(d).pause).toEqual({ from: T + 36 * MIN, until: T + 96 * MIN });
+    expect(station(d).pause).toEqual({ from: T + 36 * MIN, until: T + 95 * MIN });
   });
 
   it("pausar agora: a Bia recebe a justificativa (uma vez) e continua na frente da fila", () => {
@@ -375,7 +375,7 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
   it("pausar agora depois de escolher atender antes: a pausa deixa de ser adiada; antes da hora, recusa", () => {
     const d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
     const now = apply(confirmPause(d, { stationId: "e1" }, T + 33 * MIN));
-    expect(station(now).pause).toEqual({ from: T + 33 * MIN, until: T + 93 * MIN });
+    expect(station(now).pause).toEqual({ from: T + 33 * MIN, until: T + 92 * MIN });
     const early = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
     const later = freeze({
       ...early,
@@ -393,6 +393,69 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     const r = apply(pauseStation(d, { stationId: "e1", back: null }, T + 20 * MIN));
     expect(station(r).stops).toBeUndefined();
     expect(station(r).callingSince).toBeUndefined();
+  });
+
+  it("pausa que já acabou: ninguém mais espera antes dela, e atender antes ou pausar agora é recusado", () => {
+    let d = present(alreadyNotified(dayWith(["ana", "bia"]), "bia", T - 5 * MIN, 30), "ana");
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 10 } }, T));
+    d = apply(callNext(d, { stationId: "e1" }, T + 15 * MIN));
+    d = apply(checkIn(d, { itemId: "bia" }, T + 20 * MIN));
+    d = apply(finish(d, { stationId: "e1" }, T + 45 * MIN));
+    expect(waitingBeforePause(d, "e1", T + 45 * MIN)).toEqual([]);
+    expect(serveBeforePause(d, { stationId: "e1" }, T + 45 * MIN)).toEqual({
+      ok: false,
+      error: "forbidden_transition",
+    });
+    expect(confirmPause(d, { stationId: "e1" }, T + 45 * MIN)).toEqual({ ok: false, error: "forbidden_transition" });
+  });
+
+  it("no intervalo da sessão, chamar diz que é o intervalo, mesmo com alguém esperando", () => {
+    let d = present(dayWith(["bia"], { breaks: [{ start: T + 30 * MIN, end: T + 60 * MIN }] }), "bia");
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({ ...e, pause: { from: T + 35 * MIN, until: null, waitFor: ["bia"] } })),
+    });
+    expect(callNext(d, { stationId: "e1" }, T + 40 * MIN)).toEqual({ ok: false, error: "session_break" });
+    expect(serveBeforePause(d, { stationId: "e1" }, T + 40 * MIN)).toEqual({ ok: false, error: "session_break" });
+  });
+
+  it("atendendo antes de pausar: quem é esperado não vê a pausa, e a volta dos outros anda junto", () => {
+    let d = present(alreadyNotified(dayWith(["ana", "bia", "carlos", "duda"]), "bia", T - 5 * MIN, 30), "ana");
+    d = alreadyNotified(d, "carlos", T - 5 * MIN, 30);
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 30 } }, T));
+    d = apply(callNext(d, { stationId: "e1" }, T + 15 * MIN));
+    d = apply(checkIn(d, { itemId: "bia" }, T + 20 * MIN));
+    d = apply(checkIn(d, { itemId: "carlos" }, T + 21 * MIN));
+    d = apply(callNext(d, { stationId: "e1" }, T + 31 * MIN));
+    d = apply(serveBeforePause(d, { stationId: "e1" }, T + 35 * MIN));
+    expect(estimate(d, "carlos", T + 36 * MIN, AUTO)).not.toHaveProperty("pause");
+    // Duda (em casa): a pausa de 30 min começa depois de quem é esperado, não às 12:30.
+    const duda = estimate(d, "duda", T + 36 * MIN, AUTO);
+    expect(duda).toMatchObject({ kind: "position" });
+    expect(duda.kind === "position" && duda.pause?.from).toBeGreaterThan(T + 36 * MIN);
+  });
+
+  it("pausa que chega com paciente em atendimento começa quando ele sai (o atendimento não vira pausa)", () => {
+    let d = present(dayWith(["ana", "bia"]), "ana", "bia");
+    d = apply(callNext(d, { stationId: "e1" }, T + 20 * MIN));
+    d = apply(
+      pauseStation(
+        freeze({ ...d, stations: d.stations.map((e) => ({ ...e, calledItemId: null })) }),
+        { stationId: "e1", back: { at: T + 60 * MIN } },
+        T + 25 * MIN,
+      ),
+    );
+    d = freeze({ ...d, stations: d.stations.map((e) => ({ ...e, calledItemId: "ana" })) });
+    d = apply(finish(d, { stationId: "e1" }, T + 45 * MIN));
+    expect(station(d).pause).toMatchObject({ from: T + 45 * MIN, until: T + 60 * MIN });
+  });
+
+  it("fechar a estação com alguém esperando antes da pausa: a pessoa recebe a justificativa", () => {
+    const r = closeStation(scene(), { stationId: "e1" }, T + 32 * MIN);
+    expect(r.ok && r.events.map((e) => [e.kind, e.itemId])).toEqual([
+      ["turn_after_pause", "bia"],
+      ["station_closed", undefined],
+    ]);
   });
 
   it("atender antes de pausar sem ninguém esperando é recusado", () => {

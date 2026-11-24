@@ -1,4 +1,11 @@
-import { type Pause, pausedBetween, stagePause, stopsForGood } from "./pause-time.ts";
+import {
+  type Pause,
+  pausedBetween,
+  shiftDeferred,
+  stagePause,
+  stopsForGood,
+  waitingBeforePause,
+} from "./pause-time.ts";
 import {
   arrivalDeadlineEnd,
   DEFAULT_CONFIG,
@@ -107,8 +114,13 @@ function withPause(
 ): { minutes: number; pause?: Pause; blocked: boolean } {
   // Já com "venha agora" e a caminho (PA6): a pausa do consultório começa depois do prazo dele (e espera ele
   // ser chamado, opção C), então só o almoço da sessão, que não espera ninguém, entra no tempo.
+  // Quem é esperado antes da pausa adiada (atender antes de pausar) também não a vê.
+  const expected = day.stations.some(
+    (e) => e.pause?.deferred && waitingBeforePause(day, e.id, now).some((i) => i.id === item.id),
+  );
   const onTheWay =
-    item.state === "remote" && arrivalDeadlineEnd(day, item) !== null && lateness(day, item, now) !== "late";
+    expected ||
+    (item.state === "remote" && arrivalDeadlineEnd(day, item) !== null && lateness(day, item, now) !== "late");
   if (onTheWay) {
     const sessionOnly = { ...day, stations: day.stations.map(({ pause: _, ...e }) => e) };
     const wait = pausedWait(sessionOnly, item.stage, now, queue * MIN, 0);
@@ -196,7 +208,8 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const avg = averageTime(day, item.stage, day.serviceId, now);
   const n = capacity(stations, now + ((ahead * avg) / stations.length) * MIN);
   const queue = (ahead * avg) / n;
-  const { minutes, pause, blocked } = withPause(day, item, ahead, queue, now);
+  // A pausa adiada começa depois de quem ainda é atendido antes dela.
+  const { minutes, pause, blocked } = withPause(shiftDeferred(day, now, avg), item, ahead, queue, now);
   const comeNow = item.state === "remote" && ahead === 0 && !blocked;
   const primary: Estimate = comeNow
     ? { kind: "come_now" }

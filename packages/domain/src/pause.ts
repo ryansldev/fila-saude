@@ -108,6 +108,7 @@ export function serveBeforePause(
 ): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
+  if (inBreak(day, now)) return failure("session_break");
   if (!e?.pause || waitingBeforePause(day, e.id, now).length === 0) return failure("forbidden_transition");
   if (e.calledItemId !== null) return failure("station_has_call");
   const deferred = withStation(day, { ...e, pause: { ...e.pause, deferred: true } });
@@ -141,6 +142,7 @@ export function confirmPause(day: SessionDay, cmd: Cmd, now: number): Result<Ses
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e?.pause || e.pause.from > now) return failure("forbidden_transition");
+  if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
   // Tinha escolhido atender antes e mudou de ideia: a pausa começa agora, com a mesma duração.
   const p = e.pause;
   const started = p.deferred

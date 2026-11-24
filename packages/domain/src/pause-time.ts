@@ -126,7 +126,7 @@ export function withStop(e: Station, stop: { start: number; end: number } | unde
 export function waitingBeforePause(day: SessionDay, stationId: string, now: number): QueueItem[] {
   const e = day.stations.find((x) => x.id === stationId);
   const p = e?.pause;
-  if (!e || !p?.waitFor || p.from > now) return [];
+  if (!e || !p?.waitFor || p.from > now || (p.until !== null && p.until <= now)) return [];
   const ids = new Set(p.waitFor);
   return day.items.filter((i) => ids.has(i.id) && i.state === "present" && i.stage === e.stage);
 }
@@ -141,4 +141,38 @@ export function settleDeferredPause(day: SessionDay, stationId: string, now: num
   if (!e || !p?.deferred || (!force && waitingBeforePause(day, stationId, now).length > 0)) return day;
   const pause = { from: now, until: p.until === null ? null : now + (p.until - p.from) };
   return { ...day, stations: day.stations.map((x) => (x.id === e.id ? { ...e, pause } : x)) };
+}
+
+/**
+ * O atendimento terminou (finalizar, chamar o próximo ou "não compareceu"): a pausa adiada começa se não há
+ * mais ninguém esperando; a pausa que chegou com paciente em atendimento começa de fato agora (o atendimento
+ * não conta como parada), mantendo a volta marcada.
+ */
+export function afterCallEnds(day: SessionDay, stationId: string, now: number): SessionDay {
+  const settled = settleDeferredPause(day, stationId, now);
+  const e = settled.stations.find((x) => x.id === stationId);
+  const p = e?.pause;
+  if (!e || !p || p.deferred || p.from >= now || (p.until !== null && p.until <= now)) return settled;
+  return {
+    ...settled,
+    stations: settled.stations.map((x) => (x.id === e.id ? { ...e, pause: { ...p, from: now } } : x)),
+  };
+}
+
+/**
+ * Para a estimativa, a pausa adiada (atender antes de pausar) começa depois de quem ainda vai ser atendido
+ * antes dela (`avgMin` cada), com a mesma duração.
+ */
+export function shiftDeferred(day: SessionDay, now: number, avgMin: number): SessionDay {
+  if (!day.stations.some((e) => e.pause?.deferred)) return day;
+  return {
+    ...day,
+    stations: day.stations.map((e) => {
+      const p = e.pause;
+      if (!p?.deferred) return e;
+      const left = waitingBeforePause(day, e.id, now).length + (e.calledItemId === null ? 0 : 1);
+      const from = Math.max(p.from, now + left * avgMin * 60_000);
+      return { ...e, pause: { ...p, from, until: p.until === null ? null : from + (p.until - p.from) } };
+    }),
+  };
 }

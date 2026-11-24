@@ -1,6 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { inBreak, pausedAt, settleDeferredPause, waitingBeforePause, withStop } from "./pause-time.ts";
+import { afterCallEnds, inBreak, pausedAt, settleDeferredPause, waitingBeforePause, withStop } from "./pause-time.ts";
 import {
   eligible,
   orderKey,
@@ -255,16 +255,22 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   if (station.pause?.deferred) {
     current = settleDeferredPause(current, station.id, now);
     if (!current.stations.find((e) => e.id === station.id)?.pause?.deferred) return ok(current, events);
+  } else if (events.length > 0) {
+    // A pausa que chegou durante o atendimento começa de fato agora.
+    current = afterCallEnds(current, station.id, now);
   }
   // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
   if (pausedAt(current, station, now)) {
     if (events.length > 0) return ok(current, events);
-    // Quem chegou no prazo espera: a estação escolhe atender antes ou pausar agora (opção C).
-    if (waitingBeforePause(current, station.id, now).length > 0) return failure("pause_has_waiting");
-    // Sem pausa própria em curso, é o intervalo da sessão (almoço): "voltar agora" não resolve.
+    // Sem pausa própria em curso, é o intervalo da sessão (almoço): "voltar agora" nem atender antes resolvem.
     const p = current.stations.find((e) => e.id === station.id)?.pause;
     const own = p && !p.deferred && p.from <= now && (p.until ?? Number.POSITIVE_INFINITY) > now;
-    return failure(!own && inBreak(current, now) ? "session_break" : "station_paused");
+    const waiting = waitingBeforePause(current, station.id, now).length > 0;
+    // No intervalo, atender antes não resolve: a estação só chama no fim dele.
+    if ((!own || waiting) && inBreak(current, now)) return failure("session_break");
+    // Quem chegou no prazo espera: a estação escolhe atender antes ou pausar agora (opção C).
+    if (waiting) return failure("pause_has_waiting");
+    return failure("station_paused");
   }
   // Atendendo antes de pausar: só quem estava a caminho e chegou (opção C), na ordem de sempre.
   const waiting = current.stations.find((e) => e.id === station.id)?.pause?.deferred
@@ -321,7 +327,7 @@ export function finish(day: SessionDay, cmd: CmdClose, now: number): Result<Sess
   const present = requireShowUp(day, found.station, found.item, now);
   if (!present.ok) return failure("no_show_up");
   const closed = closeCalled(present.day, found.station, found.item, now, cmd.confirmedRisk, cmd.refer, cmd.classifies);
-  return ok(settleDeferredPause(closed.day, found.station.id, now), closed.events);
+  return ok(afterCallEnds(closed.day, found.station.id, now), closed.events);
 }
 
 /** Linha do contrato escolhida pelos pulos no dia (a transição depende da condição). */
@@ -352,7 +358,7 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   const lastCall = day.calls.findLastIndex((c) => c.itemId === item.id);
   // Quem não compareceu não segura mais a pausa adiada (opção C); sem mais ninguém, ela começa.
   const markSkip = (d: SessionDay): SessionDay =>
-    settleDeferredPause(
+    afterCallEnds(
       {
         ...d,
         calls: d.calls.map((c, i) => (i === lastCall ? { ...c, noShow: true } : c)),
@@ -406,7 +412,15 @@ export function closeStation(day: SessionDay, cmd: Cmd, now: number): Result<Ses
       ? { start: pause.from, end: Math.min(pause.until ?? now, now) }
       : undefined;
   const closed = { ...rest, ...withStop(station, stop), open: false, closedAt: now };
+  // Quem chegou no prazo e esperava a pausa recebe a justificativa (a estação não volta nesta sessão).
+  const notices: Event[] = waitingBeforePause(day, station.id, now).map((i) => ({
+    kind: "turn_after_pause",
+    itemId: i.id,
+    stationId: station.id,
+    data: { until: null },
+  }));
   return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) }, [
+    ...notices,
     { kind: "station_closed", stationId: station.id },
   ]);
 }
