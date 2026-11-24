@@ -17,12 +17,8 @@ const withStation = (day: SessionDay, e: Station): SessionDay => ({
   stations: day.stations.map((x) => (x.id === e.id ? e : x)),
 });
 
-/**
- * Quando acaba o prazo de quem da etapa está a caminho (recebeu "venha agora" e não perdeu a vez, inclusive
- * com o prazo estendido por uma queda); nulo sem ninguém a caminho.
- */
+/** Quem da etapa está a caminho: recebeu "venha agora" e ainda está no prazo (a urgência que passou dele não, PA5). */
 function onTheWayItems(day: SessionDay, stage: Stage, now: number) {
-  // Só segura a pausa quem ainda está no prazo (a urgência confirmada que passou dele também não, PA5).
   return day.items.filter(
     (i) =>
       i.state === "remote" &&
@@ -32,12 +28,9 @@ function onTheWayItems(day: SessionDay, stage: Stage, now: number) {
   );
 }
 
+/** Quando acaba o prazo de quem da etapa está a caminho (inclusive estendido por uma queda); nulo sem ninguém. */
 function onTheWayUntil(day: SessionDay, stage: Stage, now: number): number | null {
-  // Só segura a pausa quem ainda está no prazo (a urgência confirmada que passou dele também não, PA5).
-  const ends = day.items
-    .filter((i) => i.state === "remote" && i.stage === stage && lateness(day, i, now) !== "late")
-    .map((i) => extendedDeadlineEnd(day, i, now))
-    .filter((end): end is number => end !== null);
+  const ends = onTheWayItems(day, stage, now).map((i) => extendedDeadlineEnd(day, i, now) as number);
   return ends.length > 0 ? Math.max(...ends) : null;
 }
 
@@ -81,7 +74,8 @@ export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   if (!e?.pause) return failure("forbidden_transition");
   if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
   const { pause, ...rest } = e;
-  const started = pause.from <= now ? { start: pause.from, end: now } : undefined;
+  // A pausa adiada (atender antes de pausar) não parou a estação: não vira parada.
+  const started = pause.from <= now && !pause.deferred ? { start: pause.from, end: now } : undefined;
   const kept = { ...rest, ...withStop(e, started) };
   const events = [{ kind: "station_resumed" as const, stationId: e.id }];
   // No almoço da sessão, tira a pausa própria, mas a estação só chama no fim do almoço (que já conta como volta).
@@ -123,7 +117,7 @@ function notifyWaiting(day: SessionDay, e: Station, now: number): { day: Session
     stationId: e.id,
     data: { until: e.pause?.until ?? null },
   }));
-  const { waitFor: _, ...pause } = e.pause;
+  const { waitFor: _, askedAt: __, ...pause } = e.pause;
   return { day: withStation(day, { ...e, pause }), events };
 }
 
@@ -137,12 +131,25 @@ export function confirmPause(day: SessionDay, cmd: Cmd, now: number): Result<Ses
   return ok(r.day, r.events);
 }
 
-/** Varredura: a pausa começou sem resposta da estação; a justificativa sai do mesmo jeito, uma vez. */
+/** Tempo para a estação responder "atender antes de pausar?" depois de ficar livre na hora da pausa. */
+export const PAUSE_ANSWER_MS = 3 * 60_000;
+
+/**
+ * Varredura: a pausa começou e a estação não respondeu. Com paciente em atendimento (ou atendendo antes de
+ * pausar), espera; livre, marca quando viu e, passado `PAUSE_ANSWER_MS`, manda a justificativa, uma vez.
+ */
 export function pauseStartNotices(day: SessionDay, now: number): { day: SessionDay; events: Event[] } {
   let current = day;
   const events: Event[] = [];
   for (const e of day.stations) {
     const station = current.stations.find((x) => x.id === e.id) as Station;
+    const p = station.pause;
+    if (!p?.waitFor || p.deferred || p.from > now || station.calledItemId !== null) continue;
+    if (p.askedAt === undefined) {
+      current = withStation(current, { ...station, pause: { ...p, askedAt: now } });
+      continue;
+    }
+    if (now - p.askedAt < PAUSE_ANSWER_MS) continue;
     const r = notifyWaiting(current, station, now);
     current = r.day;
     events.push(...r.events);

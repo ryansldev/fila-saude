@@ -224,14 +224,10 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const careAvg = averageTime(day, "care", day.serviceId, now);
   const nA = capacity(careStations, careStart + ((beforeQuery * careAvg) / careStations.length) * MIN);
   const careQueue = (beforeQuery * careAvg) / nA;
-  const carePause = stagePause(day, "care", careStart);
-  // Pausa sem hora de volta do atendimento dentro da espera: não há como prever a consulta.
-  if (carePause?.until === null && carePause.from <= careStart + careQueue * MIN) return primary;
-  const careExtra =
-    carePause && carePause.until !== null && carePause.from <= careStart + careQueue * MIN
-      ? Math.max(0, carePause.until - Math.max(carePause.from, careStart)) / MIN
-      : 0;
-  return { ...primary, query: { minutes: Math.ceil(triageWeight + careQueue + careExtra) } };
+  // Todas as pausas do atendimento no caminho; uma sem hora de volta: não há como prever a consulta.
+  const careWait = pausedWait(day, "care", careStart, careQueue * MIN, 0);
+  if (careWait.end === null) return primary;
+  return { ...primary, query: { minutes: Math.ceil((careWait.end - now) / MIN) } };
 }
 
 /**

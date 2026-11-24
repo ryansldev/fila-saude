@@ -294,10 +294,45 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     expect(confirmPause(d, { stationId: "e1" }, T + 32 * MIN)).toEqual({ ok: true, state: d, events: [] });
   });
 
-  it("ninguém respondeu: a varredura manda a justificativa quando a pausa começa, uma vez", () => {
-    const first = pauseStartNotices(scene(), T + 32 * MIN);
-    expect(first.events.map((e) => [e.kind, e.itemId])).toEqual([["turn_after_pause", "bia"]]);
-    expect(pauseStartNotices(first.day, T + 33 * MIN).events).toEqual([]);
+  it("ninguém respondeu: a varredura dá um tempo para a estação responder e depois manda a justificativa, uma vez", () => {
+    const seen = pauseStartNotices(scene(), T + 32 * MIN);
+    expect(seen.events).toEqual([]);
+    expect(waitingBeforePause(seen.day, "e1", T + 33 * MIN).map((i) => i.id)).toEqual(["bia"]);
+    const sent = pauseStartNotices(seen.day, T + 35 * MIN);
+    expect(sent.events.map((e) => [e.kind, e.itemId])).toEqual([["turn_after_pause", "bia"]]);
+    expect(pauseStartNotices(sent.day, T + 36 * MIN).events).toEqual([]);
+  });
+
+  it("com paciente ainda em atendimento na hora da pausa, a varredura não manda a justificativa", () => {
+    let d = present(alreadyNotified(dayWith(["ana", "bia", "caio"]), "bia", T - 5 * MIN, 30), "ana");
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 60 } }, T));
+    d = apply(callNext(d, { stationId: "e1" }, T + 15 * MIN));
+    d = apply(checkIn(d, { itemId: "bia" }, T + 20 * MIN));
+    let r = pauseStartNotices(d, T + 31 * MIN);
+    r = pauseStartNotices(r.day, T + 40 * MIN);
+    expect(r.events).toEqual([]);
+    expect(station(r.day).pause?.waitFor).toEqual(["bia"]);
+  });
+
+  it("atender antes de pausar chama quem estava a caminho, não quem estava na frente sem ter sido avisado", () => {
+    let d = present(alreadyNotified(dayWith(["ana", "carlos", "bia"]), "bia", T - 5 * MIN, 30), "ana", "carlos");
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 60 } }, T));
+    d = apply(callNext(d, { stationId: "e1" }, T + 15 * MIN));
+    d = apply(checkIn(d, { itemId: "bia" }, T + 20 * MIN));
+    d = apply(callNext(d, { stationId: "e1" }, T + 31 * MIN));
+    d = apply(serveBeforePause(d, { stationId: "e1" }, T + 31 * MIN));
+    expect(station(d).calledItemId).toBe("bia");
+    // Ao finalizar a Bia, a pausa começa: Carlos fica para a volta.
+    d = apply(callNext(d, { stationId: "e1" }, T + 46 * MIN));
+    expect(station(d).calledItemId).toBeNull();
+  });
+
+  it("voltar ou fechar durante a pausa adiada não registra parada (a estação estava atendendo)", () => {
+    const d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
+    const free = apply(finish(freeze({ ...d, stations: d.stations.map((e) => e) }), { stationId: "e1" }, T + 40 * MIN));
+    expect(station(free).stops ?? []).toEqual([]);
+    const back = apply(resumeStation(d, { stationId: "e1" }, T + 35 * MIN));
+    expect(station(back).stops ?? []).toEqual([]);
   });
 
   it("atender antes de pausar sem ninguém esperando é recusado", () => {
@@ -528,6 +563,30 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
     });
     // Triagem 5; consulta: 5 + 4 × 15 + 60 do almoço.
     expect(estimate(tri, "joao", T, AUTO)).toMatchObject({ minutes: 5, query: { minutes: 125 } });
+  });
+
+  it("na triagem, a previsão da consulta soma todas as pausas do atendimento no caminho", () => {
+    const base = dayWith(["ana", "joao", "c1", "c2", "c3"], {
+      stations: [
+        { id: "tri", stage: "triage", services: ["cli"], open: true, calledItemId: null },
+        {
+          id: "e1",
+          stage: "care",
+          services: ["cli"],
+          open: true,
+          calledItemId: null,
+          pause: { from: T + 20 * MIN, until: T + 30 * MIN },
+        },
+      ],
+      initialTimeMin: { triage: 5 },
+      breaks: [{ start: T + 40 * MIN, end: T + 100 * MIN }],
+    });
+    const tri = freeze({
+      ...base,
+      items: base.items.map((i) => (["ana", "joao"].includes(i.id) ? { ...i, stage: "triage" as const } : i)),
+    });
+    // Triagem 5; consulta: 60 de fila a partir das 12:05, mais 10 (pausa) e 60 (almoço) = 135.
+    expect(estimate(tri, "joao", T, AUTO)).toMatchObject({ minutes: 5, query: { minutes: 135 } });
   });
 
   it("na triagem, pausa sem volta do atendimento bem depois da consulta: a previsão da consulta continua", () => {
