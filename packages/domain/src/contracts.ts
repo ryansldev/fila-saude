@@ -28,6 +28,9 @@ export type ItemState = "remote" | "present" | "called" | "done_in_stage" | "lef
 
 export type SessionState = "planned" | "open" | "cancelled" | "closed";
 
+/** A pausa de uma estação (RN-EST-06): sem pausa, marcada (ainda não começou) ou em pausa. */
+export type PauseState = "none" | "scheduled" | "paused";
+
 export type Transition<S extends string> = {
   de: S | "—";
   /** Parêntese da célula "De" da spec, ex.: "vaga segura", "nunca chamado". */
@@ -1197,6 +1200,86 @@ export function singleTransition<S extends string>(
  * Se os destinos divergem (ex.: "Não compareceu" por nº de pulos), é erro de
  * programação: quem depende da condição escolhe a linha na tabela.
  */
+/**
+ * RN-EST-06/07 (AD-077): a pausa da estação. As transições por tempo (hora da pausa, hora da volta) acontecem
+ * numa função só (`advance`, em pause-time.ts), chamada pelas ações da estação e pela varredura; o resto do
+ * domínio só lê o estado.
+ */
+export const PAUSE_TRANSITIONS: Transition<PauseState>[] = [
+  {
+    de: "none",
+    event: "Pausar",
+    for: "scheduled",
+    condition: "Sem paciente chamado; unidade com sinal; começa agora ou depois do prazo de quem está a caminho",
+    effects: "Volta opcional",
+    rule: "",
+    spec: "chamada",
+  },
+  {
+    de: "scheduled",
+    event: "Hora da pausa com a estação livre",
+    for: "paused",
+    condition: "Na hora marcada, ou quando o atendimento em curso termina",
+    effects: "Não chama mais",
+    rule: "",
+    spec: "chamada",
+  },
+  {
+    de: "scheduled",
+    event: "A volta passa durante o atendimento",
+    for: "none",
+    condition: "O atendimento começou antes da pausa e terminou depois da volta",
+    effects: "A pausa não aconteceu",
+    rule: "",
+    spec: "chamada",
+  },
+  {
+    de: "scheduled",
+    event: "Desmarcar a pausa",
+    for: "none",
+    condition: "—",
+    effects: "—",
+    rule: "",
+    spec: "chamada",
+  },
+  {
+    de: "paused",
+    event: "Voltar agora",
+    for: "none",
+    condition: "—",
+    effects: "A pausa vira parada no histórico",
+    rule: "",
+    spec: "chamada",
+  },
+  {
+    de: "paused",
+    event: "Hora da volta",
+    for: "none",
+    condition: "Com volta marcada",
+    effects: "A pausa vira parada no histórico",
+    rule: "",
+    spec: "chamada",
+  },
+  {
+    de: "scheduled",
+    event: "Fechar a estação",
+    for: "none",
+    condition: "—",
+    effects: "—",
+    rule: "",
+    spec: "chamada",
+  },
+  {
+    de: "paused",
+    event: "Fechar a estação",
+    for: "none",
+    condition: "—",
+    effects: "A pausa vira parada no histórico",
+    rule: "",
+    spec: "chamada",
+  },
+];
+
 export function applyTransition<S extends string>(table: Transition<S>[], de: S, event: string): S | "(mesmo)" | null {
   const rows = table.filter((t) => t.de === de && t.event === event);
   const first = rows[0];

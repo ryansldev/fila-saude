@@ -47,8 +47,8 @@ describe("specs-gen (AD-051)", () => {
 
   it("specs-gen AD-051: as tabelas de transição e a matriz estão todas entre marcadores", () => {
     const blocks = [...files(SPECS).values()].join("\n").match(/<!-- gerado: [^>]+ -->/g) ?? [];
-    // 6 specs com transições: marcacao, fila-do-dia e chamada têm duas tabelas; + a matriz
-    expect(blocks).toHaveLength(10);
+    // 6 specs com transições: marcacao e fila-do-dia têm duas tabelas, chamada três (com a pausa); + a matriz
+    expect(blocks).toHaveLength(11);
   });
 
   it("specs-gen AD-051: checar acusa tabela editada à mão", () => {

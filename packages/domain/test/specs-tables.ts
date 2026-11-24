@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-export type Machine = "entry" | "item" | "session";
+export type Machine = "entry" | "item" | "session" | "pause";
 
 export type RowSpec = {
   spec: string;
@@ -48,6 +48,11 @@ const STATES: Record<Machine, [string, string][]> = {
     ["Aberta", "open"],
     ["Cancelada", "cancelled"],
     ["Encerrada", "closed"],
+  ],
+  pause: [
+    ["Sem pausa", "none"],
+    ["Marcada", "scheduled"],
+    ["Em pausa", "paused"],
   ],
 };
 const NON_FINAL_ITEM = ["remote", "present", "called"];
@@ -98,6 +103,7 @@ function normalizeFor(machine: Machine, cell: string): string {
 
 function classify(spec: string, title: string, label: string, cellOf: string): Machine {
   if (spec === "fila-do-dia" && title === "Sessão") return "session";
+  if (/estados da pausa/i.test(label)) return "pause";
   if (/fila do dia/i.test(label)) return "item";
   if (spec === "contingencia") return /\(fila do dia\)/.test(cellOf) ? "item" : "entry";
   return "entry";

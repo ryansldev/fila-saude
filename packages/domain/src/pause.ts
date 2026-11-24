@@ -1,10 +1,9 @@
-import { callNext } from "./call.ts";
 import { inManualMode, pendingOutage } from "./outage.ts";
-import { inBreak, pauseActive, startPauseNow, waitingBeforePause, withStop } from "./pause-time.ts";
+import { advance, inBreak, leavePause, withStop } from "./pause-time.ts";
 import { DEFAULT_CONFIG, extendedDeadlineEnd, lateness, type SessionDay, type Stage, type Station } from "./queue.ts";
-import { type Event, failure, ok, type Result } from "./result.ts";
+import { failure, ok, type Result } from "./result.ts";
 
-export { callingAt, type Pause, pausedAt, stagePause, waitingBeforePause } from "./pause-time.ts";
+export { advancePauses, callingAt, type Pause, pausedAt, pauseState, stagePause } from "./pause-time.ts";
 
 type Cmd = { stationId: string };
 /** A volta: num horário, em minutos contados do início da pausa, ou sem hora (nulo). */
@@ -18,75 +17,58 @@ const withStation = (day: SessionDay, e: Station): SessionDay => ({
 });
 
 /** Quem da etapa está a caminho: recebeu "venha agora" e ainda está no prazo (a urgência que passou dele não, PA5). */
-function onTheWayItems(day: SessionDay, stage: Stage, now: number) {
-  return day.items.filter(
-    (i) =>
-      i.state === "remote" &&
-      i.stage === stage &&
-      extendedDeadlineEnd(day, i, now) !== null &&
-      lateness(day, i, now) !== "late",
-  );
-}
-
-/** Quando acaba o prazo de quem da etapa está a caminho (inclusive estendido por uma queda); nulo sem ninguém. */
 function onTheWayUntil(day: SessionDay, stage: Stage, now: number): number | null {
-  const ends = onTheWayItems(day, stage, now).map((i) => extendedDeadlineEnd(day, i, now) as number);
+  const ends = day.items
+    .filter((i) => i.state === "remote" && i.stage === stage && lateness(day, i, now) !== "late")
+    .map((i) => extendedDeadlineEnd(day, i, now))
+    .filter((end): end is number => end !== null);
   return ends.length > 0 ? Math.max(...ends) : null;
 }
 
 /**
- * Pausa avisada (plano-pausa-e-fechar): a pausa nunca pega ninguém a caminho. Com alguém da etapa a caminho
- * (no prazo do "venha agora", ou no prazo estendido por uma queda), começa depois do prazo da unidade, ou do
- * prazo estendido se for maior; senão, agora. Com pausa marcada ou em curso, pausar de novo é recusado (volte
- * ou desmarque antes). A volta é
- * opcional; em minutos, conta do início da pausa; antes do início, recusa. Não pausa com paciente chamado
- * (como fechar, RN-EST-05), nem estação fechada.
+ * "Pausar" (RN-EST-06): sem pausa → marcada. A pausa nunca pega ninguém a caminho: com alguém da etapa no prazo
+ * do "venha agora" (ou no prazo estendido por uma queda), começa depois do prazo da unidade, ou do estendido se
+ * for maior; senão, agora (e já entra em pausa). Com pausa marcada ou em curso, recusa (volte ou desmarque
+ * antes). A volta é opcional; em minutos, conta do início; antes do início, recusa. Não pausa com paciente
+ * chamado, estação fechada ou a unidade sem sinal (PA4).
  */
 export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
-  const e = day.stations.find((x) => x.id === cmd.stationId);
-  if (!e?.open) return failure("forbidden_transition");
+  const found = day.stations.find((x) => x.id === cmd.stationId);
+  if (!found?.open) return failure("forbidden_transition");
+  const e = advance(found, now);
+  if (e.pause) return failure("station_already_paused");
+  if (e.calledItemId !== null) return failure("station_has_call");
   // Com queda aberta ou por confirmar, o prazo de quem vem pode crescer: não dá para saber quando pausar.
   if (inManualMode(day) || pendingOutage(day, now)) return failure("pause_during_outage");
-  // Com pausa marcada ou em curso, é preciso voltar (ou desmarcar) antes de pausar de novo.
-  if (e.pause && pauseActive(e.pause, now)) return failure("station_already_paused");
-  if (e.calledItemId !== null) return failure("station_has_call");
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
   const onTheWay = onTheWayUntil(day, e.stage, now);
   const from = onTheWay === null ? now : Math.max(now + deadline, onTheWay);
   const back = cmd.back;
-  // Minutos: do início da pausa.
   const until = back === null ? null : "at" in back ? back.at : from + back.inMin * MIN;
   if (until !== null && !(Number.isFinite(until) && until > from)) return failure("pause_back_before_start");
-  // A pausa que acabou sozinha deixa a hora da volta: o silêncio de antes dela não é queda.
-  // A pausa adiada não parou a estação: não vira parada.
-  const old = e.pause?.until != null && !e.pause.deferred ? { start: e.pause.from, end: e.pause.until } : undefined;
-  const since = old === undefined ? {} : { callingSince: Math.max(e.callingSince ?? old.end, old.end) };
-  const waitFor = onTheWayItems(day, e.stage, now).map((i) => i.id);
-  const pause = { from, until, ...(waitFor.length > 0 ? { waitFor } : {}) };
-  return ok(withStation(day, { ...e, ...since, ...withStop(e, old), pause }), [
-    { kind: "station_paused", stationId: e.id, data: { from, until } },
-  ]);
+  const scheduled = advance({ ...e, pause: { state: "scheduled", from, until } }, now);
+  return ok(withStation(day, scheduled), [{ kind: "station_paused", stationId: e.id, data: { from, until } }]);
 }
 
-/** "Voltar agora" (em pausa) ou "desmarcar a pausa" (ainda não começou): a estação volta a chamar. */
+/**
+ * "Voltar agora" (em pausa) ou "Desmarcar a pausa" (marcada): sem pausa. Em pausa, ela vira parada no
+ * histórico e o silêncio conta da volta. No intervalo da sessão, tira a pausa própria, mas a estação só chama
+ * no fim dele (que já conta como volta).
+ */
 export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
-  const e = day.stations.find((x) => x.id === cmd.stationId);
-  if (!e?.pause) return failure("forbidden_transition");
-  if (!pauseActive(e.pause, now)) return failure("forbidden_transition");
-  const { pause, ...rest } = e;
-  // A pausa adiada (atender antes de pausar) não parou a estação: não vira parada.
-  const started = pause.from <= now && !pause.deferred ? { start: pause.from, end: now } : undefined;
-  const kept = { ...rest, ...withStop(e, started) };
-  const events = [{ kind: "station_resumed" as const, stationId: e.id }];
-  // No almoço da sessão, tira a pausa própria, mas a estação só chama no fim do almoço (que já conta como volta).
-  if (inBreak(day, now)) return ok(withStation(day, kept), events);
-  // Pausa que já começou: o silêncio conta da volta (desmarcar antes do início não muda nada).
-  return ok(withStation(day, started ? { ...kept, callingSince: now } : kept), events);
+  const found = day.stations.find((x) => x.id === cmd.stationId);
+  if (!found) return failure("forbidden_transition");
+  const e = advance(found, now);
+  if (!e.pause) return failure("forbidden_transition");
+  const paused = e.pause.state === "paused";
+  const back = leavePause(e, paused ? "Voltar agora" : "Desmarcar a pausa", now);
+  const since = paused && !inBreak(day, now) ? { callingSince: now } : {};
+  return ok(withStation(day, { ...back, ...since }), [{ kind: "station_resumed", stationId: e.id }]);
 }
 
-/** Reabrir a estação fechada (fechou por engano): volta a chamar nesta sessão. */
+/** Reabrir a estação fechada (fechou por engano): volta a chamar nesta sessão; o tempo fechada vira parada. */
 export function reopenStation(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
@@ -96,82 +78,4 @@ export function reopenStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   return ok(withStation(day, { ...rest, ...withStop(e, closed), open: true, callingSince: now }), [
     { kind: "station_reopened", stationId: e.id },
   ]);
-}
-
-/**
- * Opção C, "atender antes de pausar": chama o próximo (quem chegou no prazo está na frente) e adia a pausa
- * até o profissional finalizar; ela começa então, com a mesma duração.
- */
-export function serveBeforePause(
-  day: SessionDay,
-  cmd: Cmd & { classifies?: boolean },
-  now: number,
-): Result<SessionDay> {
-  if (day.state !== "open") return failure("session_closed");
-  const e = day.stations.find((x) => x.id === cmd.stationId);
-  if (inBreak(day, now)) return failure("session_break");
-  if (!e?.pause || waitingBeforePause(day, e.id, now).length === 0) return failure("forbidden_transition");
-  if (e.calledItemId !== null) return failure("station_has_call");
-  const { askedAt: _, ...pause } = e.pause;
-  const deferred = withStation(day, { ...e, pause: { ...pause, deferred: true } });
-  return callNext(
-    deferred,
-    { stationId: e.id, ...(cmd.classifies === undefined ? {} : { classifies: cmd.classifies }) },
-    now,
-  );
-}
-
-/** A pausa acabou ou ninguém espera mais: `waitFor` sai, sem justificativa. */
-function dropWaiting(day: SessionDay, e: Station): SessionDay {
-  if (!e.pause) return day;
-  const { waitFor: _, askedAt: __, ...pause } = e.pause;
-  return withStation(day, { ...e, pause });
-}
-
-/** Opção C, "pausar agora": a pausa começa (a adiada, agora) e quem chegou no prazo recebe a justificativa. */
-export function confirmPause(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
-  if (day.state !== "open") return failure("session_closed");
-  const e = day.stations.find((x) => x.id === cmd.stationId);
-  if (!e?.pause || e.pause.from > now) return failure("forbidden_transition");
-  if (!pauseActive(e.pause, now)) return failure("forbidden_transition");
-  if (e.calledItemId !== null) return failure("station_has_call");
-  if (!e.pause.waitFor && !e.pause.deferred) return ok(day);
-  const r = startPauseNow(day, e.id, now);
-  return ok(r.day, r.events);
-}
-
-/** Tempo para a estação responder "atender antes de pausar?" depois de ficar livre na hora da pausa. */
-export const PAUSE_ANSWER_MS = 3 * 60_000;
-
-/**
- * Varredura: a pausa começou e a estação não respondeu. Com paciente em atendimento (ou atendendo antes de
- * pausar), espera; livre, marca quando viu e, passado `PAUSE_ANSWER_MS`, manda a justificativa, uma vez.
- */
-export function pauseStartNotices(day: SessionDay, now: number): { day: SessionDay; events: Event[] } {
-  let current = day;
-  const events: Event[] = [];
-  for (const e of day.stations) {
-    const station = current.stations.find((x) => x.id === e.id) as Station;
-    const p = station.pause;
-    if (!p || (!p.waitFor && !p.deferred) || p.from > now || station.calledItemId !== null) continue;
-    // A pausa já acabou: a justificativa não faz mais sentido (a adiada vale até ser resolvida).
-    if (!pauseActive(p, now)) {
-      current = dropWaiting(current, station);
-      continue;
-    }
-    // Ninguém mais espera: a adiada começa já, e a marcada só esquece a lista.
-    if (waitingBeforePause(current, station.id, now).length === 0) {
-      current = p.deferred ? startPauseNow(current, station.id, now).day : dropWaiting(current, station);
-      continue;
-    }
-    if (p.askedAt === undefined) {
-      current = withStation(current, { ...station, pause: { ...p, askedAt: now } });
-      continue;
-    }
-    if (now - p.askedAt < PAUSE_ANSWER_MS) continue;
-    const r = startPauseNow(current, station.id, now);
-    current = r.day;
-    events.push(...r.events);
-  }
-  return { day: current, events };
 }
