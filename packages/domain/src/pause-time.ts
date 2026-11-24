@@ -1,4 +1,5 @@
 import type { QueueItem, SessionDay, Stage, Station } from "./queue.ts";
+import type { Event } from "./result.ts";
 
 /**
  * Leitura das pausas no tempo (RN-EST-06, RN-SES-06), sem nada de `queue.ts` em tempo de execução: `outage.ts`
@@ -135,12 +136,38 @@ export function waitingBeforePause(day: SessionDay, stationId: string, now: numb
  * A pausa adiada começa quando não há mais ninguém de `waitFor` esperando (o profissional finalizou): desde
  * agora, com a mesma duração (a volta anda o mesmo tanto).
  */
-export function settleDeferredPause(day: SessionDay, stationId: string, now: number, force = false): SessionDay {
+export function settleDeferredPause(day: SessionDay, stationId: string, now: number): SessionDay {
   const e = day.stations.find((x) => x.id === stationId);
   const p = e?.pause;
-  if (!e || !p?.deferred || (!force && waitingBeforePause(day, stationId, now).length > 0)) return day;
-  const pause = { from: now, until: p.until === null ? null : now + (p.until - p.from) };
-  return { ...day, stations: day.stations.map((x) => (x.id === e.id ? { ...e, pause } : x)) };
+  if (!e || !p?.deferred) return day;
+  if (!(p.until !== null && p.until <= now) && waitingBeforePause(day, stationId, now).length > 0) return day;
+  return startPauseNow(day, stationId, now).day;
+}
+
+/**
+ * A pausa começa agora (pausar agora, sem resposta da estação, ou ninguém esperado que esta estação possa
+ * chamar): a adiada começa agora com a mesma duração (se a volta já passou, ela some); quem ainda esperava
+ * recebe a justificativa, uma vez.
+ */
+export function startPauseNow(day: SessionDay, stationId: string, now: number): { day: SessionDay; events: Event[] } {
+  const e = day.stations.find((x) => x.id === stationId);
+  const p = e?.pause;
+  if (!e || !p) return { day, events: [] };
+  const put = (station: Station): SessionDay => ({
+    ...day,
+    stations: day.stations.map((x) => (x.id === e.id ? station : x)),
+  });
+  if (p.deferred && p.until !== null && p.until <= now) {
+    const { pause: _, ...rest } = e;
+    return { day: put(rest), events: [] };
+  }
+  const pause = p.deferred
+    ? { from: now, until: p.until === null ? null : now + (p.until - p.from) }
+    : { from: p.from, until: p.until };
+  const events: Event[] = waitingBeforePause(day, e.id, now)
+    .filter((i) => i.id !== e.calledItemId)
+    .map((i) => ({ kind: "turn_after_pause", itemId: i.id, stationId: e.id, data: { until: pause.until } }));
+  return { day: put({ ...e, pause }), events };
 }
 
 /**

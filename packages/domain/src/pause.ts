@@ -1,6 +1,6 @@
 import { callNext } from "./call.ts";
 import { inManualMode, pendingOutage } from "./outage.ts";
-import { inBreak, waitingBeforePause, withStop } from "./pause-time.ts";
+import { inBreak, startPauseNow, waitingBeforePause, withStop } from "./pause-time.ts";
 import { DEFAULT_CONFIG, extendedDeadlineEnd, lateness, type SessionDay, type Stage, type Station } from "./queue.ts";
 import { type Event, failure, ok, type Result } from "./result.ts";
 
@@ -137,26 +137,15 @@ function notifyWaiting(day: SessionDay, e: Station, now: number): { day: Session
   return { day: withStation(day, { ...e, pause }), events };
 }
 
-/** Opção C, "pausar agora": a pausa segue, e quem chegou no prazo recebe a justificativa (uma vez). */
+/** Opção C, "pausar agora": a pausa começa (a adiada, agora) e quem chegou no prazo recebe a justificativa. */
 export function confirmPause(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e?.pause || e.pause.from > now) return failure("forbidden_transition");
   if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
-  // Tinha escolhido atender antes e mudou de ideia: a pausa começa agora, com a mesma duração.
-  const p = e.pause;
-  const started = p.deferred
-    ? {
-        ...e,
-        pause: {
-          from: now,
-          until: p.until === null ? null : now + (p.until - p.from),
-          ...(p.waitFor ? { waitFor: p.waitFor } : {}),
-        },
-      }
-    : e;
-  if (!started.pause?.waitFor) return ok(withStation(day, started));
-  const r = notifyWaiting(withStation(day, started), started, now);
+  if (e.calledItemId !== null) return failure("station_has_call");
+  if (!e.pause.waitFor && !e.pause.deferred) return ok(day);
+  const r = startPauseNow(day, e.id, now);
   return ok(r.day, r.events);
 }
 
@@ -173,10 +162,10 @@ export function pauseStartNotices(day: SessionDay, now: number): { day: SessionD
   for (const e of day.stations) {
     const station = current.stations.find((x) => x.id === e.id) as Station;
     const p = station.pause;
-    if (!p?.waitFor || p.deferred || p.from > now || station.calledItemId !== null) continue;
+    if (!p || (!p.waitFor && !p.deferred) || p.from > now || station.calledItemId !== null) continue;
+    // A pausa já acabou: a adiada some, e a justificativa não faz mais sentido.
     if (p.until !== null && p.until <= now) {
-      const r = notifyWaiting(current, station, now);
-      current = r.day;
+      current = p.deferred ? startPauseNow(current, station.id, now).day : notifyWaiting(current, station, now).day;
       continue;
     }
     if (p.askedAt === undefined) {
@@ -184,7 +173,7 @@ export function pauseStartNotices(day: SessionDay, now: number): { day: SessionD
       continue;
     }
     if (now - p.askedAt < PAUSE_ANSWER_MS) continue;
-    const r = notifyWaiting(current, station, now);
+    const r = startPauseNow(current, station.id, now);
     current = r.day;
     events.push(...r.events);
   }

@@ -1,6 +1,15 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { afterCallEnds, inBreak, pausedAt, settleDeferredPause, waitingBeforePause, withStop } from "./pause-time.ts";
+import {
+  afterCallEnds,
+  callingAt,
+  inBreak,
+  pausedAt,
+  settleDeferredPause,
+  startPauseNow,
+  waitingBeforePause,
+  withStop,
+} from "./pause-time.ts";
 import {
   eligible,
   orderKey,
@@ -280,7 +289,10 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     (i) => waiting === null || waiting.has(i.id),
   );
   // Ninguém dos esperados que esta estação possa chamar (ex.: acolhido e técnico): a pausa começa.
-  if (waiting !== null && !next) return ok(settleDeferredPause(current, station.id, now, true), events);
+  if (waiting !== null && !next) {
+    const started = startPauseNow(current, station.id, now);
+    return ok(started.day, [...events, ...started.events]);
+  }
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").
   if (!next) return events.length > 0 ? ok(current, events) : failure("none_eligible");
   if (applyTransition(ITEM_TRANSITIONS, next.state, EVENT_CALL) !== "called") {
@@ -413,7 +425,11 @@ export function closeStation(day: SessionDay, cmd: Cmd, now: number): Result<Ses
       : undefined;
   const closed = { ...rest, ...withStop(station, stop), open: false, closedAt: now };
   // Quem chegou no prazo e esperava a pausa recebe a justificativa (a estação não volta nesta sessão).
-  const notices: Event[] = waitingBeforePause(day, station.id, now).map((i) => ({
+  const others = day.stations.some(
+    (e) =>
+      e.id !== station.id && e.stage === station.stage && e.services.includes(day.serviceId) && callingAt(day, e, now),
+  );
+  const notices: Event[] = (others ? [] : waitingBeforePause(day, station.id, now)).map((i) => ({
     kind: "turn_after_pause",
     itemId: i.id,
     stationId: station.id,
