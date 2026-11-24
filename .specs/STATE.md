@@ -2,14 +2,13 @@
 
 Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha curto (ver "Limpeza" no `CLAUDE.md` da raiz).
 
-## Onde estamos (2026-11-20)
+## Onde estamos (2026-11-24)
 
 - **v0.1 na `main`** (PR #33, fatias 0 a 4). Falta a fatia 5 (pré-cadastro).
 - **Docs públicas da API na `main`** (PR #34; AD-066 a AD-069): guias e a referência da API v1 em `/docs` do `apps/web`, gerada das rotas (`npm run docs:openapi`).
 - **Revisão de UI com o design system em andamento.** Feitas no painel: Agendamento, Fila do dia, QR de entrada e unidade no menu, Estação (com "Compareceu"), TV. No app: página da unidade, entrar, criar conta, aba "hoje" (bilhete), mapa das unidades, inscrição (com a relação para outra pessoa). Designs em [features/design-system/](features/design-system/).
 - **Código em inglês** pela tabela de [nomes no código](specs/nomes-no-codigo.md); telas e specs em português. Migrações recriadas do zero (NC2); o banco de dev já está no conjunto novo (2026-11-18).
-- **Code review das fatias 0 a 4 feito em duas rodadas (2026-11-17)**, com os achados corrigidos; daqui em diante, review antes de cada commit.
-- **Testes (2026-11-18):** API 395, domínio 369, painel 171, app 150, schemas 76, design 9; lint limpo.
+- **Testes (2026-11-24):** API 462, domínio 423, painel 171, app 173, schemas 76, design 9; lint limpo. Review antes de cada commit.
 
 ## Esperando você
 
@@ -17,12 +16,11 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC, CP). Tentativas de login e captcha prontos (AD-062 a AD-065; valores de partida, a reajustar com o piloto). Alinhamento de 2026-11-19: aprovadas na AD-070; as que você comentou (G9/G10, H4, I10, E3, P1, DA1…) estão anotadas no topo do arquivo, sem mudança no código.
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.
 - **Push no Android na `main`** (PR #35; AD-071 a AD-074). Rodar `npm run db:migrate`. **Na produção, a API só depois do app novo instalado** (o canal do push mudou para `avisos`). iOS pede o `bundleIdentifier` e a conta da Apple.
-- **RV7 e perder a vez (PR da branch `fix/priority-80-plus`):** 80+ antes dos demais idosos, sem hierarquia entre grupos (AD-075); perde a vez só quem não chega no prazo (30 min), com push "perdeu a vez", e o 2º "não compareceu" tira da fila com falta (AD-076). Revisar e fazer o merge; confirmar a leitura da lei com o advogado (D5).
-- **Queda percebida (PR da branch `feat/outage-detection`, sobre a #36):** a queda percebida pelo sistema (PV5 da AD-076): sinal de vida das estações, modo manual automático (RN-SES-05), o relógio do prazo parado durante a queda, a queda do servidor pela varredura parada. Revisar QP1 a QP5 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md). Fica para a T7.4: as quedas vistas na reconciliação (RN-CONT-02), o aviso de encerrar (RN-SES-04) e o modo manual no painel.
+- **RV7, perder a vez e queda percebida na `main`** (PRs #36 a #38; AD-075, AD-076). Confirmar a leitura da lei com o advogado (D5). PR da correção da fonte do sinal (TV ou estações, branch `fix/outage-signal-source`) esperando revisão.
 
 ## Próximo passo
 
-Depois dos merges, numa branch nova: seguir a revisão de UI do app, a lista de unidades. Na revisão de cada tela, tirar os "·" que o review apontou e que nenhum design aprovado usa: lista de unidades e mapa web no app, cartão e gaveta de cancelamento; Unidades, Sessões e Equipe no painel. Depois, o plano da fatia 5 (pré-cadastro). Anotado para depois: o questionário sem cara de dispositivo médico (junto do D8 e do D10).
+Pausa, fechar a estação e alerta de sinal ([plano](features/mvp-filas/plano-pausa-e-fechar.md)), em PRs pequenas: domínio, API, painel, app. Depois, a revisão de UI do app (lista de unidades, tirar os "·" que nenhum design aprovado usa) e o plano da fatia 5 (pré-cadastro).
 
 ## Fora do código
 

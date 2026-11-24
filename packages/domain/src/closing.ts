@@ -95,7 +95,8 @@ type Outcome = "reassigned" | "no_show";
  * RN-SES-02, RN-FALTA-01/02, AD-041, AD-076, RN-CONT-03: desfecho de quem está na fila ao encerrar e a
  * linha do contrato do item. Atendido numa etapa do dia nunca leva falta. Leva falta o remoto que perdeu
  * o prazo de chegada do "venha agora", exceto se o prazo, com o relógio parado durante um período de
- * contingência registrado ou de queda percebida pelo sistema (PV5), ainda não tinha acabado. A falta por pulos sai na hora do 2º pulo (RN-CHAM-03).
+ * contingência registrado ou uma queda percebida pelo sistema (PV5), ainda não tinha acabado. A falta por
+ * pulos sai na hora do 2º pulo (RN-CHAM-03).
  */
 function outcomeInClosing(day: SessionDay, x: QueueItem, now: number): { outcome: Outcome; condition: string } {
   if (x.attendedInStages.length > 0) return { outcome: "reassigned", condition: "Já atendido em etapa anterior" };

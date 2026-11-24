@@ -150,10 +150,10 @@ describe("estados que não podem mentir para o paciente (revisão 2026-11-13)", 
     }
   });
 
-  it("o botão 'cheguei na unidade' só em casa, na fila, e nunca em modo manual (sem a TV não há QR)", () => {
+  it("o botão 'cheguei na unidade' em casa e na fila, também em modo manual (a unidade sem TV ainda tem QR)", () => {
     expect(canCheckIn({ kind: "come" }, "remote")).toBe(true);
     expect(canCheckIn({ kind: "no_estimate", present: false }, "remote")).toBe(true);
-    expect(canCheckIn({ kind: "no_estimate", present: false, manual: true }, "remote")).toBe(false);
+    expect(canCheckIn({ kind: "no_estimate", present: false, manual: true }, "remote")).toBe(true);
     expect(canCheckIn({ kind: "come" }, "present")).toBe(false);
     expect(canCheckIn({ kind: "reception" }, "remote")).toBe(false);
   });

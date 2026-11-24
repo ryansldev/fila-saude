@@ -23,9 +23,10 @@ QUANDO o app não conseguir falar com a API, O SISTEMA DEVE mostrar "sistema ind
 QUANDO o admin for encerrar uma sessão em que a TV ou alguma estação ficou sem sinal e não há período de contingência registrado, O SISTEMA DEVE avisar (não bloqueia).
 
 **RN-SES-05 · Modo manual (queda só da unidade)**
-QUANDO a TV e todas as estações abertas de uma unidade perderem o sinal ao mesmo tempo por mais de ~2 min, O SISTEMA DEVE pôr as sessões abertas dela em **modo manual**: o app mostra "atendimento em modo manual, procure a recepção", o "saia de casa", o "venha agora" e o "perdeu a vez" são suspensos e a estimativa some, até o sinal voltar. A queda vale desde o último sinal e para o relógio do prazo de chegada (RN-CONT-03). Sem estação aberta não há queda a perceber (ninguém chama).
+QUANDO a unidade perder o sinal, O SISTEMA DEVE pôr as sessões abertas dela em **modo manual**: o app mostra "atendimento em modo manual, procure a recepção", o "saia de casa", o "venha agora" e o "perdeu a vez" são suspensos e a estimativa some, até o sinal voltar. A queda vale desde o último sinal e para o relógio do prazo de chegada (RN-CONT-03). Com TV pareada que já deu sinal na sessão, só a TV conta: ela fica sempre na frente, e sem ela ninguém vê as chamadas; 2 min sem sinal é queda. Sem TV (ou com uma TV nova que ainda não deu sinal), contam as estações, com 10 min de silêncio, porque o navegador pode congelar a aba da estação em segundo plano. Sem estação aberta não há queda a perceber (ninguém chama), e a queda aberta fecha. Enquanto o sinal está parado e a queda ainda não se confirmou, o atraso de quem recebeu "venha agora" não é julgado (não vai para o fim, não recebe "perdeu a vez"): a queda pode voltar no tempo e estender o prazo. O check-in pelo app continua (a unidade pode ter o QR em outra tela).
 *Decisões: AD-043, AD-076.*
-- *Dado* só a internet da UBS caiu e a API continua no ar, *quando* passam 2 min sem sinal da TV e das estações, *então* nenhum paciente recebe "saia de casa" até o sinal voltar.
+- *Dado* só a internet da UBS (com TV) caiu e a API continua no ar, *quando* passam 2 min sem sinal da TV, *então* nenhum paciente recebe "saia de casa" até o sinal voltar.
+- *Dado* uma UBS sem TV com a aba da estação em segundo plano, *quando* passam 5 min sem sinal, *então* não é queda; com 10 min, é, desde o último sinal.
 
 ## Transições
 

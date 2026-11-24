@@ -44,9 +44,9 @@ export function ticketCardFor(en: { ticket: string | null; itemState: string | n
       return { banner: "mostre na recepção", ticket: en.ticket, button: null };
     case "position":
     case "no_estimate":
-      // RN-SES-05: em modo manual a TV (e o QR) está fora do ar.
+      // RN-SES-05: em modo manual, procure a recepção; o QR continua (a unidade sem TV pode tê-lo).
       if (sit.kind === "no_estimate" && sit.manual)
-        return { banner: "procure a recepção", ticket: en.ticket, button: null };
+        return { banner: "procure a recepção", ticket: en.ticket, button: qr };
       return sit.present
         ? { banner: "você está na unidade", ticket: en.ticket, button: null }
         : { banner: "você está na fila", ticket: en.ticket, button: qr };

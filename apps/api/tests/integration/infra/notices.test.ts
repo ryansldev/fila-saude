@@ -1,8 +1,10 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { notice } from "infra/database/municipal/schema/notice";
 import { station } from "infra/database/municipal/schema/station";
+import { tv } from "infra/database/municipal/schema/tv";
 import { type Sending, sweepMunicipality } from "infra/notices/sweep";
 import { readDay } from "infra/queue/day";
+import { sessionSignal } from "infra/queue/signal";
 import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { loggedInUser, occupation } from "tests/panel";
@@ -243,8 +245,8 @@ describe("avisos por push (T3.8, T2.4)", () => {
   }
 
   it("AD-076: passado o prazo do 'venha agora', a varredura avisa 'perdeu a vez' uma vez só", async () => {
-    // Os testes acima saltam o relógio da varredura em 10 min sem sinal das estações (queda da unidade, que
-    // estende o prazo): a varredura vai até bem depois dos 30 min.
+    // Os testes acima saltam o relógio da varredura sem sinal das estações (o que pode virar queda e estender
+    // o prazo): a varredura vai até bem depois dos 30 min.
     const start = Date.now();
     const later = start + 45 * 60_000;
     const e = sender();
@@ -258,16 +260,19 @@ describe("avisos por push (T3.8, T2.4)", () => {
     expect(await patientOf("Carla")).toEqual(["queue_opened", "come_now", "turn_lost"]);
   });
 
-  it("PV5: unidade sem sinal por mais de 2 min entra em modo manual; o sinal volta e a queda fecha", async () => {
+  it("PV5: unidade sem TV e estações sem sinal por mais de 10 min entra em modo manual; o sinal volta e fecha", async () => {
     const t0 = ((await readDay(db(), c.sessionId))?.lastSweepAt ?? Date.now()) + 60_000;
     await sweepUntil(t0, t0);
-    // Sem sinal desde t0: 3 min depois a unidade caiu.
+    // Sem TV, a aba da estação pode estar só em segundo plano: 3 min de silêncio ainda não é queda.
     await sweepMunicipality(db(), t0 + 3 * 60_000, sender().send);
+    expect((await readDay(db(), c.sessionId))?.outages?.some((o) => o.end === null)).not.toBe(true);
+    // Sem sinal desde t0: 11 min depois a unidade caiu.
+    await sweepMunicipality(db(), t0 + 11 * 60_000, sender().send);
     expect((await readDay(db(), c.sessionId))?.outages?.at(-1)).toEqual({ start: t0, end: null });
     const mine = await app("GET", `/v1/municipalities/${c.slug}/mine`, accounts.Davi?.cookie);
     expect(mine.body[0]?.estimate).toEqual({ kind: "manual_mode" });
-    await sweepUntil(t0 + 4 * 60_000, t0 + 4 * 60_000);
-    expect((await readDay(db(), c.sessionId))?.outages?.at(-1)).toEqual({ start: t0, end: t0 + 4 * 60_000 });
+    await sweepUntil(t0 + 12 * 60_000, t0 + 12 * 60_000);
+    expect((await readDay(db(), c.sessionId))?.outages?.at(-1)).toEqual({ start: t0, end: t0 + 12 * 60_000 });
   });
 
   it("PV5: a estação lida no painel dá sinal de vida", async () => {
@@ -290,6 +295,26 @@ describe("avisos por push (T3.8, T2.4)", () => {
     await sweepMunicipality(db(), back + 60_000, sender().send, () => {}, back);
     const day = await readDay(db(), c.sessionId);
     expect(day?.outages?.length).toBe((outages ?? 0) + 1);
-    expect(day?.outages?.at(-1)).toEqual({ start: slow, end: back });
+    // Até o primeiro giro depois da volta (ninguém olhava a unidade entre a volta e ele).
+    expect(day?.outages?.at(-1)).toEqual({ start: slow, end: back + 60_000 });
+  });
+
+  it("PV5: o sinal da unidade separa a TV pareada (só ela conta quando existe) das estações", async () => {
+    const before = await sessionSignal(db(), c.sessionId);
+    expect(before.hasTv).toBe(false);
+    const at = new Date();
+    const [row] = await db()
+      .insert(tv)
+      .values({ code: "123456", tokenHash: `pv5-${Date.now()}`, unitId: c.unitId, pairedAt: at, lastSignalAt: at })
+      .returning({ id: tv.id });
+    try {
+      const after = await sessionSignal(db(), c.sessionId);
+      expect(after).toMatchObject({ hasTv: true, tvSignalAt: at.getTime() });
+    } finally {
+      // A unidade do cenário é compartilhada: sem a TV, os testes seguintes seguem a regra das estações.
+      await db()
+        .delete(tv)
+        .where(eq(tv.id, row?.id as string));
+    }
   });
 });

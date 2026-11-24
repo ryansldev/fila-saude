@@ -2,6 +2,7 @@ import { applyTransition, ITEM_TRANSITIONS, type ItemState, type SessionState } 
 import type { UnitConfig } from "./kinds.ts";
 import type { Origin } from "./list.ts";
 import { type OrderKey, orderItems, type Risk } from "./order.ts";
+import { pendingOutage } from "./outage.ts";
 import {
   canGivePriority,
   elderlyLevel,
@@ -100,14 +101,18 @@ export type SessionDay = {
   /** Períodos de contingência registrados (RN-CONT-02), com o motivo. */
   contingencies: { start: number; end: number; reason?: string }[];
   /**
-   * Quedas que o sistema percebeu sozinho (PV5 da AD-076, RN-SES-05): sem sinal da unidade ou com a
-   * varredura parada. `end` nulo: a queda continua (modo manual). Ausente nos dias de antes.
+   * Quedas que o sistema percebeu sozinho (PV5 da AD-076, RN-SES-05): a unidade sem sinal ou o servidor
+   * fora do ar (reiniciado). `end` nulo: a queda continua (modo manual). Ausente nos dias de antes.
    */
   outages?: { start: number; end: number | null }[];
-  /** Hora do último giro da varredura nesta sessão: um intervalo longo sem ela é queda do servidor. */
+  /** Hora do último giro da varredura nesta sessão: o servidor reiniciado depois dela esteve fora do ar. */
   lastSweepAt?: number;
   /** Último sinal de vida da unidade que a varredura viu nesta sessão; sem ele, a unidade não começou. */
   liveSignalAt?: number;
+  /** Último sinal da TV visto nesta sessão: daí em diante só a TV conta (PV5). */
+  tvLiveAt?: number;
+  /** O último sinal da fonte que conta, no último giro; o "perdeu a vez" espera um sinal recente. */
+  unitSignalAt?: number | null;
   nextNumber: number;
   /** Prefixo de senha do serviço (RN-FILA-04), ex.: "C" → "C-001". */
   ticketPrefix: string;
@@ -249,7 +254,11 @@ export function lateness(day: SessionDay, x: QueueItem, now: number): "on_time" 
     end += c.end - from;
     cursor = c.end;
   }
-  return now < end ? "late_in_contingency" : "late";
+  if (now < end) return "late_in_contingency";
+  // Sinal da unidade parado desde antes do fim do prazo: pode ser uma queda ainda não confirmada, que volta
+  // no tempo e estende o prazo; até lá, o atraso espera (PV5).
+  const signalAt = day.unitSignalAt ?? Number.NEGATIVE_INFINITY;
+  return pendingOutage(day, now) && signalAt < end ? "late_in_contingency" : "late";
 }
 
 /** A vez de X passou: perdeu o prazo de chegada, fora de contingência (AD-076). */
