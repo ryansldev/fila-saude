@@ -1195,12 +1195,6 @@ export function singleTransition<S extends string>(
 }
 
 /**
- * Destino de `evento` a partir do estado `de`; `null` = transição proibida.
- * Linhas com o mesmo (de, evento) e o mesmo destino devolvem esse destino.
- * Se os destinos divergem (ex.: "Não compareceu" por nº de pulos), é erro de
- * programação: quem depende da condição escolhe a linha na tabela.
- */
-/**
  * RN-EST-06/07 (AD-077): a pausa da estação. As transições por tempo (hora da pausa, hora da volta) acontecem
  * numa função só (`advance`, em pause-time.ts), chamada pelas ações da estação e pela varredura; o resto do
  * domínio só lê o estado.
@@ -1279,6 +1273,13 @@ export const PAUSE_TRANSITIONS: Transition<PauseState>[] = [
     spec: "chamada",
   },
 ];
+
+/**
+ * Destino de `evento` a partir do estado `de`; `null` = transição proibida.
+ * Linhas com o mesmo (de, evento) e o mesmo destino devolvem esse destino.
+ * Se os destinos divergem (ex.: "Não compareceu" por nº de pulos), é erro de
+ * programação: quem depende da condição escolhe a linha na tabela.
+ */
 
 export function applyTransition<S extends string>(table: Transition<S>[], de: S, event: string): S | "(mesmo)" | null {
   const rows = table.filter((t) => t.de === de && t.event === event);

@@ -96,8 +96,9 @@ export const inBreak = (day: SessionDay, t: number) => (day.breaks ?? []).some((
 const breaks = (day: SessionDay): Interval[] => (day.breaks ?? []).map((b) => ({ start: b.start, end: b.end }));
 
 /**
- * Quando a estação não chama, visto em `at`: as paradas encerradas, a pausa dela (em pausa, ou marcada, que
- * começa na hora ou ao fim do atendimento em curso) e as pausas planejadas da sessão.
+ * Quando a estação não chama, visto em `at`: as paradas encerradas, a pausa dela (em pausa, ou marcada, desde a
+ * hora marcada: com paciente em atendimento ela começa ao fim dele, mas ninguém mais é chamado antes) e as pausas
+ * planejadas da sessão.
  */
 function timeline(day: SessionDay, e: Station, at: number, withBreaks = true): Interval[] {
   const s = advance(e, at);
@@ -106,7 +107,7 @@ function timeline(day: SessionDay, e: Station, at: number, withBreaks = true): I
     ? []
     : p.state === "paused"
       ? [{ start: p.since, end: p.until ?? NEVER }]
-      : [{ start: s.calledItemId !== null ? Math.max(p.from, at) : p.from, end: p.until ?? NEVER }];
+      : [{ start: p.from, end: p.until ?? NEVER }];
   return [...(s.stops ?? []), ...own, ...(withBreaks ? breaks(day) : [])];
 }
 

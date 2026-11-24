@@ -670,6 +670,49 @@ describe("queda percebida com a pausa (QP6)", () => {
     expect(trackOutage(d, T + 15 * MIN, st(T)).outages).toEqual([{ start: T, end: null }]);
   });
 
+  it("a pausa que começa durante uma queda não fecha a queda (só o sinal de volta, ou fechar todas as estações)", () => {
+    const base = dayWith(["ana"]);
+    const d = freeze({
+      ...base,
+      outages: [{ start: T, end: null }],
+      liveSignalAt: T - MIN,
+      stations: base.stations.map((e) => ({
+        ...e,
+        pause: { state: "paused" as const, since: T + 20 * MIN, until: null },
+      })),
+    });
+    const tv = { hasTv: true, tvSignalAt: T - MIN, stationSignalAt: null, serverStartedAt: 0 };
+    expect(trackOutage(d, T + 25 * MIN, tv).outages).toEqual([{ start: T, end: null }]);
+    const closed = freeze({ ...d, stations: d.stations.map((e) => ({ ...e, open: false })) });
+    expect(trackOutage(closed, T + 25 * MIN, tv).outages).toEqual([{ start: T, end: T + 25 * MIN }]);
+  });
+
+  it("no intervalo, a estação com pausa própria que passa dele diz 'em pausa', não 'intervalo'", () => {
+    let d = present(dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] }), "ana");
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({
+        ...e,
+        pause: { state: "paused" as const, since: T - 10 * MIN, until: null },
+      })),
+    });
+    expect(callNext(d, { stationId: "e1" }, T + 30 * MIN)).toEqual({ ok: false, error: "station_paused" });
+  });
+
+  it("pausa marcada com paciente em atendimento: a pausa da etapa tem início estável (a hora marcada)", () => {
+    let d = present(dayWith(["ana", "bia"]), "ana", "bia");
+    d = apply(callNext(d, { stationId: "e1" }, T));
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({
+        ...e,
+        pause: { state: "scheduled" as const, from: T + 10 * MIN, until: T + 40 * MIN },
+      })),
+    });
+    expect(stagePause(d, "care", T + 15 * MIN)).toEqual({ from: T + 10 * MIN, until: T + 40 * MIN });
+    expect(stagePause(d, "care", T + 16 * MIN)).toEqual({ from: T + 10 * MIN, until: T + 40 * MIN });
+  });
+
   it("pausa planejada da sessão (almoço, TV desligada): o silêncio da TV conta da volta", () => {
     const tv = (last: number) => ({ hasTv: true, tvSignalAt: last, stationSignalAt: null, serverStartedAt: 0 });
     let d = dayWith(["ana"], { breaks: [{ start: T + 60 * MIN, end: T + 120 * MIN }] });

@@ -260,8 +260,11 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
   if (pausedAt(current, stationOf(current, station.id), now)) {
     if (events.length > 0) return ok(current, events);
-    // No intervalo da sessão, "voltar agora" não resolve: a estação só chama no fim dele.
-    return failure(inBreak(current, now) ? "session_break" : "station_paused");
+    // No intervalo da sessão, "voltar agora" não resolve, a não ser que a pausa própria passe dele.
+    const own = stationOf(current, station.id).pause;
+    const breakEnd = Math.max(...(current.breaks ?? []).filter((b) => b.start <= now && now < b.end).map((b) => b.end));
+    const ownPastBreak = own?.state === "paused" && (own.until === null || own.until > breakEnd);
+    return failure(inBreak(current, now) && !ownPastBreak ? "session_break" : "station_paused");
   }
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true })[0];
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").

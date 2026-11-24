@@ -111,8 +111,9 @@ function withPause(
   queue: number,
   now: number,
 ): { minutes: number; pause?: Pause; blocked: boolean } {
-  // Já com "venha agora" e a caminho (PA6): a pausa do consultório começa depois do prazo dele (e espera ele
-  // ser chamado, opção C), então só o almoço da sessão, que não espera ninguém, entra no tempo.
+  // Já com "venha agora" e a caminho (PA6): a pausa do consultório começa depois do prazo dele, então só o
+  // intervalo da sessão, que não espera ninguém, entra no tempo. Uma queda que comece depois de marcada a pausa
+  // pode fazê-lo chegar e esperar a volta (PA4).
   const onTheWay =
     item.state === "remote" && arrivalDeadlineEnd(day, item) !== null && lateness(day, item, now) !== "late";
   if (onTheWay) {
