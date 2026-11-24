@@ -71,7 +71,7 @@ export function compareSuggestion(a: SuggestionKey, b: SuggestionKey, municipali
 }
 
 /**
- * Quem ocupa uma vaga de idoso (RV7): todo 80+, e o idoso de 60-79 sem outro grupo de prioridade (PL1).
+ * Quem ocupa uma vaga de idoso (RV7): todo 80+, e o idoso de 60-79 sem outro grupo de prioridade (AD-075).
  */
 const slotHolder = (p: LegalPriority): boolean => {
   const level = elderlyLevel(p);
@@ -85,7 +85,7 @@ const slotHolder = (p: LegalPriority): boolean => {
  * já em ordem, dentro de cada bloco de quem tem prioridade com o mesmo nível de urgência e risco, as vagas
  * ocupadas por idosos vão primeiro aos 80+, cada grupo na ordem em que já estava. Os outros grupos ficam no
  * lugar que a senha lhes dá, inclusive o idoso de 60-79 que também é de outro grupo (gestante, PcD...): sem
- * hierarquia entre os grupos, esse lugar ele já tem pelo outro grupo (PL1, a confirmar com o advogado, D5).
+ * hierarquia entre os grupos, esse lugar ele já tem pelo outro grupo (AD-075, a confirmar com o advogado, D5).
  * O 80+ entra nas vagas mesmo sendo de outro grupo: declarar mais um grupo nunca piora o lugar.
  */
 function elderlySlots<T>(sorted: T[], block: (a: T, b: T) => boolean, priority: (t: T) => LegalPriority): T[] {

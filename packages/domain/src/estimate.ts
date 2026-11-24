@@ -71,12 +71,12 @@ const open = (day: SessionDay, stage: Stage) =>
 const inQueue = (i: QueueItem): boolean => i.state === "remote" || i.state === "present";
 
 /**
- * Quantos de `set` vêm antes de `item` em ordem(todas), com as vagas dos idosos (RV7, PL2): a mesma regra
+ * Quantos de `set` vêm antes de `item` em ordem(todas), com as vagas dos idosos (RV7, AD-075): a mesma regra
  * da chamada, então o 80+ em casa é avisado na hora certa. As vagas só mexem nos idosos: os outros grupos
  * e quem não tem prioridade ficam no mesmo lugar que a senha lhes dá.
  */
-const aheadIn = (day: SessionDay, set: QueueItem[], waiting: QueueItem[], item: QueueItem): number =>
-  stageOrder(day, item.stage, set.some((i) => i.id === item.id) ? set : [...set, item], waiting).findIndex(
+const aheadIn = (day: SessionDay, set: QueueItem[], item: QueueItem): number =>
+  stageOrder(day, item.stage, set.some((i) => i.id === item.id) ? set : [...set, item]).findIndex(
     (i) => i.id === item.id,
   );
 
@@ -116,7 +116,6 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
         : aheadIn(
             day,
             inStage.filter((i) => i.id === item.id || account(i)),
-            inStage,
             item,
           );
   if (ahead < 0) return { kind: "awaiting_start" };
@@ -131,8 +130,7 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   // Quem já está na fila do atendimento é atendido antes de X chegar lá (RN-TRI-04: fila nova);
   // da triagem, contam os que vêm antes de X.
   const beforeQuery =
-    day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length +
-    aheadIn(day, inStage, inStage, item);
+    day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length + aheadIn(day, inStage, item);
   const triageWeight = (ahead * averageTime(day, "triage", day.serviceId, now)) / n;
   const query = Math.ceil(triageWeight + (beforeQuery * averageTime(day, "care", day.serviceId, now)) / nA);
   return { ...primary, query: { minutes: query } };

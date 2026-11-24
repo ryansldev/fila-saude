@@ -403,7 +403,7 @@ describe("revisão 2026-11-13: estimativa honesta", () => {
   });
 });
 
-describe("RV7: em casa, a posição usa as vagas dos idosos, como a chamada (PL2)", () => {
+describe("RV7: em casa, a posição usa as vagas dos idosos, como a chamada (AD-075)", () => {
   const g = (x: string[]) => ({ groups: x as never, verified: false, verifiedAt: null });
   const pos = (d: ReturnType<typeof dayWith>, id: string) => {
     const e = estimate(d, id, T, AUTO);
@@ -430,7 +430,7 @@ describe("RV7: em casa, a posição usa as vagas dos idosos, como a chamada (PL2
     expect(pos(d, "bia")).toBe(2);
   });
 
-  it("o idoso de 60-79 que também é de outro grupo fica no lugar da senha (PL1)", () => {
+  it("o idoso de 60-79 que também é de outro grupo fica no lugar da senha (AD-075)", () => {
     let d = dayWith(["bia", "ana"]);
     d = withItem(d, "bia", { priority: g(["elderly", "disability"]) });
     d = withItem(d, "ana", { priority: g(["elderly80"]) });

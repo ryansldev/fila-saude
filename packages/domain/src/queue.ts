@@ -71,6 +71,11 @@ export type Call = {
   noShow?: boolean;
   /** Hora em que a pessoa entrou na sala ("Compareceu"); a tolerância deixa de valer. */
   showedUpAt?: number;
+  /**
+   * A chave da ordem na hora da chamada (RV7): o 80+ chamado guarda a vaga de idoso em que estava, mesmo
+   * que a triagem mude o risco ou o número dele depois. Chamadas gravadas antes disso não têm a chave.
+   */
+  orderKey?: OrderKey;
 };
 
 export type SessionDay = {
@@ -122,7 +127,8 @@ export const DEFAULT_CONFIG: UnitConfig = {
   priorityDeadlines: {},
 };
 
-const key = (i: QueueItem): OrderKey => ({
+/** Uso interno do pacote. */
+export const orderKey = (i: QueueItem): OrderKey => ({
   confirmedUrgency: i.confirmedUrgency,
   risk: i.risk,
   priority: i.priority,
@@ -131,29 +137,25 @@ const key = (i: QueueItem): OrderKey => ({
 
 /**
  * `items` (da etapa `stage`) em ordem(RN-ORD) com as vagas dos idosos (RV7). O 80+ já chamado na etapa
- * continua com a vaga de idoso que ocupou: senão, chamado ele, o idoso de 60-79 que ele passou voltaria
- * à frente dos outros grupos, e a ordem mudaria depois de cada chamada. Entram assim os 80+ com chamada
- * na etapa que não estão em `waiting` (quem ainda espera na etapa) e os de `gone` (já postos à frente).
+ * que não voltou a esperar nela continua com a vaga de idoso que ocupou, pela chave da chamada: senão,
+ * chamado ele, o idoso de 60-79 que ele passou voltaria à frente dos outros grupos, e a ordem mudaria
+ * depois de cada chamada. Quem voltou a esperar (remoto ou presente, em qualquer metade da fila) ocupa a
+ * vaga só pelo lugar de agora. Os de `gone` (já postos à frente) também guardam a vaga.
  * Uso interno do pacote (estimativa e chamada).
  */
-export function stageOrder(
-  day: SessionDay,
-  stage: Stage,
-  items: QueueItem[],
-  waiting: QueueItem[] = items,
-  gone: QueueItem[] = [],
-): QueueItem[] {
+export function stageOrder(day: SessionDay, stage: Stage, items: QueueItem[], gone: QueueItem[] = []): QueueItem[] {
   const ids = new Set(items.map((i) => i.id));
-  const waitingIds = new Set(waiting.map((i) => i.id));
   const goneIds = new Set(gone.map((i) => i.id));
-  const called = new Set(day.calls.filter((c) => c.stage === stage).map((c) => c.itemId));
-  const held = day.items.filter(
-    (i) =>
-      !ids.has(i.id) &&
-      elderlyLevel(i.priority) === 2 &&
-      (goneIds.has(i.id) || (called.has(i.id) && !waitingIds.has(i.id))),
-  );
-  return orderItems([...items, ...held], key, day.config.municipalityOrder).filter((i) => ids.has(i.id));
+  const lastCall = new Map(day.calls.filter((c) => c.stage === stage).map((c) => [c.itemId, c]));
+  const waiting = (i: QueueItem) => i.stage === stage && (i.state === "remote" || i.state === "present");
+  const held = day.items.flatMap((i): QueueItem[] => {
+    if (ids.has(i.id) || elderlyLevel(i.priority) !== 2) return [];
+    if (goneIds.has(i.id)) return [i];
+    const c = lastCall.get(i.id);
+    if (!c || waiting(i)) return [];
+    return [c.orderKey ? { ...i, ...c.orderKey } : i];
+  });
+  return orderItems([...items, ...held], orderKey, day.config.municipalityOrder).filter((i) => ids.has(i.id));
 }
 
 /**
@@ -173,7 +175,7 @@ function callOrder(day: SessionDay, set: QueueItem[]): QueueItem[] {
   const free = (i: QueueItem) => i.confirmedUrgency || i.lockedBehind.every((t) => !inSet.has(t) || done.has(t));
   while (placed.length < set.length) {
     const rest = set.filter((i) => !done.has(i.id));
-    const first = (items: QueueItem[]) => stageOrder(day, stage, items, set, placed)[0];
+    const first = (items: QueueItem[]) => stageOrder(day, stage, items, placed)[0];
     const next = first(rest.filter(free)) ?? first(rest);
     if (!next) break;
     placed.push(next);
@@ -261,7 +263,8 @@ export function stayEligible(
   const lockedBehind = x.confirmedUrgency
     ? []
     : callOrder(
-        day,
+        // X volta a esperar: não guarda a vaga da chamada que acabou (RV7).
+        { ...day, items: day.items.map((i) => (i.id === x.id ? { ...x, state: "present" as const } : i)) },
         day.items.filter((i) => i.id !== x.id && i.state === "present" && i.stage === x.stage),
       )
         .slice(0, day.config.windowK)

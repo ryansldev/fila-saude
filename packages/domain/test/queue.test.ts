@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { callNext } from "../src/call.ts";
 import * as domain from "../src/index.ts";
 import {
   checkIn,
@@ -458,6 +459,29 @@ describe("RV7: 80+ antes dos demais idosos na fila de verdade (Lei 10.741, art. 
     d = withItem(d, "ana", { state: "called" });
     d = freeze({ ...d, calls: [{ itemId: "ana", stage: "care", stationId: "e1", at: T + MIN }] });
     expect(order(d)).toEqual(["gil", "bia", "caio"]);
+  });
+
+  it("a Ana (85) chamada e depois triada (risco e número novos) continua com a vaga em que foi chamada", () => {
+    let d = apply(callNext(day(), { stationId: "e1" }, T + MIN));
+    expect(item(d, "ana").state).toBe("called");
+    d = withItem(d, "ana", { confirmedUrgency: true, risk: "attention", number: 10 });
+    expect(order(d)).toEqual(["gil", "bia", "caio"]);
+  });
+
+  it("a Ana (85) chamada que voltou para casa não guarda vaga: ela a ocupa de novo só quando voltar", () => {
+    let d = apply(callNext(day(), { stationId: "e1" }, T + MIN));
+    d = withItem(d, "ana", { state: "remote", presentSince: null, leftAt: T + 2 * MIN });
+    expect(order(d)).toEqual(["bia", "gil", "caio"]);
+  });
+
+  it("no 1º pulo a Ana (85) não guarda vaga enquanto se calcula a trava dela", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "gil", { priority: groups(["pregnant"]), state: "present", presentSince: T });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]), state: "present", presentSince: T });
+    d = apply(callNext(d, { stationId: "e1" }, T + MIN));
+    d = freeze(stayEligible(d, "ana", T + 2 * MIN, { applyDelay: false }).state);
+    expect(item(d, "ana").lockedBehind).toEqual(["bia"]);
   });
 
   it("travada atrás da Bia (70), a Ana (85) passa à frente do Caio (70) que veio depois", () => {

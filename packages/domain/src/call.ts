@@ -1,6 +1,14 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { eligible, type QueueItem, type SessionDay, type Stage, type Station, stayEligible } from "./queue.ts";
+import {
+  eligible,
+  orderKey,
+  type QueueItem,
+  type SessionDay,
+  type Stage,
+  type Station,
+  stayEligible,
+} from "./queue.ts";
 import { type ErrorCode, type Event, failure, ok, type Result } from "./result.ts";
 
 type Cmd = { stationId: string };
@@ -252,7 +260,10 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   current = withStation(current, station.id, { calledItemId: next.id });
   current = {
     ...current,
-    calls: [...current.calls, { itemId: next.id, stage: next.stage, stationId: station.id, at: now }],
+    calls: [
+      ...current.calls,
+      { itemId: next.id, stage: next.stage, stationId: station.id, at: now, orderKey: orderKey(next) },
+    ],
   };
   events.push({
     kind: "called",

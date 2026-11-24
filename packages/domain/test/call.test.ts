@@ -79,7 +79,15 @@ describe("RN-CHAM-01/02: chamar, encerrar a chamada anterior", () => {
     d = freeze(r.state);
     expect(item(d, "joao").state).toBe("called"); // Ana (nº 1) está remota
     expect(calledAt(d)).toBe("joao");
-    expect(d.calls).toEqual([{ itemId: "joao", stage: "care", stationId: "e1", at: T + MIN }]);
+    expect(d.calls).toEqual([
+      {
+        itemId: "joao",
+        stage: "care",
+        stationId: "e1",
+        at: T + MIN,
+        orderKey: { confirmedUrgency: false, risk: "routine", priority: item(d, "joao").priority, number: 2 },
+      },
+    ]);
     expect(r.events).toEqual([
       {
         kind: "called",
