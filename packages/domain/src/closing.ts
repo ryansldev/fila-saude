@@ -8,6 +8,7 @@ import {
   type Transition,
 } from "./contracts.ts";
 import { type Entry, type Exit, type Origin, otherDateInSession, type Service, type SessionSlots } from "./list.ts";
+import { endOutages } from "./outage.ts";
 import { type ExitReason, lateness, type QueueItem, type SessionDay } from "./queue.ts";
 import { type Event, failure, ok, type Result } from "./result.ts";
 import { alreadyInSession, byQueue, createdItem, free, hasSlot, situation, take, withOpening } from "./session.ts";
@@ -94,7 +95,7 @@ type Outcome = "reassigned" | "no_show";
  * RN-SES-02, RN-FALTA-01/02, AD-041, AD-076, RN-CONT-03: desfecho de quem está na fila ao encerrar e a
  * linha do contrato do item. Atendido numa etapa do dia nunca leva falta. Leva falta o remoto que perdeu
  * o prazo de chegada do "venha agora", exceto se o prazo, com o relógio parado durante um período de
- * contingência registrado, ainda não tinha acabado. A falta por pulos sai na hora do 2º pulo (RN-CHAM-03).
+ * contingência registrado ou de queda percebida pelo sistema (PV5), ainda não tinha acabado. A falta por pulos sai na hora do 2º pulo (RN-CHAM-03).
  */
 function outcomeInClosing(day: SessionDay, x: QueueItem, now: number): { outcome: Outcome; condition: string } {
   if (x.attendedInStages.length > 0) return { outcome: "reassigned", condition: "Já atendido em etapa anterior" };
@@ -102,7 +103,10 @@ function outcomeInClosing(day: SessionDay, x: QueueItem, now: number): { outcome
   const late = lateness(day, x, now);
   if (late === "on_time") return { outcome: "reassigned", condition: "A vez não passou" };
   if (late === "late_in_contingency") {
-    return { outcome: "reassigned", condition: "Perdeu o prazo de chegada durante período de contingência registrado" };
+    return {
+      outcome: "reassigned",
+      condition: "Perdeu o prazo de chegada durante uma queda, registrada ou percebida pelo sistema",
+    };
   }
   return { outcome: "no_show", condition: "Perdeu o prazo de chegada; nunca atendido no dia; fora de contingência" };
 }
@@ -209,7 +213,7 @@ export function close(
   });
 
   const closed: SessionDay = {
-    ...day,
+    ...endOutages(day, now),
     state: "closed",
     items,
     closing: { at: now, noShows, origin: options.origin },
@@ -253,7 +257,7 @@ export function cancel(
     return reassign(e, to, options.origin);
   });
   const cancelled: SessionDay = {
-    ...day,
+    ...endOutages(day, now),
     state: "cancelled",
     items,
     stations: day.stations.map((s) => (s.calledItemId === null ? s : { ...s, calledItemId: null })),

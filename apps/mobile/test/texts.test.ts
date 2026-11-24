@@ -2,6 +2,7 @@ import type { MyEntry } from "@fila-saude/schemas/queue";
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
 import {
+  canCheckIn,
   cancellationNotice,
   cancellationText,
   entrySituation,
@@ -139,6 +140,24 @@ describe("estados que não podem mentir para o paciente (revisão 2026-11-13)", 
     expect(entrySituation({ ...confirmed, session: session("2026-11-13T10:00:00.000Z") }, NOW).kind).toBe("late");
   });
 
+  it("RN-SES-05: em modo manual, o próximo passo é procurar a recepção (os avisos estão parados)", () => {
+    const open = { ...base, session: session("2026-11-13T10:00:00.000Z", "open") };
+    for (const present of [false, true]) {
+      const sit = { kind: "no_estimate" as const, present, manual: true as const };
+      expect(nextStep({ ...open, itemState: present ? "present" : "remote" }, sit, NOW)).toBe(
+        "atendimento em modo manual. procure a recepção.",
+      );
+    }
+  });
+
+  it("o botão 'cheguei na unidade' só em casa, na fila, e nunca em modo manual (sem a TV não há QR)", () => {
+    expect(canCheckIn({ kind: "come" }, "remote")).toBe(true);
+    expect(canCheckIn({ kind: "no_estimate", present: false }, "remote")).toBe(true);
+    expect(canCheckIn({ kind: "no_estimate", present: false, manual: true }, "remote")).toBe(false);
+    expect(canCheckIn({ kind: "come" }, "present")).toBe(false);
+    expect(canCheckIn({ kind: "reception" }, "remote")).toBe(false);
+  });
+
   it("cancelada (pelo paciente, agendador ou recepção) nunca vira 'você foi chamado e não apareceu'", () => {
     expect(entrySituation({ ...base, state: "cancelled", itemState: "left_queue" }, NOW).kind).toBe("cancelled");
     expect(entrySituation({ ...base, state: "archived", itemState: null }, NOW).kind).toBe("cancelled");
@@ -150,9 +169,11 @@ describe("estados que não podem mentir para o paciente (revisão 2026-11-13)", 
       kind: "no_estimate",
       present: true,
     });
+    // RN-SES-05: a unidade sem sinal (modo manual) manda procurar a recepção.
     expect(entrySituation({ ...open, estimate: { kind: "manual_mode" } }, NOW)).toEqual({
       kind: "no_estimate",
       present: false,
+      manual: true,
     });
     expect(
       entrySituation(

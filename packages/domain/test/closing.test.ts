@@ -309,6 +309,20 @@ describe("AD-076: faltas no encerramento", () => {
     expect(at(T + 35 * MIN).state).toBe("reassigned");
     expect(at(T + 40 * MIN).state).toBe("left_queue");
   });
+
+  it("PV5: a queda percebida pelo sistema também para o relógio; aberta no encerramento, vai até ele", () => {
+    let day = dayWith(["ana", "bruno"], { outages: [{ start: T + 10 * MIN, end: T + 20 * MIN }] });
+    day = alreadyNotified(day, "ana", T, 30);
+    const at = (d: SessionDay, now: number) =>
+      item(apply(close(d, inQueue(["ana", "bruno"]), now, WITHOUT_NOTICE)).day, "ana");
+    expect(at(day, T + 35 * MIN).state).toBe("reassigned");
+    expect(at(day, T + 40 * MIN).state).toBe("left_queue");
+    const open = freeze({ ...day, outages: [{ start: T + 10 * MIN, end: null }] });
+    expect(at(open, T + 5 * H).state).toBe("reassigned");
+    // O encerramento fecha a queda aberta: o dia encerrado não fica em modo manual para sempre.
+    const closed = apply(close(open, inQueue(["ana", "bruno"]), T + 5 * H, WITHOUT_NOTICE)).day;
+    expect(closed.outages).toEqual([{ start: T + 10 * MIN, end: T + 5 * H }]);
+  });
 });
 
 describe("cancelamento da sessão (RN-REM)", () => {

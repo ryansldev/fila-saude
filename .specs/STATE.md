@@ -18,10 +18,11 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.
 - **Push no Android na `main`** (PR #35; AD-071 a AD-074). Rodar `npm run db:migrate`. **Na produção, a API só depois do app novo instalado** (o canal do push mudou para `avisos`). iOS pede o `bundleIdentifier` e a conta da Apple.
 - **RV7 e perder a vez (PR da branch `fix/priority-80-plus`):** 80+ antes dos demais idosos, sem hierarquia entre grupos (AD-075); perde a vez só quem não chega no prazo (30 min), com push "perdeu a vez", e o 2º "não compareceu" tira da fila com falta (AD-076). Revisar e fazer o merge; confirmar a leitura da lei com o advogado (D5).
+- **Queda percebida (PR da branch `feat/outage-detection`, sobre a #36):** a queda percebida pelo sistema (PV5 da AD-076): sinal de vida das estações, modo manual automático (RN-SES-05), o relógio do prazo parado durante a queda, a queda do servidor pela varredura parada. Revisar QP1 a QP5 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md). Fica para a T7.4: as quedas vistas na reconciliação (RN-CONT-02), o aviso de encerrar (RN-SES-04) e o modo manual no painel.
 
 ## Próximo passo
 
-Branch nova: a queda percebida pelo sistema (PV5 da AD-076): sinal de vida das estações, modo manual automático (RN-SES-05), o relógio do prazo parado durante a queda percebida, a queda do servidor pela varredura parada, e as quedas vistas na reconciliação (RN-CONT-02) e no aviso de encerrar (RN-SES-04). Depois, seguir a revisão de UI do app, a lista de unidades. Na revisão de cada tela, tirar os "·" que o review apontou e que nenhum design aprovado usa: lista de unidades e mapa web no app, cartão e gaveta de cancelamento; Unidades, Sessões e Equipe no painel. Depois, o plano da fatia 5 (pré-cadastro). Anotado para depois: o questionário sem cara de dispositivo médico (junto do D8 e do D10).
+Depois dos merges, numa branch nova: seguir a revisão de UI do app, a lista de unidades. Na revisão de cada tela, tirar os "·" que o review apontou e que nenhum design aprovado usa: lista de unidades e mapa web no app, cartão e gaveta de cancelamento; Unidades, Sessões e Equipe no painel. Depois, o plano da fatia 5 (pré-cadastro). Anotado para depois: o questionário sem cara de dispositivo médico (junto do D8 e do D10).
 
 ## Fora do código
 

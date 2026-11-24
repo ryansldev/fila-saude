@@ -1,9 +1,11 @@
 import {
   awaitedItems,
   comeNowNotices,
+  inManualMode,
   leaveHomeNotices,
   remoteItems,
   type SessionDay,
+  trackOutage,
   turnLostNotices,
 } from "@fila-saude/domain";
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
@@ -17,6 +19,7 @@ import { sessionDay } from "infra/database/municipal/schema/session-day";
 import type { TenantDb } from "infra/database/tenants";
 import { noticeTarget } from "infra/notices/outbox";
 import { inSession } from "infra/queue/day";
+import { sessionSignal } from "infra/queue/signal";
 
 export type Sending = { for: string; title: string; body: string; data: Record<string, string> };
 export type SendingResult = { ok: true } | { ok: false; error: string; invalidToken?: boolean };
@@ -28,7 +31,12 @@ const BATCH = 100;
 
 // RN-ETA-03 / RN-ETA-06 / AD-076: avisos que dependem do tempo; o domínio marca no dia o "saia de casa",
 // o "venha agora" (com a hora, AD-057) e o "perdeu a vez", e a chave da outbox impede o envio repetido. Uma varredura por município de cada vez.
-async function generateTimeNotices(db: TenantDb, now: number, onError: (error: unknown) => void): Promise<void> {
+async function generateTimeNotices(
+  db: TenantDb,
+  now: number,
+  onError: (error: unknown) => void,
+  serverStartedAt: number,
+): Promise<void> {
   const open = await db.select({ id: session.id }).from(session).where(eq(session.state, "open"));
   // Uma transação por sessão: uma sessão com problema não derruba os avisos das outras nem
   // segura a trava de todas até o fim.
@@ -41,18 +49,22 @@ async function generateTimeNotices(db: TenantDb, now: number, onError: (error: u
         if (!lock.rows[0]?.ok) return;
         await inSession(tx, id, async (c) => {
           if (c.day?.state !== "open") return { result: null };
+          // PV5 (AD-076): a queda percebida (unidade sem sinal, varredura parada) para o relógio do prazo; com
+          // a unidade sem sinal, modo manual (RN-SES-05): nenhum aviso de tempo sai.
+          const day = trackOutage(c.day, now, { ...(await sessionSignal(tx, id)), serverStartedAt });
+          const mode = { manualMode: inManualMode(day) };
           // AD-057: o "venha agora" fica registrado no dia com a hora; o prazo de chegada conta dela.
-          const come = comeNowNotices(c.day, now, { manualMode: false });
-          const leave = leaveHomeNotices(come.day, now, { manualMode: false });
+          const come = comeNowNotices(day, now, mode);
+          const leave = leaveHomeNotices(come.day, now, mode);
           // AD-076: quem passou do prazo do "venha agora" recebe "perdeu a vez".
-          const lost = turnLostNotices(leave.day, now, { manualMode: false });
+          const lost = turnLostNotices(leave.day, now, mode);
           // Quem já é o próximo recebe só o "venha agora".
           const events = [
             ...come.events,
             ...leave.events.filter((e) => !come.events.some((v) => v.itemId === e.itemId)),
             ...lost.events,
           ];
-          if (events.length === 0) return { result: null };
+          // O dia sempre volta: guarda a hora do giro (a varredura parada é queda do servidor) e a queda.
           return { day: lost.day, events, result: null };
         });
       })
@@ -318,13 +330,17 @@ async function deliver(
   }
 }
 
+/** Hora em que o processo subiu: reiniciado depois do último giro de uma sessão, o servidor esteve fora (PV5). */
+const SERVER_STARTED_AT = Date.now();
+
 export async function sweepMunicipality(
   db: TenantDb,
   now: number,
   send: Sender,
   onError: (error: unknown) => void = () => {},
+  serverStartedAt = SERVER_STARTED_AT,
 ): Promise<void> {
-  await generateTimeNotices(db, now, onError);
+  await generateTimeNotices(db, now, onError, serverStartedAt);
   // Lote cheio: pode haver mais (depois de uma queda da Expo, por exemplo); segue até esvaziar.
   while ((await sendPending(db, now, send, onError)) === SEND_BATCH);
 }

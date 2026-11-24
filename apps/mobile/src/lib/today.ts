@@ -44,6 +44,9 @@ export function ticketCardFor(en: { ticket: string | null; itemState: string | n
       return { banner: "mostre na recepção", ticket: en.ticket, button: null };
     case "position":
     case "no_estimate":
+      // RN-SES-05: em modo manual a TV (e o QR) está fora do ar.
+      if (sit.kind === "no_estimate" && sit.manual)
+        return { banner: "procure a recepção", ticket: en.ticket, button: null };
       return sit.present
         ? { banner: "você está na unidade", ticket: en.ticket, button: null }
         : { banner: "você está na fila", ticket: en.ticket, button: qr };
@@ -72,7 +75,7 @@ export function rowFor(sit: Situation): { box: string | null; sentence: string }
     case "reception":
       return { box: null, sentence: "mostre na recepção" };
     case "no_estimate":
-      return { box: null, sentence: "sem previsão agora" };
+      return { box: null, sentence: sit.manual ? "modo manual: procure a recepção" : "sem previsão agora" };
     case "allocated":
       return { box: null, sentence: "confirme a sua data" };
     case "turn":

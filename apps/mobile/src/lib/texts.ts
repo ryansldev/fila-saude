@@ -11,7 +11,7 @@ export type Situation =
   /** Sessão ainda planejada e antes do horário. */
   | { kind: "waiting" }
   /** Fila aberta, mas sem previsão (nenhuma estação aberta, modo manual, fora da ordem): nunca "vai começar". */
-  | { kind: "no_estimate"; present: boolean }
+  | { kind: "no_estimate"; present: boolean; manual?: true }
   | { kind: "confirmed" }
   /** Passou do horário de início e a unidade ainda não abriu a fila (abertura por botão na v0.1). */
   | { kind: "late" }
@@ -24,6 +24,13 @@ export type Situation =
   | { kind: "reassigned" }
   | { kind: "left" }
   | { kind: "cancelled" };
+
+/** O botão "cheguei na unidade": em casa e na fila; nunca em modo manual (sem a TV não há QR, RN-SES-05). */
+export function canCheckIn(sit: Situation, itemState: string | null): boolean {
+  if (itemState !== "remote") return false;
+  if (sit.kind === "no_estimate") return !sit.manual;
+  return sit.kind === "position" || sit.kind === "come";
+}
 
 /** T3.4 / RN-ETA / RN-FILA-05: o que a tela mostra para cada entrada, olhando o estado e o relógio. */
 export function entrySituation(e: MyEntry, now: number): Situation {
@@ -52,7 +59,11 @@ export function entrySituation(e: MyEntry, now: number): Situation {
     return { kind: "position", position: est.position, minutes: est.minutes, present, leave: !present && e.leaveHome };
   }
   if (e.session?.state === "planned") return beforeStart ? { kind: "waiting" } : { kind: "late" };
-  return { kind: "no_estimate", present: e.itemState === "present" };
+  const present = e.itemState === "present";
+  // RN-SES-05: a unidade sem sinal (modo manual) chama pela lista em papel: procure a recepção.
+  return est?.kind === "manual_mode"
+    ? { kind: "no_estimate", present, manual: true }
+    : { kind: "no_estimate", present };
 }
 
 const MESSAGES: Record<string, string> = {
@@ -213,6 +224,8 @@ export function nextStep(e: MyEntry, sit: Situation, now: number): string {
       if (sit.present) return inUnit(e);
       return sit.leave ? "saia agora para chegar a tempo." : "pode esperar em casa. avisamos a hora de sair.";
     case "no_estimate":
+      // RN-SES-05: em modo manual os avisos param e a unidade chama pela lista em papel.
+      if (sit.manual) return "atendimento em modo manual. procure a recepção.";
       return sit.present ? inUnit(e) : "a fila já começou. avisamos quando estiver perto.";
     case "come":
       return "venha agora. ao chegar, leia o QR da TV.";

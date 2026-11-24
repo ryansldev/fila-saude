@@ -99,6 +99,15 @@ export type SessionDay = {
   config: UnitConfig;
   /** Períodos de contingência registrados (RN-CONT-02), com o motivo. */
   contingencies: { start: number; end: number; reason?: string }[];
+  /**
+   * Quedas que o sistema percebeu sozinho (PV5 da AD-076, RN-SES-05): sem sinal da unidade ou com a
+   * varredura parada. `end` nulo: a queda continua (modo manual). Ausente nos dias de antes.
+   */
+  outages?: { start: number; end: number | null }[];
+  /** Hora do último giro da varredura nesta sessão: um intervalo longo sem ela é queda do servidor. */
+  lastSweepAt?: number;
+  /** Último sinal de vida da unidade que a varredura viu nesta sessão; sem ele, a unidade não começou. */
+  liveSignalAt?: number;
   nextNumber: number;
   /** Prefixo de senha do serviço (RN-FILA-04), ex.: "C" → "C-001". */
   ticketPrefix: string;
@@ -221,8 +230,8 @@ export function arrivalDeadlineEnd(day: SessionDay, x: QueueItem): number | null
 
 /**
  * AD-076: remoto que recebeu "venha agora" e não chegou no prazo perdeu a vez ("late"); chamadas de
- * outras pessoas não contam. O relógio do prazo para durante os períodos de contingência registrados
- * (AD-033, AD-076): passado o prazo normal, mas não o estendido pela queda, está "late_in_contingency" e
+ * outras pessoas não contam. O relógio do prazo para durante as quedas, registradas pela recepção
+ * (AD-033) ou percebidas pelo sistema (`outages`, PV5 da AD-076): passado o prazo normal, mas não o estendido pela queda, está "late_in_contingency" e
  * ainda pode chegar. Presente, ou sem "venha agora", está "on_time".
  */
 export function lateness(day: SessionDay, x: QueueItem, now: number): "on_time" | "late" | "late_in_contingency" {
@@ -231,7 +240,9 @@ export function lateness(day: SessionDay, x: QueueItem, now: number): "on_time" 
   if (window === null || now < window.end) return "on_time";
   let end = window.end;
   let cursor = window.start;
-  for (const c of [...day.contingencies].sort((a, b) => a.start - b.start)) {
+  // Quedas registradas pela recepção e percebidas pelo sistema (a aberta vai até agora).
+  const periods = [...day.contingencies, ...(day.outages ?? []).map((o) => ({ start: o.start, end: o.end ?? now }))];
+  for (const c of periods.sort((a, b) => a.start - b.start)) {
     const from = Math.max(c.start, cursor);
     if (from > end) break;
     if (c.end <= from) continue;

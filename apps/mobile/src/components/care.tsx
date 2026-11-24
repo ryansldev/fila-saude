@@ -32,6 +32,7 @@ import { dayParts, hour, isToday, shortDay } from "@/lib/dates";
 import { useSession } from "@/lib/session";
 import { canRedo, SIGN_UP_PATH } from "@/lib/sign-ups";
 import {
+  canCheckIn,
   cancellationNotice,
   cancellationText,
   entrySituation,
@@ -144,7 +145,12 @@ function InQueue({ en, sit }: { en: MyEntry; sit: Situation }) {
     case "position":
       return <Position ticket={en.ticket} position={sit.position} detail={missing(sit.position, sit.minutes)} />;
     case "no_estimate":
-      return <Position ticket={en.ticket} detail="sem previsão de tempo agora" />;
+      return (
+        <Position
+          ticket={en.ticket}
+          detail={sit.manual ? "sem previsão: a unidade está em modo manual" : "sem previsão de tempo agora"}
+        />
+      );
     case "come":
       return <Position ticket={en.ticket} detail="você é o próximo" />;
     case "reception":
@@ -218,7 +224,7 @@ export function CareCard({
   const r = entrySummary(en, sit, now);
   const [worsened, setWorsened] = useState(false);
   if (variant === "list") return <CardInList en={en} sit={sit} onCancel={onCancel} onOpen={onOpen} answer={answer} />;
-  const canCheckIn = ["position", "come", "no_estimate"].includes(sit.kind) && en.itemState === "remote";
+  const checkIn = canCheckIn(sit, en.itemState);
   const present = (sit.kind === "position" || sit.kind === "no_estimate") && sit.present;
   const showsTrack = r.stage !== null && r.stage < 4;
   return (
@@ -235,7 +241,7 @@ export function CareCard({
         {sit.kind === "reception" ? (
           <Button text="ler o QR de novo" variant="secondary" onPress={() => router.push("/check-in")} />
         ) : null}
-        {canCheckIn ? <Button text="cheguei na unidade" onPress={() => router.push("/check-in")} /> : null}
+        {checkIn ? <Button text="cheguei na unidade" onPress={() => router.push("/check-in")} /> : null}
         {present ? (
           leaving ? (
             <Button text="vou sair um pouco" variant="secondary" onPress={leaving} />
