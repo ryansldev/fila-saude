@@ -300,14 +300,14 @@ describe("RN-EST-05: estação", () => {
   it("RN-EST-05 station: cannot close while someone is called", () => {
     let d = enter(dayWith(["ana"]), "ana");
     d = call(d);
-    expect(closeStation(d, { stationId: "e1" })).toEqual({ ok: false, error: "station_has_call" });
+    expect(closeStation(d, { stationId: "e1" }, 0)).toEqual({ ok: false, error: "station_has_call" });
     expect(station(d, "e1").open).toBe(true);
     d = apply(finish(d, { stationId: "e1" }, T + MIN));
-    const r = closeStation(d, { stationId: "e1" });
+    const r = closeStation(d, { stationId: "e1" }, 0);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(station(r.state, "e1").open).toBe(false);
-    expect(closeStation(d, { stationId: "nao_existe" })).toEqual({ ok: false, error: "forbidden_transition" });
+    expect(closeStation(d, { stationId: "nao_existe" }, 0)).toEqual({ ok: false, error: "forbidden_transition" });
   });
 
   it("RN-EST-05 station: a call from another session is not dropped", () => {
@@ -320,7 +320,7 @@ describe("RN-EST-05: estação", () => {
     expect(finish(d, { stationId: "e1" }, T)).toEqual({ ok: false, error: "forbidden_transition" });
     expect(noShow(d, { stationId: "e1" }, T)).toEqual({ ok: false, error: "forbidden_transition" });
     expect(calledAt(d)).toBe("s0-ana");
-    expect(closeStation(d, { stationId: "e1" })).toEqual({ ok: false, error: "station_has_call" });
+    expect(closeStation(d, { stationId: "e1" }, 0)).toEqual({ ok: false, error: "station_has_call" });
   });
 });
 
@@ -414,8 +414,8 @@ describe("pureza", () => {
     recall(called, { stationId: "e1" }, T);
     finish(called, { stationId: "e1" }, T);
     noShow(called, { stationId: "e1" }, T);
-    closeStation(called, { stationId: "e1" });
-    closeStation(d, { stationId: "e1" });
+    closeStation(called, { stationId: "e1" }, 0);
+    closeStation(d, { stationId: "e1" }, 0);
     toleranceExceeded(called, "e1", T);
     const oneSkip = withItem(called, "ana", { skips: 1 });
     noShow(oneSkip, { stationId: "e1" }, T);
@@ -537,7 +537,7 @@ describe("RN-TRI-03/04: classificação confirmada na triagem", () => {
 describe("m5: estação com a sessão aberta", () => {
   it("m5/RN-EST-05: fechar estação só com a sessão aberta, como as ações vizinhas", () => {
     for (const state of ["planned", "closed", "cancelled"] as const) {
-      expect(closeStation({ ...dayWith(["ana"]), state }, { stationId: "e1" })).toEqual({
+      expect(closeStation({ ...dayWith(["ana"]), state }, { stationId: "e1" }, 0)).toEqual({
         ok: false,
         error: "session_closed",
       });

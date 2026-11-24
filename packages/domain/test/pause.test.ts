@@ -165,7 +165,7 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
 describe("fechar e reabrir a estação (RN-EST-07)", () => {
   it("fechar tira a pausa; reabrir devolve a estação à sessão", () => {
     let d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
-    d = apply(closeStation(d, { stationId: "e1" }));
+    d = apply(closeStation(d, { stationId: "e1" }, T));
     expect(station(d)).toMatchObject({ open: false });
     expect(station(d).pause).toBeUndefined();
     d = apply(reopenStation(d, { stationId: "e1" }, T));
@@ -183,9 +183,13 @@ describe("pausa da etapa: quando nenhuma estação chama", () => {
     expect(stagePause(d, "care", T)).toEqual({ from: T, until: T + 45 * MIN });
     // Estação fechada não conta: a outra em pausa basta.
     const closed = apply(
-      closeStation(apply(pauseStation(two(dayWith(["ana"])), { stationId: "e1", back: null }, T)), {
-        stationId: "e2",
-      }),
+      closeStation(
+        apply(pauseStation(two(dayWith(["ana"])), { stationId: "e1", back: null }, T)),
+        {
+          stationId: "e2",
+        },
+        T,
+      ),
     );
     expect(stagePause(closed, "care", T)).toEqual({ from: T, until: null });
   });
@@ -205,6 +209,56 @@ describe("pausa da etapa: quando nenhuma estação chama", () => {
 });
 
 describe("estimativa e avisos com a pausa (RN-ETA)", () => {
+  it("o tempo médio também tira a pausa já encerrada ('voltar agora') e o tempo fechada", () => {
+    const ids = ["a", "b", "c", "d", "e"];
+    let d = present(dayWith(ids), ...ids);
+    const at = [-45, -30, -15, 0].map((m, k) => ({
+      itemId: ids[k] as string,
+      stationId: "e1",
+      stage: "care" as const,
+      at: T + m * MIN,
+    }));
+    d = freeze({ ...d, calls: [...d.calls, ...at] as never });
+    d = apply(pauseStation(d, { stationId: "e1", back: null }, T + 10 * MIN));
+    d = apply(resumeStation(d, { stationId: "e1" }, T + 30 * MIN));
+    d = freeze({
+      ...d,
+      calls: [...d.calls, { itemId: "e", stationId: "e1", stage: "care" as const, at: T + 35 * MIN }] as never,
+    });
+    // 15, 15, 15 e 35 - 20 de pausa = 15.
+    expect(averageTime(d, "care", d.serviceId, T + 40 * MIN)).toBe(15);
+    let c: SessionDay = freeze({ ...present(dayWith(ids), ...ids), calls: at as never });
+    c = apply(closeStation(c, { stationId: "e1" }, T + 10 * MIN));
+    c = apply(reopenStation(c, { stationId: "e1" }, T + 30 * MIN));
+    c = freeze({
+      ...c,
+      calls: [...c.calls, { itemId: "e", stationId: "e1", stage: "care" as const, at: T + 35 * MIN }] as never,
+    });
+    expect(averageTime(c, "care", c.serviceId, T + 40 * MIN)).toBe(15);
+  });
+
+  it("a caminho, mas não o primeiro, com a pausa já em curso: vê a pausa no tempo", () => {
+    let d = dayWith(["ana", "bruno"], { breaks: [{ start: T, end: T + 60 * MIN }] });
+    d = alreadyNotified(d, "bruno", T - 10 * MIN, 30);
+    expect(estimate(d, "bruno", T + 5 * MIN, AUTO)).toMatchObject({ pause: { from: T, until: T + 60 * MIN } });
+  });
+
+  it("na triagem, a previsão da consulta soma a pausa da triagem e some sem hora de volta no atendimento", () => {
+    const base = dayWith(["ana", "joao"], {
+      stations: [
+        { id: "tri", stage: "triage", services: ["cli"], open: true, calledItemId: null },
+        { id: "e1", stage: "care", services: ["cli"], open: true, calledItemId: null },
+      ],
+      initialTimeMin: { triage: 5 },
+    });
+    const tri = freeze({ ...base, items: base.items.map((i) => ({ ...i, stage: "triage" as const })) });
+    const paused = apply(pauseStation(tri, { stationId: "tri", back: { at: T + 60 * MIN } }, T));
+    // Triagem: 60 de pausa + 1 × 5; consulta: isso + 1 × 15.
+    expect(estimate(paused, "joao", T, AUTO)).toMatchObject({ minutes: 65, query: { minutes: 80 } });
+    const care = apply(pauseStation(tri, { stationId: "e1", back: null }, T));
+    expect(estimate(care, "joao", T, AUTO)).not.toHaveProperty("query");
+  });
+
   it("o tempo médio de atendimento não conta o almoço como atendimento", () => {
     let d = present(
       dayWith(["a", "b", "c", "d", "e"], { breaks: [{ start: T, end: T + 30 * MIN }] }),
@@ -324,7 +378,7 @@ describe("queda percebida com a pausa (QP6)", () => {
     d = apply(pauseStation(d, { stationId: "e1", back: null }, T));
     d = apply(resumeStation(d, { stationId: "e1" }, T + 60 * MIN));
     expect(freeze(trackOutage(d, T + 65 * MIN, signal(T))).outages ?? []).toEqual([]);
-    let c = apply(closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1" }));
+    let c = apply(closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1" }, T));
     c = apply(reopenStation(c, { stationId: "e1" }, T + 60 * MIN));
     expect(freeze(trackOutage(c, T + 65 * MIN, signal(T))).outages ?? []).toEqual([]);
   });
@@ -368,7 +422,7 @@ describe("queda percebida com a pausa (QP6)", () => {
     let d = freeze(trackOutage(dayWith(["ana"]), T, signal(T)));
     d = apply(pauseStation(d, { stationId: "e1", back: null }, T));
     expect(trackOutage(d, T + 15 * MIN, signal(T)).outages ?? []).toEqual([]);
-    const closed = apply(closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1" }));
+    const closed = apply(closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1" }, T));
     expect(trackOutage(closed, T + 15 * MIN, signal(T)).outages ?? []).toEqual([]);
   });
 });

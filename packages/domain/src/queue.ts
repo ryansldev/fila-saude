@@ -72,6 +72,10 @@ export type Station = {
   pause?: { from: number; until: number | null };
   /** Voltou a chamar ("voltar agora" de uma pausa em curso, ou reaberta): o silêncio de antes não é queda. */
   callingSince?: number;
+  /** Paradas já encerradas nesta sessão (pausas e tempo fechada): não contam como atendimento. */
+  stops?: { start: number; end: number }[];
+  /** Fechada desde (RN-EST-07); a reabertura vira uma parada em `stops`. */
+  closedAt?: number;
 };
 
 /** `recalls`: horários de "Rechamar" (RN-CHAM-02), para a TV repetir o anúncio; `em` não muda. */

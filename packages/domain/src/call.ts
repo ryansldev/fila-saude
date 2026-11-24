@@ -1,5 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
+import { withStop } from "./pause.ts";
 import { pausedAt } from "./pause-time.ts";
 import {
   eligible,
@@ -359,13 +360,16 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
  * RN-EST-05: não fecha com paciente chamado (de qualquer sessão); finalize ou marque "Não compareceu".
  * Como as ações vizinhas, só com a sessão aberta (m5).
  */
-export function closeStation(day: SessionDay, cmd: Cmd): Result<SessionDay> {
+export function closeStation(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const station = day.stations.find((e) => e.id === cmd.stationId);
   if (!station) return failure("forbidden_transition");
   if (station.calledItemId !== null) return failure("station_has_call");
-  const { pause: _, ...closed } = station;
-  return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? { ...closed, open: false } : e)) });
+  // A pausa em curso vira parada encerrada; o tempo fechada conta a partir de agora.
+  const { pause, ...rest } = station;
+  const stop = pause && pause.from <= now ? { start: pause.from, end: now } : undefined;
+  const closed = { ...rest, ...withStop(station, stop), open: false, closedAt: now };
+  return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) });
 }
 
 /**

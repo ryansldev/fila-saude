@@ -13,10 +13,13 @@ const NEVER = Number.POSITIVE_INFINITY;
 const serves = (day: SessionDay, e: Station, stage: Stage) =>
   e.open && e.stage === stage && e.services.includes(day.serviceId);
 
-/** Intervalos em que a estação não chama: a pausa dela e as pausas planejadas da sessão (vão entre faixas). */
+/**
+ * Intervalos em que a estação não chama: as paradas já encerradas, a pausa dela e as pausas planejadas da
+ * sessão (vão entre faixas).
+ */
 function intervals(day: SessionDay, e: Station): { start: number; end: number }[] {
   const own = e.pause ? [{ start: e.pause.from, end: e.pause.until ?? NEVER }] : [];
-  return [...own, ...(day.breaks ?? []).map((b) => ({ start: b.start, end: b.end }))];
+  return [...(e.stops ?? []), ...own, ...(day.breaks ?? []).map((b) => ({ start: b.start, end: b.end }))];
 }
 
 const covering = (day: SessionDay, e: Station, t: number) => intervals(day, e).find((i) => i.start <= t && t < i.end);
@@ -48,10 +51,12 @@ function pausedSince(day: SessionDay, e: Station, t: number): number {
   return r;
 }
 
-/** Quanto de [a, b] a estação passou em pausa (a dela, se ainda guardada, e as da sessão), em ms. */
+/** Quanto de [a, b] a estação passou parada (pausas, tempo fechada e as pausas da sessão), em ms. */
 export function pausedBetween(day: SessionDay, e: Station | undefined, a: number, b: number): number {
+  // Fechada e ainda não reaberta: o tempo fechada até `b` também não é atendimento.
+  const closed = e?.closedAt !== undefined ? [{ start: e.closedAt, end: b }] : [];
   const all = e ? intervals(day, e) : (day.breaks ?? []);
-  const cut = all
+  const cut = [...all, ...closed]
     .map((i) => ({ start: Math.max(i.start, a), end: Math.min(i.end, b) }))
     .filter((i) => i.end > i.start)
     .sort((x, y) => x.start - y.start);

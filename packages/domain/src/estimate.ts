@@ -99,8 +99,8 @@ function withPause(
 ): { minutes: number; pause?: Pause; blocked: boolean } {
   const p = stagePause(day, item.stage, now);
   if (!p) return { minutes: queue, blocked: false };
-  // Já recebeu "venha agora" e está a caminho: a pausa avisada começa depois do prazo dele.
-  const onTheWay = item.state === "remote" && arrivalDeadlineEnd(day, item) !== null;
+  // O primeiro, já com "venha agora" e a caminho: a pausa avisada começa depois do prazo dele.
+  const onTheWay = item.state === "remote" && ahead === 0 && p.from > now && arrivalDeadlineEnd(day, item) !== null;
   if (onTheWay && lateness(day, item, now) !== "late") return { minutes: queue, blocked: false };
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
   const left = (t: number | null) => (t === null ? 0 : (t - now) / MIN);
@@ -166,8 +166,12 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   if (item.stage !== "triage") return primary;
 
   // RN-ETA-01c/AD-009: na triagem, a previsão da consulta vai à parte (inclusive com "venha agora").
-  const nA = open(day, "care").length;
-  if (nA === 0) return primary;
+  const careStations = open(day, "care");
+  if (careStations.length === 0) return primary;
+  // Sem hora de volta na triagem ou no atendimento, não há como prever a consulta.
+  const carePause = stagePause(day, "care", now);
+  if (pause?.until === null || carePause?.until === null) return primary;
+  const nA = careStations.filter((e) => !stopsForGood(e)).length || careStations.length;
   // Quem já está na fila do atendimento é atendido antes de X chegar lá (RN-TRI-04: fila nova);
   // da triagem, contam os que vêm antes de X, como na posição (quem perdeu a vez vai para o fim, AD-076).
   const fromTriage = passed(item)
@@ -178,9 +182,15 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
         item,
       );
   const beforeQuery = day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length + fromTriage;
-  const triageWeight = (ahead * averageTime(day, "triage", day.serviceId, now)) / n;
-  const query = Math.ceil(triageWeight + (beforeQuery * averageTime(day, "care", day.serviceId, now)) / nA);
-  return { ...primary, query: { minutes: query } };
+  // A triagem com a pausa dela (o tempo da posição); o atendimento soma a pausa dele se cair na espera.
+  const triageWeight = comeNow ? 0 : minutes;
+  const careQueue = (beforeQuery * averageTime(day, "care", day.serviceId, now)) / nA;
+  const careStart = now + triageWeight * MIN;
+  const careExtra =
+    carePause && carePause.until !== null && carePause.from <= careStart + careQueue * MIN
+      ? Math.max(0, carePause.until - Math.max(carePause.from, careStart)) / MIN
+      : 0;
+  return { ...primary, query: { minutes: Math.ceil(triageWeight + careQueue + careExtra) } };
 }
 
 /**

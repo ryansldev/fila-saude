@@ -28,6 +28,8 @@ const MESSAGES: Record<string, string | ((e: ApiError) => string)> = {
     `A unidade tem ${String(e.data?.activeEntries ?? "")} pacientes na lista de espera. Não dá para remover agora.`,
   remove_self: "Você não pode remover você mesmo da equipe.",
   station_has_call: "Há paciente chamado em uma estação. Finalize ou marque 'não compareceu' antes de encerrar.",
+  station_paused: "A estação está em pausa. Toque em \"Voltar agora\" para chamar de novo.",
+  pause_back_before_start: "A volta precisa ser depois do início da pausa e de agora.",
   reason_required: "Escreva o motivo.",
   station_in_use: "A estação está em uma sessão planejada ou aberta. Tire-a dessas sessões antes.",
   session_closed: "Nenhuma sessão aberta para isso agora.",

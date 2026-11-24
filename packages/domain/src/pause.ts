@@ -10,6 +10,12 @@ export type PauseBack = { at: number } | { inMin: number } | null;
 
 const MIN = 60_000;
 
+/** Guarda uma parada encerrada (pausa ou tempo fechada) no histórico da estação. */
+export function withStop(e: Station, stop: { start: number; end: number } | undefined): Pick<Station, "stops"> {
+  if (!stop || stop.end <= stop.start) return e.stops ? { stops: e.stops } : {};
+  return { stops: [...(e.stops ?? []), stop] };
+}
+
 const withStation = (day: SessionDay, e: Station): SessionDay => ({
   ...day,
   stations: day.stations.map((x) => (x.id === e.id ? e : x)),
@@ -52,9 +58,9 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   if (until !== null && !(Number.isFinite(until) && until > Math.max(from, now)))
     return failure("pause_back_before_start");
   // A pausa que acabou sozinha deixa a hora da volta: o silêncio de antes dela não é queda.
-  const ended = !current && e.pause?.until != null ? e.pause.until : undefined;
-  const since = ended === undefined ? {} : { callingSince: Math.max(e.callingSince ?? ended, ended) };
-  return ok(withStation(day, { ...e, ...since, pause: { from, until } }));
+  const old = !current && e.pause?.until != null ? { start: e.pause.from, end: e.pause.until } : undefined;
+  const since = old === undefined ? {} : { callingSince: Math.max(e.callingSince ?? old.end, old.end) };
+  return ok(withStation(day, { ...e, ...since, ...withStop(e, old), pause: { from, until } }));
 }
 
 /** "Voltar agora" (em pausa) ou "desmarcar a pausa" (ainda não começou): a estação volta a chamar. */
@@ -64,10 +70,12 @@ export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   if (!e?.pause) return failure("forbidden_transition");
   if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
   const { pause, ...rest } = e;
+  const started = pause.from <= now ? { start: pause.from, end: now } : undefined;
+  const kept = { ...rest, ...withStop(e, started) };
   // No almoço da sessão, tira a pausa própria, mas a estação só chama no fim do almoço (que já conta como volta).
-  if (inBreak(day, now)) return ok(withStation(day, rest));
+  if (inBreak(day, now)) return ok(withStation(day, kept));
   // Pausa que já começou: o silêncio conta da volta (desmarcar antes do início não muda nada).
-  return ok(withStation(day, pause.from <= now ? { ...rest, callingSince: now } : rest));
+  return ok(withStation(day, started ? { ...kept, callingSince: now } : kept));
 }
 
 /** Reabrir a estação fechada (fechou por engano): volta a chamar nesta sessão. */
@@ -75,5 +83,7 @@ export function reopenStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e || e.open) return failure("forbidden_transition");
-  return ok(withStation(day, { ...e, open: true, callingSince: now }));
+  const { closedAt, ...rest } = e;
+  const closed = closedAt === undefined ? undefined : { start: closedAt, end: now };
+  return ok(withStation(day, { ...rest, ...withStop(e, closed), open: true, callingSince: now }));
 }

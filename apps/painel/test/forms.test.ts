@@ -197,6 +197,8 @@ describe("erros que sumiam (revisão 2026-11-13)", () => {
     expect(errorMessage(new ApiError(400, "reason_required"))).toMatch(/motivo/);
     expect(errorMessage(new ApiError(409, "station_in_use"))).toMatch(/sessão/);
     expect(errorMessage(new ApiError(409, "session_closed"))).toMatch(/sessão/);
+    expect(errorMessage(new ApiError(409, "station_paused"))).toMatch(/em pausa/);
+    expect(errorMessage(new ApiError(409, "pause_back_before_start"))).toMatch(/volta/);
   });
 });
 
