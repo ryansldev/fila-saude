@@ -23,4 +23,4 @@
 
 ## App
 
-Pílula amarela "em pausa"; título "pausa, volta às 13:32" (sem hora: "a unidade está em pausa"); a senha; a posição e o tempo, que soma a pausa ("5º na fila, cerca de 1 h 10 min"); "pode esperar em casa. avisamos a hora de sair." (sem hora: "sem hora de volta: avisamos quando a fila andar.").
+Pílula amarela "em pausa"; título "pausa, volta às 13:32" (sem hora: "pausa por tempo indeterminado", deixando claro que não há hora de volta; você, 2026-11-24); a senha; a posição e o tempo, que soma a pausa ("5º na fila, cerca de 1 h 10 min"); "pode esperar em casa. avisamos a hora de sair." (sem hora: "sem hora de volta: avisamos quando a fila andar.").
