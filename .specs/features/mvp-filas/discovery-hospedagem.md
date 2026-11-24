@@ -60,8 +60,8 @@ Sugestão: **banco por município numa instância compartilhada** para municípi
 Premissa: **100 mil habitantes**, ~20 UBS, ~30 equipes. Para comparar, a maioria dos municípios brasileiros tem menos de 20 mil habitantes.
 
 - Atenção primária: ~2 consultas por habitante por ano → **~800 atendimentos por dia útil**, mais as triagens.
-- Pico: algumas dezenas de requisições por segundo (polling e SSE de apps, TVs e estações). É carga pequena: 2 contêineres pequenos sobram.
-- Conexões em tempo real: ~20 TVs + ~60 estações + pacientes em fila aberta (centenas). Cabe em SSE numa instância.
+- Pico: algumas dezenas de requisições por segundo (polling e WebSocket de apps, TVs e estações). É carga pequena: 2 contêineres pequenos sobram.
+- Conexões em tempo real: ~20 TVs + ~60 estações + pacientes em fila aberta (centenas). Cabe em WebSocket numa instância.
 - Fotos: pré-cadastro com 2 fotos de ~300 KB × ~40 mil pacientes ao longo do tempo → **~25 GB**.
 - Banco: poucos GB por ano.
 

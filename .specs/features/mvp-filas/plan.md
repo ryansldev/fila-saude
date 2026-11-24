@@ -14,7 +14,7 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | PD-04 | **Município do web por subdomínio** (`<municipio>.filasaude.com.br`); o app roteia pela unidade, via catálogo central | O login do painel já nasce no tenant; depois do piloto, o `fila.<municipio>.gov.br` do gov.br aponta para o mesmo endereço |
 | PD-05 | **better-auth em duas configurações**: central para pacientes (CPF como username, plugin Expo) e uma por tenant para o painel (criada sob demanda, em cache). Perfis e escopo em tabela própria | Contas de servidores municipais ficam no banco do município |
 | PD-06 | **Identidade por nível de confiança** (AD-017): a recepção verifica no 1º check-in; gov.br depois do piloto | Lançar sem depender da prefeitura |
-| PD-07 | **Tempo real por SSE**, com **LISTEN/NOTIFY** do Postgres entre as instâncias da API; ações por HTTP | Fluxo só de ida; HTTP comum passa pelo firewall municipal; reconexão nativa; sem Redis |
+| PD-07 | **Tempo real por WebSocket** (revisto em 2026-11-24; antes SSE), com **LISTEN/NOTIFY** do Postgres entre as instâncias da API; ações por HTTP; a consulta a cada poucos segundos (PD-33) fica como plano B quando o WebSocket não conecta | Já vem no React Native (o SSE pedia biblioteca, D1); o ping com resposta obrigatória percebe em segundos a tela que caiu em silêncio, o que o SSE, só de ida, não vê; a rede da unidade é configurada com a TI do município na implantação (liberar `wss` para o domínio, sem inspeção); sem Redis |
 | PD-08 | **Regras em `packages/domain`**: TS puro, sem banco nem relógio próprio, reescrito a partir do `prototype/js/engine.js`, com os 51 testes portados antes | As regras já validadas viram aceite; a API só carrega, aplica e grava |
 | PD-09 | **`apps/painel`**: Next com `/painel`, `/estacao` e `/tv` no subdomínio do tenant; a landing segue em `apps/web` | Separa a área autenticada do site público |
 | PD-10 | **Recorrência RFC 5545** (lib `rrule`): a série guarda DTSTART/DTEND/RRULE/EXDATE/RDATE; as ocorrências viram sessões numa janela móvel de 90 dias | Alocação, vagas e fila sempre apontam para uma linha real |
@@ -40,7 +40,7 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 | PD-30 | **Tabela mínima `entrada` na fase 2** para RN-ENC-07 ([plano 2](../../arquivo/planos/mvp-filas/plano-fase-2-configuracao.md#decisões-desta-fase)) | Testar a troca de modo com dados reais |
 | PD-31 | **Testes do painel com Vitest, jsdom e Testing Library**, API injetada ([plano 2](../../arquivo/planos/mvp-filas/plano-fase-2-configuracao.md#decisões-desta-fase)) | Sem servidor nos testes de tela |
 | PD-32 | **Trilha da v0.1** (2026-11-11): antes do piloto, a **v0.1 do sistema real**, rodando local com dados de exemplo e ainda não pronta para produção, construída em fatias verticais (ver [tasks](tasks.md#trilha-da-v01-2026-11-11)). Cobre sessão pública, sessão privada, triagem e pré-cadastro; app do paciente em Expo nativo no celular, painel, estações e TV no web | Mostrar algo funcionando a uma prefeitura cedo, sem construir o que a v0.1 não usa e sem nada feito só para a apresentação. Nada é descartado: o resto do backlog volta depois na ordem original |
-| PD-33 | **Simplificações da v0.1, cada uma atrás de uma peça única**: a API confere a sessão do paciente direto, num guard só (o JWT da PD-17 entra depois no lugar dele); tempo real por consulta a cada ~3 s num endpoint de estado com o mesmo formato que o SSE (PD-07) terá; sessão aberta e encerrada por botão no painel (o worker chama a mesma função depois); sessões só avulsas, criadas pela tela mínima do painel ou pelo `dev:seed` (séries depois); fotos do pré-cadastro no disco local atrás de uma interface de armazenamento | Completar depois troca uma peça, sem espalhar mudança. **Mantidos inteiros:** multi-tenant, auth do painel, perfis, guard pela matriz e auditoria na mesma transação (PD-18), para não haver retrabalho |
+| PD-33 | **Simplificações da v0.1, cada uma atrás de uma peça única**: a API confere a sessão do paciente direto, num guard só (o JWT da PD-17 entra depois no lugar dele); tempo real por consulta a cada ~3 s num endpoint de estado com o mesmo formato que o WebSocket (PD-07) terá; sessão aberta e encerrada por botão no painel (o worker chama a mesma função depois); sessões só avulsas, criadas pela tela mínima do painel ou pelo `dev:seed` (séries depois); fotos do pré-cadastro no disco local atrás de uma interface de armazenamento | Completar depois troca uma peça, sem espalhar mudança. **Mantidos inteiros:** multi-tenant, auth do painel, perfis, guard pela matriz e auditoria na mesma transação (PD-18), para não haver retrabalho |
 | PD-34 | **Guard da sessão do paciente (PD-33)** ([fatia 0](../../arquivo/planos/mvp-filas/plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 | PD-35 | **Configuração da unidade numa coluna `config jsonb`** ([fatia 0](../../arquivo/planos/mvp-filas/plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
 | PD-36 | **Toda entrada aponta para uma `pessoa_local`** ([fatia 0](../../arquivo/planos/mvp-filas/plano-fatia-0-base.md#decisões-desta-fatia)) | Provisória; detalhe e custo no plano da fatia |
@@ -64,10 +64,10 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 ```
  apps/mobile (Expo)          apps/painel (Next)                 apps/web (Next)
  paciente                    /painel  /estacao  /tv             landing
-     │  HTTPS + SSE              │  HTTPS + SSE (subdomínio do tenant)
+     │  HTTPS + WSS              │  HTTPS + WSS (subdomínio do tenant)
      └──────────────┬────────────┘
                     ▼
-            apps/api (Fastify)  ── http (rotas)  ── sse (eventos)  ── worker (varredura + outbox)
+            apps/api (Fastify)  ── http (rotas)  ── ws (eventos)  ── worker (varredura + outbox)
                     │ usa packages/domain (regras) e packages/schemas (contratos Zod)
         ┌───────────┼─────────────────────────────┐
         ▼           ▼                             ▼
@@ -85,7 +85,7 @@ Spec: [spec.md](spec.md) (escopo e histórias) e as [specs por capacidade](../..
 
 | Pacote | Conteúdo |
 | --- | --- |
-| `apps/api` | Fastify 5 + autoload (padrão atual), Drizzle, better-auth, SSE, worker |
+| `apps/api` | Fastify 5 + autoload (padrão atual), Drizzle, better-auth, WebSocket, worker |
 | `apps/painel` | Next 16, React 19, Tailwind 4, shadcn; design da landing |
 | `apps/mobile` | Expo, Expo Router, expo-camera, expo-notifications, `@better-auth/expo` |
 | `apps/web` | Landing (sem mudança) |
@@ -157,14 +157,17 @@ Funções puras sobre dados explícitos (entradas, configuração, chamadas já 
   - alocação e inscrição usam um contador de versão da sessão; uma tentativa com versão velha recebe `409` e a lista atualizada (RN-PERF-02, INV-02).
 - **Erros:** uma transição proibida pelos contratos de estado responde `409` com um código estável (ex.: `sessao_aberta`, `lotada`, `duplicada`).
 
-## 8. Tempo real (SSE)
+## 8. Tempo real (WebSocket)
 
-- Endpoints: `GET /v1/eventos/tv`, `/v1/eventos/estacao/:id` e `/v1/eventos/paciente`.
+- Endpoints WebSocket: TV, estação e paciente, cada um com a mesma autenticação da rota HTTP equivalente. Só o servidor fala pelo canal (a visão de cada tela); as ações continuam por HTTP.
 - Toda transação que muda uma fila emite `NOTIFY tenant_<slug>, '<sessaoId>'`. Cada instância da API escuta os canais dos tenants com conexões abertas e, ao receber, recalcula **a visão de cada assinante**:
   - TV: chamada atual, últimas chamadas, contadores por serviço (RN-TV-*);
   - estação: chamado atual, tolerância, próxima senha;
   - paciente: só a própria posição, o tempo e o estado (INV-06).
-- Ao conectar ou reconectar (`Last-Event-ID`), o servidor manda primeiro a visão completa atual (RNF-DES-02). Heartbeat a cada 15 s.
+- Ao conectar ou reconectar, o servidor manda primeiro a visão completa atual (RNF-DES-02). A reconexão é do cliente, com espera crescente.
+- Ping do servidor a cada 15 s; sem resposta em alguns segundos, a conexão é dada como caída. A conexão viva da TV e das estações é mais um sinal da unidade (RN-SES-05).
+- Plano B: sem conseguir conectar, a tela volta à consulta a cada poucos segundos (PD-33), no mesmo formato.
+- Implantação: a TI do município libera `wss` para o domínio, sem inspeção do tráfego.
 - App fechado: o push cobre os avisos que importam (saia de casa, sua vez, pulado, venha agora).
 - Meta de 3 s do clique à TV (RNF-DES-01): uma transação + NOTIFY + recálculo; medir no piloto.
 
@@ -217,7 +220,7 @@ Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (VPS, 
 
 1. **Fundação:** infra (VPS, Postgres, armazenamento, DNS, Caddy) e deploy (GitHub Actions), banco central e do tenant, resolução do tenant, `tenant:create`, migrations multi-tenant, `packages/domain` com os testes portados, auth do paciente e do painel, auditoria.
 2. **Configuração:** município, unidades, serviços, estações, sessões e séries, pareamento da TV (US-13).
-3. **Fatia vertical da sessão pública** (o fluxo principal do protótipo): agenda (US-01) → inscrição pública com questionário (US-02, US-16) → abertura → fila remota no app com SSE (US-06) → check-in pelo QR, "Vou sair" e verificação na recepção (US-07, AD-017) → chamada na estação e na TV (US-08..US-11).
+3. **Fatia vertical da sessão pública** (o fluxo principal do protótipo): agenda (US-01) → inscrição pública com questionário (US-02, US-16) → abertura → fila remota no app em tempo real (US-06) → check-in pelo QR, "Vou sair" e verificação na recepção (US-07, AD-017) → chamada na estação e na TV (US-08..US-11).
 4. **Sessão privada:** lista de espera, encaminhamento, alocação, confirmação e lista de ligação (US-03..US-05).
 5. **Triagem:** duas etapas e confirmação de risco (RN-TRI, US-09).
 6. **Recepção:** balcão e pré-cadastro (US-12, US-14).
@@ -230,7 +233,7 @@ Backlog completo em [tasks.md](tasks.md). Mudança de 2026-11-10: a infra (VPS, 
 | Muitos tenants = muitas conexões | Pool pequeno por tenant num LRU; PgBouncer se precisar |
 | Migration que falha no meio dos tenants | Migrations idempotentes; o runner registra o estado por tenant e pode retomar |
 | Push ignorado ou desativado | Lista de ligação (RN-CONF-03) e "venha agora" dentro do app; onboarding explica o push |
-| SSE caindo em rede móvel ruim | Reconexão com visão completa; o app também atualiza ao voltar para o primeiro plano |
+| WebSocket caindo em rede móvel ruim ou barrado na rede da unidade | Reconexão com visão completa; o app também atualiza ao voltar para o primeiro plano; plano B pela consulta (PD-33) |
 | Atraso ou recusa na publicação nas lojas (Apple 5.1.1(ix): app de saúde enviado por quem presta o serviço) | D10: conta de desenvolvedor da empresa e submissão de teste cedo; um app só, da empresa (AD-028); o piloto pode usar TestFlight e teste interno do Google Play |
 
 ## Em aberto

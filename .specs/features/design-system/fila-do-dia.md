@@ -72,7 +72,7 @@ UBS Centro
 - TDD em toda task; modo rápido da v0.1.
 - Design system: botões do kit, nenhum `<button>` fora de `components/ui/` (a trava continua valendo), sem "Info · Info · Info" em seletor.
 - Painel em Next 16 com mudanças incompatíveis: ler `node_modules/next/dist/docs/` antes de mexer em padrões do Next.
-- A consulta continua a cada 3 s (PD-33, tempo real por consulta até o SSE).
+- A consulta continua a cada 3 s (PD-33, tempo real por consulta até o WebSocket).
 
 ## Decisões minhas, para revisar
 

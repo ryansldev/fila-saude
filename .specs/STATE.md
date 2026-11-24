@@ -25,7 +25,7 @@ Pausa, fechar a estação e alerta de sinal ([plano](features/mvp-filas/plano-pa
 ## Fora do código
 
 - **Parceiro do piloto:** contatos, sem acordo. Pré-requisito de D4, D5, D6, D7, D9.
-- **Discoveries:** D1 SSE no app, D2 notificação ao vivo, D3 TV smart; D4 operação da UBS; D5 jurídico e LGPD; D6 regulação e CADSUS; D7 contratação; D8 validação clínica do questionário; D9 teste de uso do protótipo; D10 publicação nas lojas. Detalhes em [tasks](features/mvp-filas/tasks.md#discoveries-e-spikes).
+- **Discoveries:** D1 WebSocket no app, D2 notificação ao vivo, D3 TV smart; D4 operação da UBS; D5 jurídico e LGPD; D6 regulação e CADSUS; D7 contratação; D8 validação clínica do questionário; D9 teste de uso do protótipo; D10 publicação nas lojas. Detalhes em [tasks](features/mvp-filas/tasks.md#discoveries-e-spikes).
 - **Licença (AD-052):** AGPL-3.0 aplicada; falta CLA no GitHub e revisão do advogado (D5/D7).
 - **Adiado:** extensão SISREG, depois do piloto, junto com a integração da regulação (D6).
 - **Google Maps no Android, fora do v0.1** (G12): sem a chave, a aba de unidades mostra só a lista (o suporte ao mapa fica no código). Para ligar: pré-pagamento no Google Cloud (ou conta da empresa), chave restrita a `br.com.filasaude.app` com o SHA-1 `08:8F:08:50:CC:01:9D:66:33:97:0B:B3:2D:14:D3:C1:EB:DC:17:2F`, em `GOOGLE_MAPS_ANDROID_API_KEY` (EAS e `apps/mobile/.env.local`).

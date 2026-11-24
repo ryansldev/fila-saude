@@ -190,7 +190,7 @@ export const estimateSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("out_of_queue") }),
 ]);
 
-/** O que o app mostra de cada entrada do paciente (INV-06: só dele). Mesmo formato que o SSE terá (PD-33). */
+/** O que o app mostra de cada entrada do paciente (INV-06: só dele). Mesmo formato que o WebSocket terá (PD-33). */
 export const myEntrySchema = z.object({
   entryId: z.uuid(),
   person: z.string(),
