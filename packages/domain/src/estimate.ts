@@ -105,8 +105,12 @@ function withPause(
   if (item.state === "remote" && ahead === 0 && p.from < now + deadline) {
     return { minutes: p.until === null ? queue : left(p.until), pause: p, blocked: true };
   }
-  if (now + queue * MIN < p.from) return { minutes: queue, blocked: false };
-  return { minutes: queue + (p.until === null ? 0 : (p.until - p.from) / MIN), pause: p, blocked: false };
+  // Em casa, a vez vale com o prazo de chegada: o "venha agora" não sai se o prazo cai na pausa.
+  const remote = item.state === "remote";
+  if (now + queue * MIN + (remote ? deadline : 0) < p.from) return { minutes: queue, blocked: false };
+  if (p.until === null) return { minutes: queue, pause: p, blocked: false };
+  const withBreak = queue + (p.until - p.from) / MIN;
+  return { minutes: remote ? Math.max(withBreak, left(p.until)) : withBreak, pause: p, blocked: false };
 }
 
 /**

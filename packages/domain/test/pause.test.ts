@@ -120,6 +120,24 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
     expect(resumeStation(lunch, { stationId: "e1" }, T + 10 * MIN)).toEqual({ ok: false, error: "station_paused" });
   });
 
+  it("trocar a volta de uma pausa em curso para um horário que já passou é recusado", () => {
+    const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
+    expect(pauseStation(d, { stationId: "e1", back: { at: T + 15 * MIN } }, T + 30 * MIN)).toEqual({
+      ok: false,
+      error: "pause_back_before_start",
+    });
+    expect(pauseStation(d, { stationId: "e1", back: { inMin: 15 } }, T + 30 * MIN)).toEqual({
+      ok: false,
+      error: "pause_back_before_start",
+    });
+  });
+
+  it("no almoço da sessão, dá para desmarcar uma pausa própria que ainda não começou", () => {
+    let d = dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] });
+    d = freeze({ ...d, stations: d.stations.map((e) => ({ ...e, pause: { from: T + 180 * MIN, until: null } })) });
+    expect(station(apply(resumeStation(d, { stationId: "e1" }, T + 30 * MIN))).pause).toBeUndefined();
+  });
+
   it("volta com valor inválido é recusada", () => {
     expect(pauseStation(dayWith(["ana"]), { stationId: "e1", back: { inMin: Number.NaN } }, T)).toEqual({
       ok: false,
@@ -203,8 +221,8 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
 
   it("pausa à frente: quem seria atendido depois do início soma a pausa; o 'venha agora' não sai se o prazo cai nela", () => {
     const d = dayWith(["ana", "bruno"], { breaks: [{ start: T + 20 * MIN, end: T + 80 * MIN }] });
-    // Bruno: 1 à frente × 15 min = 12:15, antes da pausa: não soma.
-    expect(estimate(d, "bruno", T, AUTO)).toEqual({ kind: "position", position: 2, minutes: 15 });
+    // Bruno: 1 à frente × 15 min = 12:15, mas o prazo de chegada cai na pausa: só é chamado na volta.
+    expect(estimate(d, "bruno", T, AUTO)).toMatchObject({ kind: "position", position: 2, minutes: 80 });
     // Ana é a próxima, mas chegaria (prazo de 30 min) dentro da pausa: sem "venha agora".
     expect(estimate(d, "ana", T, AUTO)).toMatchObject({ kind: "position", position: 1 });
     expect(comeNowNotices(d, T, AUTO).events).toEqual([]);
@@ -226,6 +244,14 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
     d = present(d, "ana");
     d = apply(pauseStation(d, { stationId: "e1", back: { at: T + 60 * MIN } }, T));
     expect(estimate(d, "ana", T + 20 * MIN, AUTO)).toMatchObject({ pause: { from: T, until: T + 60 * MIN } });
+  });
+
+  it("em casa e não o primeiro: se a vez cair perto da pausa (prazo de chegada), soma a pausa e não manda sair cedo", () => {
+    // Pausa das 12:20 às 13:20; Bruno seria chamado às 12:15, mas o "venha agora" não sai com a pausa a menos
+    // de 30 min: ele só é chamado na volta.
+    const d = dayWith(["ana", "bruno"], { breaks: [{ start: T + 20 * MIN, end: T + 80 * MIN }] });
+    expect(estimate(d, "bruno", T, AUTO)).toMatchObject({ kind: "position", position: 2, minutes: 80 });
+    expect(leaveHomeNotices(d, T, AUTO).events).toEqual([]);
   });
 
   it("pausa curta de uma estação (com volta) não corta a capacidade da fila; sem volta, corta", () => {

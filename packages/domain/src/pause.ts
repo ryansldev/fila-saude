@@ -47,7 +47,8 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   const from = current?.from ?? (onTheWay === null ? now : Math.max(now + deadline, onTheWay));
   const back = cmd.back;
   const until = back === null ? null : "at" in back ? back.at : from + back.inMin * MIN;
-  if (until !== null && !(Number.isFinite(until) && until > from)) return failure("pause_back_before_start");
+  if (until !== null && !(Number.isFinite(until) && until > Math.max(from, now)))
+    return failure("pause_back_before_start");
   return ok(withStation(day, { ...e, pause: { from, until } }));
 }
 
@@ -58,7 +59,7 @@ export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   if (!e?.pause) return failure("forbidden_transition");
   if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
   // Na pausa planejada da sessão (almoço) ninguém volta antes da hora.
-  if (inBreak(day, now)) return failure("station_paused");
+  if (e.pause.from <= now && inBreak(day, now)) return failure("station_paused");
   const { pause, ...rest } = e;
   // Pausa que já começou: o silêncio conta da volta (desmarcar antes do início não muda nada).
   return ok(withStation(day, pause.from <= now ? { ...rest, callingSince: now } : rest));
