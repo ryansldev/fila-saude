@@ -1,9 +1,11 @@
 export {
+  awaitedItems,
   callNext,
   closeStation,
   finish,
   noShow,
   recall,
+  remoteItems,
   showedUp,
   showedUpAt,
   toleranceExceeded,

@@ -7,3 +7,8 @@ node_modules
 coverage
 .claude/worktrees/
 .superpowers/
+
+# Chave privada do Firebase (conta de serviço do push): vai só para o EAS, nunca para o git
+*-firebase-adminsdk-*.json
+# Config do Firebase do app: cada um usa o seu; no EAS vem da variável GOOGLE_SERVICES_JSON
+apps/mobile/google-services.json

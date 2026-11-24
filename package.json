@@ -38,6 +38,7 @@
     "dev:seed": "npm -w @fila-saude/api run dev:seed",
     "test:mobile": "npm -w @fila-saude/mobile run test",
     "dev:mobile": "npm -w @fila-saude/mobile run start",
+    "dev:mobile:go": "npm -w @fila-saude/mobile run start:go",
     "design:gen": "npm -w @fila-saude/design run gen",
     "test:design": "npm -w @fila-saude/design run test",
     "docs:openapi": "npm -w @fila-saude/api run docs:openapi",

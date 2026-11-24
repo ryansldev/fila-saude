@@ -1,11 +1,14 @@
-import { comeNowNotices, leaveHomeNotices } from "@fila-saude/domain";
+import { awaitedItems, comeNowNotices, leaveHomeNotices, remoteItems, type SessionDay } from "@fila-saude/domain";
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import database from "infra/database";
 import { pushDevice } from "infra/database/central/schema/push";
+import { entry } from "infra/database/municipal/schema/entry";
 import { notice } from "infra/database/municipal/schema/notice";
 import { session } from "infra/database/municipal/schema/session";
+import { sessionDay } from "infra/database/municipal/schema/session-day";
 import type { TenantDb } from "infra/database/tenants";
+import { noticeTarget } from "infra/notices/outbox";
 import { inSession } from "infra/queue/day";
 
 export type Sending = { for: string; title: string; body: string; data: Record<string, string> };
@@ -50,7 +53,7 @@ async function generateTimeNotices(db: TenantDb, now: number, onError: (error: u
   }
 }
 
-// T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "no_device";
+// T2.4: envia os pendentes vencidos; quem não tem aparelho registrado fica "no_device"; chamada que perdeu a hora, "stale";
 // falha volta com espera crescente (2, 4, 8, 16 min) até desistir.
 // Outbox: uma transação curta reserva o lote (empurra a próxima tentativa por `CLAIM_MS`, para nenhuma
 // outra rodada pegá-lo), o envio à Expo acontece fora de transação e outra transação curta grava o
@@ -58,8 +61,115 @@ async function generateTimeNotices(db: TenantDb, now: number, onError: (error: u
 // o aviso volta só quando a reserva vence (no máximo um envio a mais, não um a cada rodada).
 const CLAIM_MS = 5 * 60_000;
 
-async function sendPending(db: TenantDb, now: number, send: Sender): Promise<void> {
-  const pending = await db.transaction(async (tx) => {
+const CALL_KINDS = new Set(["your_turn", "recalled"]);
+
+type NoticeRef = { id: string; kind: string; state: string; entryId: string | null; key: string };
+
+// Chamada mais nova que ainda vale: enviada, talvez enviada (`unconfirmed`) ou pendente (no lote, em outra
+// rodada ou esperando nova tentativa).
+const LIVE = new Set(["sent", "pending", "unconfirmed"]);
+
+/** O que a fila do dia mostra agora: quem ela espera entrar na sala e quem espera na fila, com a etapa. */
+export type QueueNow = { awaited: Set<string>; waiting: Map<string, string> };
+
+/**
+ * AD-074: o envio sai na hora do evento, mas um envio que falha volta minutos depois, a varredura roda em
+ * paralelo e a Expo pode cair. Recebe o lote reservado, o histórico das mesmas entradas no banco (em ordem de
+ * criação) e o estado da fila, e devolve os avisos que perderam a hora:
+ * - chamadas ("sua vez", rechamada) seguidas de um "pulado" (em qualquer estado) ou de uma chamada que ainda
+ *   vale, ou de um item que a fila não espera mais entrar na sala (atendido, pulado, já na sala, outra etapa);
+ * - "saia de casa" e "venha agora" de quem não espera mais na fila naquela etapa (chamado, atendido, saiu).
+ * Com o envio na hora, chamada e rechamada saem cada uma no seu momento; só as atrasadas juntas viram uma.
+ */
+export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: QueueNow): Set<string> {
+  const stale = new Set<string>();
+  const laterOf = (a: NoticeRef) => {
+    const same = history.filter((x) => x.entryId === a.entryId);
+    return same.slice(same.findIndex((x) => x.id === a.id) + 1);
+  };
+  const liveCall = (x: NoticeRef) => CALL_KINDS.has(x.kind) && LIVE.has(x.state);
+  for (const a of claimed) {
+    if (!a.entryId) continue;
+    // Um "pulado" antigo não sai depois de uma chamada mais nova, em qualquer estado: a pessoa foi chamada de novo.
+    if (a.kind === "skipped") {
+      if (laterOf(a).some((x) => CALL_KINDS.has(x.kind))) stale.add(a.id);
+      continue;
+    }
+    const target = noticeTarget(a.key);
+    if (!target) continue;
+    if (target.kind === "waiting") {
+      // "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" da mesma etapa que
+      // ainda vale ("Vou sair" recomeça o aviso, AD-057).
+      const comeNowAfter = laterOf(a).some((x) => {
+        const t = noticeTarget(x.key);
+        return x.kind === "come_now" && LIVE.has(x.state) && t?.kind === "waiting" && t.stage === target.stage;
+      });
+      if (queue.waiting.get(target.item) !== target.stage || comeNowAfter) stale.add(a.id);
+      continue;
+    }
+    if (!queue.awaited.has(target.item)) {
+      stale.add(a.id);
+      continue;
+    }
+    if (laterOf(a).some((x) => x.kind === "skipped" || liveCall(x))) stale.add(a.id);
+  }
+  return stale;
+}
+
+/**
+ * O estado da fila para os avisos (AD-074): quem as sessões abertas esperam entrar na sala (`awaitedItems`) e
+ * quem espera em casa, por etapa (`remoteItems`). Sessão fechada ou cancelada não espera ninguém.
+ */
+export function queueFrom(days: SessionDay[]): QueueNow {
+  const queue: QueueNow = { awaited: new Set(), waiting: new Map() };
+  for (const day of days) {
+    if (day.state !== "open") continue;
+    for (const i of awaitedItems(day)) queue.awaited.add(i);
+    for (const [i, stage] of remoteItems(day)) queue.waiting.set(i, stage);
+  }
+  return queue;
+}
+
+/**
+ * O estado da fila nas sessões das entradas dadas. Lido fora da trava da sessão: uma mudança da fila entre
+ * esta leitura e o envio ainda deixa sair um aviso.
+ */
+async function queueNow(db: TenantDb, entryIds: string[]): Promise<QueueNow> {
+  if (entryIds.length === 0) return queueFrom([]);
+  const sessions = db.selectDistinct({ id: entry.sessionId }).from(entry).where(inArray(entry.id, entryIds));
+  const days = await db.select({ day: sessionDay.day }).from(sessionDay).where(inArray(sessionDay.sessionId, sessions));
+  return queueFrom(days.map((d) => d.day));
+}
+
+/**
+ * Erro no meio do envio: sempre conta como tentativa (até desistir). Antes da chamada à Expo, com a mesma
+ * espera crescente (sem repetir a cada pedido); depois dela, sem mudar a hora: a reserva de 5 min vence
+ * sozinha (o aviso pode já ter chegado).
+ */
+export function afterError(
+  calledExpo: boolean,
+  attempts: number,
+  now: number,
+): { attempts: number; state: "pending" | "failed" | "unconfirmed"; nextAttemptAt?: Date } {
+  const next = attempts + 1;
+  const done = next >= MAX_ATTEMPTS;
+  // Depois da Expo, esgotado não é falha de entrega: o aviso pode ter chegado.
+  if (calledExpo) return { attempts: next, state: done ? "unconfirmed" : "pending" };
+  const state = done ? "failed" : "pending";
+  return { attempts: next, state, nextAttemptAt: new Date(now + 2 ** next * 60_000) };
+}
+
+/** O tamanho do lote de envio: quem recebe um lote cheio pode chamar de novo. */
+export const SEND_BATCH = BATCH;
+
+/** Envia um lote dos pendentes vencidos do município; devolve quantos reservou (até `SEND_BATCH`). */
+export async function sendPending(
+  db: TenantDb,
+  now: number,
+  send: Sender,
+  log: (error: unknown) => void = () => {},
+): Promise<number> {
+  const claimed = await db.transaction(async (tx) => {
     const rows = await tx
       .select()
       .from(notice)
@@ -69,7 +179,7 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
           lte(notice.nextAttemptAt, sql`greatest(${new Date(now).toISOString()}::timestamptz, now())`),
         ),
       )
-      .orderBy(asc(notice.createdAt))
+      .orderBy(asc(notice.seq))
       .limit(BATCH)
       .for("update", { skipLocked: true });
     if (rows.length > 0) {
@@ -85,6 +195,50 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
     }
     return rows;
   });
+  if (claimed.length === 0) return 0;
+  const progress = { sentToExpo: new Set<string>() };
+  try {
+    await deliver(db, now, send, claimed, progress, log);
+    return claimed.length;
+  } catch (error) {
+    const update = (a: (typeof claimed)[number]) => afterError(progress.sentToExpo.has(a.id), a.attempts, now);
+    for (const a of claimed) {
+      await db
+        .update(notice)
+        .set({ ...update(a), lastError: error instanceof Error ? error.message : "erro" })
+        .where(and(eq(notice.id, a.id), eq(notice.state, "pending")))
+        .catch(() => {});
+    }
+    throw error;
+  }
+}
+
+async function deliver(
+  db: TenantDb,
+  now: number,
+  send: Sender,
+  claimed: (typeof notice.$inferSelect)[],
+  progress: { sentToExpo: Set<string> },
+  log: (error: unknown) => void,
+): Promise<void> {
+  const entries = [
+    ...new Set(claimed.flatMap((a) => (a.entryId && (noticeTarget(a.key) || a.kind === "skipped") ? [a.entryId] : []))),
+  ];
+  const history =
+    entries.length === 0
+      ? []
+      : await db
+          .select({ id: notice.id, kind: notice.kind, state: notice.state, entryId: notice.entryId, key: notice.key })
+          .from(notice)
+          .where(inArray(notice.entryId, entries))
+          .orderBy(asc(notice.seq));
+  const stale = staleNotices(claimed, history, await queueNow(db, entries));
+  if (stale.size > 0)
+    await db
+      .update(notice)
+      .set({ state: "stale" })
+      .where(inArray(notice.id, [...stale]));
+  const pending = claimed.filter((a) => !stale.has(a.id));
   if (pending.length === 0) return;
 
   const accounts = [...new Set(pending.map((a) => a.patientId))];
@@ -101,20 +255,11 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
       });
     }
   }
+  for (const e of sendings) progress.sentToExpo.add(e.noticeId);
   const results = sendings.length > 0 ? await send(sendings.map((e) => e.sending)) : [];
-  const invalid = sendings.filter((_, i) => {
-    const r = results[i];
-    return r && !r.ok && r.invalidToken;
-  });
-  if (invalid.length > 0) {
-    await database.delete(pushDevice).where(
-      inArray(
-        pushDevice.token,
-        invalid.map((e) => e.sending.for),
-      ),
-    );
-  }
 
+  // Grava o resultado de cada aviso logo depois da Expo, antes de qualquer outro passo que possa falhar:
+  // o que ela aceitou não pode voltar para a fila e sair de novo.
   await db.transaction(async (tx) => {
     for (const a of pending) {
       const mine = sendings.map((e, i) => ({ ...e, r: results[i] })).filter((e) => e.noticeId === a.id);
@@ -142,6 +287,23 @@ async function sendPending(db: TenantDb, now: number, send: Sender): Promise<voi
         .where(eq(notice.id, a.id));
     }
   });
+
+  // Por último, tira os aparelhos que a Expo recusou; um erro aqui não desfaz o que já foi gravado.
+  const invalid = sendings.filter((_, i) => {
+    const r = results[i];
+    return r && !r.ok && r.invalidToken;
+  });
+  if (invalid.length > 0) {
+    await database
+      .delete(pushDevice)
+      .where(
+        inArray(
+          pushDevice.token,
+          invalid.map((e) => e.sending.for),
+        ),
+      )
+      .catch((error) => log(error));
+  }
 }
 
 export async function sweepMunicipality(
@@ -151,7 +313,8 @@ export async function sweepMunicipality(
   onError: (error: unknown) => void = () => {},
 ): Promise<void> {
   await generateTimeNotices(db, now, onError);
-  await sendPending(db, now, send);
+  // Lote cheio: pode haver mais (depois de uma queda da Expo, por exemplo); segue até esvaziar.
+  while ((await sendPending(db, now, send, onError)) === SEND_BATCH);
 }
 
 const EXPO_URL = "https://exp.host/--/api/v2/push/send";
@@ -169,41 +332,87 @@ export const expoMessage = (e: Sending) => ({
   channelId: PUSH_CHANNEL,
 });
 
-/** Envio pelo serviço de push da Expo, em lotes de 100 (limite da Expo). */
-export const expoSender: Sender = async (list) => {
-  const exit: SendingResult[] = [];
-  for (let i = 0; i < list.length; i += 100) {
-    const batch = list.slice(i, i + 100);
-    try {
-      const r = await fetch(EXPO_URL, {
-        method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
-        body: JSON.stringify(batch.map(expoMessage)),
-      });
-      const body = (await r.json().catch(() => null)) as { data?: ExpoTicket[] } | null;
-      if (!r.ok || !body?.data) {
-        exit.push(...batch.map(() => ({ ok: false as const, error: `expo ${r.status}` })));
-        continue;
-      }
-      for (const t of body.data) {
-        if (t.status === "ok") exit.push({ ok: true });
-        else
-          exit.push({
-            ok: false,
-            error: t.message ?? "erro",
-            invalidToken: t.details?.error === "DeviceNotRegistered",
+// Sem resposta da Expo em 10 s, desiste (volta na próxima tentativa); o desligamento da API não fica preso.
+const EXPO_TIMEOUT_MS = 10_000;
+
+/** Envio pelo serviço de push da Expo, em lotes de 100 (limite da Expo), com prazo por lote. */
+export const expoSenderWith =
+  (timeoutMs: number): Sender =>
+  async (list) => {
+    const exit: SendingResult[] = [];
+    for (let i = 0; i < list.length; i += 100) {
+      const batch = list.slice(i, i + 100);
+      try {
+        // O prazo vale até a Expo responder; depois de um 200 ela já aceitou o lote, e cortar a leitura do
+        // corpo faria o lote todo sair de novo.
+        const abort = new AbortController();
+        const timer = setTimeout(() => abort.abort(new Error("tempo esgotado")), timeoutMs);
+        let r: Response;
+        try {
+          r = await fetch(EXPO_URL, {
+            method: "POST",
+            headers: { "content-type": "application/json", accept: "application/json" },
+            body: JSON.stringify(batch.map(expoMessage)),
+            signal: abort.signal,
           });
+        } finally {
+          clearTimeout(timer);
+        }
+        if (!r.ok) {
+          // Erro da Expo: o corpo não importa, nem esperar por ele.
+          await r.body?.cancel().catch(() => {});
+          exit.push(...batch.map(() => ({ ok: false as const, error: `expo ${r.status}` })));
+          continue;
+        }
+        // O corpo tem o seu próprio prazo. Travado depois do 200, a Expo já aceitou o lote: conta como
+        // enviado, para nada sair duas vezes. Lido mas sem `data` (HTML de proxy, `errors`): falha.
+        const STALLED = Symbol("travado");
+        let bodyTimer: ReturnType<typeof setTimeout> | undefined;
+        const body = await Promise.race([
+          r.json().catch(() => null) as Promise<{ data?: ExpoTicket[] } | null>,
+          new Promise<typeof STALLED>((done) => {
+            bodyTimer = setTimeout(() => done(STALLED), timeoutMs);
+          }),
+        ]);
+        clearTimeout(bodyTimer);
+        if (body === STALLED) {
+          // Solta a conexão do corpo travado (senão fica aberta, uma por lote).
+          await r.body?.cancel().catch(() => {});
+          exit.push(...batch.map(() => ({ ok: true as const })));
+          continue;
+        }
+        if (!body?.data) {
+          exit.push(...batch.map(() => ({ ok: false as const, error: "expo: resposta sem os recibos" })));
+          continue;
+        }
+        // Uma resposta por aviso, na ordem: com outro número, nada garante qual é de qual (e um
+        // `DeviceNotRegistered` apagaria o aparelho de outra pessoa). O lote todo volta para nova tentativa.
+        if (body.data.length !== batch.length) {
+          const error = `expo: ${body.data.length} respostas para ${batch.length} avisos`;
+          exit.push(...batch.map(() => ({ ok: false as const, error })));
+          continue;
+        }
+        for (const t of body.data) {
+          if (t.status === "ok") exit.push({ ok: true });
+          else
+            exit.push({
+              ok: false,
+              error: t.message ?? "erro",
+              invalidToken: t.details?.error === "DeviceNotRegistered",
+            });
+        }
+      } catch (err) {
+        exit.push(...batch.map(() => ({ ok: false as const, error: err instanceof Error ? err.message : "rede" })));
       }
-    } catch (err) {
-      exit.push(...batch.map(() => ({ ok: false as const, error: err instanceof Error ? err.message : "rede" })));
     }
-  }
-  return exit;
-};
+    return exit;
+  };
+
+export const expoSender: Sender = expoSenderWith(EXPO_TIMEOUT_MS);
 
 /**
  * PD-50: na v0.1 a varredura roda dentro do processo da API, a cada minuto, município por município.
- * Devolve a função que para o intervalo.
+ * Devolve a função que para o intervalo e espera a rodada em andamento (antes de fechar os bancos).
  */
 export function startSweep(
   slugs: () => Promise<string[]>,
@@ -211,11 +420,9 @@ export function startSweep(
   log: (error: unknown, slug: string) => void,
   send: Sender = expoSender,
   intervalMs = 60_000,
-): () => void {
-  let running = false;
+): () => Promise<void> {
+  let current: Promise<void> | null = null;
   const round = async () => {
-    if (running) return;
-    running = true;
     try {
       for (const slug of await slugs()) {
         const db = await database(slug);
@@ -223,10 +430,16 @@ export function startSweep(
       }
     } catch (e) {
       log(e, "*");
-    } finally {
-      running = false;
     }
   };
-  const id = setInterval(round, intervalMs);
-  return () => clearInterval(id);
+  const id = setInterval(() => {
+    if (current) return;
+    current = round().finally(() => {
+      current = null;
+    });
+  }, intervalMs);
+  return async () => {
+    clearInterval(id);
+    await current;
+  };
 }

@@ -1,6 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { eligible, type QueueItem, type SessionDay, type Station, stayEligible } from "./queue.ts";
+import { eligible, type QueueItem, type SessionDay, type Stage, type Station, stayEligible } from "./queue.ts";
 import { type ErrorCode, type Event, failure, ok, type Result } from "./result.ts";
 
 type Cmd = { stationId: string };
@@ -75,6 +75,26 @@ const withCall = (day: SessionDay, idx: number, partial: { showedUpAt?: number }
     return partial.showedUpAt === undefined ? rest : { ...rest, showedUpAt: partial.showedUpAt };
   }),
 });
+
+/**
+ * Quem a fila ainda espera entrar na sala: item chamado (`called`) sem o "Compareceu" na última chamada.
+ * Os avisos de chamada só saem para eles (AD-074): atendido, pulado ou já na sala, o aviso perdeu a hora.
+ */
+export function awaitedItems(day: SessionDay): Set<string> {
+  const awaited = new Set<string>();
+  for (const i of day.items) {
+    if (i.state === "called" && (day.calls[lastCall(day, i.id)]?.showedUpAt ?? null) === null) awaited.add(i.id);
+  }
+  return awaited;
+}
+
+/**
+ * Quem ainda espera em casa (remoto), com a etapa em que espera. Os avisos de tempo ("saia de casa", "venha
+ * agora") só saem para eles, na mesma etapa (AD-074): quem já chegou à unidade não precisa mais deles.
+ */
+export function remoteItems(day: SessionDay): Map<string, Stage> {
+  return new Map(day.items.filter((i) => i.state === "remote").map((i) => [i.id, i.stage]));
+}
 
 /** Hora do "Compareceu" de quem está chamado na estação, ou `null`. */
 export function showedUpAt(day: SessionDay, stationId: string): number | null {

@@ -9,6 +9,26 @@ type Context = { unit: string; ticket: string; station: (id: string | undefined)
 
 const min = (s: string) => s.toLowerCase();
 
+// A chave dos avisos de chamada e de tempo leva o item da fila; `noticeTarget` a lê de volta (AD-074).
+const YOUR_TURN_KEY = "sua_vez";
+const RECALL_KEY = "rechamada";
+const LEAVE_HOME_KEY = "saia_de_casa";
+const COME_NOW_KEY = "venha_agora";
+
+export type NoticeTarget = { kind: "call"; item: string } | { kind: "waiting"; item: string; stage: string };
+
+/**
+ * O que o aviso supõe da fila, pela chave: chamada ("sua vez", rechamada) supõe o item chamado; "saia de
+ * casa" e "venha agora" supõem o item esperando naquela etapa. `null` nos outros avisos.
+ */
+export function noticeTarget(key: string): NoticeTarget | null {
+  const [prefix, item, stage] = key.split(":");
+  if (!item) return null;
+  if (prefix === YOUR_TURN_KEY || prefix === RECALL_KEY) return { kind: "call", item };
+  if ((prefix === LEAVE_HOME_KEY || prefix === COME_NOW_KEY) && stage) return { kind: "waiting", item, stage };
+  return null;
+}
+
 /**
  * T3.8 / RN-NOT-01: o que cada evento da fila diz ao paciente, só ação e local, nunca sintoma.
  * A chave identifica o evento: o mesmo evento nunca vira dois avisos.
@@ -20,8 +40,15 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
     case "called":
       return {
         kind: "your_turn",
-        key: `sua_vez:${item}:${d.at}`,
+        key: `${YOUR_TURN_KEY}:${item}:${d.at}`,
         title: `é a sua vez! senha ${ctx.ticket}`,
+        body: `vá para ${min(ctx.station(ev.stationId))} na ${ctx.unit}.`,
+      };
+    case "recalled":
+      return {
+        kind: "recalled",
+        key: `${RECALL_KEY}:${item}:${d.at}`,
+        title: `chamando você de novo! senha ${ctx.ticket}`,
         body: `vá para ${min(ctx.station(ev.stationId))} na ${ctx.unit}.`,
       };
     case "skipped": {
@@ -50,14 +77,14 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
     case "leave_home":
       return {
         kind: "leave_home",
-        key: `saia_de_casa:${item}:${d.stage}`,
+        key: `${LEAVE_HOME_KEY}:${item}:${d.stage}`,
         title: "hora de sair de casa",
         body: `faltam cerca de ${d.minutes} min para a sua vez na ${ctx.unit}. ao chegar, leia o QR da TV.`,
       };
     case "come_now":
       return {
         kind: "come_now",
-        key: `venha_agora:${item}:${d.stage}:${d.at}`, // "Vou sair" recomeça (AD-057)
+        key: `${COME_NOW_KEY}:${item}:${d.stage}:${d.at}`, // "Vou sair" recomeça (AD-057)
         title: "venha agora",
         body: `você é o próximo na ${ctx.unit}. ao chegar, leia o QR da TV.`,
       };

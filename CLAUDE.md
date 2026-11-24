@@ -13,7 +13,7 @@ Central de filas para o atendimento público (UBS, policlínicas): o paciente es
 
 ## Comandos
 
-- `npm run dev` (API :3333 e painel em `http://exemplo.localhost:3000`, senha `exemplo123`); `npm run dev:seed` recria os dados de exemplo; `npm run dev:mobile` (Metro).
+- `npm run dev` (API :3333 e painel em `http://exemplo.localhost:3000`, senha `exemplo123`); `npm run dev:seed` recria os dados de exemplo; `npm run dev:mobile` (Metro para o build de desenvolvimento, `eas build --profile development --platform android`; `dev:mobile:go` para o Expo Go, que no Android não recebe push remoto). O `apps/mobile/google-services.json` fica fora do git: cada um usa o do seu Firebase; sem ele o app roda sem push.
 - Testes: `npm test` (API; **pede o Docker Desktop**: `systemctl --user start docker-desktop`), `npm run test:domain`, `test:painel`, `test:mobile`, `test:design`, `test:web`, e `npm -w @fila-saude/schemas run test`.
 - `npm run lint`; `npm run specs:check` (IDs, decisões, tabelas geradas); `npm run specs:gen` (tabelas das specs a partir de `packages/domain`); `npm run design:gen` (o `tokens.css` do painel); `npm run docs:openapi` (um `apps/api/openapi/v{n}.json` por versão da API, a referência; rode ao mudar uma rota).
 

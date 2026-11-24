@@ -15,6 +15,13 @@
       "when": 1794918432852,
       "tag": "0001_session_day_closing_at",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795470597646,
+      "tag": "0002_notice_seq_entry_idx",
+      "breakpoints": true
     }
   ]
 }

@@ -9,7 +9,8 @@ import database from "infra/database";
 import { tenantSource } from "infra/database/tenants";
 import env from "infra/env";
 import { handleError, notFound } from "infra/errors";
-import { startSweep } from "infra/notices/sweep";
+import { sendAfterWrites } from "infra/notices/send-now";
+import { expoSender, type Sender, startSweep } from "infra/notices/sweep";
 import { serializerCompiler, validatorCompiler } from "infra/openapi/compilers";
 import { registerOpenApi } from "infra/openapi/document";
 import { registerRoutes } from "infra/panel/action";
@@ -22,9 +23,10 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 // Monta o app sem `listen` (servidor e testes de infra usam o mesmo).
 // `background: false` não liga a varredura dos avisos; `openapi` monta a referência da API (nos testes e
-// no `npm run docs:openapi`; produção não a serve).
+// no `npm run docs:openapi`; produção não a serve). `sender` troca o envio dos push (testes); sem ele, a
+// Expo, menos nos testes e com `background: false`, onde nada sai.
 export async function buildApp(
-  options: { logger?: boolean; background?: boolean; openapi?: boolean } = {},
+  options: { logger?: boolean; background?: boolean; openapi?: boolean; sender?: Sender } = {},
 ): Promise<FastifyInstance> {
   // AD-064: só os proxies de TRUSTED_PROXIES informam o IP do cliente (`req.ip`); sem eles, vale a conexão.
   const app = Fastify({
@@ -59,13 +61,18 @@ export async function buildApp(
   app.addHook("onClose", () => pools.close());
 
   // PD-50: avisos do tempo e envio dos push; fora dos testes (lá a função é chamada direto).
-  if (process.env.NODE_ENV !== "test" && options.background !== false) {
+  const background = process.env.NODE_ENV !== "test" && options.background !== false;
+  // AD-074: o push sai logo depois do pedido que gravou o aviso; a varredura fica para o resto.
+  const poolOf = async (slug: string) => (await pools.get(slug))?.db ?? null;
+  sendAfterWrites(app, options.sender ?? (background ? expoSender : null), poolOf);
+  if (background) {
     const stop = startSweep(
       async () => (env.TENANT_SLUG ? [env.TENANT_SLUG] : (await activeMunicipalities()).map((m) => m.slug)),
-      async (slug) => (await pools.get(slug))?.db ?? null,
+      poolOf,
       (error, slug) => app.log.error({ err: error, slug }, "varredura"),
     );
-    app.addHook("onClose", async () => stop());
+    // Antes dos `onClose` (que fecham os bancos), espera a rodada em andamento.
+    app.addHook("preClose", async () => stop());
   }
 
   // PD-15: `app.requireTenant` resolve o tenant pelo Host e pelo caminho (`municipalities/:slug`).

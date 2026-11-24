@@ -1,9 +1,10 @@
-import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
-import Constants from "expo-constants";
+import { OLD_PUSH_CHANNELS, PUSH_CHANNEL } from "@fila-saude/schemas/push";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Linking, Platform } from "react-native";
 import type { Api } from "./api";
+import { pushTarget } from "./push-setup";
 
 // T3.8: o aviso aparece mesmo com o app aberto.
 Notifications.setNotificationHandler({
@@ -15,7 +16,7 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export type PushResult = "registered" | "no_permission" | "no_project" | "simulator" | "error";
+export type PushResult = "registered" | "no_permission" | "no_project" | "simulator" | "expo_go" | "error";
 
 /**
  * "perguntar": o celular ainda não perguntou (a tela 3 explica antes de pedir).
@@ -41,10 +42,10 @@ export async function noticeState(): Promise<NoticeState> {
 
 const createChannel = async () => {
   if (Platform.OS !== "android") return;
+  for (const old of OLD_PUSH_CHANNELS) await Notifications.deleteNotificationChannelAsync(old).catch(() => {});
   await Notifications.setNotificationChannelAsync(PUSH_CHANNEL, {
     name: "fila",
     importance: Notifications.AndroidImportance.MAX,
-    sound: "default",
   });
 };
 
@@ -59,19 +60,23 @@ export async function leavePush(api: Api): Promise<void> {
 
 /**
  * Registra o token de push da Expo na conta (PUT /v1/paciente/push) se a permissão já foi dada; não pede.
- * O token da Expo exige o projectId do EAS (EXPO_PUBLIC_EAS_PROJECT_ID ou extra.eas.projectId):
- * sem ele o app segue só com a consulta da tela. Nunca lança.
+ * O token da Expo exige um aparelho, o projectId do EAS e, no Android, um build fora do Expo Go
+ * (EXPO_PUBLIC_EAS_PROJECT_ID ou extra.eas.projectId); sem eles o app segue só com a consulta da tela. Nunca lança.
  */
 export async function registerPush(api: Api): Promise<PushResult> {
   try {
-    if (!Device.isDevice) return "simulator";
+    const target = pushTarget({
+      isDevice: Device.isDevice,
+      expoGo: Constants.executionEnvironment === ExecutionEnvironment.StoreClient,
+      os: Platform.OS,
+      projectId:
+        process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
+        (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId,
+    });
+    if (typeof target === "string") return target;
     if (!(await Notifications.getPermissionsAsync()).granted) return "no_permission";
     await createChannel();
-    const projectId =
-      process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
-      (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
-    if (!projectId) return "no_project";
-    const { data } = await Notifications.getExpoPushTokenAsync({ projectId });
+    const { data } = await Notifications.getExpoPushTokenAsync({ projectId: target.projectId });
     await api.put("/v1/patient/push", { token: data });
     registeredToken = data;
     return "registered";

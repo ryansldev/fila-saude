@@ -1,9 +1,11 @@
+import { requireOptionalNativeModule } from "expo";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 import MapView, { type LatLng, Marker, type Region } from "react-native-maps";
 import { UnitPin } from "@/components/pin";
 import { COLOR } from "@/components/ui";
-import { MAP_STYLE } from "@/lib/map";
+import { builtWithGoogleMaps, MAP_STYLE, nativeMap } from "@/lib/map";
 import { MAP_HEIGHT, type MapProps } from "./map.types";
 
 // Região que mostra todos os pontos, com folga nas bordas.
@@ -20,7 +22,23 @@ function regionOf(points: LatLng[]): Region {
   };
 }
 
-/** Mapa de verdade (react-native-maps): Apple Maps no iPhone, Google Maps no Android. */
+/**
+ * Sem a chave do Google Maps no Android (build próprio), não há mapa: a tela mostra só a lista. Lê a config
+ * gravada no build (`ExponentConstants.manifest`), não a `Constants.expoConfig`, que no build de
+ * desenvolvimento vem do Metro e pode não bater com o build (e o Google Maps sem chave trava o app).
+ */
+export const hasMap = nativeMap({
+  os: Platform.OS,
+  expoGo: Constants.executionEnvironment === ExecutionEnvironment.StoreClient,
+  builtWithMaps: builtWithGoogleMaps(
+    requireOptionalNativeModule<{ manifest?: unknown }>("ExponentConstants")?.manifest,
+  ),
+});
+
+/**
+ * Mapa de verdade (react-native-maps): Apple Maps no iPhone, Google Maps no Android. Quem usa confere
+ * `hasMap` antes (sem a chave do Google, o app travaria).
+ */
 export default function UnitsMap({
   pins: fresh,
   here,

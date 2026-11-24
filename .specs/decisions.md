@@ -75,6 +75,11 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-067 | Schemas Zod declarados nas rotas do Fastify | ativa |
 | AD-068 | Versões da API: o que quebra vai para uma nova, a anterior fica 6 meses | ativa |
 | AD-069 | Domínios de produção: `api.filasaude.com.br` e `<município>.filasaude.com.br` | ativa |
+| AD-070 | Decisões do alinhamento de 2026-11-19 | ativa |
+| AD-071 | `google-services.json` fora do git; no EAS, variável de arquivo | ativa |
+| AD-072 | Rechamar também manda push | ativa |
+| AD-073 | Push no Android: sempre o coração azul, sem imagem grande | ativa |
+| AD-074 | Push sai na hora do evento; chamada que perdeu a hora não sai | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -352,6 +357,26 @@ A versão é um número no começo do caminho (`/v1`, `/v2`… `/v{n}`), sem nen
 ### AD-069 · Domínios de produção: `api.filasaude.com.br` e `<município>.filasaude.com.br`
 2026-11-18 · ativa
 O app do paciente fala com a API em `https://api.filasaude.com.br` (o município no caminho); o painel e a TV, em `https://<município>.filasaude.com.br` (o município no subdomínio). A homologação segue o mesmo desenho em `https://api.homolog.filasaude.com.br` e `https://<município>.homolog.filasaude.com.br`. As docs mostram os endereços de produção, os locais em dev e os de homologação no build dela (`DOCS_API_URL` e `DOCS_PANEL_URL`), sem endereço fixo nos guias (`{{API_URL}}` e `{{PANEL_URL}}`); a referência da API lista os três ambientes. **Por quê:** decisão sua, 2026-11-18 ("exatamente isso"), ao ver que as docs mostravam `localhost` fixo; a homologação, "pode seguir com esses endereços de homolog". Substitui a DA7 das decisões para revisar.
+
+### AD-070 · Decisões do alinhamento de 2026-11-19
+2026-11-19 · ativa · Muda: — (o código já segue)
+Aprovadas como estavam em decisoes-para-revisar: (1) **CA1:** e-mail obrigatório no cadastro. (2) **F1:** idoso (60+ e 80+) não gera pendência de prioridade no check-in; a idade vem da identidade conferida. (3) **S5:** prioridade declarada no balcão vale na hora, conferida pela recepção. (4) **RV1:** CPF já cadastrado só é aceito com a mesma data de nascimento ("outra pessoa": também o mesmo primeiro nome, sem acento); senão `409 person_mismatch`, sem dizer o que diverge. (5) **RV2:** até 5 inscrições ativas por conta em cada sessão. (6) **PD-21:** senha com no mínimo 8 caracteres; 5 erros seguidos bloqueiam por 15 min (hoje pelo par login e IP, AD-064 e AD-065). (7) **G7:** envio de push dentro do processo da API, a cada 60 s; vira processo próprio antes do piloto. (8) **I3:** vínculo e pré-cadastro não exigidos na lista de espera até a fatia 5. **Por quê:** decisões suas, 2026-11-19 ("ok").
+
+### AD-071 · `google-services.json` fora do git; no EAS, variável de arquivo
+2026-11-20 · ativa · Muda: G6
+O projeto EAS fica na organização `fila-saude` (pacote `br.com.filasaude.app`). O `apps/mobile/google-services.json` não vai para o git: cada dev usa o do seu Firebase; o EAS Build lê o arquivo da variável secreta `GOOGLE_SERVICES_JSON` (`app.config.ts`, com o arquivo local como alternativa). A chave da conta de serviço do Firebase (`*-firebase-adminsdk-*.json`) vai só para as credenciais do EAS. **Por quê:** decisão sua, 2026-11-20 ("faz mais sentido cada um inicializar seu próprio firebase"), num repositório público. A doc da Expo diz que o arquivo pode ir para o git (só tem identificadores públicos); fica fora mesmo assim.
+
+### AD-072 · Rechamar também manda push
+2026-11-20 · ativa · Muda: G5, tv-e-avisos
+Cada rechamada vira um aviso "chamando você de novo! senha X", com a sala e a unidade, como o "sua vez". **Por quê:** você, 2026-11-20, testando no celular: "quando chamo novamente, não notifica". O G5 tinha deixado a rechamada de fora porque a TV e a tela já mostram, mas quem espera em casa ou longe da TV só fica sabendo pelo push. Sem limite: cada toque em "rechamar" é um aviso, como cada chamada na TV.
+
+### AD-073 · Push no Android: sempre o coração azul, sem imagem grande
+2026-11-23 · ativa · Muda: G13
+Todo aviso de push no Android leva só o símbolo do coração com a cruz (o do painel), como ícone pequeno (`assets/notification-icon.png`, branco) pintado com o azul `#1a6fd1` (`color` do plugin `expo-notifications`). Sem imagem grande (`largeIcon`). **Por quê:** você, 2026-11-23: "use sempre o símbolo do coração azul" e "precisa estar em todas notificações push". Com título e texto, a Expo manda uma mensagem de notificação do FCM: com o app fechado ou em segundo plano quem mostra é o Android, que usa o ícone pequeno do manifesto e ignora a imagem grande; ela só aparecia com o app aberto. A proposta com o Dr. Lino como imagem grande foi recusada. Avisos só de dados, com uma tarefa em segundo plano montando cada aviso, ficam de fora: mais código, e o Android pode atrasar no modo soneca.
+
+### AD-074 · Push sai na hora do evento; chamada que perdeu a hora não sai
+2026-11-23 · ativa · Muda: AD-070 (G7), G14
+O aviso continua gravado na outbox, na mesma transação do evento (PD-49). Logo depois da resposta de cada escrita com município (mesmo com erro na resposta), a API envia os pendentes dele, sem segurar a resposta (`sendAfterWrites`, hook `onResponse`); pedidos durante um envio do mesmo município viram uma rodada a mais. A varredura de 60 s (G7) fica para as novas tentativas e os avisos do tempo ("saia de casa", "venha agora"). No envio, olhando o histórico da entrada no banco, não sai a chamada ("sua vez" ou rechamada) seguida de um "pulado" nem a seguida de uma chamada que ainda vale (enviada ou pendente); fica como `stale`. Com o envio na hora, chamada e rechamada saem cada uma no seu momento; só as atrasadas juntas (a Expo caiu, envio que falhou) viram uma, a última. A chamada só sai enquanto a fila do dia espera a pessoa entrar na sala daquela chamada (`awaitedItems`: item `called` sem o "Compareceu"); atendida, pulada, já na sala ou chamada em outra etapa, fica como `stale`. "Saia de casa" e "venha agora" só saem enquanto a pessoa espera em casa na mesma etapa (`remoteItems`). Sessão fechada ou cancelada não espera ninguém. "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" da mesma etapa que ainda vale, nem um "pulado" depois de uma chamada mais nova (em qualquer estado). Erro no envio sempre conta como tentativa: antes da chamada à Expo, com a mesma espera crescente; depois dela, a reserva de 5 min vence sozinha e, esgotadas as tentativas, o aviso fica `unconfirmed` (pode ter chegado), não `failed`. A Expo tem 10 s para responder e mais 10 s para o corpo; com o 200 e o corpo travado, o lote conta como enviado (nada sai duas vezes); corpo lido sem os recibos é falha. O resultado de cada aviso é gravado logo depois da Expo, antes de apagar os aparelhos recusados. O envio na hora e a varredura seguem enquanto o lote vier cheio (100). A ordem dos avisos é a de gravação (`notice.seq`), não `created_at`, que empata na mesma transação. O estado é lido fora da trava da sessão: uma mudança entre a leitura e o envio ainda deixa sair um aviso. **Pedido seu**, 2026-11-23 ("pq nn corrigiu a questao da fila?"): a nova tentativa de uma chamada não sai para quem já foi atendido. A Expo tem 10 s para responder; no desligamento, a API espera os envios em andamento e não começa outros. **Por quê:** você, 2026-11-23 ("faz o envio na hora do evento"): com a varredura, o "é a sua vez!" chegava até 60 s depois, e os avisos do mesmo minuto chegavam juntos e fora de ordem. Substitui a G14.
 
 ## Arquitetura
 

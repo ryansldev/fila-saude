@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  awaitedItems,
   callNext,
   closeStation,
   finish,
   noShow,
   recall,
+  remoteItems,
   showedUp,
   showedUpAt,
   toleranceExceeded,
@@ -652,5 +654,41 @@ describe("Compareceu: a pessoa entrou na sala", () => {
     d = call(d, "e1", T + MIN);
     expect(calledAt(d)).toBe("ana");
     expect(showedUpAt(d, "e1")).toBeNull();
+  });
+});
+
+describe("quem a fila ainda espera entrar na sala (avisos de chamada, AD-074)", () => {
+  it("chamado e ainda não entrou: esperado; depois do Compareceu, não", () => {
+    let d = call(enter(dayWith(["ana"]), "ana"));
+    expect(awaitedItems(d)).toEqual(new Set(["ana"]));
+    d = apply(showedUp(d, { stationId: "e1" }, T + MIN));
+    expect(awaitedItems(d)).toEqual(new Set());
+  });
+
+  it("desfeito o Compareceu (clique errado), volta a ser esperado", () => {
+    let d = apply(showedUp(call(enter(dayWith(["ana"]), "ana")), { stationId: "e1" }, T + MIN));
+    d = apply(undoShowedUp(d, { stationId: "e1" }, T + 2 * MIN));
+    expect(awaitedItems(d)).toEqual(new Set(["ana"]));
+  });
+
+  it("pulado ou ainda na fila: não", () => {
+    const waiting = enter(dayWith(["ana"]), "ana");
+    expect(awaitedItems(waiting)).toEqual(new Set());
+    expect(awaitedItems(skip(call(waiting), "e1", T + 20 * MIN))).toEqual(new Set());
+  });
+});
+
+describe("quem ainda espera em casa, por etapa (avisos de tempo, AD-074)", () => {
+  it("em casa: espera na etapa; presente na unidade, chamado ou fora da fila: não", () => {
+    const day = dayWith(["ana", "bia"]);
+    expect(remoteItems(day)).toEqual(
+      new Map([
+        ["ana", "care"],
+        ["bia", "care"],
+      ]),
+    );
+    const arrived = enter(day, "ana");
+    expect(remoteItems(arrived)).toEqual(new Map([["bia", "care"]]));
+    expect(remoteItems(call(arrived)).has("ana")).toBe(false);
   });
 });

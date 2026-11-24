@@ -7,6 +7,9 @@ import { MAP_HEIGHT, type MapProps } from "./map.types";
 // Folga nas bordas: em cima cabe a ponta do pino; embaixo, o aviso de "mapa simplificado".
 const SLACK = { x: 0.12, top: 0.2, low: 0.24 };
 
+/** No navegador o mapa simplificado sempre aparece. */
+export const hasMap = true;
+
 /**
  * Web (e qualquer plataforma sem o mapa nativo): o react-native-maps não roda no navegador. No lugar,
  * um "mapa" simples com os pinos na posição relativa de cada unidade, tocáveis como no celular.
