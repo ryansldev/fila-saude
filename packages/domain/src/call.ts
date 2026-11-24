@@ -1,6 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { pausedAt } from "./pause.ts";
+import { pausedAt } from "./pause-time.ts";
 import {
   eligible,
   orderKey,

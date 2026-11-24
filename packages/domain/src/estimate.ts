@@ -1,4 +1,4 @@
-import { callingAt, type Pause, stagePause } from "./pause.ts";
+import { type Pause, stagePause, stopsForGood } from "./pause-time.ts";
 import {
   arrivalDeadlineEnd,
   DEFAULT_CONFIG,
@@ -128,8 +128,9 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const stations = open(day, item.stage);
   const first = stations[0];
   if (!first) return { kind: "awaiting_start" };
-  // Estações chamando agora; todas em pausa, conta as abertas para o tempo depois da volta.
-  const n = stations.filter((e) => callingAt(day, e, now)).length || stations.length;
+  // Capacidade: a estação que vai parar sem hora de volta não conta; a pausa com volta é passageira e conta.
+  // Todas paradas sem volta: conta as abertas, para o tempo depois da volta (a pausa da etapa decide o resto).
+  const n = stations.filter((e) => !stopsForGood(e)).length || stations.length;
 
   const inStage = day.items.filter((i) => inQueue(i) && i.stage === item.stage);
   // AD-076: remoto que perdeu o prazo de chegada perdeu a vez: vai para o fim ao chegar e não está "à

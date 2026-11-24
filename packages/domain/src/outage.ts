@@ -1,4 +1,4 @@
-import { callingAt, resumedAt } from "./pause.ts";
+import { callingAt, resumedAt } from "./pause-time.ts";
 import type { SessionDay } from "./queue.ts";
 
 /** RN-SES-05: a unidade com TV e a TV sem sinal por mais de ~2 min caiu (a TV fica sempre na frente). */
@@ -95,12 +95,12 @@ const callingStations = (day: SessionDay, now: number) => calling(day, now).leng
 
 /**
  * Desde quando a unidade devia dar sinal: o último sinal, ou a volta da pausa, se veio depois (desde que a
- * primeira estação voltou a chamar). Nulo sem sinal e sem pausa.
+ * primeira estação voltou a chamar). Nulo sem nenhum sinal da fonte que conta.
  */
 function expectedSince(day: SessionDay, signalAt: number | null, now: number): number | null {
+  if (signalAt === null) return null;
   const since = Math.min(...calling(day, now).map((e) => resumedAt(day, e, now)));
-  const ref = Math.max(signalAt ?? Number.NEGATIVE_INFINITY, since);
-  return Number.isFinite(ref) ? ref : null;
+  return Math.max(signalAt, since);
 }
 
 /**
