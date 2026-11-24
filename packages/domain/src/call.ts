@@ -299,8 +299,8 @@ function skipDestination(skips: number): ItemState {
 }
 
 /**
- * RN-CHAM-03: os pulos somam as etapas. 1º: presente atrás dos próximos K, sem atraso;
- * 2º: remoto, e ao voltar só contam as chamadas feitas depois daqui (`saiuEm`);
+ * RN-CHAM-03 (AD-076): os pulos somam as etapas. 1º: presente atrás dos próximos K, sem atraso;
+ * 2º: presente no fim da fila, com número novo (falta no encerramento se não for atendido no dia);
  * 3º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02); a entrada vai a "Encerrada sem
  * atendimento" com `entryOutcome` (ou no encerramento).
  */
@@ -321,7 +321,10 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   });
 
   if (to === "present") {
-    const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, { applyDelay: false });
+    const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, {
+      applyDelay: false,
+      toEnd: skips === 2,
+    });
     return ok(markSkip(eleg.state), [skipped]);
   }
   const outside: QueueItem = {
@@ -329,12 +332,10 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
     state: to,
     skips,
     lockedBehind: [],
-    leftAt: to === "remote" ? now : item.leftAt,
     presentSince: null,
-    exitReason: to === "left_queue" ? "skips" : null,
+    exitReason: "skips",
   };
   const current = releaseLocks(withItem(free, outside), item.id);
-  if (to === "remote") return ok(markSkip(current), [skipped]);
   return ok(markSkip(current), [
     skipped,
     { kind: "no_show", ...ids, reason: "não compareceu à chamada" },

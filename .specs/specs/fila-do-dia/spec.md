@@ -86,28 +86,26 @@ ordem (RN-ORD), aplicada a qualquer conjunto de entradas:
 chamar proximo = primeiro de ordem(elegiveis)
 
 janela protegida (K, padrao 1):
-  no instante em que X fica elegivel (check-in ou 1o pulo),
+  no instante em que X fica elegivel (check-in, 1o ou 2o pulo),
   os K primeiros da ordem de chamada real (ordem(elegiveis) ja com as
   travas existentes) ficam travados a frente de X,
   mesmo que X venha antes deles na ordem.
   excecao: X tem urgencia confirmada.
   a trava acaba quando esses K forem chamados.
 
-atraso (pela ordem real, nunca pelo numero):
-  se, quando X fica elegivel, ja foi chamado nesta etapa alguem
-  que vem depois de X em ordem (e, se X tocou "Vou sair",
-  chamado enquanto X estava fora), X perdeu a vez:
-  X recebe o proximo numero livre (vai para o fim).
-  chamadas feitas num periodo de contingencia registrado
-  nao contam para quem estava remoto (RN-CONT-03).
-  remoto so perde a vez por chamadas feitas depois do fim do
-  prazo de chegada do "venha agora" (RN-ETA-06).
+atraso (so pelo prazo de chegada):
+  X remoto recebeu o "venha agora" da etapa atual e nao chegou no
+  prazo de chegada (RN-ETA-06): X perdeu a vez e, ao chegar, recebe
+  o proximo numero livre (vai para o fim).
+  chamar outra pessoa nunca tira a vez de ninguem.
+  o relogio do prazo para durante um periodo de contingencia
+  registrado (RN-CONT-03).
   excecao: X tem urgencia confirmada.
 
 "a vez passou" (falta e remanejamento) =
-  ja foi chamado, na etapa atual de X, alguem que vem depois de X em ordem
+  X perdeu o prazo de chegada na etapa atual
 ```
-*Decisões: AD-004, AD-010, AD-033, AD-041, AD-057.*
+*Decisões: AD-004, AD-033, AD-041, AD-057, AD-076.*
 
 **RN-ORD-01 · Exemplo: janela protegida**
 João está presente e é o próximo. Ana, que estava remota com posição igual ou melhor, faz check-in agora. João é chamado primeiro; Ana vem logo depois.
@@ -119,7 +117,7 @@ QUANDO um urgente confirmado estiver remoto, O SISTEMA DEVE enviar o aviso **"ve
 A ordem de inscrição é Bruno, Ana, João. João está presente e é o próximo. Ana faz check-in: ordem João, Ana. Bruno faz check-in a tempo: ordem **João, Bruno, Ana**. Bruno não furou a fila, porque sempre esteve à frente de Ana.
 
 **RN-ORD-04 · Exemplo: atraso**
-Se Bruno chega depois que Ana já foi chamada, ele perdeu a vez e vai para o fim dos presentes.
+Bruno recebe o "venha agora" e chega depois do prazo: perdeu a vez e vai para o fim dos presentes, mesmo que ninguém tenha sido chamado nesse tempo.
 
 **RN-ORD-05 · Posição de quem está presente**
 Como o app mostra a posição real (RN-ETA-04), a posição de quem está presente nunca piora quando alguém chega a tempo.
@@ -156,10 +154,10 @@ O paciente vê só a própria posição (RN-ETA-01 ou 01b) e o tempo estimado ("
 5. Com menos de 3 atendimentos válidos no dia, usa-se o tempo médio inicial do serviço.
 
 **RN-ETA-06 · Prazo de chegada**
-QUANDO um remoto passar a ser o próximo (sem ninguém à frente), O SISTEMA DEVE enviar o "venha agora" uma vez e guardar a hora. A partir dela, a unidade dá um prazo de chegada (padrão 15 min). Antes do "venha agora", ninguém perde a vez porque a fila andou; dentro do prazo, chamar quem vem depois não tira a vez de quem está a caminho; depois do prazo, vale a regra de atraso. Quem não chega no prazo deixa de contar à frente dos outros, para a fila parada não travar o "venha agora" do seguinte. "Vou sair" ou o 2º pulo recomeçam: o próximo "venha agora" abre outro prazo. Suspenso em modo manual (RN-SES-05).
-*Decisões: AD-057.*
-- *Dado* Ana remota é a próxima e recebe "venha agora" às 9:00 (prazo 15 min), *quando* Pedro, presente e depois dela, é chamado às 9:10 e Ana chega às 9:20, *então* Ana não perdeu a vez.
-- *Dado* o mesmo, *quando* Pedro é chamado às 9:15, *então* Ana perdeu a vez e vai para o fim ao chegar.
+QUANDO um remoto passar a ser o próximo (sem ninguém à frente), O SISTEMA DEVE enviar o "venha agora" uma vez, com o prazo, e guardar a hora. A partir dela, a unidade dá um prazo de chegada (padrão 30 min). Antes do "venha agora", ninguém perde a vez porque a fila andou. Quem chega dentro do prazo mantém o lugar, sejam quais forem as chamadas feitas nesse tempo (a fila presencial não para). Quem não chega no prazo perde a vez (vai para o fim ao chegar) e deixa de contar à frente dos outros, para a fila parada não travar o "venha agora" do seguinte. "Vou sair" recomeça: o próximo "venha agora" abre outro prazo. Suspenso em modo manual (RN-SES-05).
+*Decisões: AD-057, AD-076.*
+- *Dado* Ana remota é a próxima e recebe "venha agora" às 9:00 (prazo 30 min), *quando* Pedro, presente e depois dela, é chamado às 9:10 e Ana chega às 9:25, *então* Ana não perdeu a vez.
+- *Dado* o mesmo, *quando* Ana chega às 9:31, mesmo sem ninguém chamado, *então* Ana perdeu a vez e vai para o fim.
 - *Dado* Ana e Bia remotas e Pedro chamado pelo balcão antes de qualquer "venha agora", *quando* Bia chega, *então* Bia não perdeu a vez.
 
 ## Transições

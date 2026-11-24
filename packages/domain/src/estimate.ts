@@ -1,6 +1,8 @@
 import {
   arrivalDeadlineEnd,
+  DEFAULT_CONFIG,
   eligible,
+  lateness,
   type QueueItem,
   type SessionDay,
   type Stage,
@@ -100,16 +102,12 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   if (!first) return { kind: "awaiting_start" };
 
   const inStage = day.items.filter((i) => inQueue(i) && i.stage === item.stage);
-  // AD-010: remoto cuja vez já passou vai para o fim ao chegar; não está "à frente" de ninguém e
-  // não pode ouvir "venha agora" como se fosse o próximo.
-  const passed = (i: QueueItem) => i.state === "remote" && !i.confirmedUrgency && turnPassed(day, i);
-  // RN-ETA-06/AD-057: remoto que recebeu "venha agora" e não chegou no prazo não trava a fila parada:
-  // deixa de contar à frente dos outros (o próprio lugar ele só perde pelas chamadas depois do prazo).
-  const late = (i: QueueItem) => {
-    const end = i.state === "remote" ? arrivalDeadlineEnd(day, i) : null;
-    return end !== null && now >= end;
-  };
-  const account = (i: QueueItem) => !passed(i) && !late(i);
+  // AD-076: remoto que perdeu o prazo de chegada perdeu a vez: vai para o fim ao chegar e não está "à
+  // frente" de ninguém. Urgência confirmada não perde a vez, mas também não segura a fila parada. Com o
+  // prazo estendido por uma contingência, ainda está a caminho.
+  const pastDeadline = (i: QueueItem) => lateness(day, i, now) === "late";
+  const passed = (i: QueueItem) => !i.confirmedUrgency && turnPassed(day, i, now);
+  const account = (i: QueueItem) => !pastDeadline(i);
   const ahead =
     item.state === "present"
       ? eligible(day, first.id).findIndex((i) => i.id === item.id)
@@ -176,7 +174,7 @@ export function leaveHomeNotices(day: SessionDay, now: number, options: Options)
 
 /**
  * RN-ETA-06 (AD-057): "venha agora" para o remoto sem ninguém à frente, uma vez por item e etapa
- * enquanto ele não volta a remoto ("Vou sair" ou 2º pulo recomeçam). A hora fica em
+ * enquanto ele não volta a remoto ("Vou sair" recomeça). A hora fica em
  * `day.comeNow`: o prazo de chegada conta dela. Em modo manual nada é enviado nem registrado.
  */
 export function comeNowNotices(day: SessionDay, now: number, options: Options): { day: SessionDay; events: Event[] } {
@@ -192,7 +190,11 @@ export function comeNowNotices(day: SessionDay, now: number, options: Options): 
       itemId: i.id,
       entryId: i.entryId,
       sessionId: day.sessionId,
-      data: { stage: i.stage, at: now },
+      data: {
+        stage: i.stage,
+        at: now,
+        deadlineMin: day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin,
+      },
     });
   }
   if (fresh.length === 0) return { day, events };

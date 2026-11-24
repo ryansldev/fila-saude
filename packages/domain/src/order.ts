@@ -141,16 +141,3 @@ export function orderSuggestions<T>(
     (t) => key(t).priority,
   );
 }
-
-/**
- * `a` vem antes de `b` olhando só os dois, para quando não há uma fila a ordenar (as chamadas já feitas,
- * AD-010): o 80+ passa o idoso de 60-79 do mesmo bloco (RV7); o resto como `compareOrder`. Entre dois isso
- * é a regra da lei; só não serve para ordenar uma fila (forma ciclo), para isso há `orderItems`.
- */
-export function precedes(a: OrderKey, b: OrderKey, municipalityOrder: MunicipalityOrder): boolean {
-  if (sameBlock(a, b) && slotHolder(a.priority) && slotHolder(b.priority)) {
-    const diff = elderlyLevel(a.priority) - elderlyLevel(b.priority);
-    if (diff !== 0) return diff > 0;
-  }
-  return compareOrder(a, b, municipalityOrder) < 0;
-}

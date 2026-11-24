@@ -1,7 +1,7 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState, type SessionState } from "./contracts.ts";
 import type { UnitConfig } from "./kinds.ts";
 import type { Origin } from "./list.ts";
-import { type OrderKey, orderItems, precedes, type Risk } from "./order.ts";
+import { type OrderKey, orderItems, type Risk } from "./order.ts";
 import {
   canGivePriority,
   elderlyLevel,
@@ -41,10 +41,10 @@ export type QueueItem = {
   priority: LegalPriority;
   skips: number;
   lockedBehind: string[];
-  /** Remoto desde (entrada na fila, "Vou sair" ou 2º pulo); `null` enquanto presente na etapa. */
+  /** Remoto desde (entrada na fila ou "Vou sair"); `null` enquanto presente na etapa. */
   leftAt: number | null;
   /**
-   * Presente na etapa desde (check-in, recepção, balcão, passagem da triagem, 1º pulo); `null` em casa.
+   * Presente na etapa desde (check-in, recepção, balcão, passagem da triagem, 1º e 2º pulo); `null` em casa.
    * Opcional: dias gravados antes do campo não o têm (vale `null`). Só para a tela (tempo de espera).
    */
   presentSince?: number | null;
@@ -111,7 +111,7 @@ export const DEFAULT_CONFIG: UnitConfig = {
   windowK: 1,
   toleranceMin: 5,
   leaveHomeMin: 30,
-  arrivalDeadlineMin: 15,
+  arrivalDeadlineMin: 30,
   qrSeconds: 30,
   tvHighlightSeconds: 10,
   confirmationDeadlineHours: 24,
@@ -194,47 +194,50 @@ export function eligible(day: SessionDay, stationId: string, operator: { classif
   return classifies ? [...callOrder(day, welcomed), ...callOrder(day, others)] : callOrder(day, others);
 }
 
-/** A hora `em` cai num período de contingência registrado (AD-033). */
-export const inContingency = (day: SessionDay, at: number): boolean =>
-  day.contingencies.some((c) => at >= c.start && at <= c.end);
-
 /**
- * Fim do prazo de chegada de X (RN-ETA-06, AD-057): hora do "venha agora" da etapa atual mais o
- * prazo da unidade. `null` enquanto X não recebeu "venha agora" desde que ficou remoto.
+ * Prazo de chegada de X (RN-ETA-06, AD-057, AD-076): da hora do "venha agora" da etapa atual até essa
+ * hora mais o prazo da unidade. `null` enquanto X não recebeu "venha agora" desde que ficou remoto.
  */
-export function arrivalDeadlineEnd(day: SessionDay, x: QueueItem): number | null {
+function arrivalWindow(day: SessionDay, x: QueueItem): { start: number; end: number } | null {
   const notice = day.comeNow?.find((a) => a.itemId === x.id && a.stage === x.stage);
   if (!notice || (x.leftAt !== null && notice.at < x.leftAt)) return null;
   // Dias gravados antes da AD-057 não têm o prazo na config: vale o padrão.
-  return notice.at + (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * 60_000;
+  return {
+    start: notice.at,
+    end: notice.at + (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * 60_000,
+  };
+}
+
+/** Fim do prazo de chegada de X; `null` enquanto X não recebeu "venha agora" desde que ficou remoto. */
+export function arrivalDeadlineEnd(day: SessionDay, x: QueueItem): number | null {
+  return arrivalWindow(day, x)?.end ?? null;
 }
 
 /**
- * Chamadas que fazem a vez de X passar (AD-010): nesta etapa, de alguém que vem depois de X em
- * ordem. Só contam as feitas enquanto X estava remoto, ou seja, desde `leftAt` ("remoto desde"):
- * a entrada na fila (`byQueue`), "Vou sair" ou o 2º pulo. Sem `saiuEm` (item que passou da
- * triagem ao atendimento estando na unidade), contam todas as da etapa. Remoto só perde a vez por
- * chamadas feitas depois do fim do prazo de chegada (AD-057). Não filtra contingência: quem usa
- * decide (AD-033).
+ * AD-076: remoto que recebeu "venha agora" e não chegou no prazo perdeu a vez ("late"); chamadas de
+ * outras pessoas não contam. O relógio do prazo para durante os períodos de contingência registrados
+ * (AD-033, PV1): passado o prazo normal, mas não o estendido pela queda, está "late_in_contingency" e
+ * ainda pode chegar. Presente, ou sem "venha agora", está "on_time".
  */
-export function callsThatSkipTurn(day: SessionDay, x: QueueItem): Call[] {
-  const deadlineEnd = x.state === "remote" ? arrivalDeadlineEnd(day, x) : undefined;
-  return day.calls.filter((c) => {
-    if (c.stage !== x.stage || c.itemId === x.id) return false;
-    if (x.leftAt !== null && c.at < x.leftAt) return false;
-    if (deadlineEnd !== undefined && (deadlineEnd === null || c.at < deadlineEnd)) return false;
-    const called = day.items.find((i) => i.id === c.itemId);
-    // Só entre os dois (`precedes`): a fila de quando a chamada foi feita não existe mais (RV7).
-    return called !== undefined && precedes(key(x), key(called), day.config.municipalityOrder);
-  });
+export function lateness(day: SessionDay, x: QueueItem, now: number): "on_time" | "late" | "late_in_contingency" {
+  if (x.state !== "remote") return "on_time";
+  const window = arrivalWindow(day, x);
+  if (window === null || now < window.end) return "on_time";
+  let end = window.end;
+  let cursor = window.start;
+  for (const c of [...day.contingencies].sort((a, b) => a.start - b.start)) {
+    const from = Math.max(c.start, cursor);
+    if (from > end) break;
+    if (c.end <= from) continue;
+    end += c.end - from;
+    cursor = c.end;
+  }
+  return now < end ? "late_in_contingency" : "late";
 }
 
-/**
- * Atraso (AD-010, AD-033): a vez de X passou por uma chamada fora de contingência.
- * Quem fica elegível estando na unidade (1º pulo, triagem → atendimento) não passa por aqui.
- */
-export function turnPassed(day: SessionDay, x: QueueItem): boolean {
-  return callsThatSkipTurn(day, x).some((c) => !inContingency(day, c.at));
+/** A vez de X passou: perdeu o prazo de chegada, fora de contingência (AD-076). */
+export function turnPassed(day: SessionDay, x: QueueItem, now: number): boolean {
+  return lateness(day, x, now) === "late";
 }
 
 /**
@@ -243,16 +246,18 @@ export function turnPassed(day: SessionDay, x: QueueItem): boolean {
  * com `aplicarAtraso`, aplica antes a regra de atraso. O atraso só vale para quem chega de fora
  * (check-in, presença pela recepção); no 1º pulo e na passagem da triagem ao atendimento a pessoa
  * estava na unidade, então não se aplica (RN-CHAM-03, RN-TRI-04). Urgência confirmada escapa dos dois.
+ * Com `toEnd` (2º "não compareceu", AD-076), vai para o fim da fila com um número novo, mesmo com
+ * urgência confirmada (que continua antes de quem não é urgente, pela ordem).
  */
 export function stayEligible(
   day: SessionDay,
   itemId: string,
   now: number,
-  options: { applyDelay: boolean },
+  options: { applyDelay: boolean; toEnd?: boolean },
 ): { state: SessionDay; events: Event[] } {
   const x = day.items.find((i) => i.id === itemId);
   if (!x) return { state: day, events: [] };
-  const lostTurn = options.applyDelay && !x.confirmedUrgency && turnPassed(day, x);
+  const lostTurn = options.toEnd === true || (options.applyDelay && !x.confirmedUrgency && turnPassed(day, x, now));
   const lockedBehind = x.confirmedUrgency
     ? []
     : callOrder(

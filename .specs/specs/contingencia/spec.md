@@ -11,9 +11,9 @@ QUANDO o sistema voltar, a recepção registra quem foi atendido no papel e o **
 *Decisões: AD-020, AD-023.*
 
 **RN-CONT-03 · Ninguém é punido pela queda**
-Para quem estava remoto, O SISTEMA DEVE ignorar as chamadas feitas no período de contingência na regra de atraso, e não registrar falta cuja vez passou nesse período (vira remanejado). QUANDO o período for registrado depois do encerramento, no mesmo dia, O SISTEMA DEVE recalcular e apagar essas faltas.
-*Decisões: AD-033.*
-- *Dado* Bruno remoto durante a queda das 9h às 10h, em que a unidade chamou pelo papel, *quando* ele faz check-in às 10:15, *então* as chamadas das 9h às 10h não o mandam para o fim.
+Para quem estava remoto, O SISTEMA DEVE parar o relógio do prazo de chegada durante um período de contingência registrado: o prazo se estende pelo tempo da queda, e só depois a pessoa perde a vez ou leva falta (dentro dele, vira remanejada). QUANDO o período for registrado depois do encerramento, no mesmo dia, O SISTEMA DEVE recalcular e apagar essas faltas.
+*Decisões: AD-033, AD-076.*
+- *Dado* Bruno remoto recebe o "venha agora" às 9:10 (prazo 30 min), durante a queda das 9h às 10h, *quando* ele faz check-in às 10:25, *então* não vai para o fim (o prazo só começou a correr às 10h).
 - *Dado* a sessão encerrada às 12h com falta de Bruno, *quando* a recepção registra às 13h a queda das 9h às 10h que cobria a vez dele, *então* a falta é apagada e ele vira remanejado.
 
 **RN-CONT-04 · App sem a API**
@@ -33,6 +33,6 @@ QUANDO a TV e todas as estações de uma unidade perderem o sinal ao mesmo tempo
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | Remoto, Presente ou Chamado (fila do dia) | Recepção registra atendido na reconciliação | Período de contingência registrado | Atendido na etapa | Auditoria; mesmo efeito de "Atendido na etapa" |
-| Remoto (fila do dia) | Sessão encerrada | A vez passou durante período de contingência registrado | Remanejado | Push |
+| Remoto (fila do dia) | Sessão encerrada | Perdeu o prazo de chegada durante período de contingência registrado | Remanejado | Push |
 | Encerrada sem atendimento por falta (entrada) | Período de contingência registrado depois do encerramento, no mesmo dia, cobrindo a vez dele | Única reversão de estado final | Remanejada | Falta apagada; auditoria |
 <!-- /gerado -->

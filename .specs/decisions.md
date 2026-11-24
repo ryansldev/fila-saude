@@ -15,7 +15,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-007 | Triagem como etapa própria | ativa |
 | AD-008 | Protótipo com fluxo principal e modo livre | ativa |
 | AD-009 | Um "saia de casa" por etapa | ativa |
-| AD-010 | Atraso pela ordem real | ativa |
+| AD-010 | Atraso pela ordem real | substituída por AD-076 |
 | AD-011 | Visibilidade por sessão | ativa |
 | AD-012 | TV só com senhas | ativa |
 | AD-013 | Inscrição pública já confirmada | ativa |
@@ -62,7 +62,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-054 | Conferência antes de entrar na fila presencial | ativa |
 | AD-055 | Uma leitura do QR vale para todas as pessoas da conta | ativa |
 | AD-056 | Decisões da revisão de 2026-11-13 | ativa |
-| AD-057 | Prazo de chegada depois do "venha agora" | ativa |
+| AD-057 | Prazo de chegada depois do "venha agora" | parcial (AD-076) |
 | AD-058 | Triagem pelo Manchester padrão (cinco cores) | ativa |
 | AD-059 | Vermelho fica na unidade; encaminhar à emergência é à parte | ativa |
 | AD-060 | Refazer o questionário em casa no dia, com alerta de declaração falsa | ativa |
@@ -81,6 +81,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-073 | Push no Android: sempre o coração azul, sem imagem grande | ativa |
 | AD-074 | Push sai na hora do evento; chamada que perdeu a hora não sai | ativa |
 | AD-075 | 80+ antes dos demais idosos, sem hierarquia entre grupos (vagas dos idosos) | ativa |
+| AD-076 | Perde a vez só quem não chega no prazo; 2 pulos vão para o fim | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -122,7 +123,7 @@ Protótipo = apresentação + fluxo principal único + modo livre, com botão qu
 Antes da triagem, o aviso usa só o tempo até a triagem; a previsão da consulta aparece à parte. **Por quê:** o aviso da consulta nunca disparava.
 
 ### AD-010 · Atraso pela ordem real
-2026-11-04 · ativa · Muda: RN-ORD (atraso), RN-FALTA-01
+2026-11-04 · substituída por AD-076 · Muda: RN-ORD (atraso), RN-FALTA-01
 Perde a vez só quem teve chamado, na mesma etapa, alguém que vinha depois na ordem real. **Por quê:** urgente com número maior tirava a vez de quem chegava.
 
 ### AD-011 · Visibilidade por sessão
@@ -308,7 +309,7 @@ Quem lê o QR marca a presença de todas as pessoas da conta com senha nas sess�
 (1) **O atendimento é uma fila nova:** quem sai da triagem recebe o próximo número e entra atrás de quem já estava no atendimento, dentro do seu nível de risco e prioridade, com a mesma senha. (2) **Só o enfermeiro confirma risco:** o questionário do app é pré-triagem (sugerido); o agendador não confirma na alocação. Na triagem (fatia 3), o enfermeiro classifica pelas cores do Acolhimento com Classificação de Risco do Ministério da Saúde. (3) **Quem perde a vez** vai para o fim do seu nível de risco e prioridade. (4) **"Venha agora"** vale para todo remoto sem ninguém na frente, não só urgência confirmada. **Por quê:** decisões suas na revisão (RV8–RV11).
 
 ### AD-057 · Prazo de chegada depois do "venha agora"
-2026-11-14 · ativa · Muda: AD-010, RN-ORD (atraso), RN-ETA-06
+2026-11-14 · parcial (substituída em parte pela AD-076: perder a vez agora é só não chegar no prazo, padrão 30 min) · Muda: AD-010, RN-ORD (atraso), RN-ETA-06
 O remoto só perde a vez por chamadas feitas depois do fim do prazo de chegada (padrão 15 min, config da unidade), contado da hora em que recebeu o "venha agora". Quem nunca recebeu "venha agora" não perde a vez porque a fila andou. Quem estoura o prazo deixa de contar à frente dos outros. **Por quê:** com a regra antiga, o 10º remoto podia perder a vez porque o balcão andou rápido, sem nunca ter sido avisado para vir. Custo: em modo manual não há "venha agora", então remoto não perde a vez por atraso; quem decide é o pulo.
 
 ### AD-058 · Triagem pelo Manchester padrão (cinco cores)
@@ -381,7 +382,11 @@ O aviso continua gravado na outbox, na mesma transação do evento (PD-49). Logo
 
 ### AD-075 · 80+ antes dos demais idosos, sem hierarquia entre grupos (vagas dos idosos)
 2026-11-23 · ativa · Muda: RV7, RN-ORD (fila-do-dia), lista-espera (ordem da sugestão)
-Segue a lei: entre as pessoas idosas, os maiores de 80 anos vêm antes (Lei 10.741/2003, art. 3º, § 2º, incluído pela Lei 13.466/2017); entre os grupos da Lei 10.048/2000 não há hierarquia. Antes o código punha o 80+ antes de todos os grupos. Comparando duas pessoas de cada vez as duas regras formam um ciclo (80+ antes de 60–79, os dois empatados com uma gestante), então a regra vale na fila inteira (`orderItems`, `orderSuggestions`): já em ordem, dentro de cada bloco de quem tem prioridade com a mesma urgência e o mesmo risco, as vagas ocupadas por idosos vão primeiro aos 80+, cada grupo na ordem da senha (ou da data, na lista de espera); os outros grupos ficam no lugar da senha, inclusive o idoso de 60-79 que também é de outro grupo (aprovado por você em 2026-11-24); o 80+ de outro grupo continua com a vaga de idoso. O 80+ já chamado na etapa segue com a vaga que ocupou: o idoso de 60-79 que ele passou fica com o lugar dele, e a ordem não muda depois de cada chamada. O 80+ que a janela protegida trava atrás de um idoso de 60-79 não tira a vaga dele (as vagas se repartem entre quem já pode ser chamado). As vagas valem na ordem de chamada da estação, na sugestão de alocação e na posição de quem está em casa (estimativa, "saia de casa" e "venha agora"), para o 80+ em casa ser avisado na hora certa (você, 2026-11-24). Como as vagas só trocam idosos entre si, a posição dos outros grupos e de quem não tem prioridade não muda; a do idoso de 60-79 pode piorar quando entra um 80+, como já piora a de quem não tem prioridade quando entra alguém com prioridade. A perda de vez pelas chamadas já feitas compara só os dois (`precedes`): o 80+ chamado não tira a vez do idoso de 60-79 do mesmo bloco; o resto, pela senha. A fila de quando a chamada foi feita não existe mais; no caso raro do ciclo (o 60-79 atrasado, uma gestante de senha maior chamada), ele perde a vez: a fila presencial não para por quem está em casa (você, 2026-11-24). **Por quê:** você, 2026-11-19 ("o que a lei mandar") e 2026-11-23 ("é só seguir o que está previsto em lei"). Confirmar a leitura com o advogado (D5).
+Segue a lei: entre as pessoas idosas, os maiores de 80 anos vêm antes (Lei 10.741/2003, art. 3º, § 2º, incluído pela Lei 13.466/2017); entre os grupos da Lei 10.048/2000 não há hierarquia. Antes o código punha o 80+ antes de todos os grupos. Comparando duas pessoas de cada vez as duas regras formam um ciclo (80+ antes de 60–79, os dois empatados com uma gestante), então a regra vale na fila inteira (`orderItems`, `orderSuggestions`): já em ordem, dentro de cada bloco de quem tem prioridade com a mesma urgência e o mesmo risco, as vagas ocupadas por idosos vão primeiro aos 80+, cada grupo na ordem da senha (ou da data, na lista de espera); os outros grupos ficam no lugar da senha, inclusive o idoso de 60-79 que também é de outro grupo (aprovado por você em 2026-11-24); o 80+ de outro grupo continua com a vaga de idoso. O 80+ já chamado na etapa segue com a vaga que ocupou: o idoso de 60-79 que ele passou fica com o lugar dele, e a ordem não muda depois de cada chamada. O 80+ que a janela protegida trava atrás de um idoso de 60-79 não tira a vaga dele (as vagas se repartem entre quem já pode ser chamado). As vagas valem na ordem de chamada da estação, na sugestão de alocação e na posição de quem está em casa (estimativa, "saia de casa" e "venha agora"), para o 80+ em casa ser avisado na hora certa (você, 2026-11-24). Como as vagas só trocam idosos entre si, a posição dos outros grupos e de quem não tem prioridade não muda; a do idoso de 60-79 pode piorar quando entra um 80+, como já piora a de quem não tem prioridade quando entra alguém com prioridade. Chamar outra pessoa não tira a vez de ninguém (AD-076), então as vagas não entram na perda de vez. **Por quê:** você, 2026-11-19 ("o que a lei mandar") e 2026-11-23 ("é só seguir o que está previsto em lei"). Confirmar a leitura com o advogado (D5).
+
+### AD-076 · Perde a vez só quem não chega no prazo; 2 pulos vão para o fim
+2026-11-24 · ativa · Muda: AD-010, AD-057, RN-ORD (atraso), RN-ETA-06, RN-CHAM-03, RN-SES-02, RN-FALTA-01, RN-FALTA-02, RN-CONT-03
+Chamar outra pessoa não tira a vez de ninguém. O remoto perde a vez só quando recebe o "venha agora" e não chega no prazo de chegada (padrão 30 min, antes 15; config da unidade); o aviso diz o prazo. Ao chegar depois, vai para o fim. Quem chega no prazo mantém o lugar, sejam quais forem as chamadas feitas nesse tempo, mas a vez não é intocável: urgências e prioridades que chegam passam à frente pela ordem de sempre. "Não compareceu": no 1º, volta atrás dos próximos K (como antes); no 2º, vai para o fim da fila com um número novo, ainda presente (antes voltava a remoto); no 3º, sai da fila com falta (como antes). Falta no encerramento: quem teve 2 pulos ou perdeu o prazo, se não foi atendido no dia; perdeu o prazo e foi atendido depois, ou teve 2 pulos e foi atendido depois, não é falta. O relógio do prazo para durante um período de contingência registrado. **Por quê:** você, 2026-11-24 ("se uma gestante for chamada, isso nao pode fazer com que a Bia perca a vez. A Bia só pode perder a vez se nao chegar a unidade no prazo estimado ou se for chamada diversas vezes e nn comparecer"; "Esse prazo precisa ser relativamente longo"). Com a regra antiga, perder a vez dependia de comparar a pessoa com quem foi chamado, o que as vagas dos idosos (AD-075) tornavam ambíguo.
 
 ## Arquitetura
 

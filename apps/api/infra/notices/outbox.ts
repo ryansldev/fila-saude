@@ -55,9 +55,11 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
       const body =
         d.for === "left_queue"
           ? "você saiu da fila de hoje. se estiver na unidade, fale com a recepção."
-          : d.for === "remote"
+          : d.for === "remote" // gravado antes da AD-076, quando o 2º pulo mandava para casa
             ? "você continua na fila. ao chegar na unidade, leia o QR de novo."
-            : "você continua na fila, logo depois dos próximos. fique de olho na TV.";
+            : d.skips === 2
+              ? "você foi para o fim da fila. se não aparecer de novo, sai da fila."
+              : "você continua na fila, logo depois dos próximos. fique de olho na TV.";
       return {
         kind: "skipped",
         key: `pulado:${item}:${d.skips}`,
@@ -86,7 +88,11 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
         kind: "come_now",
         key: `${COME_NOW_KEY}:${item}:${d.stage}:${d.at}`, // "Vou sair" recomeça (AD-057)
         title: "venha agora",
-        body: `você é o próximo na ${ctx.unit}. ao chegar, leia o QR da TV.`,
+        // Avisos gravados antes da AD-076 não têm o prazo no evento.
+        body:
+          typeof d.deadlineMin === "number"
+            ? `você é o próximo na ${ctx.unit}. chegue em até ${d.deadlineMin} min e leia o QR da TV, senão perde a vez.`
+            : `você é o próximo na ${ctx.unit}. ao chegar, leia o QR da TV.`,
       };
     default:
       return null;

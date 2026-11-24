@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as domain from "../src/index.ts";
 import {
-  callsThatSkipTurn,
   checkIn,
   DEFAULT_CONFIG,
   eligible,
@@ -69,7 +68,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     expect(order(d)).toEqual(["joao", "bruno", "ana"]);
   });
 
-  it("order: RN-ORD-04 late arrival", () => {
+  it("order: RN-ORD-04 late arrival (perdeu o prazo do 'venha agora', AD-076)", () => {
     let d = alreadyNotified(dayWith(["bruno", "ana", "joao"]), "bruno");
     d = enter(d, "ana");
     d = enter(d, "joao");
@@ -110,7 +109,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     expect(item(d, "ana").number).toBe(1);
   });
 
-  it("order: coming back loses the turn only if it passed in the order", () => {
+  it("order: coming back loses the turn only if the arrival deadline passed (AD-076)", () => {
     let d = dayWith(["ana", "joao", "bruno"]);
     for (const p of ["ana", "joao", "bruno"]) d = enter(d, p);
     d = leave(d, "ana", T + MIN);
@@ -121,7 +120,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     expect(item(d, "ana").number).toBe(1); // não perdeu a vez
     d = alreadyNotified(leave(d, "ana", T + 4 * MIN), "ana", T + 4 * MIN, 1);
     expect(order(d)[0]).toBe("joao");
-    d = call(d, "joao", T + 5 * MIN); // vinha depois dela: agora a vez passou
+    d = call(d, "joao", T + 5 * MIN); // o prazo dela (1 min) já acabou: a vez passou
     d = enter(d, "ana", T + 6 * MIN);
     expect(item(d, "ana").number).toBe(4);
   });
@@ -288,23 +287,6 @@ describe("RN-FILA-05: conferência antes de entrar na fila presencial", () => {
     });
     expect(r.events.map((e) => e.kind)).toEqual(["priority_removed", "pending_check_resolved", "present"]);
     expect(order(d)).toEqual(["joao", "ana"]); // sem a prioridade, vale o número
-  });
-});
-
-describe("RN-CONT-03: contingência", () => {
-  it("RN-CONT-03: chamadas no período de contingência não contam para o atraso de quem estava remoto", () => {
-    const scenario = (callAt: number) => {
-      let d = dayWith(["bruno", "ana", "joao"], { contingencies: [{ start: T + 60 * MIN, end: T + 120 * MIN }] });
-      d = alreadyNotified(d, "bruno");
-      d = enter(d, "ana");
-      d = enter(d, "joao");
-      d = call(d, "ana", callAt);
-      return enter(d, "bruno", T + 135 * MIN);
-    };
-    expect(item(scenario(T + 60 * MIN), "bruno").number).toBe(1); // início do período: dentro
-    expect(item(scenario(T + 120 * MIN), "bruno").number).toBe(1); // fim do período: dentro
-    expect(item(scenario(T + 120 * MIN + 1), "bruno").number).toBe(4); // logo depois: conta
-    expect(item(scenario(T + 60 * MIN - 1), "bruno").number).toBe(4); // logo antes: conta
   });
 });
 
@@ -488,14 +470,36 @@ describe("RV7: 80+ antes dos demais idosos na fila de verdade (Lei 10.741, art. 
   });
 });
 
-describe("RV7: perda de vez pelas chamadas já feitas (só entre os dois, sem quem saiu da fila)", () => {
-  const g = (x: QueueItem["priority"]["groups"]) => ({ groups: x, verified: false, verifiedAt: null });
-  it("a Gil (gestante, senha 2) chamada não faz a Ana (85, senha 3) perder a vez, mesmo com a Bia (70) já atendida", () => {
-    let d = dayWith(["bia", "gil", "ana"]);
-    d = withItem(d, "bia", { priority: g(["elderly"]), state: "done_in_stage" });
-    d = withItem(d, "gil", { priority: g(["pregnant"]), state: "called" });
-    d = withItem(d, "ana", { priority: g(["elderly80"]), state: "present", presentSince: T });
-    d = freeze({ ...d, calls: [{ itemId: "gil", stage: "care", stationId: "e1", at: T + MIN }] });
-    expect(callsThatSkipTurn(d, item(d, "ana"))).toEqual([]);
+describe('AD-076: perde a vez só quem não chega no prazo do "venha agora"', () => {
+  it("o prazo padrão é de 30 min", () => {
+    expect(DEFAULT_CONFIG.arrivalDeadlineMin).toBe(30);
+  });
+
+  it("dentro do prazo mantém o lugar, mesmo com alguém de senha maior já chamado", () => {
+    let d = alreadyNotified(dayWith(["ana", "joao"]), "ana", T, 30);
+    d = enter(d, "joao");
+    d = call(d, "joao", T + MIN);
+    d = enter(d, "ana", T + 29 * MIN);
+    expect(item(d, "ana").number).toBe(1);
+  });
+
+  it("passado o prazo perde a vez, mesmo sem ninguém chamado", () => {
+    let d = alreadyNotified(dayWith(["ana", "joao"]), "ana", T, 30);
+    d = enter(d, "ana", T + 30 * MIN);
+    expect(item(d, "ana").number).toBe(3);
+  });
+
+  it("contingência registrada durante o prazo: o relógio do prazo para durante a queda", () => {
+    let d = dayWith(["ana", "joao"], { contingencies: [{ start: T + 10 * MIN, end: T + 20 * MIN }] });
+    d = alreadyNotified(d, "ana", T, 30);
+    expect(item(enter(d, "ana", T + 39 * MIN), "ana").number).toBe(1);
+    expect(item(enter(d, "ana", T + 40 * MIN), "ana").number).toBe(3);
+  });
+
+  it("urgência confirmada não perde a vez pelo prazo", () => {
+    let d = alreadyNotified(dayWith(["ana", "joao"]), "ana", T, 30);
+    d = withItem(d, "ana", { confirmedUrgency: true, risk: "urgent" });
+    d = enter(d, "ana", T + 60 * MIN);
+    expect(item(d, "ana").number).toBe(1);
   });
 });

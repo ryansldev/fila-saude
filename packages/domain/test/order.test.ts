@@ -5,7 +5,6 @@ import {
   type OrderKey,
   orderItems,
   orderSuggestions,
-  precedes,
   type SuggestionKey,
 } from "../src/order.ts";
 import type { LegalPriority } from "../src/priority.ts";
@@ -205,19 +204,6 @@ describe("RV7: 80+ antes dos demais idosos, sem hierarquia entre grupos (Lei 10.
     const bia = p("Bia, 70", ["elderly"], 1);
     const ana = p("Ana, 85 + PcD", ["elderly80", "disability"], 3);
     expect(order([bia, ana])).toEqual(["Ana, 85 + PcD", "Bia, 70"]);
-    expect(precedes(ana, bia, "risk")).toBe(true);
-  });
-
-  it("entre dois, sem a fila: o 80+ só passa um idoso de 60-79 do mesmo bloco; os outros pela senha", () => {
-    const bia = p("Bia, 70", ["elderly"], 1);
-    const gil = p("Gil, gestante", ["pregnant"], 2);
-    const ana = p("Ana, 85", ["elderly80"], 3);
-    expect(precedes(ana, bia, "risk")).toBe(true);
-    expect(precedes(bia, ana, "risk")).toBe(false);
-    expect(precedes(gil, ana, "risk")).toBe(true);
-    expect(precedes(ana, gil, "risk")).toBe(false);
-    expect(precedes(ana, p("Bia, 70 + PcD", ["elderly", "disability"], 1), "risk")).toBe(false);
-    expect(precedes(ana, p("Bia, 70", ["elderly"], 1, { risk: "attention" }), "risk")).toBe(false);
   });
 
   it("a sugestão de alocação da lista de espera segue a mesma regra", () => {

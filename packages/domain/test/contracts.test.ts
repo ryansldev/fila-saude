@@ -81,15 +81,12 @@ describe("contratos (AD-051)", () => {
         (a, i, all) => all.findIndex((b) => b.de === a.de && b.event === a.event) !== i,
       ),
     );
-    // cada grupo repetido é ambíguo ou unânime; os unânimes não lançam
-    const unanimous = ITEM_TRANSITIONS.filter((a) =>
-      ITEM_TRANSITIONS.filter((b) => b.de === a.de && b.event === a.event).every((b) => b.for === a.for),
-    ).filter((a) => ITEM_TRANSITIONS.filter((b) => b.de === a.de && b.event === a.event).length > 1);
     expect(shared.length).toBeGreaterThan(0);
-    expect(unanimous.length).toBeGreaterThan(0);
-    for (const t of unanimous) {
-      expect(applyTransition(ITEM_TRANSITIONS, t.de as ItemState, t.event)).toBe(t.for);
-    }
+    // cada grupo repetido é ambíguo ou unânime; os unânimes não lançam (hoje nenhum grupo real é unânime)
+    const row = ITEM_TRANSITIONS.find((t) => t.de === "present" && t.for === "called");
+    if (!row) throw new Error("contrato: sem linha de presente a chamado");
+    const twice = [row, { ...row, condition: "outra condição" }];
+    expect(applyTransition(twice, "present" as ItemState, row.event)).toBe("called");
   });
 
   it("contratos AD-051: regra é o primeiro ID de regra em condição + efeitos, ou vazio", () => {

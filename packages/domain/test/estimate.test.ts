@@ -310,7 +310,7 @@ describe("RN-ETA-06/AD-057: prazo de chegada depois do 'venha agora'", () => {
   it("registra o 'venha agora' uma vez, com a hora, e avisa só quem é o próximo", () => {
     const a1 = notify(dayWith(["ana", "bruno"]), T);
     expect(a1.events).toEqual([
-      expect.objectContaining({ kind: "come_now", itemId: "ana", data: { stage: "care", at: T } }),
+      expect.objectContaining({ kind: "come_now", itemId: "ana", data: { stage: "care", at: T, deadlineMin: 30 } }),
     ]);
     expect(a1.day.comeNow).toEqual([{ itemId: "ana", stage: "care", at: T }]);
     expect(notify(freeze(a1.day), T + MIN).events).toEqual([]);
@@ -322,19 +322,19 @@ describe("RN-ETA-06/AD-057: prazo de chegada depois do 'venha agora'", () => {
     expect(estimate(d, "bruno", T + DEADLINE, AUTO)).toEqual({ kind: "come_now" });
     const a2 = notify(d, T + DEADLINE);
     expect(a2.events.map((e) => e.itemId)).toEqual(["bruno"]);
-    // Ana não perde o lugar: ninguém depois dela foi chamado.
-    expect(estimate(freeze(a2.day), "ana", T + DEADLINE, AUTO)).toEqual({ kind: "come_now" });
+    // AD-076: Ana perdeu a vez pelo prazo, mesmo sem ninguém chamado: vai para o fim.
+    expect(estimate(freeze(a2.day), "ana", T + DEADLINE, AUTO)).toEqual({ kind: "position", position: 2, minutes: 15 });
   });
 
   it("dentro do prazo, chamar quem vem depois não tira a vez de quem está a caminho", () => {
     let d = freeze(notify(dayWith(["ana", "pedro"]), T).day);
     d = apply(checkInAt(d, "pedro", T));
     d = callAt(d, T + DEADLINE - MIN);
-    const r = checkInAt(d, "ana", T + DEADLINE + 5 * MIN);
+    const r = checkInAt(d, "ana", T + DEADLINE - 1);
     expect(lost(r)).toBe(false);
   });
 
-  it("depois do prazo, a regra de atraso volta a valer", () => {
+  it("depois do prazo, perde a vez (AD-076)", () => {
     let d = freeze(notify(dayWith(["ana", "pedro"]), T).day);
     d = apply(checkInAt(d, "pedro", T));
     d = callAt(d, T + DEADLINE);
