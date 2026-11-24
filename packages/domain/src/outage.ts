@@ -69,7 +69,9 @@ export function trackOutage(day: SessionDay, now: number, signal: UnitSignal): S
   const calling = callingStations(day, now);
   // Pausa que acabou: o silêncio conta da volta (a aba pode ter ficado fechada na pausa).
   const ref = expectedSince(day, signalAt, now);
+  // A volta da pausa só adia a queda; "no ar" de verdade (a unidade começou) é o sinal recente.
   const live = ref !== null && now - ref <= silence;
+  const signalLive = signalAt !== null && now - signalAt <= silence;
   const seen = day.liveSignalAt !== undefined;
   if (!live && calling && seen && !open && !restarted) {
     // Não volta para antes do fim da queda anterior (fechada quando ninguém chamava).
@@ -83,7 +85,7 @@ export function trackOutage(day: SessionDay, now: number, signal: UnitSignal): S
     lastSweepAt: now,
     unitSignalAt: signalAt,
     signalSource: useTv ? "tv" : "stations",
-    ...(live ? { liveSignalAt: signalAt as number } : {}),
+    ...(signalLive ? { liveSignalAt: signalAt as number } : {}),
     ...(tvLive ? { tvLiveAt: signal.tvSignalAt as number } : {}),
   };
 }

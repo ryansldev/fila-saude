@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { callNext, closeStation } from "../src/call.ts";
-import { comeNowNotices, estimate, leaveHomeNotices } from "../src/estimate.ts";
+import { averageTime, comeNowNotices, estimate, leaveHomeNotices } from "../src/estimate.ts";
 import { trackOutage } from "../src/outage.ts";
 import { pauseStation, reopenStation, resumeStation, stagePause } from "../src/pause.ts";
 import { checkIn, type SessionDay, type Station } from "../src/queue.ts";
@@ -111,22 +111,31 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
     expect(station(d).pause).toEqual({ from: T + DEADLINE, until: T + DEADLINE + 60 * MIN });
   });
 
-  it("'voltar agora' recusa a pausa que já acabou e a pausa planejada da sessão", () => {
+  it("'voltar agora' recusa a pausa que já acabou; no almoço, tira a pausa própria, mas o almoço segue", () => {
     const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: { inMin: 30 } }, T));
     expect(resumeStation(d, { stationId: "e1" }, T + 40 * MIN)).toEqual({ ok: false, error: "forbidden_transition" });
     const lunch = apply(
-      pauseStation(dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] }), { stationId: "e1", back: null }, T),
+      pauseStation(
+        present(dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] }), "ana"),
+        { stationId: "e1", back: null },
+        T - 10 * MIN,
+      ),
     );
-    expect(resumeStation(lunch, { stationId: "e1" }, T + 10 * MIN)).toEqual({ ok: false, error: "station_paused" });
+    const back = apply(resumeStation(lunch, { stationId: "e1" }, T + 30 * MIN));
+    expect(station(back).pause).toBeUndefined();
+    expect(callNext(back, { stationId: "e1" }, T + 30 * MIN)).toEqual({ ok: false, error: "station_paused" });
+    expect(station(apply(callNext(back, { stationId: "e1" }, T + 60 * MIN))).calledItemId).toBe("ana");
+  });
+
+  it("trocar a volta de uma pausa em curso: os minutos contam de agora", () => {
+    let d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 30 } }, T + 40 * MIN));
+    expect(station(d).pause).toEqual({ from: T, until: T + 70 * MIN });
   });
 
   it("trocar a volta de uma pausa em curso para um horário que já passou é recusado", () => {
     const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
     expect(pauseStation(d, { stationId: "e1", back: { at: T + 15 * MIN } }, T + 30 * MIN)).toEqual({
-      ok: false,
-      error: "pause_back_before_start",
-    });
-    expect(pauseStation(d, { stationId: "e1", back: { inMin: 15 } }, T + 30 * MIN)).toEqual({
       ok: false,
       error: "pause_back_before_start",
     });
@@ -196,6 +205,26 @@ describe("pausa da etapa: quando nenhuma estação chama", () => {
 });
 
 describe("estimativa e avisos com a pausa (RN-ETA)", () => {
+  it("o tempo médio de atendimento não conta o almoço como atendimento", () => {
+    let d = present(
+      dayWith(["a", "b", "c", "d", "e"], { breaks: [{ start: T, end: T + 30 * MIN }] }),
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+    );
+    const calls = [-50, -35, -20, -5, 40].map((m, k) => ({
+      itemId: ["a", "b", "c", "d", "e"][k] as string,
+      stationId: "e1",
+      stage: "care" as const,
+      at: T + m * MIN,
+    }));
+    d = freeze({ ...d, calls: [...d.calls, ...calls] as never });
+    // 15, 15, 15 e 45 - 30 de almoço = 15.
+    expect(averageTime(d, "care", d.serviceId, T + 60 * MIN)).toBe(15);
+  });
+
   it("em pausa com volta: a posição soma o resto da pausa e diz até quando", () => {
     const d = apply(pauseStation(dayWith(["ana", "bruno"]), { stationId: "e1", back: { at: T + 60 * MIN } }, T));
     expect(estimate(d, "bruno", T + 20 * MIN, AUTO)).toEqual({
@@ -306,6 +335,24 @@ describe("queda percebida com a pausa (QP6)", () => {
     d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 30 } }, T));
     d = freeze(trackOutage(d, T + 31 * MIN, tv(null)));
     expect(d.outages).toEqual([{ start: T + 31 * MIN, end: null }]);
+  });
+
+  it("sinal de ontem e a volta do almoço não fazem a unidade 'começar' (nem cair depois)", () => {
+    const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
+    let d = dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] });
+    d = freeze(trackOutage(d, T + 61 * MIN, st(T - 24 * 60 * MIN)));
+    expect(d.liveSignalAt).toBeUndefined();
+    d = freeze(trackOutage(d, T + 75 * MIN, st(T - 24 * 60 * MIN)));
+    expect(d.outages ?? []).toEqual([]);
+  });
+
+  it("pausa nova marcada depois de a anterior acabar: o silêncio continua contando do fim da anterior", () => {
+    const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
+    let d = freeze(trackOutage(dayWith(["ana", "bruno"]), T, st(T)));
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 60 } }, T));
+    d = alreadyNotified(d, "ana", T + 64 * MIN, 30);
+    d = apply(pauseStation(d, { stationId: "e1", back: null }, T + 65 * MIN));
+    expect(freeze(trackOutage(d, T + 69 * MIN, st(T))).outages ?? []).toEqual([]);
   });
 
   it("pausa planejada da sessão (almoço, TV desligada): o silêncio da TV conta da volta", () => {

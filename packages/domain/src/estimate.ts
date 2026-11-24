@@ -1,4 +1,4 @@
-import { type Pause, stagePause, stopsForGood } from "./pause-time.ts";
+import { type Pause, pausedBetween, stagePause, stopsForGood } from "./pause-time.ts";
 import {
   arrivalDeadlineEnd,
   DEFAULT_CONFIG,
@@ -48,12 +48,15 @@ export function averageTime(day: SessionDay, stage: Stage, serviceId: string, no
     byStation.set(c.stationId, [...(byStation.get(c.stationId) ?? []), { at: c.at, skip: Boolean(c.noShow) }]);
   }
   const durations: { end: number; min: number }[] = [];
-  for (const times of byStation.values()) {
+  for (const [stationId, times] of byStation) {
+    const station = day.stations.find((e) => e.id === stationId);
     const sorted = [...times].sort((a, b) => a.at - b.at);
     sorted.forEach((start, k) => {
       const next = sorted[k + 1];
-      // "Não compareceu" não é atendimento concluído (RN-ETA-05.2).
-      if (next !== undefined && !start.skip) durations.push({ end: next.at, min: (next.at - start.at) / MIN });
+      if (next === undefined || start.skip) return;
+      // "Não compareceu" não é atendimento concluído (RN-ETA-05.2); a pausa no meio não é atendimento.
+      const paused = pausedBetween(day, station, start.at, next.at);
+      durations.push({ end: next.at, min: (next.at - start.at - paused) / MIN });
     });
   }
   const last = durations

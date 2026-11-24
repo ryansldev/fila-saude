@@ -46,10 +46,15 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   const onTheWay = onTheWayUntil(day, e.stage, now);
   const from = current?.from ?? (onTheWay === null ? now : Math.max(now + deadline, onTheWay));
   const back = cmd.back;
-  const until = back === null ? null : "at" in back ? back.at : from + back.inMin * MIN;
+  // Minutos: do início da pausa; trocar a volta da pausa em curso, de agora.
+  const base = current && current.from <= now ? now : from;
+  const until = back === null ? null : "at" in back ? back.at : base + back.inMin * MIN;
   if (until !== null && !(Number.isFinite(until) && until > Math.max(from, now)))
     return failure("pause_back_before_start");
-  return ok(withStation(day, { ...e, pause: { from, until } }));
+  // A pausa que acabou sozinha deixa a hora da volta: o silêncio de antes dela não é queda.
+  const ended = !current && e.pause?.until != null ? e.pause.until : undefined;
+  const since = ended === undefined ? {} : { callingSince: Math.max(e.callingSince ?? ended, ended) };
+  return ok(withStation(day, { ...e, ...since, pause: { from, until } }));
 }
 
 /** "Voltar agora" (em pausa) ou "desmarcar a pausa" (ainda não começou): a estação volta a chamar. */
@@ -58,9 +63,9 @@ export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e?.pause) return failure("forbidden_transition");
   if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
-  // Na pausa planejada da sessão (almoço) ninguém volta antes da hora.
-  if (e.pause.from <= now && inBreak(day, now)) return failure("station_paused");
   const { pause, ...rest } = e;
+  // No almoço da sessão, tira a pausa própria, mas a estação só chama no fim do almoço (que já conta como volta).
+  if (inBreak(day, now)) return ok(withStation(day, rest));
   // Pausa que já começou: o silêncio conta da volta (desmarcar antes do início não muda nada).
   return ok(withStation(day, pause.from <= now ? { ...rest, callingSince: now } : rest));
 }

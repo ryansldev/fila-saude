@@ -48,6 +48,23 @@ function pausedSince(day: SessionDay, e: Station, t: number): number {
   return r;
 }
 
+/** Quanto de [a, b] a estação passou em pausa (a dela, se ainda guardada, e as da sessão), em ms. */
+export function pausedBetween(day: SessionDay, e: Station | undefined, a: number, b: number): number {
+  const all = e ? intervals(day, e) : (day.breaks ?? []);
+  const cut = all
+    .map((i) => ({ start: Math.max(i.start, a), end: Math.min(i.end, b) }))
+    .filter((i) => i.end > i.start)
+    .sort((x, y) => x.start - y.start);
+  let total = 0;
+  let cursor = a;
+  for (const i of cut) {
+    const start = Math.max(i.start, cursor);
+    if (i.end > start) total += i.end - start;
+    cursor = Math.max(cursor, i.end);
+  }
+  return total;
+}
+
 /** A estação está em pausa em `t` (a dela ou a planejada da sessão). */
 export function pausedAt(day: SessionDay, e: Station, t: number): boolean {
   return covering(day, e, t) !== undefined;
