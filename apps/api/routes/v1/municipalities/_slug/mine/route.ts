@@ -6,7 +6,7 @@ import { apiErrors, PATIENT, PATIENT_IN_MUNICIPALITY_ERRORS, slugParams, TAGS } 
 import { mine } from "infra/queue/app";
 import z from "zod";
 
-// PD-33: o app consulta a cada ~3 s; mesmo formato que o SSE terá.
+// PD-33: o app consulta a cada ~3 s; mesmo formato que o WebSocket terá.
 export default async function (app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
     "/",

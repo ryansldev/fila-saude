@@ -105,7 +105,7 @@ Os planos detalhados ([1B](../../arquivo/planos/mvp-filas/plano-fase-1b-fundacao
 | PD-17 | O login do paciente feito na central vale no município por um JWT EdDSA de 15 min, conferido pelo JWKS da central | Fecha o item em aberto do plan. Muda o app (troca sessão por token) e o prazo de bloqueio de conta |
 | PD-15 | No app, o município vai no caminho (`/v1/municipalities/:slug/…`); no web, no subdomínio | Define o formato de todas as rotas do app |
 | PD-27 | "Esta e as seguintes": sessões futuras com pacientes ficam como estão e passam para a série nova | Comportamento visível ao admin |
-| PD-29 | TV pareada por código de 6 dígitos válido por 10 min; até o SSE, consulta o estado a cada 5 s | Detalhe de operação na unidade |
+| PD-29 | TV pareada por código de 6 dígitos válido por 10 min; até o WebSocket, consulta o estado a cada 5 s | Detalhe de operação na unidade |
 | PD-24 | Em dev, painel em `:3000` e landing (`apps/web`) movida para `:3001` | Muda o seu `npm run dev` da landing |
 | PD-14, 16, 18, 19, 20, 22, 23, 25, 26, 28, 30, 31 | Bancos por município, migrations, auditoria, testes, mailer de dev, formato de erro, tabelas de conta, worker/outbox, recorrência em hora local, herança de config, tabela mínima `entrada`, testes do painel | Técnicas e de baixo custo para trocar |
 
@@ -175,7 +175,7 @@ Execução rápida, como as fatias 0 e 1. Plano: [plano-fatia-2-na-unidade](../.
 | G5 | Quais eventos viram push agora | Sua vez, pulado, saia de casa, venha agora e, desde a AD-072, a rechamada. Sessão aberta, cancelada, remanejada e os da lista de espera ficam para as fatias que os criam | Push em toda mudança | O paciente não recebe "sua vez não chegou hoje" por push ainda |
 | G6 | **Push no celular de verdade** | O app pede a permissão e registra o token da Expo, mas o token exige o `projectId` de um projeto EAS (`EXPO_PUBLIC_EAS_PROJECT_ID`), e o Expo Go no Android não recebe push remoto (desde o SDK 53): precisa de um build de desenvolvimento (`eas build --profile development`). Sem projeto, o app segue só com a consulta da tela | Notificação local disparada pela consulta (só com o app aberto) | Projeto EAS na organização `fila-saude` (AD-071); push testado no aparelho com o build de desenvolvimento (2026-11-20); o `google-services.json` vem da variável secreta do EAS |
 | G8 | Onde fica o token de push | Central (`dispositivo_push`), entrou na lista de colunas permitidas do INV-11 (não é dado clínico nem da fila); o mesmo aparelho logado em outra conta passa a avisar só a conta nova | No município | Baixo |
-| G9 | Destaque da TV | Lido da config da unidade (`destaqueTvSegundos`, padrão 10 s); a TV consulta a cada 2 s, então o anúncio pode atrasar até 2 s | SSE (D1/D3) | Baixo |
+| G9 | Destaque da TV | Lido da config da unidade (`destaqueTvSegundos`, padrão 10 s); a TV consulta a cada 2 s, então o anúncio pode atrasar até 2 s | WebSocket (D1/D3) | Baixo |
 
 ## Revisão de todas as fatias (2026-11-13)
 

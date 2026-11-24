@@ -5,5 +5,5 @@
  */
 export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3333";
 
-/** PD-33: a tela da vez consulta a cada ~3 s (o SSE entra depois no lugar). */
+/** PD-33: a tela da vez consulta a cada ~3 s (o WebSocket entra depois no lugar). */
 export const QUERY_INTERVAL_MS = 3_000;

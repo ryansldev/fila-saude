@@ -5,7 +5,7 @@ import { useApi } from "@/lib/api-context";
 import { errorMessage } from "@/lib/forms/errors";
 
 /**
- * Lê `caminho` e repete a cada `ms` (PD-33: tempo real por consulta até o SSE). `null` = não busca.
+ * Lê `caminho` e repete a cada `ms` (PD-33: tempo real por consulta até o WebSocket). `null` = não busca.
  * - Trocar de caminho limpa o dado; recarregar não (a tela não pisca nem perde a seleção).
  * - A próxima consulta só sai `ms` depois da resposta anterior (nunca duas ao mesmo tempo).
  * - `setDetail` (resposta de uma ação) vence qualquer consulta que já estava no ar.
