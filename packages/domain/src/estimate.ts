@@ -63,7 +63,9 @@ export function averageTime(day: SessionDay, stage: Stage, serviceId: string, no
       const next = sorted[k + 1];
       if (next === undefined || start.skip) return;
       // "Não compareceu" não é atendimento concluído (RN-ETA-05.2); a pausa no meio não é atendimento.
-      const paused = pausedBetween(day, station, start.at, next.at);
+      // Consulta que atravessa o intervalo da sessão: não se sabe quanto foi atendimento, então não entra.
+      if (inBreakBetween(day, start.at, next.at)) return;
+      const paused = pausedBetween(day, station, start.at, next.at, false);
       durations.push({ end: next.at, min: (next.at - start.at - paused) / MIN });
     });
   }
@@ -82,6 +84,9 @@ export function averageTime(day: SessionDay, stage: Stage, serviceId: string, no
  * Capacidade (PA3): a estação que para sem hora de volta antes da vez (`by`) não conta; a pausa com volta é
  * passageira e conta. Todas paradas: conta as abertas, para o tempo depois da volta (a pausa da etapa decide).
  */
+const inBreakBetween = (day: SessionDay, a: number, b: number) =>
+  (day.breaks ?? []).some((x) => x.start < b && x.end > a);
+
 const capacity = (stations: Station[], by: number) =>
   stations.filter((e) => !stopsForGood(e, by)).length || stations.length;
 
@@ -130,7 +135,7 @@ function withPause(
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
   const remote = item.state === "remote";
   // O primeiro em casa não recebe "venha agora" na pausa nem se o prazo de chegada cair nela.
-  const blocked = p.from <= now || (remote && ahead === 0 && p.from < now + deadline);
+  const blocked = p.from <= now || (remote && ahead === 0 && p.from <= now + deadline);
   // Em casa, a vez vale com o prazo de chegada (o "venha agora" não sai se o prazo cai na pausa).
   const wait = pausedWait(day, item.stage, now, queue * MIN, remote ? deadline : 0);
   if (!wait.pause) return { minutes: queue, blocked };

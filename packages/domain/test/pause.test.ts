@@ -524,6 +524,33 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     expect(now.ok && now.events.map((e) => e.itemId)).toEqual(["caio"]);
   });
 
+  it("estação atendendo na hora da pausa continua contando como 'chamando' para a queda", () => {
+    const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
+    let d = present(dayWith(["ana", "bia"]), "ana");
+    d = freeze(trackOutage(d, T, st(T)));
+    d = apply(pauseStation(d, { stationId: "e1", back: null }, T + MIN));
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({ ...e, pause: { from: T + 5 * MIN, until: null }, calledItemId: "ana" })),
+    });
+    // 12:15, ainda atendendo a Ana e sem sinal há 15 min: é queda (a estação não parou).
+    expect(trackOutage(d, T + 15 * MIN, st(T)).outages).toEqual([{ start: T, end: null }]);
+  });
+
+  it("sem mais ninguém esperando, a varredura resolve a pausa adiada na hora (sem os 3 min)", () => {
+    let d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
+    d = freeze({
+      ...d,
+      stations: d.stations.map((e) => ({
+        ...e,
+        calledItemId: null,
+        pause: e.pause ? { ...e.pause, waitFor: [] } : undefined,
+      })) as never,
+    });
+    const r = pauseStartNotices(d, T + 40 * MIN);
+    expect(station(r.day).pause).toEqual({ from: T + 40 * MIN, until: T + 99 * MIN });
+  });
+
   it("com outra estação da etapa chamando, quem esperava não recebe a justificativa (a outra o chama)", () => {
     const d = two(scene());
     let r = pauseStartNotices(d, T + 32 * MIN);
@@ -676,6 +703,36 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
     });
     // 9 à frente × 15 = 135 min de fila: 10 até a 1ª pausa, 90 entre as pausas, 35 depois do almoço (13:35).
     expect(estimate(d, "p9", now, AUTO)).toMatchObject({ position: 10, minutes: 225 });
+  });
+
+  it("o tempo médio descarta a consulta que atravessou o intervalo (não dá para saber quanto foi atendimento)", () => {
+    const ids = ["a", "b", "c", "d", "e"];
+    let d = present(dayWith(ids, { breaks: [{ start: T, end: T + 60 * MIN }] }), ...ids);
+    // 15, 15, 15; depois chamada às 11:55, atendida até as 12:20 (dentro do intervalo), próxima às 13:00.
+    const calls = [-50, -35, -20, -5, 60].map((m, k) => ({
+      itemId: ids[k] as string,
+      stationId: "e1",
+      stage: "care" as const,
+      at: T + m * MIN,
+    }));
+    d = freeze({ ...d, calls: [...d.calls, ...calls] as never });
+    expect(averageTime(d, "care", d.serviceId, T + 70 * MIN)).toBe(15);
+  });
+
+  it("estação atendendo antes de pausar, sem hora de volta, ainda conta na capacidade", () => {
+    const base = two(dayWith(["ana", "bia", "caio"]));
+    const d = freeze({
+      ...base,
+      stations: base.stations.map((e) =>
+        e.id === "e1" ? { ...e, pause: { from: T - MIN, until: null, waitFor: [], deferred: true } } : e,
+      ),
+    });
+    expect(estimate(d, "caio", T, AUTO)).toEqual({ kind: "position", position: 3, minutes: 15 });
+  });
+
+  it("a pausa começando exatamente no fim do prazo de chegada também bloqueia o 'venha agora'", () => {
+    const d = dayWith(["ana", "bruno"], { breaks: [{ start: T + 30 * MIN, end: T + 60 * MIN }] });
+    expect(estimate(d, "ana", T, AUTO)).toMatchObject({ kind: "position" });
   });
 
   it("o tempo médio de atendimento não conta o almoço como atendimento", () => {

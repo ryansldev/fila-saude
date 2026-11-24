@@ -272,7 +272,6 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   const stationNow = current.stations.find((e) => e.id === station.id) ?? station;
   if (pausedAt(current, stationNow, now)) {
     if (events.length > 0) return ok(current, events);
-    // Sem pausa própria em curso, é o intervalo da sessão (almoço): "voltar agora" nem atender antes resolvem.
     // No intervalo da sessão, nem "voltar agora" nem atender antes resolvem: a estação só chama no fim dele.
     if (inBreak(current, now)) return failure("session_break");
     const waiting = waitingBeforePause(current, station.id, now).length > 0;

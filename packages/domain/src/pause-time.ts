@@ -63,10 +63,18 @@ function pausedSince(day: SessionDay, e: Station, t: number): number {
 }
 
 /** Quanto de [a, b] a estação passou parada (pausas, tempo fechada e as pausas da sessão), em ms. */
-export function pausedBetween(day: SessionDay, e: Station | undefined, a: number, b: number): number {
+export function pausedBetween(
+  day: SessionDay,
+  e: Station | undefined,
+  a: number,
+  b: number,
+  withBreaks = true,
+): number {
   // Fechada e ainda não reaberta: o tempo fechada até `b` também não é atendimento.
   const closed = e?.closedAt !== undefined ? [{ start: e.closedAt, end: b }] : [];
-  const all = e ? intervals(day, e, true) : (day.breaks ?? []);
+  const all = (e ? intervals(day, e, true) : (day.breaks ?? [])).filter(
+    (i) => withBreaks || !(day.breaks ?? []).some((x) => x.start === i.start && x.end === i.end),
+  );
   const cut = [...all, ...closed]
     .map((i) => ({ start: Math.max(i.start, a), end: Math.min(i.end, b) }))
     .filter((i) => i.end > i.start)
@@ -88,7 +96,8 @@ export function pausedAt(day: SessionDay, e: Station, t: number): boolean {
 
 /** A estação chama em `t`: aberta (não fechada) e fora de pausa. */
 export function callingAt(day: SessionDay, e: Station, t: number): boolean {
-  return e.open && !pausedAt(day, e, t);
+  // Com paciente em atendimento a estação ainda não parou, mesmo depois da hora da pausa.
+  return e.open && (e.calledItemId !== null || !pausedAt(day, e, t));
 }
 
 /** Desde quando a estação chama de novo em `t`: o fim da última pausa (dela ou da sessão), a volta ou a reabertura. */
@@ -100,7 +109,8 @@ export function resumedAt(day: SessionDay, e: Station, t: number): number {
 
 /** A estação para sem hora de volta até `by` (em pausa ou marcada antes): não conta na capacidade da fila. */
 export function stopsForGood(e: Station, by: number): boolean {
-  return e.pause !== undefined && e.pause.until === null && e.pause.from <= by;
+  // A adiada (atendendo antes de pausar) ainda atende: conta.
+  return e.pause !== undefined && !e.pause.deferred && e.pause.until === null && e.pause.from <= by;
 }
 
 /**
@@ -154,8 +164,8 @@ export function settleDeferredPause(day: SessionDay, stationId: string, now: num
 
 /**
  * A pausa começa agora (pausar agora, sem resposta da estação, ou ninguém esperado que esta estação possa
- * chamar): a adiada começa agora com a mesma duração (se a volta já passou, ela some); quem ainda esperava
- * recebe a justificativa, uma vez.
+ * chamar): a adiada começa agora com a mesma duração, mesmo que a volta marcada já tenha passado; quem ainda
+ * esperava recebe a justificativa, uma vez.
  */
 export function startPauseNow(day: SessionDay, stationId: string, now: number): { day: SessionDay; events: Event[] } {
   const e = day.stations.find((x) => x.id === stationId);

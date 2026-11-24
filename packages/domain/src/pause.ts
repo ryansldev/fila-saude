@@ -121,22 +121,11 @@ export function serveBeforePause(
   );
 }
 
-/** A justificativa para quem chegou no prazo e ficou para a volta; `waitFor` sai para não repetir. */
-function notifyWaiting(day: SessionDay, e: Station, now: number): { day: SessionDay; events: Event[] } {
-  if (!e.pause?.waitFor || e.pause.deferred || e.pause.from > now) return { day, events: [] };
-  // A pausa já acabou: a justificativa não faz mais sentido.
-  if (!pauseActive(e.pause, now)) {
-    const { waitFor: _, askedAt: __, ...pause } = e.pause;
-    return { day: withStation(day, { ...e, pause }), events: [] };
-  }
-  const events: Event[] = waitingBeforePause(day, e.id, now).map((i) => ({
-    kind: "turn_after_pause",
-    itemId: i.id,
-    stationId: e.id,
-    data: { until: e.pause?.until ?? null },
-  }));
+/** A pausa acabou ou ninguém espera mais: `waitFor` sai, sem justificativa. */
+function dropWaiting(day: SessionDay, e: Station): SessionDay {
+  if (!e.pause) return day;
   const { waitFor: _, askedAt: __, ...pause } = e.pause;
-  return { day: withStation(day, { ...e, pause }), events };
+  return withStation(day, { ...e, pause });
 }
 
 /** Opção C, "pausar agora": a pausa começa (a adiada, agora) e quem chegou no prazo recebe a justificativa. */
@@ -167,7 +156,12 @@ export function pauseStartNotices(day: SessionDay, now: number): { day: SessionD
     if (!p || (!p.waitFor && !p.deferred) || p.from > now || station.calledItemId !== null) continue;
     // A pausa já acabou: a justificativa não faz mais sentido (a adiada vale até ser resolvida).
     if (!pauseActive(p, now)) {
-      current = notifyWaiting(current, station, now).day;
+      current = dropWaiting(current, station);
+      continue;
+    }
+    // Ninguém mais espera: a adiada começa já, e a marcada só esquece a lista.
+    if (waitingBeforePause(current, station.id, now).length === 0) {
+      current = p.deferred ? startPauseNow(current, station.id, now).day : dropWaiting(current, station);
       continue;
     }
     if (p.askedAt === undefined) {
