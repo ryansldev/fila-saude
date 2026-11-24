@@ -367,11 +367,17 @@ export const expoSenderWith =
         // O corpo tem o seu próprio prazo. Travado depois do 200, a Expo já aceitou o lote: conta como
         // enviado, para nada sair duas vezes. Lido mas sem `data` (HTML de proxy, `errors`): falha.
         const STALLED = Symbol("travado");
+        let bodyTimer: ReturnType<typeof setTimeout> | undefined;
         const body = await Promise.race([
           r.json().catch(() => null) as Promise<{ data?: ExpoTicket[] } | null>,
-          new Promise<typeof STALLED>((done) => setTimeout(() => done(STALLED), timeoutMs).unref?.()),
+          new Promise<typeof STALLED>((done) => {
+            bodyTimer = setTimeout(() => done(STALLED), timeoutMs);
+          }),
         ]);
+        clearTimeout(bodyTimer);
         if (body === STALLED) {
+          // Solta a conexão do corpo travado (senão fica aberta, uma por lote).
+          await r.body?.cancel().catch(() => {});
           exit.push(...batch.map(() => ({ ok: true as const })));
           continue;
         }
