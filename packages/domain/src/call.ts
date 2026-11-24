@@ -282,7 +282,7 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   }
   // Atendendo antes de pausar: só quem estava a caminho e chegou (opção C), na ordem de sempre.
   const waiting = current.stations.find((e) => e.id === station.id)?.pause?.deferred
-    ? new Set(waitingBeforePause(current, station.id, now, true).map((i) => i.id))
+    ? new Set(waitingBeforePause(current, station.id, now).map((i) => i.id))
     : null;
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true }).find(
     (i) => waiting === null || waiting.has(i.id),

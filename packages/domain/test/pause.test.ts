@@ -381,17 +381,6 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     expect(confirmPause(later, { stationId: "e1" }, T)).toEqual({ ok: false, error: "forbidden_transition" });
   });
 
-  it("pausa adiada que passou da volta não vira parada ao pausar de novo", () => {
-    const base = dayWith(["ana"]);
-    const d = freeze({
-      ...base,
-      stations: base.stations.map((e) => ({ ...e, pause: { from: T, until: T + 10 * MIN, deferred: true } })),
-    });
-    const r = apply(pauseStation(d, { stationId: "e1", back: null }, T + 20 * MIN));
-    expect(station(r).stops).toBeUndefined();
-    expect(station(r).callingSince).toBeUndefined();
-  });
-
   it("pausa que já acabou: ninguém mais espera antes dela, e atender antes ou pausar agora é recusado", () => {
     let d = present(alreadyNotified(dayWith(["ana", "bia"]), "bia", T - 5 * MIN, 30), "ana");
     d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 10 } }, T));
@@ -503,6 +492,36 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     const r = pauseStartNotices(d, T + 45 * MIN);
     expect(r.events).toEqual([]);
     expect(pauseStartNotices(r.day, T + 49 * MIN).events.map((e) => e.itemId)).toEqual(["caio"]);
+  });
+
+  it("pausa adiada que passou da volta marcada continua valendo até ser resolvida", () => {
+    let d = present(
+      alreadyNotified(
+        alreadyNotified(dayWith(["ana", "bia", "caio"]), "bia", T - 5 * MIN, 30),
+        "caio",
+        T - 5 * MIN,
+        30,
+      ),
+      "ana",
+    );
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 30 } }, T));
+    d = apply(checkIn(d, { itemId: "bia" }, T + 20 * MIN));
+    d = apply(checkIn(d, { itemId: "caio" }, T + 21 * MIN));
+    d = apply(serveBeforePause(d, { stationId: "e1" }, T + 31 * MIN));
+    d = apply(finish(d, { stationId: "e1" }, T + 65 * MIN));
+    // 12:65: a volta marcada (13:00) passou, mas Caio ainda espera e a pausa segue adiada.
+    expect(waitingBeforePause(d, "e1", T + 66 * MIN).map((i) => i.id)).toEqual(["caio"]);
+    expect(pauseStation(d, { stationId: "e1", back: null }, T + 66 * MIN)).toEqual({
+      ok: false,
+      error: "station_already_paused",
+    });
+    expect(estimate(d, "caio", T + 66 * MIN, AUTO)).not.toHaveProperty("pause");
+    // A varredura dá os 3 min e manda a justificativa.
+    let r = pauseStartNotices(d, T + 66 * MIN);
+    r = pauseStartNotices(r.day, T + 70 * MIN);
+    expect(r.events.map((e) => e.itemId)).toEqual(["caio"]);
+    const now = confirmPause(d, { stationId: "e1" }, T + 67 * MIN);
+    expect(now.ok && now.events.map((e) => e.itemId)).toEqual(["caio"]);
   });
 
   it("com outra estação da etapa chamando, quem esperava não recebe a justificativa (a outra o chama)", () => {

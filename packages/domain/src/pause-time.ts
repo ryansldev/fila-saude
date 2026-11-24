@@ -27,6 +27,14 @@ function intervals(day: SessionDay, e: Station, forCalls = false): { start: numb
 const covering = (day: SessionDay, e: Station, t: number, forCalls = false) =>
   intervals(day, e, forCalls).find((i) => i.start <= t && t < i.end);
 
+/**
+ * A pausa ainda vale em `now`: sem hora de volta, antes dela, ou adiada (atender antes de pausar), que vale até
+ * ser resolvida, mesmo depois da volta marcada (a volta anda junto).
+ */
+export function pauseActive(p: { until: number | null; deferred?: boolean }, now: number): boolean {
+  return p.deferred === true || p.until === null || p.until > now;
+}
+
 /** Uma pausa planejada da sessão (vão entre faixas) cobre `t`. */
 export const inBreak = (day: SessionDay, t: number) => (day.breaks ?? []).some((b) => b.start <= t && t < b.end);
 
@@ -124,12 +132,10 @@ export function withStop(e: Station, stop: { start: number; end: number } | unde
  * Opção C (AD-077): quem estava a caminho quando a pausa foi marcada, já chegou e ainda não foi chamado. Só
  * depois da hora da pausa (antes dela, a estação chama normalmente).
  */
-export function waitingBeforePause(day: SessionDay, stationId: string, now: number, anyTime = false): QueueItem[] {
+export function waitingBeforePause(day: SessionDay, stationId: string, now: number): QueueItem[] {
   const e = day.stations.find((x) => x.id === stationId);
   const p = e?.pause;
-  // A adiada vale até ser resolvida (`anyTime`), mesmo depois da volta marcada: a volta anda junto.
-  const ended = p?.until != null && p.until <= now && !(anyTime && p.deferred);
-  if (!e || !p?.waitFor || p.from > now || ended) return [];
+  if (!e || !p?.waitFor || p.from > now || !pauseActive(p, now)) return [];
   const ids = new Set(p.waitFor);
   return day.items.filter((i) => ids.has(i.id) && i.state === "present" && i.stage === e.stage);
 }
@@ -142,7 +148,7 @@ export function settleDeferredPause(day: SessionDay, stationId: string, now: num
   const e = day.stations.find((x) => x.id === stationId);
   const p = e?.pause;
   if (!e || !p?.deferred) return day;
-  if (waitingBeforePause(day, stationId, now, true).length > 0) return day;
+  if (waitingBeforePause(day, stationId, now).length > 0) return day;
   return startPauseNow(day, stationId, now).day;
 }
 
@@ -167,7 +173,7 @@ export function startPauseNow(day: SessionDay, stationId: string, now: number): 
   const others = day.stations.some(
     (x) => x.id !== e.id && x.stage === e.stage && x.services.includes(day.serviceId) && callingAt(day, x, now),
   );
-  const events: Event[] = (others ? [] : waitingBeforePause(day, e.id, now, true))
+  const events: Event[] = (others ? [] : waitingBeforePause(day, e.id, now))
     .filter((i) => i.id !== e.calledItemId)
     .map((i) => ({ kind: "turn_after_pause", itemId: i.id, stationId: e.id, data: { until: pause.until } }));
   return { day: put({ ...e, pause }), events };

@@ -1,6 +1,6 @@
 import { callNext } from "./call.ts";
 import { inManualMode, pendingOutage } from "./outage.ts";
-import { inBreak, startPauseNow, waitingBeforePause, withStop } from "./pause-time.ts";
+import { inBreak, pauseActive, startPauseNow, waitingBeforePause, withStop } from "./pause-time.ts";
 import { DEFAULT_CONFIG, extendedDeadlineEnd, lateness, type SessionDay, type Stage, type Station } from "./queue.ts";
 import { type Event, failure, ok, type Result } from "./result.ts";
 
@@ -49,7 +49,7 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   // Com queda aberta ou por confirmar, o prazo de quem vem pode crescer: não dá para saber quando pausar.
   if (inManualMode(day) || pendingOutage(day, now)) return failure("pause_during_outage");
   // Com pausa marcada ou em curso, é preciso voltar (ou desmarcar) antes de pausar de novo.
-  if (e.pause && (e.pause.until === null || e.pause.until > now)) return failure("station_already_paused");
+  if (e.pause && pauseActive(e.pause, now)) return failure("station_already_paused");
   if (e.calledItemId !== null) return failure("station_has_call");
   const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
   const onTheWay = onTheWayUntil(day, e.stage, now);
@@ -74,7 +74,7 @@ export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e?.pause) return failure("forbidden_transition");
-  if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
+  if (!pauseActive(e.pause, now)) return failure("forbidden_transition");
   const { pause, ...rest } = e;
   // A pausa adiada (atender antes de pausar) não parou a estação: não vira parada.
   const started = pause.from <= now && !pause.deferred ? { start: pause.from, end: now } : undefined;
@@ -125,7 +125,7 @@ export function serveBeforePause(
 function notifyWaiting(day: SessionDay, e: Station, now: number): { day: SessionDay; events: Event[] } {
   if (!e.pause?.waitFor || e.pause.deferred || e.pause.from > now) return { day, events: [] };
   // A pausa já acabou: a justificativa não faz mais sentido.
-  if (e.pause.until !== null && e.pause.until <= now) {
+  if (!pauseActive(e.pause, now)) {
     const { waitFor: _, askedAt: __, ...pause } = e.pause;
     return { day: withStation(day, { ...e, pause }), events: [] };
   }
@@ -144,7 +144,7 @@ export function confirmPause(day: SessionDay, cmd: Cmd, now: number): Result<Ses
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e?.pause || e.pause.from > now) return failure("forbidden_transition");
-  if (e.pause.until !== null && e.pause.until <= now) return failure("forbidden_transition");
+  if (!pauseActive(e.pause, now)) return failure("forbidden_transition");
   if (e.calledItemId !== null) return failure("station_has_call");
   if (!e.pause.waitFor && !e.pause.deferred) return ok(day);
   const r = startPauseNow(day, e.id, now);
@@ -165,9 +165,9 @@ export function pauseStartNotices(day: SessionDay, now: number): { day: SessionD
     const station = current.stations.find((x) => x.id === e.id) as Station;
     const p = station.pause;
     if (!p || (!p.waitFor && !p.deferred) || p.from > now || station.calledItemId !== null) continue;
-    // A pausa já acabou: a adiada some, e a justificativa não faz mais sentido.
-    if (p.until !== null && p.until <= now) {
-      current = p.deferred ? startPauseNow(current, station.id, now).day : notifyWaiting(current, station, now).day;
+    // A pausa já acabou: a justificativa não faz mais sentido (a adiada vale até ser resolvida).
+    if (!pauseActive(p, now)) {
+      current = notifyWaiting(current, station, now).day;
       continue;
     }
     if (p.askedAt === undefined) {

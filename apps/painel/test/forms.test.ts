@@ -201,6 +201,8 @@ describe("erros que sumiam (revisão 2026-11-13)", () => {
     expect(errorMessage(new ApiError(409, "pause_back_before_start"))).toMatch(/volta/);
     expect(errorMessage(new ApiError(409, "station_already_paused"))).toMatch(/já tem uma pausa/);
     expect(errorMessage(new ApiError(409, "pause_has_waiting"))).toMatch(/chegou no prazo/);
+    expect(errorMessage(new ApiError(409, "session_break"))).toMatch(/intervalo/);
+    expect(errorMessage(new ApiError(409, "pause_during_outage"))).toMatch(/sem sinal/);
   });
 });
 
