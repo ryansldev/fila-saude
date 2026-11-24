@@ -21,7 +21,7 @@ import {
 import { properName } from "@/lib/account";
 import { hour } from "@/lib/dates";
 import { type QueueHighlight, queueHighlight, queueSteps, type Step } from "@/lib/queue";
-import { entrySummary, nextStep, WORSENED_GUIDANCE } from "@/lib/texts";
+import { canCheckIn, entrySummary, nextStep, WORSENED_GUIDANCE } from "@/lib/texts";
 
 /**
  * Tela da fila de um atendimento: a senha bem grande, a posição e o tempo, a linha do tempo do dia
@@ -79,12 +79,12 @@ export default function QueueScreen() {
   const steps = queueSteps(en, sit);
   const { onCancel, leaving } = f.actionsOf(en, sit);
   const present = (sit.kind === "position" || sit.kind === "no_estimate") && sit.present;
-  const canCheckIn = ["position", "come", "no_estimate"].includes(sit.kind) && en.itemState === "remote";
+  const checkIn = canCheckIn(sit, en.itemState);
 
   const primary =
     sit.kind === "reception" ? (
       <Button text="ler o QR de novo" variant="secondary" onPress={() => router.push("/check-in")} />
-    ) : canCheckIn ? (
+    ) : checkIn ? (
       <Button text="cheguei na unidade" onPress={() => router.push("/check-in")} />
     ) : present ? (
       leaving ? (

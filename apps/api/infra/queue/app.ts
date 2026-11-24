@@ -4,6 +4,7 @@ import {
   fillFromReserve,
   holdsSlot,
   INACTIVE_ENTRY_STATES,
+  inManualMode,
   leaving,
   MAX_PER_ACCOUNT,
   refusalEnds,
@@ -244,7 +245,7 @@ export async function mine(db: TenantDb, patientId: string, now: number): Promis
       itemState: item?.state ?? null,
       estimate:
         day && item
-          ? estimate(day, item.id, now, { manualMode: false })
+          ? estimate(day, item.id, now, { manualMode: inManualMode(day) })
           : s?.state === "planned"
             ? { kind: "awaiting_start" }
             : null,

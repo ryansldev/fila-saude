@@ -1,5 +1,6 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { notice } from "infra/database/municipal/schema/notice";
+import { station } from "infra/database/municipal/schema/station";
 import { type Sending, sweepMunicipality } from "infra/notices/sweep";
 import { readDay } from "infra/queue/day";
 import webserver from "infra/webserver";
@@ -228,16 +229,67 @@ describe("avisos por push (T3.8, T2.4)", () => {
     expect(row).toMatchObject({ state: "sent", attempts: 1 });
   });
 
+  /** As estações dão sinal de vida em `at` (o painel aberto lê a estação a cada 3 s). */
+  const signal = (at: number) =>
+    db()
+      .update(station)
+      .set({ lastSignalAt: new Date(at) });
+  /** A varredura girando a cada minuto, com a unidade dando sinal, de `from` até `to`. */
+  async function sweepUntil(from: number, to: number, send = sender().send) {
+    for (let t = from; t <= to; t += 60_000) {
+      await signal(t);
+      await sweepMunicipality(db(), t, send);
+    }
+  }
+
   it("AD-076: passado o prazo do 'venha agora', a varredura avisa 'perdeu a vez' uma vez só", async () => {
-    const later = Date.now() + 31 * 60_000;
+    // Os testes acima saltam o relógio da varredura em 10 min sem sinal das estações (queda da unidade, que
+    // estende o prazo): a varredura vai até bem depois dos 30 min.
+    const start = Date.now();
+    const later = start + 45 * 60_000;
     const e = sender();
-    await sweepMunicipality(db(), later, e.send);
+    await sweepUntil(start, later, e.send);
     expect(await patientOf("Carla")).toEqual(["queue_opened", "come_now", "turn_lost"]);
     expect(e.sent.filter((x) => x.data.kind === "turn_lost").map((x) => x.for)).toEqual(["ExponentPushToken[Carla]"]);
     const day = await readDay(db(), c.sessionId);
     const carla = day?.items.find((i) => i.entryId === entries.Carla);
-    expect(day?.comeNow?.find((a) => a.itemId === carla?.id)?.turnLostAt).toBe(later);
-    await sweepMunicipality(db(), later + 60_000, sender().send);
+    expect(day?.comeNow?.find((a) => a.itemId === carla?.id)?.turnLostAt).toBeGreaterThan(start);
+    await sweepUntil(later + 60_000, later + 60_000);
     expect(await patientOf("Carla")).toEqual(["queue_opened", "come_now", "turn_lost"]);
+  });
+
+  it("PV5: unidade sem sinal por mais de 2 min entra em modo manual; o sinal volta e a queda fecha", async () => {
+    const t0 = ((await readDay(db(), c.sessionId))?.lastSweepAt ?? Date.now()) + 60_000;
+    await sweepUntil(t0, t0);
+    // Sem sinal desde t0: 3 min depois a unidade caiu.
+    await sweepMunicipality(db(), t0 + 3 * 60_000, sender().send);
+    expect((await readDay(db(), c.sessionId))?.outages?.at(-1)).toEqual({ start: t0, end: null });
+    const mine = await app("GET", `/v1/municipalities/${c.slug}/mine`, accounts.Davi?.cookie);
+    expect(mine.body[0]?.estimate).toEqual({ kind: "manual_mode" });
+    await sweepUntil(t0 + 4 * 60_000, t0 + 4 * 60_000);
+    expect((await readDay(db(), c.sessionId))?.outages?.at(-1)).toEqual({ start: t0, end: t0 + 4 * 60_000 });
+  });
+
+  it("PV5: a estação lida no painel dá sinal de vida", async () => {
+    await db().update(station).set({ lastSignalAt: null }).where(eq(station.id, c.e1));
+    const before = Date.now();
+    const op = await c.request("GET", `/v1/panel/stations/${c.e1}/operation`, c.nurse);
+    expect(op.status).toBe(200);
+    const [row] = await db().select().from(station).where(eq(station.id, c.e1));
+    expect(row?.lastSignalAt?.getTime()).toBeGreaterThanOrEqual(before - 1000);
+  });
+
+  it("PV5: o servidor reiniciado depois de mais de 3 min fora do ar conta como queda; um giro lento não", async () => {
+    const before = (await readDay(db(), c.sessionId))?.lastSweepAt ?? 0;
+    const slow = before + 10 * 60_000;
+    await signal(slow);
+    await sweepMunicipality(db(), slow, sender().send, () => {}, 0);
+    const outages = (await readDay(db(), c.sessionId))?.outages?.length;
+    const back = slow + 20 * 60_000;
+    await signal(back + 60_000);
+    await sweepMunicipality(db(), back + 60_000, sender().send, () => {}, back);
+    const day = await readDay(db(), c.sessionId);
+    expect(day?.outages?.length).toBe((outages ?? 0) + 1);
+    expect(day?.outages?.at(-1)).toEqual({ start: slow, end: back });
   });
 });

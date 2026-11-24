@@ -1083,7 +1083,7 @@ export const ITEM_TRANSITIONS: Transition<ItemState>[] = [
     textOf: "Remoto (fila do dia)",
     event: "Sessão encerrada",
     for: "reassigned",
-    condition: "Perdeu o prazo de chegada durante período de contingência registrado",
+    condition: "Perdeu o prazo de chegada durante uma queda, registrada ou percebida pelo sistema",
     effects: "Push",
     rule: "",
     spec: "contingencia",

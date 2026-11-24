@@ -70,7 +70,7 @@ A sessão só encerra quando o admin a encerra. No horário de fim, o painel lem
 QUANDO a sessão for encerrada, O SISTEMA DEVE, para cada um ainda na fila:
 - já foi **atendido** em alguma etapa do dia → remanejado, nunca faltoso;
 - estava **presente** → remanejado;
-- estava **remoto** e perdeu o prazo de chegada → falta, exceto se o prazo, com o relógio parado durante um período de contingência registrado, ainda não tinha acabado (remanejado, RN-CONT-03);
+- estava **remoto** e perdeu o prazo de chegada → falta, exceto se o prazo, com o relógio parado durante uma queda, registrada ou percebida pelo sistema, ainda não tinha acabado (remanejado, RN-CONT-03);
 - os outros → remanejado.
 
 *Decisões: AD-041, AD-033, AD-076.*

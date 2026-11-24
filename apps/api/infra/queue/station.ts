@@ -32,6 +32,7 @@ import { type ActionContext, runAction } from "infra/panel/action";
 import { allowed, type Caveats } from "infra/panel/guard";
 import { inSession, readDay } from "./day";
 import { entryNames } from "./panel";
+import { stationSignal } from "./signal";
 
 const IN_QUEUE = 3;
 /** Sem cor confirmada (ainda não triado), o tempo-alvo da pílula "o mais antigo". */
@@ -132,6 +133,7 @@ const canClassify = (ctx: ActionContext, unitId: string) => allowed(ctx.actor.pr
 export async function stationOperation(ctx: ActionContext, stationId: string): Promise<StationOperation> {
   const e = await requireStation(ctx.db, stationId);
   if (!(await allowed(ctx.actor.profiles, OPERATE, e.unitId, caveatsOf(e)))) throw new ApiError(403, "no_permission");
+  await stationSignal(ctx.db, stationId, ctx.now);
   const s = await openSession(ctx.db, stationId);
   return build(ctx.db, e, s, s ? await readDay(ctx.db, s.id) : null, ctx.now, await canClassify(ctx, e.unitId));
 }
@@ -196,6 +198,7 @@ export async function commandInStation(
       data: (r) => ({ command, before, after: r.called?.ticket ?? null }),
     },
     async (tx) => {
+      await stationSignal(tx, stationId, ctx.now);
       const s = await openSession(tx, stationId);
       if (!s) throw new ApiError(409, "session_closed", undefined, "Nenhuma sessão aberta nesta estação.");
       return inSession(tx, s.id, async (c) => {
