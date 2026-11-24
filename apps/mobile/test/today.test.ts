@@ -34,12 +34,12 @@ describe("a aba hoje", () => {
     ]);
   });
 
-  it("RN-SES-05: modo manual no bilhete e na linha: procure a recepção, sem o QR (a TV está fora do ar)", () => {
+  it("RN-SES-05: modo manual no bilhete e na linha: procure a recepção (o QR continua, a unidade pode tê-lo)", () => {
     const manual: Situation = { kind: "no_estimate", present: false, manual: true };
     expect(ticketCardFor({ ticket: "C-003", itemState: "remote" }, manual)).toEqual({
       banner: "procure a recepção",
       ticket: "C-003",
-      button: null,
+      button: "qr",
     });
     expect(rowFor(manual)).toEqual({ box: null, sentence: "modo manual: procure a recepção" });
   });

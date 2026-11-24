@@ -25,11 +25,9 @@ export type Situation =
   | { kind: "left" }
   | { kind: "cancelled" };
 
-/** O botão "cheguei na unidade": em casa e na fila; nunca em modo manual (sem a TV não há QR, RN-SES-05). */
+/** O botão "cheguei na unidade": em casa e na fila, também em modo manual (a unidade sem TV ainda tem QR, QP5). */
 export function canCheckIn(sit: Situation, itemState: string | null): boolean {
-  if (itemState !== "remote") return false;
-  if (sit.kind === "no_estimate") return !sit.manual;
-  return sit.kind === "position" || sit.kind === "come";
+  return itemState === "remote" && (sit.kind === "position" || sit.kind === "come" || sit.kind === "no_estimate");
 }
 
 /** T3.4 / RN-ETA / RN-FILA-05: o que a tela mostra para cada entrada, olhando o estado e o relógio. */

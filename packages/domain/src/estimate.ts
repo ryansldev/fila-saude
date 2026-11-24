@@ -215,7 +215,8 @@ export function comeNowNotices(day: SessionDay, now: number, options: Options): 
 /**
  * AD-076: "perdeu a vez" para o remoto cujo prazo de chegada do "venha agora" acabou (fora de
  * contingência; urgência confirmada não perde a vez), uma vez por "venha agora". A hora do aviso fica no
- * registro do "venha agora" em `day.comeNow`. Em modo manual nada é enviado nem registrado.
+ * registro do "venha agora" em `day.comeNow`. Com o sinal da unidade parado o atraso espera (PV5, `lateness`).
+ * Em modo manual nada é enviado nem registrado.
  */
 export function turnLostNotices(day: SessionDay, now: number, options: Options): { day: SessionDay; events: Event[] } {
   if (options.manualMode || day.state !== "open") return { day, events: [] };

@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull, lt, max, or } from "drizzle-orm";
+import { and, count, eq, isNotNull, isNull, lt, max, or } from "drizzle-orm";
 import { service } from "infra/database/municipal/schema/service";
 import { session, sessionStation } from "infra/database/municipal/schema/session";
 import { station } from "infra/database/municipal/schema/station";
@@ -21,23 +21,26 @@ export async function stationSignal(db: TenantDatabase, stationId: string, now: 
     );
 }
 
-const latest = (...dates: (Date | null | undefined)[]): number | null => {
-  const times = dates.filter((d): d is Date => d instanceof Date).map((d) => d.getTime());
-  return times.length === 0 ? null : Math.max(...times);
-};
+const time = (d: Date | null | undefined): number | null => (d instanceof Date ? d.getTime() : null);
 
-/** O último sinal de vida da unidade da sessão (PV5 da AD-076): as TVs pareadas e as estações da sessão. */
-export async function sessionSignal(db: TenantDatabase, sessionId: string): Promise<{ lastSignalAt: number | null }> {
+/**
+ * O sinal de vida da unidade da sessão (PV5 da AD-076): se ela tem TV pareada, o último sinal das TVs e o
+ * das estações da sessão. A regra de qual conta é do domínio (`trackOutage`).
+ */
+export async function sessionSignal(
+  db: TenantDatabase,
+  sessionId: string,
+): Promise<{ hasTv: boolean; tvSignalAt: number | null; stationSignalAt: number | null }> {
   const [stations] = await db
     .select({ at: max(station.lastSignalAt) })
     .from(sessionStation)
     .innerJoin(station, eq(station.id, sessionStation.stationId))
     .where(and(eq(sessionStation.sessionId, sessionId), isNull(station.archivedAt)));
   const [tvs] = await db
-    .select({ at: max(tv.lastSignalAt) })
+    .select({ n: count(tv.id), at: max(tv.lastSignalAt) })
     .from(session)
     .innerJoin(service, eq(service.id, session.serviceId))
     .innerJoin(tv, eq(tv.unitId, service.unitId))
     .where(and(eq(session.id, sessionId), isNull(tv.revokedAt), isNotNull(tv.pairedAt)));
-  return { lastSignalAt: latest(stations?.at, tvs?.at) };
+  return { hasTv: (tvs?.n ?? 0) > 0, tvSignalAt: time(tvs?.at), stationSignalAt: time(stations?.at) };
 }
