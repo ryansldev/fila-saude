@@ -155,7 +155,7 @@ export function stageOrder(day: SessionDay, stage: Stage, items: QueueItem[], go
     const c = lastCall.get(i.id);
     if (!c || waiting(i)) return [];
     // Voltou a esperar na etapa depois da chamada (pulo, "Vou sair") e saiu da fila depois: não guarda a vaga.
-    const backAfter = (t: number | null) => t !== null && t > c.at;
+    const backAfter = (t: number | null | undefined) => t != null && t > c.at;
     if (i.stage === stage && (backAfter(i.presentSince) || backAfter(i.leftAt))) return [];
     return [c.orderKey ? { ...i, ...c.orderKey } : i];
   });
