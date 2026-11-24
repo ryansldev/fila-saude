@@ -10,7 +10,6 @@ Aprovadas e levadas à **AD-070**: CA1, F1 (idoso), S5, RV1, RV2, PD-21, G7, I3.
 
 | # | Sua resposta | O que fica para quando voltarmos |
 | --- | --- | --- |
-| RV7 | "O que a lei mandar" | O Estatuto da Pessoa Idosa (Lei 10.741/2003, art. 3º, § 2º, incluído pela Lei 13.466/2017) dá aos 80+ prioridade especial **sobre os demais idosos**; a Lei 10.048/2000 não ordena os outros grupos entre si. Ou seja: 80+ só antes dos 60–79, o contrário do código de hoje. Mudar a regra (spec e domínio) e confirmar com o advogado (D5) |
 | G9/G10 | A estimativa vem dos atendimentos já feitos na mesma sessão (ou em sessões parecidas); sem nenhum, uma estimativa inicial fixa definida por quem criou a sessão; a partir do 1º atendimento, ele já conta | Redesenhar o tempo médio (RN-ETA) com essa regra: valor inicial na sessão, troca pelo dado real no 1º atendimento, uso de sessões parecidas |
 | H4 | Gosta da triagem atendendo só uma sessão, mas não sabe se é válido: em UPA uma sala de triagem atende vários problemas | Investigar como as UBS e UPAs do piloto organizam a triagem (junto do D4) |
 | L3 | Não entendeu | Explicado na conversa de 2026-11-19; aguarda a sua resposta |
@@ -61,8 +60,7 @@ Aprovadas e levadas à **AD-070**: CA1, F1 (idoso), S5, RV1, RV2, PD-21, G7, I3.
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
-| E1 | "A vez passou" no encerramento | Definição literal da fila do dia (alguém depois da pessoa foi chamado na etapa atual dela), contando só chamadas feitas enquanto ela estava fora (AD-010). Quem voltou para remoto no 2º pulo sem ninguém chamado depois é remanejado, não faltoso | Contar qualquer chamada posterior | Algumas faltas viram remanejamentos (ou o contrário) |
-| E2 | Contingência registrada depois do encerramento (RN-CONT-03) | A falta só é apagada se todas as chamadas que passaram a vez caíram dentro do período registrado. O item volta de "saiu da fila" para "remanejado" (o contrato do item não tem linha de reversão) | Apagar se qualquer chamada caiu no período | Menos faltas apagadas |
+| E2 | Contingência registrada depois do encerramento (RN-CONT-03) | A falta pelo prazo de chegada é apagada se, com o relógio parado durante o período registrado (AD-076), o prazo ainda não tinha acabado no encerramento; a de 2 pulos (que sai na hora do pulo) não. O item volta de "saiu da fila" para "remanejado" (o contrato do item não tem linha de reversão) | Apagar se o período cruzou o prazo | Menos faltas apagadas |
 | E3 | Período de contingência | Só aceita período já terminado (início < fim ≤ agora); recusa sessão planejada; em sessão aberta ou cancelada só registra; em sessão encerrada só recalcula no mesmo dia local do encerramento | Aceitar período em aberto | Quem registra a contingência durante a queda precisa esperar a volta |
 | E4 | Novo remanejamento | A entrada recebe a origem da sessão atual e o contador de recusas volta a 0 | Manter a origem e as recusas do 1º remanejamento | Quem é remanejado várias vezes ganha preferência de novo a cada vez |
 | E5 | "Outra data" (RN-REM-03) | Vale só quando a sessão em que a pessoa está é privada ou regulada (pela visibilidade da sessão, não pela origem). Remanejado de pública alocado numa privada pode usar; numa pública, não. Também entra em "sessões recusadas", como a recusa normal | Decidir pela origem | O botão aparece ou some em casos de borda |
@@ -194,13 +192,12 @@ Pedido seu: revisão rígida do código todo. Quatro revisores (domínio, API, p
 | RV5 | Nascimento depois da verificação | A conta verificada não muda a data pelo app (`birth_date_verified`); só a recepção | Desfazer a verificação | Correção de data pede ida à recepção |
 | RV6 | Sessão aberta esquecida de outro dia | Continua na lista da fila do dia até alguém encerrar; a estação opera a sessão aberta mais recente | Encerrar sozinha (worker) | Precisa encerrar à mão |
 
-**Respondidas por você (2026-11-13):** RV8 → fila nova depois da triagem; RV9 → só o enfermeiro confirma, com as cores do Acolhimento com Classificação de Risco na fatia 3; RV10 → fim do seu nível; RV11 → todo remoto sem ninguém na frente (AD-056, implementado). RV7 continua aberta (ver abaixo).
+**Respondidas por você (2026-11-13):** RV8 → fila nova depois da triagem; RV9 → só o enfermeiro confirma, com as cores do Acolhimento com Classificação de Risco na fatia 3; RV10 → fim do seu nível; RV11 → todo remoto sem ninguém na frente (AD-056, implementado). RV7 resolvida pela lei (AD-075).
 
 **Precisa de você (regra da spec ambígua; o código segue como estava):**
 
 | # | Pergunta | Hoje |
 | --- | --- | --- |
-| RV7 | 80+ vem antes de todos os grupos de prioridade legal, ou só antes dos idosos 60–79? | Antes de todos. **Você (2026-11-19): o que a lei mandar** (ver o alinhamento no topo) |
 | RV8 | Quem passa da triagem ao atendimento entra com a janela protegida (fica atrás dos K presentes)? RN-TRI-04 diz que vale a posição original | Entra com a janela |
 | RV9 | Alocar paciente confirma o risco sugerido (vira urgência confirmada)? E1 diz que só o enfermeiro confirma | Confirma |
 | RV10 | Quem perde a vez vai para o fim de todos os presentes, ou só do seu nível de risco/prioridade? | Fim do seu nível |
@@ -223,7 +220,7 @@ Execução rápida, como as fatias anteriores. Plano: [plano-fatia-3-triagem](..
 | H7 | AD-057 em modo manual | Sem "venha agora" não há prazo, então remoto não perde a vez por atraso; só os pulos decidem | Usar a hora de abertura da sessão como início do prazo | Baixo: modo manual é exceção |
 | H8 | Chave do push "venha agora" | Passou a incluir a hora (`venha_agora:item:etapa:em`), porque "Vou sair" recomeça e pode haver um segundo "venha agora" na mesma etapa | Manter uma por etapa | Nenhum conhecido |
 
-H1 e H2 respondidas (AD-058, AD-059). RV7 continua aberta.
+H1 e H2 respondidas (AD-058, AD-059). RV7 resolvida pela lei (AD-075).
 
 ## Fatia 4 da v0.1 (2026-11-16)
 

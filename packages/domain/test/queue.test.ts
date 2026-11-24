@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { callNext } from "../src/call.ts";
 import * as domain from "../src/index.ts";
 import {
   checkIn,
@@ -7,6 +8,7 @@ import {
   givePriority,
   leaving,
   markAttendanceWithoutApp,
+  type QueueItem,
   type SessionDay,
   stayEligible,
   verifyAndMark,
@@ -67,7 +69,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     expect(order(d)).toEqual(["joao", "bruno", "ana"]);
   });
 
-  it("order: RN-ORD-04 late arrival", () => {
+  it("order: RN-ORD-04 late arrival (perdeu o prazo do 'venha agora', AD-076)", () => {
     let d = alreadyNotified(dayWith(["bruno", "ana", "joao"]), "bruno");
     d = enter(d, "ana");
     d = enter(d, "joao");
@@ -108,7 +110,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     expect(item(d, "ana").number).toBe(1);
   });
 
-  it("order: coming back loses the turn only if it passed in the order", () => {
+  it("order: coming back loses the turn only if the arrival deadline passed (AD-076)", () => {
     let d = dayWith(["ana", "joao", "bruno"]);
     for (const p of ["ana", "joao", "bruno"]) d = enter(d, p);
     d = leave(d, "ana", T + MIN);
@@ -119,7 +121,7 @@ describe("janela protegida e atraso (portados do protótipo)", () => {
     expect(item(d, "ana").number).toBe(1); // não perdeu a vez
     d = alreadyNotified(leave(d, "ana", T + 4 * MIN), "ana", T + 4 * MIN, 1);
     expect(order(d)[0]).toBe("joao");
-    d = call(d, "joao", T + 5 * MIN); // vinha depois dela: agora a vez passou
+    d = call(d, "joao", T + 5 * MIN); // o prazo dela (1 min) já acabou: a vez passou
     d = enter(d, "ana", T + 6 * MIN);
     expect(item(d, "ana").number).toBe(4);
   });
@@ -289,23 +291,6 @@ describe("RN-FILA-05: conferência antes de entrar na fila presencial", () => {
   });
 });
 
-describe("RN-CONT-03: contingência", () => {
-  it("RN-CONT-03: chamadas no período de contingência não contam para o atraso de quem estava remoto", () => {
-    const scenario = (callAt: number) => {
-      let d = dayWith(["bruno", "ana", "joao"], { contingencies: [{ start: T + 60 * MIN, end: T + 120 * MIN }] });
-      d = alreadyNotified(d, "bruno");
-      d = enter(d, "ana");
-      d = enter(d, "joao");
-      d = call(d, "ana", callAt);
-      return enter(d, "bruno", T + 135 * MIN);
-    };
-    expect(item(scenario(T + 60 * MIN), "bruno").number).toBe(1); // início do período: dentro
-    expect(item(scenario(T + 120 * MIN), "bruno").number).toBe(1); // fim do período: dentro
-    expect(item(scenario(T + 120 * MIN + 1), "bruno").number).toBe(4); // logo depois: conta
-    expect(item(scenario(T + 60 * MIN - 1), "bruno").number).toBe(4); // logo antes: conta
-  });
-});
-
 describe("Review Focus 3: sair e voltar repetidas vezes", () => {
   it('RN-PRES-02/C34: 5 ciclos de "Vou sair" e check-in com chamadas no meio nunca travam a fila', () => {
     const ids = ["ana", "joao", "bruno", "dora", "edu", "fabi", "gil", "hugo"];
@@ -438,5 +423,113 @@ describe("presenteDesde (Fila do dia: há quanto tempo está na unidade)", () =>
     expect(item(d, "ana").presentSince).toBeNull();
     d = apply(markAttendanceWithoutApp(d, { itemId: "ana" }, T + 120_000));
     expect(item(d, "ana").presentSince).toBe(T + 120_000);
+  });
+});
+
+describe("RV7: 80+ antes dos demais idosos na fila de verdade (Lei 10.741, art. 3º, § 2º)", () => {
+  const groups = (g: QueueItem["priority"]["groups"]) => ({ groups: g, verified: false, verifiedAt: null });
+  // Senhas: bia 1 (70 anos), gil 2 (gestante), ana 3 (85 anos), caio 4 (sem prioridade).
+  const day = () => {
+    let d = dayWith(["bia", "gil", "ana", "caio"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]) });
+    d = withItem(d, "gil", { priority: groups(["pregnant"]) });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]) });
+    // Já presentes, sem as travas da janela protegida (que valem à parte).
+    for (const id of ["bia", "gil", "ana", "caio"]) d = withItem(d, id, { state: "present", presentSince: T });
+    return d;
+  };
+
+  it("a vaga de idoso da senha 1 vai à Ana (85); a Gil fica no lugar dela", () => {
+    expect(order(day())).toEqual(["ana", "gil", "bia", "caio"]);
+  });
+
+  it("a Ana (85) que chega atrás da Bia (70) pela janela não tira a Bia da frente da Gil", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "gil", { priority: groups(["pregnant"]), state: "present", presentSince: T });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]) });
+    expect(order(d)).toEqual(["bia", "gil"]);
+    d = enter(d, "ana");
+    expect(item(d, "ana").lockedBehind).toEqual(["bia"]);
+    expect(order(d)).toEqual(["bia", "gil", "ana"]);
+  });
+
+  it("chamada a Ana (85), a Bia (70) fica no lugar que era da Ana: a ordem não muda depois da chamada", () => {
+    let d = day();
+    d = withItem(d, "ana", { state: "called" });
+    d = freeze({ ...d, calls: [{ itemId: "ana", stage: "care", stationId: "e1", at: T + MIN }] });
+    expect(order(d)).toEqual(["gil", "bia", "caio"]);
+  });
+
+  it("a Ana (85) chamada e depois triada (risco e número novos) continua com a vaga em que foi chamada", () => {
+    let d = apply(callNext(day(), { stationId: "e1" }, T + MIN));
+    expect(item(d, "ana").state).toBe("called");
+    d = withItem(d, "ana", { confirmedUrgency: true, risk: "attention", number: 10 });
+    expect(order(d)).toEqual(["gil", "bia", "caio"]);
+  });
+
+  it("a Ana (85) chamada que voltou para casa não guarda vaga: ela a ocupa de novo só quando voltar", () => {
+    let d = apply(callNext(day(), { stationId: "e1" }, T + MIN));
+    d = withItem(d, "ana", { state: "remote", presentSince: null, leftAt: T + 2 * MIN });
+    expect(order(d)).toEqual(["bia", "gil", "caio"]);
+  });
+
+  it("a Ana (85) chamada que voltou a esperar e depois saiu da fila não volta a guardar a vaga", () => {
+    let d = apply(callNext(day(), { stationId: "e1" }, T + MIN));
+    d = withItem(d, "ana", { state: "left_queue", presentSince: T + 3 * MIN });
+    expect(order(d)).toEqual(["bia", "gil", "caio"]);
+  });
+
+  it("no 1º pulo a Ana (85) não guarda vaga enquanto se calcula a trava dela", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "gil", { priority: groups(["pregnant"]), state: "present", presentSince: T });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]), state: "present", presentSince: T });
+    d = apply(callNext(d, { stationId: "e1" }, T + MIN));
+    d = freeze(stayEligible(d, "ana", T + 2 * MIN, { applyDelay: false }).state);
+    expect(item(d, "ana").lockedBehind).toEqual(["bia"]);
+  });
+
+  it("travada atrás da Bia (70), a Ana (85) passa à frente do Caio (70) que veio depois", () => {
+    let d = dayWith(["bia", "caio", "ana"]);
+    d = withItem(d, "bia", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "caio", { priority: groups(["elderly"]), state: "present", presentSince: T });
+    d = withItem(d, "ana", { priority: groups(["elderly80"]) });
+    d = enter(d, "ana");
+    expect(order(d)).toEqual(["bia", "ana", "caio"]);
+  });
+});
+
+describe('AD-076: perde a vez só quem não chega no prazo do "venha agora"', () => {
+  it("o prazo padrão é de 30 min", () => {
+    expect(DEFAULT_CONFIG.arrivalDeadlineMin).toBe(30);
+  });
+
+  it("dentro do prazo mantém o lugar, mesmo com alguém de senha maior já chamado", () => {
+    let d = alreadyNotified(dayWith(["ana", "joao"]), "ana", T, 30);
+    d = enter(d, "joao");
+    d = call(d, "joao", T + MIN);
+    d = enter(d, "ana", T + 29 * MIN);
+    expect(item(d, "ana").number).toBe(1);
+  });
+
+  it("passado o prazo perde a vez, mesmo sem ninguém chamado", () => {
+    let d = alreadyNotified(dayWith(["ana", "joao"]), "ana", T, 30);
+    d = enter(d, "ana", T + 30 * MIN);
+    expect(item(d, "ana").number).toBe(3);
+  });
+
+  it("contingência registrada durante o prazo: o relógio do prazo para durante a queda", () => {
+    let d = dayWith(["ana", "joao"], { contingencies: [{ start: T + 10 * MIN, end: T + 20 * MIN }] });
+    d = alreadyNotified(d, "ana", T, 30);
+    expect(item(enter(d, "ana", T + 39 * MIN), "ana").number).toBe(1);
+    expect(item(enter(d, "ana", T + 40 * MIN), "ana").number).toBe(3);
+  });
+
+  it("urgência confirmada não perde a vez pelo prazo", () => {
+    let d = alreadyNotified(dayWith(["ana", "joao"]), "ana", T, 30);
+    d = withItem(d, "ana", { confirmedUrgency: true, risk: "urgent" });
+    d = enter(d, "ana", T + 60 * MIN);
+    expect(item(d, "ana").number).toBe(1);
   });
 });

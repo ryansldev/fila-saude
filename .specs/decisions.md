@@ -15,7 +15,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-007 | Triagem como etapa própria | ativa |
 | AD-008 | Protótipo com fluxo principal e modo livre | ativa |
 | AD-009 | Um "saia de casa" por etapa | ativa |
-| AD-010 | Atraso pela ordem real | ativa |
+| AD-010 | Atraso pela ordem real | substituída por AD-076 |
 | AD-011 | Visibilidade por sessão | ativa |
 | AD-012 | TV só com senhas | ativa |
 | AD-013 | Inscrição pública já confirmada | ativa |
@@ -26,7 +26,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-018 | Inscrever outra pessoa | ativa (efeito no check-in pela AD-054) |
 | AD-019 | E-mail obrigatório; recepção redefine acesso | ativa |
 | AD-020 | Contingência | ativa |
-| AD-021 | 3º pulo sempre gera falta, anulável | ativa |
+| AD-021 | Sair da fila por pulos sempre gera falta, anulável | ativa |
 | AD-022 | Destaque da TV configurável | ativa |
 | AD-023 | Limite da recepção sobre a prioridade | ativa |
 | AD-024 | Prioridade autodeclarada é conferida | ativa (efeito no check-in pela AD-054) |
@@ -62,7 +62,7 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-054 | Conferência antes de entrar na fila presencial | ativa |
 | AD-055 | Uma leitura do QR vale para todas as pessoas da conta | ativa |
 | AD-056 | Decisões da revisão de 2026-11-13 | ativa |
-| AD-057 | Prazo de chegada depois do "venha agora" | ativa |
+| AD-057 | Prazo de chegada depois do "venha agora" | parcial (AD-076) |
 | AD-058 | Triagem pelo Manchester padrão (cinco cores) | ativa |
 | AD-059 | Vermelho fica na unidade; encaminhar à emergência é à parte | ativa |
 | AD-060 | Refazer o questionário em casa no dia, com alerta de declaração falsa | ativa |
@@ -80,6 +80,8 @@ Registro curto de cada decisão: o que, por quê e quais regras muda. A regra em
 | AD-072 | Rechamar também manda push | ativa |
 | AD-073 | Push no Android: sempre o coração azul, sem imagem grande | ativa |
 | AD-074 | Push sai na hora do evento; chamada que perdeu a hora não sai | ativa |
+| AD-075 | 80+ antes dos demais idosos, sem hierarquia entre grupos (vagas dos idosos) | ativa |
+| AD-076 | Perde a vez só quem não chega no prazo; 2 pulos tiram da fila | ativa |
 | PD-01..PD-31 | Arquitetura do MVP | ativas (ver [plan](features/mvp-filas/plan.md); PD-14..PD-31 detalhadas nos planos das fases 1B e 2) |
 
 ## Produto
@@ -121,7 +123,7 @@ Protótipo = apresentação + fluxo principal único + modo livre, com botão qu
 Antes da triagem, o aviso usa só o tempo até a triagem; a previsão da consulta aparece à parte. **Por quê:** o aviso da consulta nunca disparava.
 
 ### AD-010 · Atraso pela ordem real
-2026-11-04 · ativa · Muda: RN-ORD (atraso), RN-FALTA-01
+2026-11-04 · substituída por AD-076 · Muda: RN-ORD (atraso), RN-FALTA-01
 Perde a vez só quem teve chamado, na mesma etapa, alguém que vinha depois na ordem real. **Por quê:** urgente com número maior tirava a vez de quem chegava.
 
 ### AD-011 · Visibilidade por sessão
@@ -164,7 +166,7 @@ O app pergunta "para quem é?"; classificação, prioridade e falta são da pess
 2026-11-10 · ativa · Muda: RN-CONT-01, RN-CONT-02, RN-CONT-04
 Lista do dia impressa, chamada pelo papel e reconciliação na volta, com motivo e sinais de vida. **Por quê:** o piloto não tem alta disponibilidade.
 
-### AD-021 · 3º pulo sempre gera falta, anulável
+### AD-021 · Sair da fila por pulos sempre gera falta, anulável
 2026-11-10 · ativa · Muda: RN-CHAM-03, RN-FALTA-02
 **Por quê:** o sistema não distingue quem foi embora de quem não ouviu; a recepção corrige o caso injusto.
 
@@ -245,7 +247,7 @@ Exceção: lançado regulado leva a falta pelo CPF da regulação. **Por quê:**
 
 ### AD-041 · "A vez passou" na etapa atual
 2026-11-10 · ativa · Muda: RN-SES-02, RN-FALTA-01
-No encerramento, quem já foi atendido numa etapa não leva falta; 3 pulos seguem valendo.
+No encerramento, quem já foi atendido numa etapa não leva falta; a falta por pulos segue valendo.
 
 ### AD-042 · Eventos de fila e CSV de métricas
 2026-11-10 · ativa · Muda: RNF-MET-01, modelo
@@ -307,7 +309,7 @@ Quem lê o QR marca a presença de todas as pessoas da conta com senha nas sess�
 (1) **O atendimento é uma fila nova:** quem sai da triagem recebe o próximo número e entra atrás de quem já estava no atendimento, dentro do seu nível de risco e prioridade, com a mesma senha. (2) **Só o enfermeiro confirma risco:** o questionário do app é pré-triagem (sugerido); o agendador não confirma na alocação. Na triagem (fatia 3), o enfermeiro classifica pelas cores do Acolhimento com Classificação de Risco do Ministério da Saúde. (3) **Quem perde a vez** vai para o fim do seu nível de risco e prioridade. (4) **"Venha agora"** vale para todo remoto sem ninguém na frente, não só urgência confirmada. **Por quê:** decisões suas na revisão (RV8–RV11).
 
 ### AD-057 · Prazo de chegada depois do "venha agora"
-2026-11-14 · ativa · Muda: AD-010, RN-ORD (atraso), RN-ETA-06
+2026-11-14 · parcial (substituída em parte pela AD-076: perder a vez agora é só não chegar no prazo, padrão 30 min) · Muda: AD-010, RN-ORD (atraso), RN-ETA-06
 O remoto só perde a vez por chamadas feitas depois do fim do prazo de chegada (padrão 15 min, config da unidade), contado da hora em que recebeu o "venha agora". Quem nunca recebeu "venha agora" não perde a vez porque a fila andou. Quem estoura o prazo deixa de contar à frente dos outros. **Por quê:** com a regra antiga, o 10º remoto podia perder a vez porque o balcão andou rápido, sem nunca ter sido avisado para vir. Custo: em modo manual não há "venha agora", então remoto não perde a vez por atraso; quem decide é o pulo.
 
 ### AD-058 · Triagem pelo Manchester padrão (cinco cores)
@@ -376,7 +378,15 @@ Todo aviso de push no Android leva só o símbolo do coração com a cruz (o do 
 
 ### AD-074 · Push sai na hora do evento; chamada que perdeu a hora não sai
 2026-11-23 · ativa · Muda: AD-070 (G7), G14
-O aviso continua gravado na outbox, na mesma transação do evento (PD-49). Logo depois da resposta de cada escrita com município (mesmo com erro na resposta), a API envia os pendentes dele, sem segurar a resposta (`sendAfterWrites`, hook `onResponse`); pedidos durante um envio do mesmo município viram uma rodada a mais. A varredura de 60 s (G7) fica para as novas tentativas e os avisos do tempo ("saia de casa", "venha agora"). No envio, olhando o histórico da entrada no banco, não sai a chamada ("sua vez" ou rechamada) seguida de um "pulado" nem a seguida de uma chamada que ainda vale (enviada ou pendente); fica como `stale`. Com o envio na hora, chamada e rechamada saem cada uma no seu momento; só as atrasadas juntas (a Expo caiu, envio que falhou) viram uma, a última. A chamada só sai enquanto a fila do dia espera a pessoa entrar na sala daquela chamada (`awaitedItems`: item `called` sem o "Compareceu"); atendida, pulada, já na sala ou chamada em outra etapa, fica como `stale`. "Saia de casa" e "venha agora" só saem enquanto a pessoa espera em casa na mesma etapa (`remoteItems`). Sessão fechada ou cancelada não espera ninguém. "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" da mesma etapa que ainda vale, nem um "pulado" depois de uma chamada mais nova (em qualquer estado). Erro no envio sempre conta como tentativa: antes da chamada à Expo, com a mesma espera crescente; depois dela, a reserva de 5 min vence sozinha e, esgotadas as tentativas, o aviso fica `unconfirmed` (pode ter chegado), não `failed`. A Expo tem 10 s para responder e mais 10 s para o corpo; com o 200 e o corpo travado, o lote conta como enviado (nada sai duas vezes); corpo lido sem os recibos é falha. O resultado de cada aviso é gravado logo depois da Expo, antes de apagar os aparelhos recusados. O envio na hora e a varredura seguem enquanto o lote vier cheio (100). A ordem dos avisos é a de gravação (`notice.seq`), não `created_at`, que empata na mesma transação. O estado é lido fora da trava da sessão: uma mudança entre a leitura e o envio ainda deixa sair um aviso. **Pedido seu**, 2026-11-23 ("pq nn corrigiu a questao da fila?"): a nova tentativa de uma chamada não sai para quem já foi atendido. A Expo tem 10 s para responder; no desligamento, a API espera os envios em andamento e não começa outros. **Por quê:** você, 2026-11-23 ("faz o envio na hora do evento"): com a varredura, o "é a sua vez!" chegava até 60 s depois, e os avisos do mesmo minuto chegavam juntos e fora de ordem. Substitui a G14.
+O aviso continua gravado na outbox, na mesma transação do evento (PD-49). Logo depois da resposta de cada escrita com município (mesmo com erro na resposta), a API envia os pendentes dele, sem segurar a resposta (`sendAfterWrites`, hook `onResponse`); pedidos durante um envio do mesmo município viram uma rodada a mais. A varredura de 60 s (G7) fica para as novas tentativas e os avisos do tempo ("saia de casa", "venha agora"). No envio, olhando o histórico da entrada no banco, não sai a chamada ("sua vez" ou rechamada) seguida de um "pulado" nem a seguida de uma chamada que ainda vale (enviada ou pendente); fica como `stale`. Com o envio na hora, chamada e rechamada saem cada uma no seu momento; só as atrasadas juntas (a Expo caiu, envio que falhou) viram uma, a última. A chamada só sai enquanto a fila do dia espera a pessoa entrar na sala daquela chamada (`awaitedItems`: item `called` sem o "Compareceu"); atendida, pulada, já na sala ou chamada em outra etapa, fica como `stale`. "Saia de casa" e "venha agora" só saem enquanto a pessoa espera em casa na mesma etapa (`remoteItems`). Sessão fechada ou cancelada não espera ninguém. "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" da mesma etapa que ainda vale, nem um "pulado" depois de uma chamada mais nova (em qualquer estado). Erro no envio sempre conta como tentativa: antes da chamada à Expo, com a mesma espera crescente; depois dela, a reserva de 5 min vence sozinha e, esgotadas as tentativas, o aviso fica `unconfirmed` (pode ter chegado), não `failed`. A Expo tem 10 s para responder e mais 10 s para o corpo; com o 200 e o corpo travado, o lote conta como enviado (nada sai duas vezes); corpo lido sem os recibos é falha. O resultado de cada aviso é gravado logo depois da Expo, antes de apagar os aparelhos recusados. O envio na hora e a varredura seguem enquanto o lote vier cheio (100). A ordem dos avisos é a de gravação (`notice.seq`), não `created_at`, que empata na mesma transação. O estado é lido fora da trava da sessão: uma mudança entre a leitura e o envio ainda deixa sair um aviso. **Pedido seu**, 2026-11-23 ("pq nn corrigiu a questao da fila?"): a nova tentativa de uma chamada não sai para quem já foi atendido. No desligamento, a API espera os envios em andamento e não começa outros. **Por quê:** você, 2026-11-23 ("faz o envio na hora do evento"): com a varredura, o "é a sua vez!" chegava até 60 s depois, e os avisos do mesmo minuto chegavam juntos e fora de ordem. Substitui a G14.
+
+### AD-075 · 80+ antes dos demais idosos, sem hierarquia entre grupos (vagas dos idosos)
+2026-11-23 · ativa · Muda: RV7, RN-ORD (fila-do-dia), lista-espera (ordem da sugestão)
+Segue a lei: entre as pessoas idosas, os maiores de 80 anos vêm antes (Lei 10.741/2003, art. 3º, § 2º, incluído pela Lei 13.466/2017); entre os grupos da Lei 10.048/2000 não há hierarquia. Antes o código punha o 80+ antes de todos os grupos. Comparando duas pessoas de cada vez as duas regras formam um ciclo (80+ antes de 60–79, os dois empatados com uma gestante), então a regra vale na fila inteira (`orderItems`, `orderSuggestions`): já em ordem, dentro de cada bloco de quem tem prioridade com a mesma urgência e o mesmo risco, as vagas ocupadas por idosos vão primeiro aos 80+, cada grupo na ordem da senha (ou da data, na lista de espera); os outros grupos ficam no lugar da senha, inclusive o idoso de 60-79 que também é de outro grupo (aprovado por você em 2026-11-24); o 80+ de outro grupo continua com a vaga de idoso. O 80+ já chamado na etapa segue com a vaga que ocupou, pela chave da hora da chamada (a triagem pode mudar o risco e o número dele depois): o idoso de 60-79 que ele passou fica com o lugar dele, e a ordem não muda depois de cada chamada. Se ele volta a esperar na etapa (pulo, "Vou sair"), deixa de guardar a vaga e ocupa uma só pelo lugar de agora. O 80+ que a janela protegida trava atrás de um idoso de 60-79 não tira a vaga dele (as vagas se repartem entre quem já pode ser chamado). As vagas valem na ordem de chamada da estação, na sugestão de alocação e na posição de quem está em casa (estimativa, "saia de casa" e "venha agora"), para o 80+ em casa ser avisado na hora certa (você, 2026-11-24). Como as vagas só trocam idosos entre si, a posição dos outros grupos e de quem não tem prioridade não muda; a do idoso de 60-79 pode piorar quando entra um 80+, como já piora a de quem não tem prioridade quando entra alguém com prioridade. Chamar outra pessoa não tira a vez de ninguém (AD-076), então as vagas não entram na perda de vez. **Por quê:** você, 2026-11-19 ("o que a lei mandar") e 2026-11-23 ("é só seguir o que está previsto em lei"). Confirmar a leitura com o advogado (D5).
+
+### AD-076 · Perde a vez só quem não chega no prazo; 2 pulos tiram da fila
+2026-11-24 · ativa · Muda: AD-010, AD-057, RN-ORD (atraso), RN-ETA-06, RN-CHAM-03, RN-SES-02, RN-FALTA-01, RN-FALTA-02, RN-CONT-03
+Chamar outra pessoa não tira a vez de ninguém. O remoto perde a vez só quando recebe o "venha agora" e não chega no prazo de chegada (padrão 30 min, antes 15; config da unidade); o aviso diz o prazo, e quando o prazo acaba ele recebe uma vez o push "você perdeu a vez". Ao chegar depois, vai para o fim. Quem chega no prazo mantém o lugar, sejam quais forem as chamadas feitas nesse tempo, mas a vez não é intocável: urgências e prioridades que chegam passam à frente pela ordem de sempre. O relógio do prazo para durante um período de contingência registrado (uma queda de 10 min estende o prazo em 10 min). "Não compareceu": no 1º, a vez fica guardada: volta atrás dos próximos K e é chamado de novo (como antes); no 2º do dia, somando as etapas, sai da fila com falta, anulável pela recepção (AD-021), também com urgência confirmada (antes o 2º voltava a remoto e só o 3º tirava da fila). Falta no encerramento: quem perdeu o prazo e não foi atendido no dia; perdeu o prazo e foi atendido depois não é falta. Sem "venha agora" (modo manual, varredura fora do ar) não há prazo: quem não vem é remanejado sem falta. A urgência confirmada não perde a vez pelo prazo, mas, se não chegar até o encerramento, leva falta como os outros (você, 2026-11-24, PV6 e PV7). O push "perdeu a vez" sai mesmo durante uma queda ainda não registrada; a correção aprovada é o sistema perceber a queda sozinho (sem sinal da TV e das estações, RN-SES-05, ou com a varredura parada) e parar o relógio do prazo, a fazer numa fatia própria (você, 2026-11-24, PV5). **Por quê:** você, 2026-11-24 ("se uma gestante for chamada, isso nao pode fazer com que a Bia perca a vez. A Bia só pode perder a vez se nao chegar a unidade no prazo estimado ou se for chamada diversas vezes e nn comparecer"; "Esse prazo precisa ser relativamente longo"; "chama a primeira vez, se nao compareceu, atende o próximo e ela fica com a vez guardada, portanto, vai ser chamada novamente (segunda vez), se nao compareceu, é dada falta, pode sair da fila"; "se nao foi das 2 vezes, tira da fila"; push no fim do prazo: "manda o push"). Com a regra antiga, perder a vez dependia de comparar a pessoa com quem foi chamado, o que as vagas dos idosos (AD-075) tornavam ambíguo.
 
 ## Arquitetura
 

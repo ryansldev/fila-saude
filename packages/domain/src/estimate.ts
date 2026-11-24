@@ -1,5 +1,14 @@
-import { compareOrder } from "./order.ts";
-import { arrivalDeadlineEnd, eligible, type QueueItem, type SessionDay, type Stage, turnPassed } from "./queue.ts";
+import {
+  arrivalDeadlineEnd,
+  DEFAULT_CONFIG,
+  eligible,
+  lateness,
+  type QueueItem,
+  type SessionDay,
+  type Stage,
+  stageOrder,
+  turnPassed,
+} from "./queue.ts";
 import type { Event } from "./result.ts";
 
 const MIN = 60_000;
@@ -61,11 +70,14 @@ const open = (day: SessionDay, stage: Stage) =>
 
 const inQueue = (i: QueueItem): boolean => i.state === "remote" || i.state === "present";
 
-const order = (day: SessionDay, a: QueueItem, b: QueueItem): number =>
-  compareOrder(
-    { confirmedUrgency: a.confirmedUrgency, risk: a.risk, priority: a.priority, number: a.number },
-    { confirmedUrgency: b.confirmedUrgency, risk: b.risk, priority: b.priority, number: b.number },
-    day.config.municipalityOrder,
+/**
+ * Quantos de `set` vêm antes de `item` em ordem(todas), com as vagas dos idosos (RV7, AD-075): a mesma regra
+ * da chamada, então o 80+ em casa é avisado na hora certa. As vagas só mexem nos idosos: os outros grupos
+ * e quem não tem prioridade ficam no mesmo lugar que a senha lhes dá.
+ */
+const aheadIn = (day: SessionDay, set: QueueItem[], item: QueueItem): number =>
+  stageOrder(day, item.stage, set.some((i) => i.id === item.id) ? set : [...set, item]).findIndex(
+    (i) => i.id === item.id,
   );
 
 /**
@@ -90,22 +102,22 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   if (!first) return { kind: "awaiting_start" };
 
   const inStage = day.items.filter((i) => inQueue(i) && i.stage === item.stage);
-  // AD-010: remoto cuja vez já passou vai para o fim ao chegar; não está "à frente" de ninguém e
-  // não pode ouvir "venha agora" como se fosse o próximo.
-  const passed = (i: QueueItem) => i.state === "remote" && !i.confirmedUrgency && turnPassed(day, i);
-  // RN-ETA-06/AD-057: remoto que recebeu "venha agora" e não chegou no prazo não trava a fila parada:
-  // deixa de contar à frente dos outros (o próprio lugar ele só perde pelas chamadas depois do prazo).
-  const late = (i: QueueItem) => {
-    const end = i.state === "remote" ? arrivalDeadlineEnd(day, i) : null;
-    return end !== null && now >= end;
-  };
-  const account = (i: QueueItem) => !passed(i) && !late(i);
+  // AD-076: remoto que perdeu o prazo de chegada perdeu a vez: vai para o fim ao chegar e não está "à
+  // frente" de ninguém. Urgência confirmada não perde a vez, mas também não segura a fila parada. Com o
+  // prazo estendido por uma contingência, ainda está a caminho.
+  const pastDeadline = (i: QueueItem) => lateness(day, i, now) === "late";
+  const passed = (i: QueueItem) => !i.confirmedUrgency && turnPassed(day, i, now);
+  const account = (i: QueueItem) => !pastDeadline(i);
   const ahead =
     item.state === "present"
       ? eligible(day, first.id).findIndex((i) => i.id === item.id)
       : passed(item)
         ? inStage.filter((i) => i.id !== item.id && account(i)).length
-        : inStage.filter((i) => order(day, i, item) < 0 && account(i)).length;
+        : aheadIn(
+            day,
+            inStage.filter((i) => i.id === item.id || account(i)),
+            item,
+          );
   if (ahead < 0) return { kind: "awaiting_start" };
   const comeNow = item.state === "remote" && ahead === 0;
   const minutes = Math.ceil((ahead * averageTime(day, item.stage, day.serviceId, now)) / n);
@@ -116,10 +128,15 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const nA = open(day, "care").length;
   if (nA === 0) return primary;
   // Quem já está na fila do atendimento é atendido antes de X chegar lá (RN-TRI-04: fila nova);
-  // da triagem, contam os que vêm antes de X.
-  const beforeQuery = day.items.filter(
-    (i) => i.id !== item.id && inQueue(i) && (i.stage === "care" || order(day, i, item) < 0),
-  ).length;
+  // da triagem, contam os que vêm antes de X, como na posição (quem perdeu a vez vai para o fim, AD-076).
+  const fromTriage = passed(item)
+    ? ahead
+    : aheadIn(
+        day,
+        inStage.filter((i) => i.id === item.id || account(i)),
+        item,
+      );
+  const beforeQuery = day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length + fromTriage;
   const triageWeight = (ahead * averageTime(day, "triage", day.serviceId, now)) / n;
   const query = Math.ceil(triageWeight + (beforeQuery * averageTime(day, "care", day.serviceId, now)) / nA);
   return { ...primary, query: { minutes: query } };
@@ -161,7 +178,7 @@ export function leaveHomeNotices(day: SessionDay, now: number, options: Options)
 
 /**
  * RN-ETA-06 (AD-057): "venha agora" para o remoto sem ninguém à frente, uma vez por item e etapa
- * enquanto ele não volta a remoto ("Vou sair" ou 2º pulo recomeçam). A hora fica em
+ * enquanto ele não volta a remoto ("Vou sair" recomeça). A hora fica em
  * `day.comeNow`: o prazo de chegada conta dela. Em modo manual nada é enviado nem registrado.
  */
 export function comeNowNotices(day: SessionDay, now: number, options: Options): { day: SessionDay; events: Event[] } {
@@ -177,7 +194,13 @@ export function comeNowNotices(day: SessionDay, now: number, options: Options): 
       itemId: i.id,
       entryId: i.entryId,
       sessionId: day.sessionId,
-      data: { stage: i.stage, at: now },
+      data: {
+        stage: i.stage,
+        at: now,
+        deadlineMin: day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin,
+        // Urgência confirmada não perde a vez pelo prazo (AD-076): o aviso não diz que perde.
+        losesTurn: !i.confirmedUrgency,
+      },
     });
   }
   if (fresh.length === 0) return { day, events };
@@ -187,4 +210,28 @@ export function comeNowNotices(day: SessionDay, now: number, options: Options): 
     day: { ...day, comeNow: [...kept, ...fresh.map((i) => ({ itemId: i.id, stage: i.stage, at: now }))] },
     events,
   };
+}
+
+/**
+ * AD-076: "perdeu a vez" para o remoto cujo prazo de chegada do "venha agora" acabou (fora de
+ * contingência; urgência confirmada não perde a vez), uma vez por "venha agora". A hora do aviso fica no
+ * registro do "venha agora" em `day.comeNow`. Em modo manual nada é enviado nem registrado.
+ */
+export function turnLostNotices(day: SessionDay, now: number, options: Options): { day: SessionDay; events: Event[] } {
+  if (options.manualMode || day.state !== "open") return { day, events: [] };
+  const events: Event[] = [];
+  const comeNow = (day.comeNow ?? []).map((a) => {
+    const i = day.items.find((x) => x.id === a.itemId);
+    if (a.turnLostAt !== undefined || !i || i.stage !== a.stage || i.confirmedUrgency) return a;
+    if (!turnPassed(day, i, now)) return a;
+    events.push({
+      kind: "turn_lost",
+      itemId: i.id,
+      entryId: i.entryId,
+      sessionId: day.sessionId,
+      data: { stage: a.stage, at: now, comeNowAt: a.at },
+    });
+    return { ...a, turnLostAt: now };
+  });
+  return events.length === 0 ? { day, events } : { day: { ...day, comeNow }, events };
 }

@@ -30,13 +30,12 @@ Chamar o próximo encerra a chamada anterior como **atendido** (ou triado). **Re
 
 **RN-CHAM-03 · Não compareceu**
 Não há pulo automático: a tolerância (padrão 5 min) é só um contador que avisa "tolerância esgotada". QUANDO o profissional tocar **Não compareceu** (disponível a qualquer momento com alguém chamado), O SISTEMA DEVE:
-- no 1º pulo do dia: mantê-lo presente, tratado como se tivesse acabado de ficar elegível (atrás dos próximos K);
-- no 2º pulo: devolvê-lo a remoto; ao se reapresentar, vale a regra de atraso;
-- no 3º pulo do dia, somando as etapas: tirá-lo da fila e registrar falta "não compareceu à chamada" (RN-FALTA-02). Ele pode entrar de novo na lista como entrada nova.
+- no 1º pulo do dia: a vez fica guardada; mantê-lo presente, tratado como se tivesse acabado de ficar elegível (atrás dos próximos K), e chamá-lo de novo;
+- no 2º pulo do dia, somando as etapas, mesmo com urgência confirmada: tirá-lo da fila e registrar falta "não compareceu à chamada" (RN-FALTA-02). Ele pode entrar de novo na lista como entrada nova.
 
-*Decisões: AD-006, AD-021.*
+*Decisões: AD-006, AD-021, AD-076.*
 - *Dado* Ana chamada com 0 pulos, *quando* o profissional toca "Não compareceu", *então* Ana fica presente atrás dos próximos K.
-- *Dado* Ana com 2 pulos (1 na triagem, 1 no consultório), *quando* é pulada de novo, *então* sai da fila com uma falta.
+- *Dado* Ana com 1 pulo na triagem, chamada no consultório, *quando* é pulada de novo, *então* sai da fila com uma falta.
 
 ## Triagem
 
@@ -57,7 +56,7 @@ O atendimento é uma fila nova: o paciente entra com a mesma senha e um número 
 
 **RN-TRI-05 · Sair entre etapas**
 A regra de presença continua valendo entre as etapas: o paciente pode tocar "Vou sair" depois da triagem e recebe um novo "saia de casa" quando o atendimento se aproximar. Ao voltar, vale a regra de atraso.
-*Decisões: AD-009, AD-010.*
+*Decisões: AD-009, AD-076.*
 
 **RN-TRI-06 · Triagem cadenciada (proposta)**
 O sistema só sugere chamar para a triagem quem tem previsão de atendimento próxima, para que a triagem não vire uma segunda espera. Validar no piloto.
@@ -69,11 +68,12 @@ A sessão só encerra quando o admin a encerra. No horário de fim, o painel lem
 
 **RN-SES-02 · Faltas e remanejados**
 QUANDO a sessão for encerrada, O SISTEMA DEVE, para cada um ainda na fila:
-- vez **não passou** → remanejado;
-- estava **presente** → remanejado, nunca faltoso;
-- estava **remoto** e a vez passou → falta, exceto se já foi atendido em alguma etapa do dia (remanejado) ou se a vez passou durante um período de contingência registrado (remanejado, RN-CONT-03).
+- já foi **atendido** em alguma etapa do dia → remanejado, nunca faltoso;
+- estava **presente** → remanejado;
+- estava **remoto** e perdeu o prazo de chegada → falta, exceto se o prazo, com o relógio parado durante um período de contingência registrado, ainda não tinha acabado (remanejado, RN-CONT-03);
+- os outros → remanejado.
 
-*Decisões: AD-041, AD-033.*
+*Decisões: AD-041, AD-033, AD-076.*
 - *Dado* Luísa triada que tocou "Vou sair", *quando* a sessão encerra antes da consulta dela, *então* ela é remanejada, não faltosa.
 
 **RN-SES-03 · Encerrar com chamado aberto**
@@ -82,11 +82,11 @@ O encerramento só é permitido quando nenhuma estação tem paciente chamado; o
 ## Faltas
 
 **RN-FALTA-01 · Falta no encerramento**
-É **falta** quando, no encerramento, o paciente confirmado estava remoto e a vez dele já tinha passado na etapa atual (RN-SES-02, com as exceções lá). Quem leva a falta segue a RN-ID-06.
-*Decisões: AD-010, AD-040, AD-041.*
+É **falta** quando, no encerramento, o paciente confirmado, nunca atendido no dia, estava remoto e perdeu o prazo de chegada da etapa atual (RN-SES-02, com as exceções lá). Quem perde o prazo e depois é atendido no mesmo dia não leva falta. Quem leva a falta segue a RN-ID-06.
+*Decisões: AD-040, AD-041, AD-076.*
 
-**RN-FALTA-02 · Falta por 3 pulos**
-Sair da fila por 3 pulos no dia também conta no mesmo limite, com ou sem check-in. A recepção PODE anular essa falta quando o paciente comprova que estava na unidade; a anulação exige motivo, vai para a auditoria e para o relatório do gestor.
+**RN-FALTA-02 · Falta por pulos**
+Sair da fila por 2 pulos no dia também conta no mesmo limite, com ou sem check-in. A recepção PODE anular essa falta quando o paciente comprova que estava na unidade; a anulação exige motivo, vai para a auditoria e para o relatório do gestor.
 *Decisões: AD-021, AD-023.*
 
 **RN-FALTA-03 · Sem bloqueio automático**
@@ -105,14 +105,13 @@ Entrada na fila do dia (por etapa):
 | Chamado | Desfazer compareceu | Compareceu marcado | (mesmo) | Volta a esperar a pessoa entrar |
 | Chamado | Estação chama o próximo ou toca Finalizar | — | Atendido na etapa | Há outra etapa: Presente nela, mesmo número. Senão: entrada Concluída |
 | Chamado | Técnico finaliza o acolhimento na triagem | — | Presente | Volta à triagem como acolhida; quem classifica a chama antes dos outros (RN-PERF-05) |
-| Chamado | "Não compareceu" | Pulos no dia = 0 | Presente | Pulos = 1; aplica janela protegida |
-| Chamado | "Não compareceu" | Pulos no dia = 1 | Remoto | Pulos = 2; push |
-| Chamado | "Não compareceu" | Pulos no dia = 2 | Saiu da fila | Pulos = 3; falta; entrada Encerrada sem atendimento; push |
+| Chamado | "Não compareceu" | Pulos no dia = 0 | Presente | Pulos = 1; a vez fica guardada: aplica janela protegida |
+| Chamado | "Não compareceu" | Pulos no dia = 1 | Saiu da fila | Pulos = 2; falta; entrada Encerrada sem atendimento; push |
 | Qualquer não final | Sessão cancelada | — | Remanejado | Push |
-| Remoto ou Presente | Sessão encerrada | A vez não passou | Remanejado | Push |
-| Presente | Sessão encerrada | A vez passou | Remanejado | Push (estava na unidade) |
-| Remoto | Sessão encerrada | A vez passou; nunca atendido no dia; fora de contingência | Saiu da fila | Falta; entrada Encerrada sem atendimento |
-| Remoto | Sessão encerrada | Já atendido em etapa anterior | Remanejado | Push; não é falta |
+| Remoto ou Presente | Sessão encerrada | Já atendido em etapa anterior | Remanejado | Push; não é falta |
+| Presente | Sessão encerrada | Na unidade | Remanejado | Push (estava na unidade) |
+| Remoto | Sessão encerrada | A vez não passou | Remanejado | Push |
+| Remoto | Sessão encerrada | Perdeu o prazo de chegada; nunca atendido no dia; fora de contingência | Saiu da fila | Falta; entrada Encerrada sem atendimento |
 <!-- /gerado -->
 
 Entrada (lista):
@@ -120,7 +119,7 @@ Entrada (lista):
 <!-- gerado: contratos:chamada:entrada -->
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
-| Na fila | Sessão encerrada com o paciente presente, já atendido em etapa anterior ou com a vez passada em contingência | — | Remanejada | Push |
-| Na fila | 3º pulo, ou falta no encerramento | — | Encerrada sem atendimento | Registra ocorrência de falta |
+| Na fila | Sessão encerrada com o paciente na unidade, já atendido em etapa anterior ou com o prazo de chegada perdido em contingência | — | Remanejada | Push |
+| Na fila | 2º pulo, ou falta no encerramento | — | Encerrada sem atendimento | Registra ocorrência de falta |
 | Na fila | Recepção: identidade não confere (RN-FILA-05) | — | Cancelada | Sem falta; motivo na auditoria |
 <!-- /gerado -->

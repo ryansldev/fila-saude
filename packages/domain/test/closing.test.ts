@@ -59,10 +59,13 @@ const step = (r: Result<SessionDay>) => apply(r);
 const E1 = { stationId: "e1" };
 const WITHOUT_NOTICE = { withoutSignalWithoutContingency: false, origin: PRIVATE };
 
-/** Bruno faz check-in e é atendido: a vez de Ana (nº 1, remota) passa; a de Caio (nº 3) não. */
+/**
+ * Ana (nº 1, remota) recebe o "venha agora" às 07:00 e não chega no prazo (30 min): perde a vez (AD-076).
+ * Bruno faz check-in e é atendido; Caio (nº 3) não recebeu aviso.
+ */
 function brunoAttended(ids = ["ana", "bruno", "caio"], em = T + 20 * MIN): SessionDay {
   let d = dayWith(ids);
-  if (ids.includes("ana")) d = alreadyNotified(d, "ana");
+  if (ids.includes("ana")) d = alreadyNotified(d, "ana", T);
   d = step(checkIn(d, { itemId: "bruno" }, em - 10 * MIN));
   d = step(callNext(d, E1, em));
   return step(finish(d, E1, em + 10 * MIN));
@@ -118,28 +121,6 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     expect(item(d, "caio").state).toBe("reassigned");
     expect(ent(entries, "ent-caio").state).toBe("reassigned");
     expect(d.closing?.noShows).toEqual(["ana"]);
-  });
-
-  it("RN-SES-02/RN-CHAM-03: quem voltou a remoto no 2º pulo leva falta se depois a vez passou", () => {
-    let day = dayWith(["ana", "bruno"]);
-    day = step(checkIn(day, { itemId: "ana" }, T));
-    day = step(callNext(day, E1, T + MIN));
-    day = step(noShow(day, E1, T + 6 * MIN)); // 1º pulo: presente
-    day = step(callNext(day, E1, T + 7 * MIN));
-    day = step(noShow(day, E1, T + 12 * MIN)); // 2º pulo: remoto, saiuEm
-    expect([item(day, "ana").state, item(day, "ana").skips]).toEqual(["remote", 2]);
-    // "A vez passou" é alguém depois dela ser chamado (fila-do-dia): as chamadas dela não contam.
-    const withNobody = apply(close(day, inQueue(["ana", "bruno"]), T + H, WITHOUT_NOTICE));
-    expect(item(withNobody.day, "ana").state).toBe("reassigned");
-    // Bruno (nº 2) é chamado com ela fora, depois do prazo do "venha agora": a vez dela passou.
-    day = alreadyNotified(day, "ana", T + 12 * MIN, 1);
-    day = step(checkIn(day, { itemId: "bruno" }, T + 13 * MIN));
-    day = step(callNext(day, E1, T + 14 * MIN));
-    day = step(finish(day, E1, T + 20 * MIN));
-    const { day: d, entries } = apply(close(day, inQueue(["ana", "bruno"]), T + H, WITHOUT_NOTICE));
-    expect(item(d, "ana").state).toBe("left_queue");
-    expect(ent(entries, "ent-ana").state).toBe("closed_without_care");
-    expect(item(d, "bruno").state).toBe("done_in_stage");
   });
 
   it("RN-SES-02/AD-010: chamada feita com a pessoa ainda presente não passa a vez de quem depois saiu", () => {
@@ -211,8 +192,8 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     expect(ent(entries, "r2")).toBe(other);
   });
 
-  it("RN-CONT-03: vez passada só em contingência registrada → remanejado no encerramento", () => {
-    const day = freeze({ ...brunoAttended(), contingencies: [{ start: T, end: T + H, reason: "queda" }] });
+  it("RN-CONT-03: prazo de chegada perdido durante contingência registrada → remanejado no encerramento", () => {
+    const day = freeze({ ...brunoAttended(), contingencies: [{ start: T, end: T + 5 * H, reason: "queda" }] });
     const r = close(day, inQueue(["ana", "bruno", "caio"]), T + 5 * H, WITHOUT_NOTICE);
     const { day: d } = apply(r);
     expect(item(d, "ana").state).toBe("reassigned");
@@ -220,12 +201,12 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
   });
 
   it("RN-CONT-03: contingência registrada depois do encerramento apaga a falta e remaneja", () => {
-    // Bruno chamado às 07:20 (Brasília); sessão encerrada às 12:00 com falta de Ana.
+    // Prazo de Ana das 07:00 às 07:30 (Brasília); sessão encerrada às 12:00 com falta dela.
     const closed = apply(close(brunoAttended(), inQueue(["ana", "bruno", "caio"]), T + 5 * H, WITHOUT_NOTICE));
     expect(ent(closed.entries, "ent-ana").state).toBe("closed_without_care");
 
-    // Às 13:00 do mesmo dia, a recepção registra a queda das 07:00 às 08:00.
-    const period = { start: T, end: T + H, reason: "internet caiu" };
+    // Às 13:00 do mesmo dia, a recepção registra a queda das 07:00 às 12:00: o prazo dela não acabou.
+    const period = { start: T, end: T + 5 * H, reason: "internet caiu" };
     const r = registerContingency(closed.day, closed.entries, period, T + 6 * H);
     const { day, entries } = apply(r);
     expect(day.contingencies).toEqual([period]);
@@ -236,7 +217,7 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     expect(events(r)).toContainEqual(expect.objectContaining({ kind: "no_show_voided", entryId: "ent-ana" }));
     expect(day.closing?.noShows).toEqual([]);
 
-    // Período que não cobre a vez dela: a falta fica.
+    // Período que não cruza o prazo dela: a falta fica.
     const outside = apply(
       registerContingency(closed.day, closed.entries, { start: T + 2 * H, end: T + 3 * H, reason: "x" }, T + 6 * H),
     );
@@ -247,7 +228,7 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
       "forbidden_transition",
     );
     // Com a sessão aberta: só grava o período (a regra de atraso e o encerramento o usam).
-    const open = apply(registerContingency(brunoAttended(), [], period, T + 2 * H));
+    const open = apply(registerContingency(brunoAttended(), [], period, T + 6 * H));
     expect([open.day.state, open.day.contingencies]).toEqual(["open", [period]]);
 
     // Entrada que não veio (ou não está encerrada por falta): o item e a falta ficam como estão.
@@ -279,7 +260,7 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     const closed = apply(
       close(brunoAttended(), inQueue(["ana", "bruno", "caio"]), Date.UTC(2026, 10, 14, 2, 30), WITHOUT_NOTICE),
     );
-    const period = { start: T, end: T + H, reason: "queda" };
+    const period = { start: T, end: Date.UTC(2026, 10, 14, 2, 30), reason: "queda" };
     const register = (at: number) =>
       ent(apply(registerContingency(closed.day, closed.entries, period, at)).entries, "ent-ana").state;
     expect(register(Date.UTC(2026, 10, 14, 2, 59, 59))).toBe("reassigned"); // 23:59:59, mesmo dia
@@ -299,6 +280,34 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
     }
     // Pessoa local sem conta e não conferida: ninguém.
     expect(noShowHolder(entry("y", { guardianId: null }), false, true, false)).toBe("nobody");
+  });
+});
+
+describe("AD-076: faltas no encerramento", () => {
+  it("remoto que perdeu o prazo: falta, mesmo sem ninguém chamado", () => {
+    const day = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30);
+    const r = close(day, inQueue(["ana", "bruno"]), T + H, WITHOUT_NOTICE);
+    const { day: d } = apply(r);
+    expect(item(d, "ana").state).toBe("left_queue");
+    expect(item(d, "bruno").state).toBe("reassigned");
+    expect(events(r)).toContainEqual(
+      expect.objectContaining({ kind: "no_show", itemId: "ana", reason: "perdeu o prazo de chegada" }),
+    );
+  });
+
+  it("remoto ainda dentro do prazo: remanejado", () => {
+    const day = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30);
+    const { day: d } = apply(close(day, inQueue(["ana", "bruno"]), T + 20 * MIN, WITHOUT_NOTICE));
+    expect(item(d, "ana").state).toBe("reassigned");
+  });
+
+  it("remoto que perdeu o prazo durante uma contingência registrada: remanejado", () => {
+    let day = dayWith(["ana", "bruno"], { contingencies: [{ start: T + 10 * MIN, end: T + 20 * MIN }] });
+    day = alreadyNotified(day, "ana", T, 30);
+    // O prazo para durante os 10 min da queda: vai até 07:40.
+    const at = (now: number) => item(apply(close(day, inQueue(["ana", "bruno"]), now, WITHOUT_NOTICE)).day, "ana");
+    expect(at(T + 35 * MIN).state).toBe("reassigned");
+    expect(at(T + 40 * MIN).state).toBe("left_queue");
   });
 });
 
@@ -577,17 +586,14 @@ describe("remanejado (RN-REM-03..05)", () => {
 });
 
 describe("desfecho da fila do dia na entrada (C1)", () => {
-  /** Ana chamada e não compareceu 3 vezes (volta presente, depois remota, depois sai). */
-  function threeSkips(): SessionDay {
+  /** Ana chamada e não compareceu 2 vezes (volta atrás do próximo, depois sai da fila com falta). */
+  function twoSkips(): SessionDay {
     let d = dayWith(["ana"]);
     d = step(checkIn(d, { itemId: "ana" }, T));
     d = step(callNext(d, E1, T + MIN));
-    d = step(noShow(d, E1, T + 6 * MIN)); // 1º: presente
+    d = step(noShow(d, E1, T + 6 * MIN)); // 1º: a vez fica guardada
     d = step(callNext(d, E1, T + 7 * MIN));
-    d = step(noShow(d, E1, T + 12 * MIN)); // 2º: remota
-    d = step(checkIn(d, { itemId: "ana" }, T + 20 * MIN));
-    d = step(callNext(d, E1, T + 21 * MIN));
-    return step(noShow(d, E1, T + 26 * MIN)); // 3º: sai da fila
+    return step(noShow(d, E1, T + 12 * MIN)); // 2º: sai da fila
   }
 
   const first = (ids: string[]): Entry => {
@@ -596,8 +602,8 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
     return e;
   };
 
-  it("RN-CHAM-03: 3º pulo encerra a entrada e a pessoa pode criar entrada nova", () => {
-    const d = threeSkips();
+  it("RN-CHAM-03: 2º pulo encerra a entrada e a pessoa pode criar entrada nova", () => {
+    const d = twoSkips();
     expect(item(d, "ana")).toMatchObject({ state: "left_queue", exitReason: "skips" });
     const end = apply(entryOutcome(first(["ana"]), item(d, "ana")));
     expect(end.state).toBe("closed_without_care");
@@ -643,10 +649,10 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
     expect(ent(c.entries, "ent-ana").state).toBe("reassigned");
   });
 
-  it("C1: o encerramento fecha a entrada do 3º pulo e a do não conferiu", () => {
-    const r1 = apply(close(threeSkips(), inQueue(["ana"]), T + 5 * H, WITHOUT_NOTICE));
+  it("C1: o encerramento fecha a entrada do 2º pulo e a do não conferiu", () => {
+    const r1 = apply(close(twoSkips(), inQueue(["ana"]), T + 5 * H, WITHOUT_NOTICE));
     expect(ent(r1.entries, "ent-ana").state).toBe("closed_without_care");
-    expect(r1.day.closing?.noShows).toEqual([]); // a falta foi do 3º pulo, não do encerramento
+    expect(r1.day.closing?.noShows).toEqual([]); // a falta foi do 2º pulo, não do encerramento
     const conf = step(verifyAndMark(dayWith(["bia"]), { itemId: "bia", result: "does_not_match" }, T));
     const r2 = apply(close(conf, inQueue(["bia"]), T + 5 * H, WITHOUT_NOTICE));
     expect(ent(r2.entries, "ent-bia").state).toBe("cancelled");
@@ -711,7 +717,7 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
   });
 
   it("desfecho e cancelamento não alteram o que recebem", () => {
-    const d = freeze(threeSkips());
+    const d = freeze(twoSkips());
     const inQueueAna = entry("ent-ana", { state: "in_queue", sessionId: "s1" });
     expect(() => {
       entryOutcome(first(["ana"]), item(d, "ana"));

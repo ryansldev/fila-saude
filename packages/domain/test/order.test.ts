@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { compareOrder, compareSuggestion, type OrderKey, type SuggestionKey } from "../src/order.ts";
+import {
+  compareOrder,
+  compareSuggestion,
+  type OrderKey,
+  orderItems,
+  orderSuggestions,
+  type SuggestionKey,
+} from "../src/order.ts";
 import type { LegalPriority } from "../src/priority.ts";
 
 const WITHOUT: LegalPriority = { groups: [], verified: false, verifiedAt: null };
@@ -59,10 +66,10 @@ describe("compareOrder", () => {
     expect(compareOrder(a, b, "priority")).toBeLessThan(0);
   });
 
-  it("RN-ORD: 80+ antes de 60-79; grupos diferentes empatam e decide o número", () => {
+  it("RN-ORD: entre dois com prioridade, sem hierarquia de grupo, decide o número (o 80+ só pela ordem da fila)", () => {
     const i80 = key({ priority: withValue("elderly80"), number: 9 });
     const i60 = key({ priority: withValue("elderly"), number: 1 });
-    expect(compareOrder(i80, i60, "risk")).toBeLessThan(0);
+    expect(compareOrder(i80, i60, "risk")).toBeGreaterThan(0);
     const mgmt = key({ priority: withValue("pregnant"), number: 2 });
     const disability = key({ priority: withValue("disability"), number: 1 });
     expect(compareOrder(mgmt, disability, "risk")).toBeGreaterThan(0);
@@ -100,7 +107,7 @@ describe("urgência confirmada pela triagem (AD-058, AD-059)", () => {
     const orange = key({ confirmedUrgency: true, risk: "very_urgent", number: 3 });
     expect(compareOrder(red, orange80, "priority")).toBeLessThan(0);
     expect(compareOrder(orange, yellowPregnant, "priority")).toBeLessThan(0);
-    // Mesmo risco confirmado: a prioridade legal desempata.
+    // Mesmo risco confirmado: a prioridade legal desempata (com prioridade antes de sem).
     expect(compareOrder(orange80, orange, "priority")).toBeLessThan(0);
   });
 });
@@ -140,5 +147,72 @@ describe("compareSuggestion", () => {
     expect(compareSuggestion(x, y, "risk")).toBeLessThan(0);
     expect(compareSuggestion(y, x, "priority")).toBeGreaterThan(0);
     expect(compareSuggestion(x, x, "risk")).toBe(0);
+  });
+});
+
+describe("RV7: 80+ antes dos demais idosos, sem hierarquia entre grupos (Lei 10.741, art. 3º, § 2º; Lei 10.048)", () => {
+  type P = { name: string } & OrderKey;
+  const p = (name: string, groups: LegalPriority["groups"], number: number, extra: Partial<OrderKey> = {}): P => ({
+    name,
+    ...key({ priority: withValue(...groups), number, ...extra }),
+  });
+  const names = (xs: P[]) => xs.map((x) => x.name);
+  const order = (xs: P[], mode: "risk" | "priority" = "risk") => names(orderItems(xs, (x) => x, mode));
+
+  it("as vagas dos idosos vão primeiro aos 80+; os outros grupos ficam no lugar da senha", () => {
+    const bia = p("Bia, 70", ["elderly"], 1);
+    const gil = p("Gil, gestante", ["pregnant"], 2);
+    const ana = p("Ana, 85", ["elderly80"], 3);
+    expect(order([bia, gil, ana])).toEqual(["Ana, 85", "Gil, gestante", "Bia, 70"]);
+    // Qualquer ordem de entrada dá a mesma fila (sem ciclo).
+    expect(order([ana, gil, bia])).toEqual(["Ana, 85", "Gil, gestante", "Bia, 70"]);
+    expect(order([gil, ana, bia])).toEqual(["Ana, 85", "Gil, gestante", "Bia, 70"]);
+  });
+
+  it("entre os 80+, e entre os 60-79, decide a senha", () => {
+    const xs = [p("Ivo, 61", ["elderly"], 1), p("Lia, 90", ["elderly80"], 4), p("Rui, 81", ["elderly80"], 2)];
+    expect(order(xs)).toEqual(["Rui, 81", "Lia, 90", "Ivo, 61"]);
+  });
+
+  it("sem idoso 60-79 na frente, o 80+ não passa ninguém", () => {
+    const xs = [
+      p("Gil, gestante", ["pregnant"], 1),
+      p("Pedro, PcD", ["disability"], 2),
+      p("Ana, 85", ["elderly80"], 3),
+    ];
+    expect(order(xs)).toEqual(["Gil, gestante", "Pedro, PcD", "Ana, 85"]);
+  });
+
+  it("não troca entre riscos, urgências ou com quem não tem prioridade", () => {
+    const bia = p("Bia, 70", ["elderly"], 1, { risk: "attention" });
+    const ana = p("Ana, 85", ["elderly80"], 2);
+    expect(order([ana, bia])).toEqual(["Bia, 70", "Ana, 85"]);
+    // Prioridade antes do risco: os dois no mesmo bloco de prioridade, mas riscos diferentes.
+    expect(order([ana, bia], "priority")).toEqual(["Bia, 70", "Ana, 85"]);
+    const semPrioridade = p("Caio", [], 1);
+    expect(order([p("Ana, 85", ["elderly80"], 3), semPrioridade])).toEqual(["Ana, 85", "Caio"]);
+  });
+
+  it("idosa de 60-79 que também é de outro grupo (PcD) fica no lugar da senha (D5)", () => {
+    const bia = p("Bia, 70 + PcD", ["elderly", "disability"], 1);
+    const gil = p("Gil, gestante", ["pregnant"], 2);
+    const ana = p("Ana, 85", ["elderly80"], 3);
+    expect(order([bia, gil, ana])).toEqual(["Bia, 70 + PcD", "Gil, gestante", "Ana, 85"]);
+  });
+
+  it("80+ que também é de outro grupo não perde a vaga de idoso (declarar mais um grupo nunca piora)", () => {
+    const bia = p("Bia, 70", ["elderly"], 1);
+    const ana = p("Ana, 85 + PcD", ["elderly80", "disability"], 3);
+    expect(order([bia, ana])).toEqual(["Ana, 85 + PcD", "Bia, 70"]);
+  });
+
+  it("a sugestão de alocação da lista de espera segue a mesma regra", () => {
+    type S = { name: string } & SuggestionKey;
+    const s = (name: string, groups: LegalPriority["groups"], originalEntryDate: number): S => ({
+      name,
+      ...sug({ id: name, priority: withValue(...groups), originalEntryDate }),
+    });
+    const xs = [s("Bia, 70", ["elderly"], 1), s("Gil, gestante", ["pregnant"], 2), s("Ana, 85", ["elderly80"], 3)];
+    expect(orderSuggestions(xs, (x) => x, "risk").map((x) => x.name)).toEqual(["Ana, 85", "Gil, gestante", "Bia, 70"]);
   });
 });

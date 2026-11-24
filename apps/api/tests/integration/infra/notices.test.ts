@@ -227,4 +227,17 @@ describe("avisos por push (T3.8, T2.4)", () => {
       .where(eq(notice.id, mine?.id as string));
     expect(row).toMatchObject({ state: "sent", attempts: 1 });
   });
+
+  it("AD-076: passado o prazo do 'venha agora', a varredura avisa 'perdeu a vez' uma vez só", async () => {
+    const later = Date.now() + 31 * 60_000;
+    const e = sender();
+    await sweepMunicipality(db(), later, e.send);
+    expect(await patientOf("Carla")).toEqual(["queue_opened", "come_now", "turn_lost"]);
+    expect(e.sent.filter((x) => x.data.kind === "turn_lost").map((x) => x.for)).toEqual(["ExponentPushToken[Carla]"]);
+    const day = await readDay(db(), c.sessionId);
+    const carla = day?.items.find((i) => i.entryId === entries.Carla);
+    expect(day?.comeNow?.find((a) => a.itemId === carla?.id)?.turnLostAt).toBe(later);
+    await sweepMunicipality(db(), later + 60_000, sender().send);
+    expect(await patientOf("Carla")).toEqual(["queue_opened", "come_now", "turn_lost"]);
+  });
 });

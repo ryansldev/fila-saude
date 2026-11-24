@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { callNext, finish, noShow } from "../src/call.ts";
-import { averageTime, comeNowNotices, estimate, leaveHomeNotices } from "../src/estimate.ts";
+import { averageTime, comeNowNotices, estimate, leaveHomeNotices, turnLostNotices } from "../src/estimate.ts";
 import { checkIn, DEFAULT_CONFIG, leaving, type SessionDay, type Station } from "../src/queue.ts";
 import type { Result } from "../src/result.ts";
 import { alreadyNotified, dayWith, freeze, inRoom, queueItem, withItem } from "./fixtures.ts";
@@ -93,6 +93,18 @@ describe("RN-ETA-01/01b/04: posição e tempo", () => {
     d = call(d, "tri");
     d = apply(finish(inRoom(d, "tri"), { stationId: "tri" }, T)); // Ana triada, presente no consultório
     expect(estimate(d, "joao", T, AUTO)).toEqual({ kind: "come_now", query: { minutes: 15 } });
+  });
+
+  it("AD-076 triage: quem perdeu a vez vê a consulta contando todos da triagem à frente", () => {
+    let d = alreadyNotified(triageDay(), "ana", T, 30);
+    d = enter(d, "joao");
+    // Ana (nº 1) perdeu o prazo: vai para o fim, atrás de João, na triagem e na consulta.
+    expect(estimate(d, "ana", T + 31 * MIN, AUTO)).toEqual({
+      kind: "position",
+      position: 2,
+      minutes: 5,
+      query: { minutes: 20 },
+    });
   });
 
   it("RN-ETA-01c/AD-009 triage: presente ainda não triado vê posição, tempo e consulta", () => {
@@ -310,7 +322,11 @@ describe("RN-ETA-06/AD-057: prazo de chegada depois do 'venha agora'", () => {
   it("registra o 'venha agora' uma vez, com a hora, e avisa só quem é o próximo", () => {
     const a1 = notify(dayWith(["ana", "bruno"]), T);
     expect(a1.events).toEqual([
-      expect.objectContaining({ kind: "come_now", itemId: "ana", data: { stage: "care", at: T } }),
+      expect.objectContaining({
+        kind: "come_now",
+        itemId: "ana",
+        data: { stage: "care", at: T, deadlineMin: 30, losesTurn: true },
+      }),
     ]);
     expect(a1.day.comeNow).toEqual([{ itemId: "ana", stage: "care", at: T }]);
     expect(notify(freeze(a1.day), T + MIN).events).toEqual([]);
@@ -322,19 +338,19 @@ describe("RN-ETA-06/AD-057: prazo de chegada depois do 'venha agora'", () => {
     expect(estimate(d, "bruno", T + DEADLINE, AUTO)).toEqual({ kind: "come_now" });
     const a2 = notify(d, T + DEADLINE);
     expect(a2.events.map((e) => e.itemId)).toEqual(["bruno"]);
-    // Ana não perde o lugar: ninguém depois dela foi chamado.
-    expect(estimate(freeze(a2.day), "ana", T + DEADLINE, AUTO)).toEqual({ kind: "come_now" });
+    // AD-076: Ana perdeu a vez pelo prazo, mesmo sem ninguém chamado: vai para o fim.
+    expect(estimate(freeze(a2.day), "ana", T + DEADLINE, AUTO)).toEqual({ kind: "position", position: 2, minutes: 15 });
   });
 
   it("dentro do prazo, chamar quem vem depois não tira a vez de quem está a caminho", () => {
     let d = freeze(notify(dayWith(["ana", "pedro"]), T).day);
     d = apply(checkInAt(d, "pedro", T));
     d = callAt(d, T + DEADLINE - MIN);
-    const r = checkInAt(d, "ana", T + DEADLINE + 5 * MIN);
+    const r = checkInAt(d, "ana", T + DEADLINE - 1);
     expect(lost(r)).toBe(false);
   });
 
-  it("depois do prazo, a regra de atraso volta a valer", () => {
+  it("depois do prazo, perde a vez (AD-076)", () => {
     let d = freeze(notify(dayWith(["ana", "pedro"]), T).day);
     d = apply(checkInAt(d, "pedro", T));
     d = callAt(d, T + DEADLINE);
@@ -400,5 +416,85 @@ describe("revisão 2026-11-13: estimativa honesta", () => {
     step(5, true);
     d = apply(callNext(d, { stationId: "e1" }, t));
     expect(averageTime(d, "care", "cli", t)).toBe(20);
+  });
+});
+
+describe("RV7: em casa, a posição usa as vagas dos idosos, como a chamada (AD-075)", () => {
+  const g = (x: string[]) => ({ groups: x as never, verified: false, verifiedAt: null });
+  const pos = (d: ReturnType<typeof dayWith>, id: string) => {
+    const e = estimate(d, id, T, AUTO);
+    return e.kind === "position" ? e.position : e.kind;
+  };
+
+  it("o 80+ fica com a primeira vaga de idoso; a gestante não sai do lugar", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: g(["elderly"]) });
+    d = withItem(d, "gil", { priority: g(["pregnant"]) });
+    d = withItem(d, "ana", { priority: g(["elderly80"]) });
+    expect(pos(d, "ana")).toBe("come_now");
+    expect(pos(d, "gil")).toBe(2);
+    expect(pos(d, "bia")).toBe(3);
+  });
+
+  it("o 80+ já chamado continua com a vaga: a Bia (70) em casa fica no lugar que era dele", () => {
+    let d = dayWith(["bia", "gil", "ana"]);
+    d = withItem(d, "bia", { priority: g(["elderly"]) });
+    d = withItem(d, "gil", { priority: g(["pregnant"]) });
+    d = withItem(d, "ana", { priority: g(["elderly80"]), state: "called" });
+    d = { ...d, calls: [{ itemId: "ana", stage: "care", stationId: "e1", at: T }] };
+    expect(pos(d, "gil")).toBe("come_now");
+    expect(pos(d, "bia")).toBe(2);
+  });
+
+  it("o idoso de 60-79 que também é de outro grupo fica no lugar da senha (AD-075)", () => {
+    let d = dayWith(["bia", "ana"]);
+    d = withItem(d, "bia", { priority: g(["elderly", "disability"]) });
+    d = withItem(d, "ana", { priority: g(["elderly80"]) });
+    expect(pos(d, "bia")).toBe("come_now");
+    expect(pos(d, "ana")).toBe(2);
+  });
+});
+
+describe('AD-076: push "perdeu a vez" quando o prazo de chegada acaba', () => {
+  const DEADLINE = DEFAULT_CONFIG.arrivalDeadlineMin * MIN;
+  const lostNotices = (day: SessionDay, at: number, options = AUTO) => turnLostNotices(day, at, options);
+
+  it("avisa uma vez, quando o prazo acaba, com a etapa e a hora do 'venha agora'", () => {
+    const d = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T);
+    expect(lostNotices(d, T + DEADLINE - 1).events).toEqual([]);
+    const r = lostNotices(d, T + DEADLINE);
+    expect(r.events).toEqual([
+      expect.objectContaining({
+        kind: "turn_lost",
+        itemId: "ana",
+        data: { stage: "care", at: T + DEADLINE, comeNowAt: T },
+      }),
+    ]);
+    expect(lostNotices(freeze(r.day), T + DEADLINE + MIN).events).toEqual([]);
+  });
+
+  it("não avisa quem chegou, quem tem urgência confirmada, o prazo parado por contingência nem o modo manual", () => {
+    const d = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T);
+    expect(lostNotices(enter(d, "ana"), T + DEADLINE).events).toEqual([]);
+    const urgent = withItem(d, "ana", { confirmedUrgency: true, risk: "urgent" });
+    expect(lostNotices(urgent, T + DEADLINE).events).toEqual([]);
+    const fall = freeze({ ...d, contingencies: [{ start: T + MIN, end: T + 11 * MIN }] });
+    expect(lostNotices(fall, T + DEADLINE).events).toEqual([]);
+    expect(lostNotices(fall, T + DEADLINE + 10 * MIN).events).toHaveLength(1);
+    expect(lostNotices(d, T + DEADLINE, MANUAL)).toEqual({ day: d, events: [] });
+  });
+
+  it("um novo 'venha agora' (depois de 'Vou sair') pode avisar de novo", () => {
+    let d = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T);
+    d = freeze(lostNotices(d, T + DEADLINE).day);
+    d = alreadyNotified(d, "ana", T + 2 * DEADLINE);
+    expect(lostNotices(d, T + 3 * DEADLINE).events).toHaveLength(1);
+  });
+});
+
+describe('AD-076: o "venha agora" diz se a pessoa perde a vez', () => {
+  it("urgência confirmada não perde a vez pelo prazo", () => {
+    const d = withItem(dayWith(["ana", "bruno"]), "ana", { confirmedUrgency: true, risk: "urgent" });
+    expect(comeNowNotices(d, T, AUTO).events[0]?.data).toMatchObject({ losesTurn: false });
   });
 });

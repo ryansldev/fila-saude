@@ -118,6 +118,6 @@ Estados da entrada:
 | Arquivada | Não respondeu "ainda precisa?" | Não (pode reativar) |
 | Concluída | Atendida na última etapa | Sim |
 | Cancelada | Desistiu, foi removida ou recusada na conferência | Sim |
-| Encerrada sem atendimento | Saiu por 3 pulos, ou faltou | Sim (revertida só pela contingência registrada depois) |
+| Encerrada sem atendimento | Saiu por 2 pulos, ou faltou | Sim (revertida só pela contingência registrada depois) |
 
 Estados da entrada na fila do dia: **Remoto**, **Presente**, **Chamado**, **Atendido na etapa**, **Saiu da fila**, **Remanejado**.

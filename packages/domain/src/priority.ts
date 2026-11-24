@@ -114,10 +114,19 @@ export function hasPriority(p: LegalPriority): boolean {
   return p.groups.length > 0;
 }
 
-/** 2 = 80+, 1 = qualquer outro grupo (sem hierarquia entre eles), 0 = nenhum. */
-export function rankPriority(p: LegalPriority): 0 | 1 | 2 {
-  if (p.groups.includes("elderly80")) return 2;
+/**
+ * 1 = com prioridade (qualquer grupo, sem hierarquia entre eles: Lei 10.048), 0 = sem. O 80+ antes dos
+ * demais idosos (Lei 10.741, art. 3º, § 2º) não cabe numa comparação de dois: vem da ordem da fila
+ * inteira (`orderItems`, RV7).
+ */
+export function rankPriority(p: LegalPriority): 0 | 1 {
   return p.groups.length > 0 ? 1 : 0;
+}
+
+/** Idoso: 0 = não, 1 = 60 a 79, 2 = 80 ou mais. */
+export function elderlyLevel(p: LegalPriority): 0 | 1 | 2 {
+  if (p.groups.includes("elderly80")) return 2;
+  return p.groups.includes("elderly") ? 1 : 0;
 }
 
 /**

@@ -1,6 +1,14 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { eligible, type QueueItem, type SessionDay, type Stage, type Station, stayEligible } from "./queue.ts";
+import {
+  eligible,
+  orderKey,
+  type QueueItem,
+  type SessionDay,
+  type Stage,
+  type Station,
+  stayEligible,
+} from "./queue.ts";
 import { type ErrorCode, type Event, failure, ok, type Result } from "./result.ts";
 
 type Cmd = { stationId: string };
@@ -252,7 +260,10 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   current = withStation(current, station.id, { calledItemId: next.id });
   current = {
     ...current,
-    calls: [...current.calls, { itemId: next.id, stage: next.stage, stationId: station.id, at: now }],
+    calls: [
+      ...current.calls,
+      { itemId: next.id, stage: next.stage, stationId: station.id, at: now, orderKey: orderKey(next) },
+    ],
   };
   events.push({
     kind: "called",
@@ -290,7 +301,7 @@ export function finish(day: SessionDay, cmd: CmdClose, now: number): Result<Sess
 
 /** Linha do contrato escolhida pelos pulos no dia (a transição depende da condição). */
 function skipDestination(skips: number): ItemState {
-  const condition = `Pulos no dia = ${Math.min(skips, 2)}`;
+  const condition = `Pulos no dia = ${Math.min(skips, 1)}`;
   const row = ITEM_TRANSITIONS.find((t) => t.de === "called" && t.event === EVENT_NO_SHOW && t.condition === condition);
   if (!row || row.for === "(mesmo)" || row.for === "(não cria)") {
     throw new Error(`contrato: sem linha para ${condition}`);
@@ -299,10 +310,9 @@ function skipDestination(skips: number): ItemState {
 }
 
 /**
- * RN-CHAM-03: os pulos somam as etapas. 1º: presente atrás dos próximos K, sem atraso;
- * 2º: remoto, e ao voltar só contam as chamadas feitas depois daqui (`saiuEm`);
- * 3º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02); a entrada vai a "Encerrada sem
- * atendimento" com `entryOutcome` (ou no encerramento).
+ * RN-CHAM-03 (AD-076): os pulos somam as etapas. 1º: a vez fica guardada, presente atrás dos próximos K,
+ * sem atraso; 2º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02), também com urgência
+ * confirmada; a entrada vai a "Encerrada sem atendimento" com `entryOutcome` (ou no encerramento).
  */
 export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   const found = calledInStation(day, cmd.stationId);
@@ -329,12 +339,10 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
     state: to,
     skips,
     lockedBehind: [],
-    leftAt: to === "remote" ? now : item.leftAt,
     presentSince: null,
-    exitReason: to === "left_queue" ? "skips" : null,
+    exitReason: "skips",
   };
   const current = releaseLocks(withItem(free, outside), item.id);
-  if (to === "remote") return ok(markSkip(current), [skipped]);
   return ok(markSkip(current), [
     skipped,
     { kind: "no_show", ...ids, reason: "não compareceu à chamada" },
