@@ -84,7 +84,8 @@ export function callingAt(day: SessionDay, e: Station, t: number): boolean {
 
 /** Desde quando a estação chama de novo em `t`: o fim da última pausa (dela ou da sessão), a volta ou a reabertura. */
 export function resumedAt(day: SessionDay, e: Station, t: number): number {
-  const ends = [...intervals(day, e).map((i) => i.end), e.callingSince ?? Number.NEGATIVE_INFINITY];
+  // A pausa adiada não parou a estação: não conta como volta.
+  const ends = [...intervals(day, e, true).map((i) => i.end), e.callingSince ?? Number.NEGATIVE_INFINITY];
   return Math.max(Number.NEGATIVE_INFINITY, ...ends.filter((end) => end <= t));
 }
 
@@ -134,10 +135,10 @@ export function waitingBeforePause(day: SessionDay, stationId: string, now: numb
  * A pausa adiada começa quando não há mais ninguém de `waitFor` esperando (o profissional finalizou): desde
  * agora, com a mesma duração (a volta anda o mesmo tanto).
  */
-export function settleDeferredPause(day: SessionDay, stationId: string, now: number): SessionDay {
+export function settleDeferredPause(day: SessionDay, stationId: string, now: number, force = false): SessionDay {
   const e = day.stations.find((x) => x.id === stationId);
   const p = e?.pause;
-  if (!e || !p?.deferred || waitingBeforePause(day, stationId, now).length > 0) return day;
+  if (!e || !p?.deferred || (!force && waitingBeforePause(day, stationId, now).length > 0)) return day;
   const pause = { from: now, until: p.until === null ? null : now + (p.until - p.from) };
   return { ...day, stations: day.stations.map((x) => (x.id === e.id ? { ...e, pause } : x)) };
 }

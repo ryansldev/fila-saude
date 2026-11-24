@@ -335,6 +335,66 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     expect(station(back).stops ?? []).toEqual([]);
   });
 
+  it("chamar com a pausa já começada e alguém esperando: a estação precisa escolher (atender antes ou pausar agora)", () => {
+    expect(callNext(scene(), { stationId: "e1" }, T + 32 * MIN)).toEqual({ ok: false, error: "pause_has_waiting" });
+  });
+
+  it("atender antes de pausar respeita quem classifica: o técnico não chama o acolhido, e a pausa começa", () => {
+    const base = dayWith(["bia"]);
+    const d = freeze({
+      ...base,
+      items: base.items.map((i) => ({ ...i, stage: "triage" as const, state: "present" as const, welcomed: true })),
+      stations: [
+        {
+          id: "t1",
+          stage: "triage" as const,
+          services: ["cli"],
+          open: true,
+          calledItemId: null,
+          pause: { from: T, until: T + 60 * MIN, waitFor: ["bia"] },
+        },
+      ],
+    });
+    const r = apply(serveBeforePause(d, { stationId: "t1", classifies: false }, T + MIN));
+    expect(station(r, "t1").calledItemId).toBeNull();
+    expect(station(r, "t1").pause).toEqual({ from: T + MIN, until: T + 61 * MIN });
+  });
+
+  it("pausa que acabou antes de a estação ficar livre: não manda justificativa atrasada", () => {
+    let d = present(alreadyNotified(dayWith(["ana", "bia"]), "bia", T - 5 * MIN, 30), "ana");
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 10 } }, T));
+    d = apply(callNext(d, { stationId: "e1" }, T + 15 * MIN));
+    d = apply(checkIn(d, { itemId: "bia" }, T + 20 * MIN));
+    d = apply(finish(d, { stationId: "e1" }, T + 45 * MIN));
+    let r = pauseStartNotices(d, T + 46 * MIN);
+    r = pauseStartNotices(r.day, T + 50 * MIN);
+    expect(r.events).toEqual([]);
+    expect(station(r.day).pause?.waitFor).toBeUndefined();
+  });
+
+  it("pausar agora depois de escolher atender antes: a pausa deixa de ser adiada; antes da hora, recusa", () => {
+    const d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
+    const now = apply(confirmPause(d, { stationId: "e1" }, T + 33 * MIN));
+    expect(station(now).pause).toEqual({ from: T + 33 * MIN, until: T + 93 * MIN });
+    const early = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
+    const later = freeze({
+      ...early,
+      stations: early.stations.map((e) => ({ ...e, pause: { from: T + 30 * MIN, until: null } })),
+    });
+    expect(confirmPause(later, { stationId: "e1" }, T)).toEqual({ ok: false, error: "forbidden_transition" });
+  });
+
+  it("pausa adiada que passou da volta não vira parada ao pausar de novo", () => {
+    const base = dayWith(["ana"]);
+    const d = freeze({
+      ...base,
+      stations: base.stations.map((e) => ({ ...e, pause: { from: T, until: T + 10 * MIN, deferred: true } })),
+    });
+    const r = apply(pauseStation(d, { stationId: "e1", back: null }, T + 20 * MIN));
+    expect(station(r).stops).toBeUndefined();
+    expect(station(r).callingSince).toBeUndefined();
+  });
+
   it("atender antes de pausar sem ninguém esperando é recusado", () => {
     const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
     expect(serveBeforePause(d, { stationId: "e1" }, T + MIN)).toEqual({ ok: false, error: "forbidden_transition" });

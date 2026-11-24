@@ -259,8 +259,11 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
   if (pausedAt(current, station, now)) {
     if (events.length > 0) return ok(current, events);
+    // Quem chegou no prazo espera: a estação escolhe atender antes ou pausar agora (opção C).
+    if (waitingBeforePause(current, station.id, now).length > 0) return failure("pause_has_waiting");
     // Sem pausa própria em curso, é o intervalo da sessão (almoço): "voltar agora" não resolve.
-    const own = station.pause && station.pause.from <= now && (station.pause.until ?? Number.POSITIVE_INFINITY) > now;
+    const p = current.stations.find((e) => e.id === station.id)?.pause;
+    const own = p && !p.deferred && p.from <= now && (p.until ?? Number.POSITIVE_INFINITY) > now;
     return failure(!own && inBreak(current, now) ? "session_break" : "station_paused");
   }
   // Atendendo antes de pausar: só quem estava a caminho e chegou (opção C), na ordem de sempre.
@@ -270,6 +273,8 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true }).find(
     (i) => waiting === null || waiting.has(i.id),
   );
+  // Ninguém dos esperados que esta estação possa chamar (ex.: acolhido e técnico): a pausa começa.
+  if (waiting !== null && !next) return ok(settleDeferredPause(current, station.id, now, true), events);
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").
   if (!next) return events.length > 0 ? ok(current, events) : failure("none_eligible");
   if (applyTransition(ITEM_TRANSITIONS, next.state, EVENT_CALL) !== "called") {

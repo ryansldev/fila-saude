@@ -13,6 +13,7 @@ export const ERROR_CODES = [
   "pause_back_before_start",
   "pause_during_outage",
   "station_already_paused",
+  "pause_has_waiting",
   "session_break",
   "no_show_up",
   "invalid_qr",

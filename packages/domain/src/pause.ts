@@ -58,7 +58,8 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
   const until = back === null ? null : "at" in back ? back.at : from + back.inMin * MIN;
   if (until !== null && !(Number.isFinite(until) && until > from)) return failure("pause_back_before_start");
   // A pausa que acabou sozinha deixa a hora da volta: o silêncio de antes dela não é queda.
-  const old = e.pause?.until != null ? { start: e.pause.from, end: e.pause.until } : undefined;
+  // A pausa adiada não parou a estação: não vira parada.
+  const old = e.pause?.until != null && !e.pause.deferred ? { start: e.pause.from, end: e.pause.until } : undefined;
   const since = old === undefined ? {} : { callingSince: Math.max(e.callingSince ?? old.end, old.end) };
   const waitFor = onTheWayItems(day, e.stage, now).map((i) => i.id);
   const pause = { from, until, ...(waitFor.length > 0 ? { waitFor } : {}) };
@@ -100,17 +101,31 @@ export function reopenStation(day: SessionDay, cmd: Cmd, now: number): Result<Se
  * Opção C, "atender antes de pausar": chama o próximo (quem chegou no prazo está na frente) e adia a pausa
  * até o profissional finalizar; ela começa então, com a mesma duração.
  */
-export function serveBeforePause(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
+export function serveBeforePause(
+  day: SessionDay,
+  cmd: Cmd & { classifies?: boolean },
+  now: number,
+): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
   if (!e?.pause || waitingBeforePause(day, e.id, now).length === 0) return failure("forbidden_transition");
   if (e.calledItemId !== null) return failure("station_has_call");
-  return callNext(withStation(day, { ...e, pause: { ...e.pause, deferred: true } }), { stationId: e.id }, now);
+  const deferred = withStation(day, { ...e, pause: { ...e.pause, deferred: true } });
+  return callNext(
+    deferred,
+    { stationId: e.id, ...(cmd.classifies === undefined ? {} : { classifies: cmd.classifies }) },
+    now,
+  );
 }
 
 /** A justificativa para quem chegou no prazo e ficou para a volta; `waitFor` sai para não repetir. */
 function notifyWaiting(day: SessionDay, e: Station, now: number): { day: SessionDay; events: Event[] } {
   if (!e.pause?.waitFor || e.pause.deferred || e.pause.from > now) return { day, events: [] };
+  // A pausa já acabou: a justificativa não faz mais sentido.
+  if (e.pause.until !== null && e.pause.until <= now) {
+    const { waitFor: _, askedAt: __, ...pause } = e.pause;
+    return { day: withStation(day, { ...e, pause }), events: [] };
+  }
   const events: Event[] = waitingBeforePause(day, e.id, now).map((i) => ({
     kind: "turn_after_pause",
     itemId: i.id,
@@ -125,9 +140,21 @@ function notifyWaiting(day: SessionDay, e: Station, now: number): { day: Session
 export function confirmPause(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const e = day.stations.find((x) => x.id === cmd.stationId);
-  if (!e?.pause) return failure("forbidden_transition");
-  if (!e.pause.waitFor) return ok(day);
-  const r = notifyWaiting(day, e, now);
+  if (!e?.pause || e.pause.from > now) return failure("forbidden_transition");
+  // Tinha escolhido atender antes e mudou de ideia: a pausa começa agora, com a mesma duração.
+  const p = e.pause;
+  const started = p.deferred
+    ? {
+        ...e,
+        pause: {
+          from: now,
+          until: p.until === null ? null : now + (p.until - p.from),
+          ...(p.waitFor ? { waitFor: p.waitFor } : {}),
+        },
+      }
+    : e;
+  if (!started.pause?.waitFor) return ok(withStation(day, started));
+  const r = notifyWaiting(withStation(day, started), started, now);
   return ok(r.day, r.events);
 }
 
@@ -145,6 +172,11 @@ export function pauseStartNotices(day: SessionDay, now: number): { day: SessionD
     const station = current.stations.find((x) => x.id === e.id) as Station;
     const p = station.pause;
     if (!p?.waitFor || p.deferred || p.from > now || station.calledItemId !== null) continue;
+    if (p.until !== null && p.until <= now) {
+      const r = notifyWaiting(current, station, now);
+      current = r.day;
+      continue;
+    }
     if (p.askedAt === undefined) {
       current = withStation(current, { ...station, pause: { ...p, askedAt: now } });
       continue;
