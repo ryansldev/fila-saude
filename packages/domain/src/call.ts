@@ -269,21 +269,20 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     current = afterCallEnds(current, station.id, now);
   }
   // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
-  if (pausedAt(current, station, now)) {
+  const stationNow = current.stations.find((e) => e.id === station.id) ?? station;
+  if (pausedAt(current, stationNow, now)) {
     if (events.length > 0) return ok(current, events);
     // Sem pausa própria em curso, é o intervalo da sessão (almoço): "voltar agora" nem atender antes resolvem.
-    const p = current.stations.find((e) => e.id === station.id)?.pause;
-    const own = p && !p.deferred && p.from <= now && (p.until ?? Number.POSITIVE_INFINITY) > now;
+    // No intervalo da sessão, nem "voltar agora" nem atender antes resolvem: a estação só chama no fim dele.
+    if (inBreak(current, now)) return failure("session_break");
     const waiting = waitingBeforePause(current, station.id, now).length > 0;
-    // No intervalo, atender antes não resolve: a estação só chama no fim dele.
-    if ((!own || waiting) && inBreak(current, now)) return failure("session_break");
     // Quem chegou no prazo espera: a estação escolhe atender antes ou pausar agora (opção C).
     if (waiting) return failure("pause_has_waiting");
     return failure("station_paused");
   }
   // Atendendo antes de pausar: só quem estava a caminho e chegou (opção C), na ordem de sempre.
   const waiting = current.stations.find((e) => e.id === station.id)?.pause?.deferred
-    ? new Set(waitingBeforePause(current, station.id, now).map((i) => i.id))
+    ? new Set(waitingBeforePause(current, station.id, now, true).map((i) => i.id))
     : null;
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true }).find(
     (i) => waiting === null || waiting.has(i.id),

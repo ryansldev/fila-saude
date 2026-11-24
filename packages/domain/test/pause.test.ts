@@ -478,10 +478,38 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
     expect(station(r.day).pause).toEqual({ from: T + 55 * MIN, until: T + 114 * MIN });
   });
 
-  it("pausa adiada que passou da volta não recomeça: some", () => {
+  it("atendimento antes da pausa que passa da volta marcada: a pausa começa ao finalizar, com a mesma duração", () => {
     const d = apply(serveBeforePause(scene(), { stationId: "e1" }, T + 31 * MIN));
     const r = apply(finish(d, { stationId: "e1" }, T + 100 * MIN));
-    expect(station(r).pause).toBeUndefined();
+    expect(station(r).pause).toEqual({ from: T + 100 * MIN, until: T + 159 * MIN });
+  });
+
+  it("os 3 min para responder contam de quando a estação fica livre de novo", () => {
+    let d = present(
+      alreadyNotified(
+        alreadyNotified(dayWith(["ana", "bia", "caio"]), "bia", T - 5 * MIN, 30),
+        "caio",
+        T - 5 * MIN,
+        30,
+      ),
+      "ana",
+    );
+    d = apply(pauseStation(d, { stationId: "e1", back: { inMin: 60 } }, T));
+    d = apply(checkIn(d, { itemId: "bia" }, T + 20 * MIN));
+    d = apply(checkIn(d, { itemId: "caio" }, T + 21 * MIN));
+    d = pauseStartNotices(d, T + 31 * MIN).day;
+    d = apply(serveBeforePause(d, { stationId: "e1" }, T + 32 * MIN));
+    d = apply(finish(d, { stationId: "e1" }, T + 45 * MIN));
+    const r = pauseStartNotices(d, T + 45 * MIN);
+    expect(r.events).toEqual([]);
+    expect(pauseStartNotices(r.day, T + 49 * MIN).events.map((e) => e.itemId)).toEqual(["caio"]);
+  });
+
+  it("com outra estação da etapa chamando, quem esperava não recebe a justificativa (a outra o chama)", () => {
+    const d = two(scene());
+    let r = pauseStartNotices(d, T + 32 * MIN);
+    r = pauseStartNotices(r.day, T + 36 * MIN);
+    expect(r.events).toEqual([]);
   });
 
   it("pausa adiada que começa à força (ninguém esperado pode ser chamado aqui): quem esperava recebe a justificativa", () => {

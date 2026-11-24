@@ -124,10 +124,12 @@ export function withStop(e: Station, stop: { start: number; end: number } | unde
  * Opção C (AD-077): quem estava a caminho quando a pausa foi marcada, já chegou e ainda não foi chamado. Só
  * depois da hora da pausa (antes dela, a estação chama normalmente).
  */
-export function waitingBeforePause(day: SessionDay, stationId: string, now: number): QueueItem[] {
+export function waitingBeforePause(day: SessionDay, stationId: string, now: number, anyTime = false): QueueItem[] {
   const e = day.stations.find((x) => x.id === stationId);
   const p = e?.pause;
-  if (!e || !p?.waitFor || p.from > now || (p.until !== null && p.until <= now)) return [];
+  // A adiada vale até ser resolvida (`anyTime`), mesmo depois da volta marcada: a volta anda junto.
+  const ended = p?.until != null && p.until <= now && !(anyTime && p.deferred);
+  if (!e || !p?.waitFor || p.from > now || ended) return [];
   const ids = new Set(p.waitFor);
   return day.items.filter((i) => ids.has(i.id) && i.state === "present" && i.stage === e.stage);
 }
@@ -140,7 +142,7 @@ export function settleDeferredPause(day: SessionDay, stationId: string, now: num
   const e = day.stations.find((x) => x.id === stationId);
   const p = e?.pause;
   if (!e || !p?.deferred) return day;
-  if (!(p.until !== null && p.until <= now) && waitingBeforePause(day, stationId, now).length > 0) return day;
+  if (waitingBeforePause(day, stationId, now, true).length > 0) return day;
   return startPauseNow(day, stationId, now).day;
 }
 
@@ -157,14 +159,15 @@ export function startPauseNow(day: SessionDay, stationId: string, now: number): 
     ...day,
     stations: day.stations.map((x) => (x.id === e.id ? station : x)),
   });
-  if (p.deferred && p.until !== null && p.until <= now) {
-    const { pause: _, ...rest } = e;
-    return { day: put(rest), events: [] };
-  }
+  // A adiada começa agora com a mesma duração, mesmo que o atendimento tenha passado da volta marcada.
   const pause = p.deferred
     ? { from: now, until: p.until === null ? null : now + (p.until - p.from) }
     : { from: p.from, until: p.until };
-  const events: Event[] = waitingBeforePause(day, e.id, now)
+  // Com outra estação da etapa chamando, quem esperava é chamado por ela: sem justificativa.
+  const others = day.stations.some(
+    (x) => x.id !== e.id && x.stage === e.stage && x.services.includes(day.serviceId) && callingAt(day, x, now),
+  );
+  const events: Event[] = (others ? [] : waitingBeforePause(day, e.id, now, true))
     .filter((i) => i.id !== e.calledItemId)
     .map((i) => ({ kind: "turn_after_pause", itemId: i.id, stationId: e.id, data: { until: pause.until } }));
   return { day: put({ ...e, pause }), events };
@@ -179,6 +182,11 @@ export function afterCallEnds(day: SessionDay, stationId: string, now: number): 
   const settled = settleDeferredPause(day, stationId, now);
   const e = settled.stations.find((x) => x.id === stationId);
   const p = e?.pause;
+  // A estação ficou livre: os 3 min para responder "atender antes de pausar?" contam de novo.
+  if (e && p?.askedAt !== undefined && p.deferred) {
+    const { askedAt: _, ...rest } = p;
+    return { ...settled, stations: settled.stations.map((x) => (x.id === e.id ? { ...e, pause: rest } : x)) };
+  }
   if (!e || !p || p.deferred || p.from >= now || (p.until !== null && p.until <= now)) return settled;
   return {
     ...settled,

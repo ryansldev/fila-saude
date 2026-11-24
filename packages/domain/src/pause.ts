@@ -37,7 +37,8 @@ function onTheWayUntil(day: SessionDay, stage: Stage, now: number): number | nul
 /**
  * Pausa avisada (plano-pausa-e-fechar): a pausa nunca pega ninguém a caminho. Com alguém da etapa a caminho
  * (no prazo do "venha agora", ou no prazo estendido por uma queda), começa depois do prazo da unidade, ou do
- * prazo estendido se for maior; senão, agora. Pausar de novo (trocar a volta) mantém o início. A volta é
+ * prazo estendido se for maior; senão, agora. Com pausa marcada ou em curso, pausar de novo é recusado (volte
+ * ou desmarque antes). A volta é
  * opcional; em minutos, conta do início da pausa; antes do início, recusa. Não pausa com paciente chamado
  * (como fechar, RN-EST-05), nem estação fechada.
  */
@@ -111,7 +112,8 @@ export function serveBeforePause(
   if (inBreak(day, now)) return failure("session_break");
   if (!e?.pause || waitingBeforePause(day, e.id, now).length === 0) return failure("forbidden_transition");
   if (e.calledItemId !== null) return failure("station_has_call");
-  const deferred = withStation(day, { ...e, pause: { ...e.pause, deferred: true } });
+  const { askedAt: _, ...pause } = e.pause;
+  const deferred = withStation(day, { ...e, pause: { ...pause, deferred: true } });
   return callNext(
     deferred,
     { stationId: e.id, ...(cmd.classifies === undefined ? {} : { classifies: cmd.classifies }) },
