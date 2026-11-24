@@ -160,6 +160,58 @@ describe("PV5: com o sinal parado (queda ainda não confirmada), o atraso não �
     expect(ana?.number).toBe(1);
   });
 
+  it("o sinal é julgado na hora do giro, não depois: sem TV, a estação em segundo plano não para o atraso", () => {
+    const stations = (at: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: at, serverStartedAt: 0 });
+    let d = freeze(
+      trackOutage(alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30), T + 29 * MIN, stations(T + 29 * MIN)),
+    );
+    // Giro às 10:31:00 com o último sinal às 10:29:50 (aba em segundo plano: 70 s, no ar).
+    d = freeze(trackOutage(d, T + 31 * MIN, stations(T + 29 * MIN + 50_000)));
+    // 10:31:40: o sinal visto no giro teria 110 s agora, mas no giro estava recente: o prazo acabou mesmo.
+    expect(lateness(d, d.items[0] as never, T + 31 * MIN + 40_000)).toBe("late");
+    expect(turnLostNotices(d, T + 31 * MIN + 40_000, AUTO).events).toHaveLength(1);
+  });
+
+  it("com TV, que dá sinal a cada 20 s, 50 s calada no giro já é sinal parado", () => {
+    let d = alive(alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30), T + 29 * MIN);
+    // Giro às 10:30:40, a TV calada desde 10:29:50 (antes do fim do prazo, às 10:30).
+    d = track(d, T + 30 * MIN + 40_000, T + 29 * MIN + 50_000);
+    expect(lateness(d, d.items[0] as never, T + 30 * MIN + 40_000)).toBe("late_in_contingency");
+  });
+
+  it("sem TV, 100 s de silêncio da estação no giro já é sinal parado; com TV, 30 s no giro ainda não", () => {
+    const stations = (at: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: at, serverStartedAt: 0 });
+    const base = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30);
+    let d = freeze(trackOutage(base, T + 28 * MIN, stations(T + 28 * MIN)));
+    d = freeze(trackOutage(d, T + 30 * MIN + 30_000, stations(T + 28 * MIN + 45_000)));
+    expect(lateness(d, d.items[0] as never, T + 30 * MIN + 30_000)).toBe("late_in_contingency");
+    let tv = alive(base, T + 29 * MIN);
+    tv = track(tv, T + 30 * MIN + 20_000, T + 29 * MIN + 50_000);
+    expect(lateness(tv, tv.items[0] as never, T + 30 * MIN + 20_000)).toBe("late");
+  });
+
+  it("a TV cai logo depois do giro: passado o limite e mais um giro, o atraso já espera sem aguardar o próximo", () => {
+    let d = alive(alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30), T + 29 * MIN);
+    // Giro às 10:30:05, a TV com sinal às 10:29:50 (15 s, no ar); depois ela cai.
+    d = track(d, T + 30 * MIN + 5_000, T + 29 * MIN + 50_000);
+    expect(lateness(d, d.items[0] as never, T + 30 * MIN + 30_000)).toBe("late");
+    // 10:31:40: 110 s sem sinal, mais que os 45 s e um giro: pode ser queda.
+    expect(lateness(d, d.items[0] as never, T + 31 * MIN + 40_000)).toBe("late_in_contingency");
+  });
+
+  it("varredura parada há mais de 2 min com o servidor no ar: o sinal visto já não vale e o atraso espera", () => {
+    let d = alive(alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30), T + 28 * MIN);
+    d = track(d, T + 29 * MIN, T + 29 * MIN);
+    expect(lateness(d, d.items[0] as never, T + 31 * MIN + 30_000)).toBe("late_in_contingency");
+  });
+
+  it("dia salvo antes de guardar a fonte do sinal: conta como estações", () => {
+    let d = alive(alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30), T + 28 * MIN);
+    d = track(d, T + 30 * MIN + 30_000, T + 28 * MIN + 45_000);
+    const { signalSource: _, ...old } = d as SessionDay & { signalSource?: string };
+    expect(lateness(old as SessionDay, d.items[0] as never, T + 30 * MIN + 30_000)).toBe("late_in_contingency");
+  });
+
   it("sem ninguém chamando (estação fechada), não há queda a confirmar: o 'perdeu a vez' sai", () => {
     let d = alive(alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30), T + 20 * MIN);
     d = freeze({ ...d, stations: d.stations.map((e) => ({ ...e, open: false })) });

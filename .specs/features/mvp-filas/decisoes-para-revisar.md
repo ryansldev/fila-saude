@@ -382,4 +382,3 @@ Decisões da migração das rotas para o schema no Fastify (DOC2, [plano](../../
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
 | QP6 | Estação fechada sem TV | Na v0.1 as estações da sessão estão sempre abertas (não há abrir e fechar no painel). Numa unidade sem TV, fechar a aba da estação no almoço abre uma queda: o relógio do prazo para e o app manda procurar a recepção até a aba voltar | Contar só estações com atividade recente | Quem já recebeu o "venha agora" ganha tempo durante o almoço; o app diz "modo manual" sem queda de verdade |
-

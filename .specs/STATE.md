@@ -8,7 +8,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - **Docs públicas da API na `main`** (PR #34; AD-066 a AD-069): guias e a referência da API v1 em `/docs` do `apps/web`, gerada das rotas (`npm run docs:openapi`).
 - **Revisão de UI com o design system em andamento.** Feitas no painel: Agendamento, Fila do dia, QR de entrada e unidade no menu, Estação (com "Compareceu"), TV. No app: página da unidade, entrar, criar conta, aba "hoje" (bilhete), mapa das unidades, inscrição (com a relação para outra pessoa). Designs em [features/design-system/](features/design-system/).
 - **Código em inglês** pela tabela de [nomes no código](specs/nomes-no-codigo.md); telas e specs em português. Migrações recriadas do zero (NC2); o banco de dev já está no conjunto novo (2026-11-18).
-- **Testes (2026-11-24):** API 462, domínio 423, painel 171, app 173, schemas 76, design 9; lint limpo. Review antes de cada commit.
+- **Testes (2026-11-24):** API 462, domínio 429, painel 171, app 173, schemas 76, design 9; lint limpo. Review antes de cada commit.
 
 ## Esperando você
 
@@ -16,7 +16,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC, CP). Tentativas de login e captcha prontos (AD-062 a AD-065; valores de partida, a reajustar com o piloto). Alinhamento de 2026-11-19: aprovadas na AD-070; as que você comentou (G9/G10, H4, I10, E3, P1, DA1…) estão anotadas no topo do arquivo, sem mudança no código.
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.
 - **Push no Android na `main`** (PR #35; AD-071 a AD-074). Rodar `npm run db:migrate`. **Na produção, a API só depois do app novo instalado** (o canal do push mudou para `avisos`). iOS pede o `bundleIdentifier` e a conta da Apple.
-- **RV7, perder a vez e queda percebida na `main`** (PRs #36 a #38; AD-075, AD-076). Confirmar a leitura da lei com o advogado (D5). PR da correção da fonte do sinal (TV ou estações, branch `fix/outage-signal-source`) esperando revisão.
+- **RV7, perder a vez e queda percebida na `main`** (PRs #36 a #38; AD-075, AD-076). Confirmar a leitura da lei com o advogado (D5). Fonte do sinal na `main` (PR #39); sinal parado julgado por fonte e no giro (PR #40, QP7) esperando revisão.
 
 ## Próximo passo
 
