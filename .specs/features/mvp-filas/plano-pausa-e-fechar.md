@@ -15,7 +15,7 @@ Hoje a estação da sessão está sempre "aberta": não existe pausar nem fechar
 - **Fechar** é a estação deixar de atender nesta sessão (o médico foi embora). Pode reabrir, e a reabertura fica na auditoria.
 - **Alerta (QP2):** uma faixa no painel quando a TV ou uma estação perde o sinal.
 
-## Regras novas (entram na spec de chamada com IDs novos)
+## Regras novas (RN-EST-06, RN-EST-07 e RN-SES-06 na spec de chamada; AD-077)
 
 **Pausa avisada (estação).** O profissional toca **Pausar**, escolhe a volta (opcional: 30 min, 1 h ou um horário) e a pausa começa depois do prazo de chegada da unidade. Até lá, a estação segue chamando quem está na unidade ou a caminho. Se a etapa ficaria sem estação chamando durante a pausa, deixa de sair "venha agora" e "saia de casa" para quem chegaria nela. **Voltar** encerra a pausa na hora. Não pausa com paciente chamado (como fechar, RN-EST-05).
 

@@ -9,6 +9,8 @@ export const ERROR_CODES = [
   "none_eligible",
   "station_busy",
   "station_has_call",
+  "station_paused",
+  "pause_back_before_start",
   "no_show_up",
   "invalid_qr",
   "referral_pending",

@@ -84,6 +84,16 @@ export {
 export { firstName, properName, sameName } from "./names.ts";
 export type { OrderKey, Risk, SuggestionKey } from "./order.ts";
 export { inManualMode, trackOutage, type UnitSignal } from "./outage.ts";
+export {
+  callingAt,
+  type Pause,
+  type PauseBack,
+  pausedAt,
+  pauseStation,
+  reopenStation,
+  resumeStation,
+  stagePause,
+} from "./pause.ts";
 export type { Action, Cell, MatrixRow, Profile } from "./permissions.ts";
 export { can, cellText, conditions, MATRIX, OPERATE_CAVEAT_STAGE, PROFILES } from "./permissions.ts";
 export type { GivePriorityContext, Group, LegalPriority } from "./priority.ts";

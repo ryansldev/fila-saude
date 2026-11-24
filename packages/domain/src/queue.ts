@@ -59,7 +59,20 @@ export type QueueItem = {
   exitReason: ExitReason | null;
 };
 
-export type Station = { id: string; stage: Stage; services: string[]; open: boolean; calledItemId: string | null };
+/**
+ * `open` falso: fechada nesta sessão (RN-EST-07). `pause`: a pausa avisada (RN-EST-06), desde `from`; `until`
+ * nulo, sem hora de volta.
+ */
+export type Station = {
+  id: string;
+  stage: Stage;
+  services: string[];
+  open: boolean;
+  calledItemId: string | null;
+  pause?: { from: number; until: number | null };
+  /** Voltou a chamar ("voltar agora" de uma pausa em curso, ou reaberta): o silêncio de antes não é queda. */
+  callingSince?: number;
+};
 
 /** `recalls`: horários de "Rechamar" (RN-CHAM-02), para a TV repetir o anúncio; `em` não muda. */
 export type Call = {
@@ -105,6 +118,8 @@ export type SessionDay = {
    * fora do ar (reiniciado). `end` nulo: a queda continua (modo manual). Ausente nos dias de antes.
    */
   outages?: { start: number; end: number | null }[];
+  /** Pausas planejadas de todas as estações: o vão entre as faixas de horário da sessão. */
+  breaks?: { start: number; end: number }[];
   /** Hora do último giro da varredura nesta sessão: o servidor reiniciado depois dela esteve fora do ar. */
   lastSweepAt?: number;
   /** Último sinal de vida da unidade que a varredura viu nesta sessão; sem ele, a unidade não começou. */
@@ -245,6 +260,18 @@ export function lateness(day: SessionDay, x: QueueItem, now: number): "on_time" 
   if (x.state !== "remote") return "on_time";
   const window = arrivalWindow(day, x);
   if (window === null || now < window.end) return "on_time";
+  const end = extendedDeadlineEnd(day, x, now) as number;
+  if (now < end) return "late_in_contingency";
+  // Sinal da unidade parado desde antes do fim do prazo: pode ser uma queda ainda não confirmada, que volta
+  // no tempo e estende o prazo; até lá, o atraso espera (PV5).
+  const signalAt = day.unitSignalAt ?? Number.NEGATIVE_INFINITY;
+  return pendingOutage(day, now) && signalAt < end ? "late_in_contingency" : "late";
+}
+
+/** O fim do prazo de chegada estendido pelas quedas até `now` (a aberta vai até agora); nulo sem "venha agora". */
+export function extendedDeadlineEnd(day: SessionDay, x: QueueItem, now: number): number | null {
+  const window = arrivalWindow(day, x);
+  if (window === null) return null;
   let end = window.end;
   let cursor = window.start;
   // Quedas registradas pela recepção e percebidas pelo sistema (a aberta vai até agora).
@@ -256,11 +283,7 @@ export function lateness(day: SessionDay, x: QueueItem, now: number): "on_time" 
     end += c.end - from;
     cursor = c.end;
   }
-  if (now < end) return "late_in_contingency";
-  // Sinal da unidade parado desde antes do fim do prazo: pode ser uma queda ainda não confirmada, que volta
-  // no tempo e estende o prazo; até lá, o atraso espera (PV5).
-  const signalAt = day.unitSignalAt ?? Number.NEGATIVE_INFINITY;
-  return pendingOutage(day, now) && signalAt < end ? "late_in_contingency" : "late";
+  return end;
 }
 
 /** A vez de X passou: perdeu o prazo de chegada, fora de contingência (AD-076). */

@@ -1,5 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
+import { pausedAt } from "./pause.ts";
 import {
   eligible,
   orderKey,
@@ -249,6 +250,10 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     current = closed.day;
     events.push(...closed.events);
   }
+  // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
+  if (pausedAt(current, station, now)) {
+    return events.length > 0 ? ok(current, events) : failure("station_paused");
+  }
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true })[0];
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").
   if (!next) return events.length > 0 ? ok(current, events) : failure("none_eligible");
@@ -359,7 +364,8 @@ export function closeStation(day: SessionDay, cmd: Cmd): Result<SessionDay> {
   const station = day.stations.find((e) => e.id === cmd.stationId);
   if (!station) return failure("forbidden_transition");
   if (station.calledItemId !== null) return failure("station_has_call");
-  return ok(withStation(day, station.id, { open: false }));
+  const { pause: _, ...closed } = station;
+  return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? { ...closed, open: false } : e)) });
 }
 
 /**
