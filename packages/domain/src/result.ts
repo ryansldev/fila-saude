@@ -53,6 +53,7 @@ export type EventKind =
   | "reassigned"
   | "leave_home"
   | "come_now"
+  | "turn_lost"
   | "scheduler_alert"
   | "call_list"
   | "archived"

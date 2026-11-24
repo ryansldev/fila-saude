@@ -30,14 +30,12 @@ Chamar o próximo encerra a chamada anterior como **atendido** (ou triado). **Re
 
 **RN-CHAM-03 · Não compareceu**
 Não há pulo automático: a tolerância (padrão 5 min) é só um contador que avisa "tolerância esgotada". QUANDO o profissional tocar **Não compareceu** (disponível a qualquer momento com alguém chamado), O SISTEMA DEVE:
-- no 1º pulo do dia: mantê-lo presente, tratado como se tivesse acabado de ficar elegível (atrás dos próximos K);
-- no 2º pulo: mandá-lo para o fim da fila, com um número novo, ainda presente; se não for atendido no dia, leva falta no encerramento (RN-SES-02);
-- no 3º pulo do dia, somando as etapas: tirá-lo da fila e registrar falta "não compareceu à chamada" (RN-FALTA-02). Ele pode entrar de novo na lista como entrada nova.
+- no 1º pulo do dia: a vez fica guardada; mantê-lo presente, tratado como se tivesse acabado de ficar elegível (atrás dos próximos K), e chamá-lo de novo;
+- no 2º pulo do dia, somando as etapas, mesmo com urgência confirmada: tirá-lo da fila e registrar falta "não compareceu à chamada" (RN-FALTA-02). Ele pode entrar de novo na lista como entrada nova.
 
 *Decisões: AD-006, AD-021, AD-076.*
 - *Dado* Ana chamada com 0 pulos, *quando* o profissional toca "Não compareceu", *então* Ana fica presente atrás dos próximos K.
-- *Dado* Ana chamada com 1 pulo, *quando* é pulada de novo, *então* vai para o fim da fila com um número novo.
-- *Dado* Ana com 2 pulos (1 na triagem, 1 no consultório), *quando* é pulada de novo, *então* sai da fila com uma falta.
+- *Dado* Ana com 1 pulo na triagem, chamada no consultório, *quando* é pulada de novo, *então* sai da fila com uma falta.
 
 ## Triagem
 
@@ -71,7 +69,6 @@ A sessão só encerra quando o admin a encerra. No horário de fim, o painel lem
 **RN-SES-02 · Faltas e remanejados**
 QUANDO a sessão for encerrada, O SISTEMA DEVE, para cada um ainda na fila:
 - já foi **atendido** em alguma etapa do dia → remanejado, nunca faltoso;
-- teve **2 pulos** no dia → falta, mesmo na unidade;
 - estava **presente** → remanejado;
 - estava **remoto** e perdeu o prazo de chegada → falta, exceto se o prazo, com o relógio parado durante um período de contingência registrado, ainda não tinha acabado (remanejado, RN-CONT-03);
 - os outros → remanejado.
@@ -85,11 +82,11 @@ O encerramento só é permitido quando nenhuma estação tem paciente chamado; o
 ## Faltas
 
 **RN-FALTA-01 · Falta no encerramento**
-É **falta** quando, no encerramento, o paciente confirmado, nunca atendido no dia, estava remoto e perdeu o prazo de chegada da etapa atual, ou teve 2 pulos no dia (RN-SES-02, com as exceções lá). Quem perde o prazo ou o 2º pulo e depois é atendido no mesmo dia não leva falta. Quem leva a falta segue a RN-ID-06.
+É **falta** quando, no encerramento, o paciente confirmado, nunca atendido no dia, estava remoto e perdeu o prazo de chegada da etapa atual (RN-SES-02, com as exceções lá). Quem perde o prazo e depois é atendido no mesmo dia não leva falta. Quem leva a falta segue a RN-ID-06.
 *Decisões: AD-040, AD-041, AD-076.*
 
 **RN-FALTA-02 · Falta por pulos**
-Sair da fila por 3 pulos no dia também conta no mesmo limite, com ou sem check-in, assim como a falta de 2 pulos no encerramento (RN-FALTA-01). A recepção PODE anular essa falta quando o paciente comprova que estava na unidade; a anulação exige motivo, vai para a auditoria e para o relatório do gestor.
+Sair da fila por 2 pulos no dia também conta no mesmo limite, com ou sem check-in. A recepção PODE anular essa falta quando o paciente comprova que estava na unidade; a anulação exige motivo, vai para a auditoria e para o relatório do gestor.
 *Decisões: AD-021, AD-023.*
 
 **RN-FALTA-03 · Sem bloqueio automático**
@@ -108,13 +105,11 @@ Entrada na fila do dia (por etapa):
 | Chamado | Desfazer compareceu | Compareceu marcado | (mesmo) | Volta a esperar a pessoa entrar |
 | Chamado | Estação chama o próximo ou toca Finalizar | — | Atendido na etapa | Há outra etapa: Presente nela, mesmo número. Senão: entrada Concluída |
 | Chamado | Técnico finaliza o acolhimento na triagem | — | Presente | Volta à triagem como acolhida; quem classifica a chama antes dos outros (RN-PERF-05) |
-| Chamado | "Não compareceu" | Pulos no dia = 0 | Presente | Pulos = 1; aplica janela protegida |
-| Chamado | "Não compareceu" | Pulos no dia = 1 | Presente | Pulos = 2; vai para o fim da fila (número novo); push |
-| Chamado | "Não compareceu" | Pulos no dia = 2 | Saiu da fila | Pulos = 3; falta; entrada Encerrada sem atendimento; push |
+| Chamado | "Não compareceu" | Pulos no dia = 0 | Presente | Pulos = 1; a vez fica guardada: aplica janela protegida |
+| Chamado | "Não compareceu" | Pulos no dia = 1 | Saiu da fila | Pulos = 2; falta; entrada Encerrada sem atendimento; push |
 | Qualquer não final | Sessão cancelada | — | Remanejado | Push |
 | Remoto ou Presente | Sessão encerrada | Já atendido em etapa anterior | Remanejado | Push; não é falta |
-| Remoto ou Presente | Sessão encerrada | 2 pulos no dia; nunca atendido no dia | Saiu da fila | Falta; entrada Encerrada sem atendimento |
-| Presente | Sessão encerrada | Menos de 2 pulos no dia | Remanejado | Push (estava na unidade) |
+| Presente | Sessão encerrada | Na unidade | Remanejado | Push (estava na unidade) |
 | Remoto | Sessão encerrada | A vez não passou | Remanejado | Push |
 | Remoto | Sessão encerrada | Perdeu o prazo de chegada; nunca atendido no dia; fora de contingência | Saiu da fila | Falta; entrada Encerrada sem atendimento |
 <!-- /gerado -->
@@ -125,6 +120,6 @@ Entrada (lista):
 | De | Evento | Condição | Para | Efeitos |
 | --- | --- | --- | --- | --- |
 | Na fila | Sessão encerrada com o paciente na unidade, já atendido em etapa anterior ou com o prazo de chegada perdido em contingência | — | Remanejada | Push |
-| Na fila | 3º pulo, ou falta no encerramento | — | Encerrada sem atendimento | Registra ocorrência de falta |
+| Na fila | 2º pulo, ou falta no encerramento | — | Encerrada sem atendimento | Registra ocorrência de falta |
 | Na fila | Recepção: identidade não confere (RN-FILA-05) | — | Cancelada | Sem falta; motivo na auditoria |
 <!-- /gerado -->

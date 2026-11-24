@@ -14,18 +14,20 @@ const YOUR_TURN_KEY = "sua_vez";
 const RECALL_KEY = "rechamada";
 const LEAVE_HOME_KEY = "saia_de_casa";
 const COME_NOW_KEY = "venha_agora";
+const TURN_LOST_KEY = "perdeu_a_vez";
 
 export type NoticeTarget = { kind: "call"; item: string } | { kind: "waiting"; item: string; stage: string };
 
 /**
  * O que o aviso supõe da fila, pela chave: chamada ("sua vez", rechamada) supõe o item chamado; "saia de
- * casa" e "venha agora" supõem o item esperando naquela etapa. `null` nos outros avisos.
+ * casa", "venha agora" e "perdeu a vez" supõem o item esperando em casa naquela etapa. `null` nos outros.
  */
 export function noticeTarget(key: string): NoticeTarget | null {
   const [prefix, item, stage] = key.split(":");
   if (!item) return null;
   if (prefix === YOUR_TURN_KEY || prefix === RECALL_KEY) return { kind: "call", item };
-  if ((prefix === LEAVE_HOME_KEY || prefix === COME_NOW_KEY) && stage) return { kind: "waiting", item, stage };
+  const waiting = prefix === LEAVE_HOME_KEY || prefix === COME_NOW_KEY || prefix === TURN_LOST_KEY;
+  if (waiting && stage) return { kind: "waiting", item, stage };
   return null;
 }
 
@@ -55,11 +57,7 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
       const body =
         d.for === "left_queue"
           ? "você saiu da fila de hoje. se estiver na unidade, fale com a recepção."
-          : d.for === "remote" // gravado antes da AD-076, quando o 2º pulo mandava para casa
-            ? "você continua na fila. ao chegar na unidade, leia o QR de novo."
-            : d.skips === 2
-              ? "você foi para o fim da fila. se não aparecer de novo, sai da fila."
-              : "você continua na fila, logo depois dos próximos. fique de olho na TV.";
+          : "você continua na fila, logo depois dos próximos. fique de olho na TV.";
       return {
         kind: "skipped",
         key: `pulado:${item}:${d.skips}`,
@@ -90,9 +88,18 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
         title: "venha agora",
         // Avisos gravados antes da AD-076 não têm o prazo no evento.
         body:
-          typeof d.deadlineMin === "number"
-            ? `você é o próximo na ${ctx.unit}. chegue em até ${d.deadlineMin} min e leia o QR da TV, senão perde a vez.`
-            : `você é o próximo na ${ctx.unit}. ao chegar, leia o QR da TV.`,
+          typeof d.deadlineMin !== "number"
+            ? `você é o próximo na ${ctx.unit}. ao chegar, leia o QR da TV.`
+            : d.losesTurn === false
+              ? `você é o próximo na ${ctx.unit}. chegue em até ${d.deadlineMin} min e leia o QR da TV.`
+              : `você é o próximo na ${ctx.unit}. chegue em até ${d.deadlineMin} min e leia o QR da TV, senão perde a vez.`,
+      };
+    case "turn_lost":
+      return {
+        kind: "turn_lost",
+        key: `${TURN_LOST_KEY}:${item}:${d.stage}:${d.comeNowAt}`, // um por "venha agora" (AD-076)
+        title: "você perdeu a vez",
+        body: `o prazo para chegar na ${ctx.unit} acabou. se ainda vier, leia o QR da TV: você vai para o fim da fila.`,
       };
     default:
       return null;

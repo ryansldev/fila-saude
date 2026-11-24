@@ -177,7 +177,7 @@ const ROWS: MatrixRow[] = [
   },
   {
     action: "void_no_show",
-    text: "Anular falta por 3 pulos, com motivo (RN-FALTA-02)",
+    text: "Anular falta por 2 pulos, com motivo (RN-FALTA-02)",
     profiles: { reception: true },
   },
   {

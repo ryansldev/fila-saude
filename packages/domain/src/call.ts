@@ -301,7 +301,7 @@ export function finish(day: SessionDay, cmd: CmdClose, now: number): Result<Sess
 
 /** Linha do contrato escolhida pelos pulos no dia (a transição depende da condição). */
 function skipDestination(skips: number): ItemState {
-  const condition = `Pulos no dia = ${Math.min(skips, 2)}`;
+  const condition = `Pulos no dia = ${Math.min(skips, 1)}`;
   const row = ITEM_TRANSITIONS.find((t) => t.de === "called" && t.event === EVENT_NO_SHOW && t.condition === condition);
   if (!row || row.for === "(mesmo)" || row.for === "(não cria)") {
     throw new Error(`contrato: sem linha para ${condition}`);
@@ -310,10 +310,9 @@ function skipDestination(skips: number): ItemState {
 }
 
 /**
- * RN-CHAM-03 (AD-076): os pulos somam as etapas. 1º: presente atrás dos próximos K, sem atraso;
- * 2º: presente no fim da fila, com número novo (falta no encerramento se não for atendido no dia);
- * 3º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02); a entrada vai a "Encerrada sem
- * atendimento" com `entryOutcome` (ou no encerramento).
+ * RN-CHAM-03 (AD-076): os pulos somam as etapas. 1º: a vez fica guardada, presente atrás dos próximos K,
+ * sem atraso; 2º: sai da fila com falta "não compareceu à chamada" (RN-FALTA-02), também com urgência
+ * confirmada; a entrada vai a "Encerrada sem atendimento" com `entryOutcome` (ou no encerramento).
  */
 export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   const found = calledInStation(day, cmd.stationId);
@@ -332,10 +331,7 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   });
 
   if (to === "present") {
-    const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, {
-      applyDelay: false,
-      toEnd: skips === 2,
-    });
+    const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, { applyDelay: false });
     return ok(markSkip(eleg.state), [skipped]);
   }
   const outside: QueueItem = {

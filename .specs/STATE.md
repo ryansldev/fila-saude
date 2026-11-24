@@ -17,7 +17,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - Revisar as decisões provisórias em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md) (I1–I8, I10, DS, QU, ES, TV, AU, EN, CA, HO, IN, NC, CP). Tentativas de login e captcha prontos (AD-062 a AD-065; valores de partida, a reajustar com o piloto). Alinhamento de 2026-11-19: aprovadas na AD-070; as que você comentou (G9/G10, H4, I10, E3, P1, DA1…) estão anotadas no topo do arquivo, sem mudança no código.
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.
 - **Push no Android na `main`** (PR #35; AD-071 a AD-074). Rodar `npm run db:migrate`. **Na produção, a API só depois do app novo instalado** (o canal do push mudou para `avisos`). iOS pede o `bundleIdentifier` e a conta da Apple.
-- **RV7 e perder a vez (branch `fix/priority-80-plus`):** 80+ antes dos demais idosos, sem hierarquia entre grupos (AD-075); perde a vez só quem não chega no prazo (30 min) e o 2º "não compareceu" vai para o fim (AD-076). Revisar PV1 a PV4 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md); confirmar a leitura da lei com o advogado (D5).
+- **RV7 e perder a vez (branch `fix/priority-80-plus`):** 80+ antes dos demais idosos, sem hierarquia entre grupos (AD-075); perde a vez só quem não chega no prazo (30 min), com push "perdeu a vez", e o 2º "não compareceu" tira da fila com falta (AD-076). Falta o PR; confirmar a leitura da lei com o advogado (D5).
 
 ## Próximo passo
 

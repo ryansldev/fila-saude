@@ -25,7 +25,7 @@ const ITEM_SIGN_UP = "Inscrição pública com a sessão aberta, ou vaga da rese
 const ENTRY_BEFORE_TURN = "Sessão cancelada, ou encerrada antes da vez";
 const ENTRY_CLOSED_WITHOUT_NO_SHOW =
   "Sessão encerrada com o paciente na unidade, já atendido em etapa anterior ou com o prazo de chegada perdido em contingência";
-const ENTRY_NO_SHOW = "3º pulo, ou falta no encerramento";
+const ENTRY_NO_SHOW = "2º pulo, ou falta no encerramento";
 const ENTRY_RESERVE_CLOSES = "Sessão encerrada ou cancelada sem vaga para ele";
 const ENTRY_NO_SHOW_VOIDED =
   "Período de contingência registrado depois do encerramento, no mesmo dia, cobrindo a vez dele";
@@ -92,14 +92,13 @@ type Outcome = "reassigned" | "no_show";
 
 /**
  * RN-SES-02, RN-FALTA-01/02, AD-041, AD-076, RN-CONT-03: desfecho de quem está na fila ao encerrar e a
- * linha do contrato do item. Atendido numa etapa do dia nunca leva falta. Leva falta quem teve 2 pulos
- * no dia (mesmo na unidade) e o remoto que perdeu o prazo de chegada do "venha agora", exceto se o prazo
- * cruzou um período de contingência registrado.
+ * linha do contrato do item. Atendido numa etapa do dia nunca leva falta. Leva falta o remoto que perdeu
+ * o prazo de chegada do "venha agora", exceto se o prazo, com o relógio parado durante um período de
+ * contingência registrado, ainda não tinha acabado. A falta por pulos sai na hora do 2º pulo (RN-CHAM-03).
  */
 function outcomeInClosing(day: SessionDay, x: QueueItem, now: number): { outcome: Outcome; condition: string } {
   if (x.attendedInStages.length > 0) return { outcome: "reassigned", condition: "Já atendido em etapa anterior" };
-  if (x.skips >= 2) return { outcome: "no_show", condition: "2 pulos no dia; nunca atendido no dia" };
-  if (x.state === "present") return { outcome: "reassigned", condition: "Menos de 2 pulos no dia" };
+  if (x.state === "present") return { outcome: "reassigned", condition: "Na unidade" };
   const late = lateness(day, x, now);
   if (late === "on_time") return { outcome: "reassigned", condition: "A vez não passou" };
   if (late === "late_in_contingency") {
@@ -117,7 +116,7 @@ const EVENT_BY_REASON: Partial<Record<ExitReason, string>> = {
 
 /**
  * Mapeamento único do desfecho do item na fila do dia para a entrada "Na fila" (contrato de
- * Entrada): atendido na última etapa → Concluída; 3º pulo (ou falta no encerramento) → Encerrada
+ * Entrada): atendido na última etapa → Concluída; 2º pulo (ou falta no encerramento) → Encerrada
  * sem atendimento, e a pessoa pode criar entrada nova (RN-CHAM-03); identidade não confere →
  * Cancelada (RN-FILA-05). Chame depois de `finalizar`/`chamarProximo`, `noShow` e
  * `verifyAndMark` quando o item ficar final; `encerrar` e `cancelar` aplicam a quem faltou.
@@ -182,7 +181,7 @@ export function close(
     const ids = { itemId: x.id, entryId: x.entryId, sessionId: day.sessionId };
     if (outcome === "no_show") {
       noShows.push(x.id);
-      const reason = x.skips >= 2 ? "2 pulos no dia" : "perdeu o prazo de chegada";
+      const reason = "perdeu o prazo de chegada";
       events.push({ kind: "no_show", ...ids, reason }, { kind: "left_queue", ...ids });
     } else {
       events.push({ kind: "reassigned", ...ids, reason: condition });
@@ -222,7 +221,7 @@ export function close(
 /**
  * Fluxo de cancelamento de sessão (excecoes, tabela de Sessão): planejada ou aberta. Entradas não
  * finais da sessão, inclusive a chamada no momento, viram remanejadas; "Na reserva" é cancelada.
- * Cancelamento nunca gera falta; quem já teve desfecho no dia (atendido, 3º pulo, não conferiu)
+ * Cancelamento nunca gera falta; quem já teve desfecho no dia (atendido, 2º pulo, não conferiu)
  * não é remanejado: a entrada vai à linha desse desfecho (`entryOutcome`).
  */
 export function cancel(

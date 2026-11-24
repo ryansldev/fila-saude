@@ -206,7 +206,7 @@ describe("RN-CHAM-03 e AD-006: Não compareceu, tolerância", () => {
     expect(d.nextNumber).toBe(3);
   });
 
-  it("RN-CHAM-03: 3 pulos somam as etapas", () => {
+  it("RN-CHAM-03: 2 pulos somam as etapas", () => {
     let d = dayWithTriage(["ana", "joao"]);
     d = enter(d, "ana");
     d = enter(d, "joao");
@@ -220,14 +220,10 @@ describe("RN-CHAM-03 e AD-006: Não compareceu, tolerância", () => {
     d = call(d, "e1", T + 13 * MIN); // João (triado antes, na sala do consultório antes dela)
     d = call(d, "e1", T + 14 * MIN); // Ana no consultório
     expect(calledAt(d)).toBe("ana");
-    d = skip(d, "e1", T + 19 * MIN); // 2º pulo: 1 na triagem, 1 no consultório; vai para o fim
-    expect(item(d, "ana")).toMatchObject({ state: "present", skips: 2 });
-    d = call(d, "e1", T + 26 * MIN);
-    expect(calledAt(d)).toBe("ana");
-    const r = noShow(d, { stationId: "e1" }, T + 32 * MIN);
+    const r = noShow(d, { stationId: "e1" }, T + 19 * MIN); // 2º pulo: 1 na triagem, 1 no consultório
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(item(r.state, "ana")).toMatchObject({ state: "left_queue", skips: 3 });
+    expect(item(r.state, "ana")).toMatchObject({ state: "left_queue", skips: 2, exitReason: "skips" });
     expect(r.events.map((e) => e.kind)).toContain("no_show");
   });
 
@@ -265,31 +261,38 @@ describe("RN-CHAM-03 e AD-006: Não compareceu, tolerância", () => {
   });
 });
 
-describe('AD-076: 2º "não compareceu" vai para o fim da fila', () => {
-  it("1º pulo: atrás do próximo; 2º: presente, com número novo; 3º: sai da fila com falta", () => {
+describe('AD-076: 2º "não compareceu" tira da fila com falta', () => {
+  it("1º pulo: a vez fica guardada, atrás do próximo; 2º: sai da fila com falta", () => {
     let d = dayWith(["ana", "joao", "bruno"]);
     for (const id of ["ana", "joao", "bruno"]) d = enter(d, id);
     d = call(d, "e1", T + MIN); // Ana
     d = skip(d, "e1", T + 6 * MIN); // 1º pulo
+    expect(item(d, "ana")).toMatchObject({ state: "present", skips: 1, number: 1 });
     expect(order(d)).toEqual(["joao", "ana", "bruno"]);
     d = call(d, "e1", T + 7 * MIN); // João
     d = call(d, "e1", T + 8 * MIN); // Ana de novo
     const r2 = noShow(d, { stationId: "e1" }, T + 14 * MIN); // 2º pulo
     expect(r2.ok).toBe(true);
     if (!r2.ok) return;
-    d = freeze(r2.state);
-    expect(item(d, "ana")).toMatchObject({ state: "present", skips: 2, number: 4 });
+    expect(item(r2.state, "ana")).toMatchObject({ state: "left_queue", skips: 2, exitReason: "skips" });
     expect(r2.events).toEqual([
-      expect.objectContaining({ kind: "skipped", data: { skips: 2, for: "present", at: T + 14 * MIN } }),
+      expect.objectContaining({ kind: "skipped", data: { skips: 2, for: "left_queue", at: T + 14 * MIN } }),
+      expect.objectContaining({ kind: "no_show", reason: "não compareceu à chamada" }),
+      expect.objectContaining({ kind: "left_queue" }),
     ]);
-    expect(order(d)).toEqual(["bruno", "ana"]);
-    d = call(d, "e1", T + 15 * MIN); // Bruno
-    d = call(d, "e1", T + 16 * MIN); // Ana
-    const r3 = noShow(d, { stationId: "e1" }, T + 22 * MIN); // 3º pulo
-    expect(r3.ok).toBe(true);
-    if (!r3.ok) return;
-    expect(item(r3.state, "ana")).toMatchObject({ state: "left_queue", skips: 3 });
-    expect(r3.events.map((e) => e.kind)).toEqual(["skipped", "no_show", "left_queue"]);
+    expect(order(freeze(r2.state))).toEqual(["bruno"]);
+  });
+
+  it("urgência confirmada também sai da fila no 2º pulo", () => {
+    let d = dayWith(["ana", "joao"]);
+    d = withItem(d, "ana", { confirmedUrgency: true, risk: "urgent" });
+    for (const id of ["ana", "joao"]) d = enter(d, id);
+    d = call(d, "e1", T + MIN); // Ana
+    d = skip(d, "e1", T + 6 * MIN);
+    expect(order(d)).toEqual(["ana", "joao"]);
+    d = call(d, "e1", T + 7 * MIN); // Ana de novo
+    const r2 = noShow(d, { stationId: "e1" }, T + 12 * MIN);
+    expect(r2.ok && item(r2.state, "ana").state).toBe("left_queue");
   });
 });
 
@@ -385,22 +388,18 @@ describe("RN-TRI: triagem", () => {
 });
 
 describe("Review Focus 3: sair e voltar com pulos no meio", () => {
-  it("RN-PRES-02/C34 order: leaving and coming back never deadlocks (2º pulo)", () => {
+  it("RN-PRES-02/C34 order: leaving and coming back never deadlocks (1º pulo)", () => {
     let d = dayWith(["ana", "joao", "bruno"]);
     for (const id of ["ana", "joao", "bruno"]) d = enter(d, id);
     d = call(d, "e1", T + MIN); // Ana
     d = skip(d, "e1", T + 2 * MIN); // 1º pulo: Ana atrás de João
     respectsLocks(d);
-    d = call(d, "e1", T + 3 * MIN); // João
-    d = call(d, "e1", T + 4 * MIN); // Ana
-    d = skip(d, "e1", T + 5 * MIN); // 2º pulo: Ana no fim da fila
-    expect(order(d)).toEqual(["bruno", "ana"]);
-    d = apply(leaving(d, { itemId: "ana" }, T + 6 * MIN));
-    d = enter(d, "ana", T + 7 * MIN);
-    expect(order(d)).toEqual(["bruno", "ana"]);
+    d = apply(leaving(d, { itemId: "ana" }, T + 3 * MIN));
+    d = enter(d, "ana", T + 4 * MIN);
+    expect(order(d)).toEqual(["joao", "ana", "bruno"]);
     respectsLocks(d);
-    d = call(d, "e1", T + 7 * MIN);
-    expect(calledAt(d)).toBe("bruno");
+    d = call(d, "e1", T + 5 * MIN);
+    expect(calledAt(d)).toBe("joao");
   });
 });
 
@@ -420,7 +419,6 @@ describe("pureza", () => {
     toleranceExceeded(called, "e1", T);
     const oneSkip = withItem(called, "ana", { skips: 1 });
     noShow(oneSkip, { stationId: "e1" }, T);
-    noShow(withItem(called, "ana", { skips: 2 }), { stationId: "e1" }, T);
     expect(called).toEqual(before);
   });
 });
@@ -556,14 +554,11 @@ describe("presenteDesde nas chamadas", () => {
     expect(item(d, "ana")).toMatchObject({ stage: "care", state: "present", presentSince: T + 5 * MIN });
   });
 
-  it("o 1º e o 2º pulo (fica presente) recomeçam a contar", () => {
+  it("o 1º pulo (fica presente) recomeça a contar", () => {
     let d = enter(dayWith(["ana"]), "ana");
     d = call(d, "e1", T + MIN);
     d = skip(d, "e1", T + 3 * MIN);
     expect(item(d, "ana")).toMatchObject({ state: "present", presentSince: T + 3 * MIN });
-    d = call(d, "e1", T + 4 * MIN);
-    d = skip(d, "e1", T + 6 * MIN);
-    expect(item(d, "ana")).toMatchObject({ state: "present", presentSince: T + 6 * MIN });
   });
 });
 

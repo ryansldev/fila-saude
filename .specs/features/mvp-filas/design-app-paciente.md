@@ -39,7 +39,7 @@ Duas abas fixas: **Minha fila** (principal) e **Unidades**. Perfil e ajuda no to
 | 14 | Presente: posição real; "vou sair" | RN-ETA-01b, RN-PRES-02 |
 | 14b | Check-in recusado: "passe na recepção para confirmar seus documentos · você ainda não entrou na fila da unidade"; aviso antes da chegada ("na sua primeira ida, passe na recepção antes de ler o QR") nas telas 11 e 12 | RN-FILA-05, AD-054 |
 | 15 | "Sua vez!" em tela cheia: senha e destino | RN-CHAM-01 |
-| 16 | Pulado; saiu da fila no 3º pulo | RN-CHAM-03 |
+| 16 | Pulado; saiu da fila no 2º pulo | RN-CHAM-03 |
 | 17 | Atendido / fim | — |
 | 18 | Sistema indisponível; modo manual; sem internet | RN-CONT-04, RN-SES-05 |
 

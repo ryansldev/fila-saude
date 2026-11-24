@@ -284,34 +284,6 @@ describe("encerramento (RN-SES-01..04, RN-FALTA-01)", () => {
 });
 
 describe("AD-076: faltas no encerramento", () => {
-  const twoSkips = () => {
-    let day = dayWith(["ana", "bruno"]);
-    day = step(checkIn(day, { itemId: "ana" }, T));
-    day = step(callNext(day, E1, T + MIN));
-    day = step(noShow(day, E1, T + 6 * MIN));
-    day = step(callNext(day, E1, T + 7 * MIN));
-    return step(noShow(day, E1, T + 12 * MIN));
-  };
-
-  it("2 pulos e não atendido no dia: falta, mesmo presente, com o motivo", () => {
-    const day = twoSkips();
-    expect([item(day, "ana").state, item(day, "ana").skips]).toEqual(["present", 2]);
-    const r = close(day, inQueue(["ana", "bruno"]), T + H, WITHOUT_NOTICE);
-    expect(events(r)).toContainEqual(
-      expect.objectContaining({ kind: "no_show", itemId: "ana", reason: "2 pulos no dia" }),
-    );
-    const { day: d, entries } = apply(r);
-    expect(item(d, "ana").state).toBe("left_queue");
-    expect(ent(entries, "ent-ana").state).toBe("closed_without_care");
-    expect(d.closing?.noShows).toEqual(["ana"]);
-  });
-
-  it("2 pulos, mas já atendido numa etapa do dia: remanejado", () => {
-    const day = withItem(twoSkips(), "ana", { attendedInStages: ["triage"] });
-    const { day: d } = apply(close(day, inQueue(["ana", "bruno"]), T + H, WITHOUT_NOTICE));
-    expect(item(d, "ana").state).toBe("reassigned");
-  });
-
   it("remoto que perdeu o prazo: falta, mesmo sem ninguém chamado", () => {
     const day = alreadyNotified(dayWith(["ana", "bruno"]), "ana", T, 30);
     const r = close(day, inQueue(["ana", "bruno"]), T + H, WITHOUT_NOTICE);
@@ -614,16 +586,14 @@ describe("remanejado (RN-REM-03..05)", () => {
 });
 
 describe("desfecho da fila do dia na entrada (C1)", () => {
-  /** Ana chamada e não compareceu 3 vezes (volta atrás do próximo, depois vai para o fim, depois sai). */
-  function threeSkips(): SessionDay {
+  /** Ana chamada e não compareceu 2 vezes (volta atrás do próximo, depois sai da fila com falta). */
+  function twoSkips(): SessionDay {
     let d = dayWith(["ana"]);
     d = step(checkIn(d, { itemId: "ana" }, T));
     d = step(callNext(d, E1, T + MIN));
-    d = step(noShow(d, E1, T + 6 * MIN)); // 1º: presente
+    d = step(noShow(d, E1, T + 6 * MIN)); // 1º: a vez fica guardada
     d = step(callNext(d, E1, T + 7 * MIN));
-    d = step(noShow(d, E1, T + 12 * MIN)); // 2º: fim da fila
-    d = step(callNext(d, E1, T + 21 * MIN));
-    return step(noShow(d, E1, T + 26 * MIN)); // 3º: sai da fila
+    return step(noShow(d, E1, T + 12 * MIN)); // 2º: sai da fila
   }
 
   const first = (ids: string[]): Entry => {
@@ -632,8 +602,8 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
     return e;
   };
 
-  it("RN-CHAM-03: 3º pulo encerra a entrada e a pessoa pode criar entrada nova", () => {
-    const d = threeSkips();
+  it("RN-CHAM-03: 2º pulo encerra a entrada e a pessoa pode criar entrada nova", () => {
+    const d = twoSkips();
     expect(item(d, "ana")).toMatchObject({ state: "left_queue", exitReason: "skips" });
     const end = apply(entryOutcome(first(["ana"]), item(d, "ana")));
     expect(end.state).toBe("closed_without_care");
@@ -679,10 +649,10 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
     expect(ent(c.entries, "ent-ana").state).toBe("reassigned");
   });
 
-  it("C1: o encerramento fecha a entrada do 3º pulo e a do não conferiu", () => {
-    const r1 = apply(close(threeSkips(), inQueue(["ana"]), T + 5 * H, WITHOUT_NOTICE));
+  it("C1: o encerramento fecha a entrada do 2º pulo e a do não conferiu", () => {
+    const r1 = apply(close(twoSkips(), inQueue(["ana"]), T + 5 * H, WITHOUT_NOTICE));
     expect(ent(r1.entries, "ent-ana").state).toBe("closed_without_care");
-    expect(r1.day.closing?.noShows).toEqual([]); // a falta foi do 3º pulo, não do encerramento
+    expect(r1.day.closing?.noShows).toEqual([]); // a falta foi do 2º pulo, não do encerramento
     const conf = step(verifyAndMark(dayWith(["bia"]), { itemId: "bia", result: "does_not_match" }, T));
     const r2 = apply(close(conf, inQueue(["bia"]), T + 5 * H, WITHOUT_NOTICE));
     expect(ent(r2.entries, "ent-bia").state).toBe("cancelled");
@@ -747,7 +717,7 @@ describe("desfecho da fila do dia na entrada (C1)", () => {
   });
 
   it("desfecho e cancelamento não alteram o que recebem", () => {
-    const d = freeze(threeSkips());
+    const d = freeze(twoSkips());
     const inQueueAna = entry("ent-ana", { state: "in_queue", sessionId: "s1" });
     expect(() => {
       entryOutcome(first(["ana"]), item(d, "ana"));

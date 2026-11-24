@@ -43,7 +43,7 @@ export {
   singleTransition,
 } from "./contracts.ts";
 export type { Estimate } from "./estimate.ts";
-export { averageTime, comeNowNotices, estimate, leaveHomeNotices } from "./estimate.ts";
+export { averageTime, comeNowNotices, estimate, leaveHomeNotices, turnLostNotices } from "./estimate.ts";
 export type {
   Alarm,
   Answers,

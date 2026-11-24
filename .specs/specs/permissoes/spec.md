@@ -44,7 +44,7 @@ A classificação de risco é ato privativo do enfermeiro (Resolução Cofen 661
 | Dar prioridade legal, só na inclusão pelo balcão ou na 1ª presença de paciente sem app (RN-RISCO-04) |  |  |  |  |  | ✓ |  |  |  |
 | "Não conferiu" (identidade não confere) (RN-FILA-05) |  |  |  |  |  | ✓ |  |  |  |
 | Bloquear conta usurpada (RN-ID-03) |  |  |  |  |  | ✓ |  |  |  |
-| Anular falta por 3 pulos, com motivo (RN-FALTA-02) |  |  |  |  |  | ✓ |  |  |  |
+| Anular falta por 2 pulos, com motivo (RN-FALTA-02) |  |  |  |  |  | ✓ |  |  |  |
 | Registrar período de contingência e atendidos na volta (RN-CONT-02) |  |  |  |  |  | ✓ |  |  |  |
 | Ver documentos (foto do documento, Cartão SUS) | ✓ (próprios) |  |  |  | ✓ | ✓ |  |  |  |
 | Ver respostas do questionário | ✓ (próprias) |  |  |  | ✓ | ✓ | ✓ | ✓ |  |

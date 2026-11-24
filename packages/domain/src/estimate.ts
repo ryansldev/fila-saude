@@ -128,9 +128,15 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const nA = open(day, "care").length;
   if (nA === 0) return primary;
   // Quem já está na fila do atendimento é atendido antes de X chegar lá (RN-TRI-04: fila nova);
-  // da triagem, contam os que vêm antes de X.
-  const beforeQuery =
-    day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length + aheadIn(day, inStage, item);
+  // da triagem, contam os que vêm antes de X, como na posição (quem perdeu a vez vai para o fim, AD-076).
+  const fromTriage = passed(item)
+    ? ahead
+    : aheadIn(
+        day,
+        inStage.filter((i) => i.id === item.id || account(i)),
+        item,
+      );
+  const beforeQuery = day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length + fromTriage;
   const triageWeight = (ahead * averageTime(day, "triage", day.serviceId, now)) / n;
   const query = Math.ceil(triageWeight + (beforeQuery * averageTime(day, "care", day.serviceId, now)) / nA);
   return { ...primary, query: { minutes: query } };
@@ -192,6 +198,8 @@ export function comeNowNotices(day: SessionDay, now: number, options: Options): 
         stage: i.stage,
         at: now,
         deadlineMin: day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin,
+        // Urgência confirmada não perde a vez pelo prazo (AD-076): o aviso não diz que perde.
+        losesTurn: !i.confirmedUrgency,
       },
     });
   }
@@ -202,4 +210,28 @@ export function comeNowNotices(day: SessionDay, now: number, options: Options): 
     day: { ...day, comeNow: [...kept, ...fresh.map((i) => ({ itemId: i.id, stage: i.stage, at: now }))] },
     events,
   };
+}
+
+/**
+ * AD-076: "perdeu a vez" para o remoto cujo prazo de chegada do "venha agora" acabou (fora de
+ * contingência; urgência confirmada não perde a vez), uma vez por "venha agora". A hora do aviso fica no
+ * registro do "venha agora" em `day.comeNow`. Em modo manual nada é enviado nem registrado.
+ */
+export function turnLostNotices(day: SessionDay, now: number, options: Options): { day: SessionDay; events: Event[] } {
+  if (options.manualMode || day.state !== "open") return { day, events: [] };
+  const events: Event[] = [];
+  const comeNow = (day.comeNow ?? []).map((a) => {
+    const i = day.items.find((x) => x.id === a.itemId);
+    if (a.turnLostAt !== undefined || !i || i.stage !== a.stage || i.confirmedUrgency) return a;
+    if (!turnPassed(day, i, now)) return a;
+    events.push({
+      kind: "turn_lost",
+      itemId: i.id,
+      entryId: i.entryId,
+      sessionId: day.sessionId,
+      data: { stage: a.stage, at: now, comeNowAt: a.at },
+    });
+    return { ...a, turnLostAt: now };
+  });
+  return events.length === 0 ? { day, events } : { day: { ...day, comeNow }, events };
 }

@@ -122,6 +122,22 @@ describe("chamadas que perderam a hora antes do envio (AD-074)", () => {
     expect(staleNotices([old1], [old1, new1("failed")], queue)).toEqual(new Set());
   });
 
+  it("'venha agora' e 'saia de casa' atrasados não saem depois do 'perdeu a vez' da mesma etapa", () => {
+    const come = { id: "a", kind: "come_now", state: "pending", entryId: "e1", key: "venha_agora:i1:care:1" };
+    const leave = { id: "c", kind: "leave_home", state: "pending", entryId: "e1", key: "saia_de_casa:i1:care" };
+    const lost = (state: string, stage = "care") => ({
+      id: "b",
+      kind: "turn_lost",
+      state,
+      entryId: "e1",
+      key: `perdeu_a_vez:i1:${stage}:1`,
+    });
+    const queue = { awaited: new Set<string>(), waiting: new Map([["i1", "care"]]) };
+    expect(staleNotices([leave, come], [leave, come, lost("sent")], queue)).toEqual(new Set(["a", "c"]));
+    expect(staleNotices([come], [come, lost("failed")], queue)).toEqual(new Set());
+    expect(staleNotices([come], [come, lost("sent", "triage")], queue)).toEqual(new Set());
+  });
+
   it("chamada depois do 'pulado' (chamado de novo mais tarde) vale", () => {
     expect(claim(["b"], [n("a", "skipped", "sent"), n("b", "your_turn")])).toEqual(new Set());
   });

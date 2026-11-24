@@ -39,7 +39,7 @@ Termos usados em todas as specs. Toda regra é obrigatória no MVP, exceto as ma
 | Janela protegida | Os K primeiros elegíveis da etapa, que quem acabou de ficar elegível não pode ultrapassar. |
 | Tolerância de chamada | Tempo que o paciente chamado tem para se apresentar. É só um contador na estação: quem pula é o profissional, com "Não compareceu". |
 | A vez passou | Já foi chamado, na etapa atual do paciente, alguém que vem depois dele na ordem real. |
-| Falta | Ocorrência registrada quando o paciente sai da fila por 3 pulos, ou quando, no encerramento, sem ter sido atendido no dia, teve 2 pulos ou estava remoto e perdeu o prazo de chegada ([chamada](chamada/spec.md#faltas)). |
+| Falta | Ocorrência registrada quando o paciente sai da fila por 2 pulos, ou quando, no encerramento, sem ter sido atendido no dia, estava remoto e perdeu o prazo de chegada ([chamada](chamada/spec.md#faltas)). |
 | Remanejado | Paciente que perdeu o atendimento por culpa da unidade (sessão cancelada, ou encerrada antes da vez dele ou com ele presente). Tem preferência. |
 | Período de contingência | Intervalo em que o sistema ou a internet da unidade caiu e a unidade chamou pela lista em papel. |
 | Modo manual | Estado de uma unidade cuja TV e todas as estações perderam o sinal ao mesmo tempo. |

@@ -474,6 +474,12 @@ describe("RV7: 80+ antes dos demais idosos na fila de verdade (Lei 10.741, art. 
     expect(order(d)).toEqual(["bia", "gil", "caio"]);
   });
 
+  it("a Ana (85) chamada que voltou a esperar e depois saiu da fila não volta a guardar a vaga", () => {
+    let d = apply(callNext(day(), { stationId: "e1" }, T + MIN));
+    d = withItem(d, "ana", { state: "left_queue", presentSince: T + 3 * MIN });
+    expect(order(d)).toEqual(["bia", "gil", "caio"]);
+  });
+
   it("no 1º pulo a Ana (85) não guarda vaga enquanto se calcula a trava dela", () => {
     let d = dayWith(["bia", "gil", "ana"]);
     d = withItem(d, "bia", { priority: groups(["elderly"]), state: "present", presentSince: T });

@@ -1,4 +1,11 @@
-import { awaitedItems, comeNowNotices, leaveHomeNotices, remoteItems, type SessionDay } from "@fila-saude/domain";
+import {
+  awaitedItems,
+  comeNowNotices,
+  leaveHomeNotices,
+  remoteItems,
+  type SessionDay,
+  turnLostNotices,
+} from "@fila-saude/domain";
 import { PUSH_CHANNEL } from "@fila-saude/schemas/push";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 import database from "infra/database";
@@ -19,8 +26,8 @@ export type Sender = (list: Sending[]) => Promise<SendingResult[]>;
 const MAX_ATTEMPTS = 5;
 const BATCH = 100;
 
-// RN-ETA-03 / RN-ETA-06: avisos que dependem do tempo; o domínio marca no dia o "saia de casa" e
-// o "venha agora" (com a hora, AD-057), e a chave da outbox impede o envio repetido. Uma varredura por município de cada vez.
+// RN-ETA-03 / RN-ETA-06 / AD-076: avisos que dependem do tempo; o domínio marca no dia o "saia de casa",
+// o "venha agora" (com a hora, AD-057) e o "perdeu a vez", e a chave da outbox impede o envio repetido. Uma varredura por município de cada vez.
 async function generateTimeNotices(db: TenantDb, now: number, onError: (error: unknown) => void): Promise<void> {
   const open = await db.select({ id: session.id }).from(session).where(eq(session.state, "open"));
   // Uma transação por sessão: uma sessão com problema não derruba os avisos das outras nem
@@ -37,13 +44,16 @@ async function generateTimeNotices(db: TenantDb, now: number, onError: (error: u
           // AD-057: o "venha agora" fica registrado no dia com a hora; o prazo de chegada conta dela.
           const come = comeNowNotices(c.day, now, { manualMode: false });
           const leave = leaveHomeNotices(come.day, now, { manualMode: false });
+          // AD-076: quem passou do prazo do "venha agora" recebe "perdeu a vez".
+          const lost = turnLostNotices(leave.day, now, { manualMode: false });
           // Quem já é o próximo recebe só o "venha agora".
           const events = [
             ...come.events,
             ...leave.events.filter((e) => !come.events.some((v) => v.itemId === e.itemId)),
+            ...lost.events,
           ];
           if (events.length === 0) return { result: null };
-          return { day: leave.day, events, result: null };
+          return { day: lost.day, events, result: null };
         });
       })
       .catch((error) => {
@@ -78,7 +88,8 @@ export type QueueNow = { awaited: Set<string>; waiting: Map<string, string> };
  * criação) e o estado da fila, e devolve os avisos que perderam a hora:
  * - chamadas ("sua vez", rechamada) seguidas de um "pulado" (em qualquer estado) ou de uma chamada que ainda
  *   vale, ou de um item que a fila não espera mais entrar na sala (atendido, pulado, já na sala, outra etapa);
- * - "saia de casa" e "venha agora" de quem não espera mais na fila naquela etapa (chamado, atendido, saiu).
+ * - "saia de casa", "venha agora" e "perdeu a vez" de quem não espera mais em casa naquela etapa (chamado,
+ *   atendido, saiu), ou seguidos de um "venha agora" ou "perdeu a vez" da mesma etapa que ainda vale.
  * Com o envio na hora, chamada e rechamada saem cada uma no seu momento; só as atrasadas juntas viram uma.
  */
 export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: QueueNow): Set<string> {
@@ -98,11 +109,12 @@ export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: 
     const target = noticeTarget(a.key);
     if (!target) continue;
     if (target.kind === "waiting") {
-      // "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" da mesma etapa que
-      // ainda vale ("Vou sair" recomeça o aviso, AD-057).
+      // "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" ("Vou sair" recomeça o
+      // aviso, AD-057) ou de um "perdeu a vez" (AD-076) da mesma etapa que ainda vale.
       const comeNowAfter = laterOf(a).some((x) => {
         const t = noticeTarget(x.key);
-        return x.kind === "come_now" && LIVE.has(x.state) && t?.kind === "waiting" && t.stage === target.stage;
+        const newer = x.kind === "come_now" || x.kind === "turn_lost";
+        return newer && LIVE.has(x.state) && t?.kind === "waiting" && t.stage === target.stage;
       });
       if (queue.waiting.get(target.item) !== target.stage || comeNowAfter) stale.add(a.id);
       continue;
