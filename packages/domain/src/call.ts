@@ -371,17 +371,42 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   ]);
 }
 
+export const openIn = (day: SessionDay, stage: Stage, except: string) =>
+  day.stations.some((e) => e.id !== except && e.open && e.stage === stage && e.services.includes(day.serviceId));
+
+/**
+ * RN-EST-07: o que fechar a estação faz com a fila. Fechar é de verdade (só a pausa é passageira): sem outra
+ * estação aberta no atendimento, a última etapa, ninguém mais seria atendido e a sessão é encerrada
+ * (`closes_session`); sem outra na triagem e com gente esperando por ela, a triagem fecha para essas pessoas
+ * (`closes_stage`, `closeStage`). Nulo quando a fila segue com as outras estações.
+ */
+export function closingConsequence(day: SessionDay, stationId: string): "closes_session" | "closes_stage" | null {
+  const station = day.stations.find((e) => e.id === stationId);
+  if (!station?.open || !station.services.includes(day.serviceId)) return null;
+  if (station.stage === "care") return openIn(day, "care", station.id) ? null : "closes_session";
+  if (openIn(day, "triage", station.id)) return null;
+  const waiting = (i: QueueItem) => (i.state === "remote" || i.state === "present") && i.stage === "triage";
+  return day.items.some(waiting) ? "closes_stage" : null;
+}
+
 /**
  * RN-EST-05: não fecha com paciente chamado (de qualquer sessão); finalize ou marque "Não compareceu".
- * Como as ações vizinhas, só com a sessão aberta (m5).
+ * Como as ações vizinhas, só com a sessão aberta (m5). Se fechar encerra a sessão ou a triagem
+ * (`closingConsequence`), recusa com esse código até vir `confirmed`; quem chama encerra em seguida
+ * (`close` ou `closeStage`).
  */
-export function closeStation(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
+export function closeStation(day: SessionDay, cmd: Cmd & { confirmed?: boolean }, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const station = day.stations.find((e) => e.id === cmd.stationId);
   if (!station) return failure("forbidden_transition");
   // Já fechada (toque duplo, nova tentativa): nada muda.
   if (!station.open) return ok(day);
   if (station.calledItemId !== null) return failure("station_has_call");
+  const consequence = closingConsequence(day, station.id);
+  if (consequence !== null && !cmd.confirmed) return failure(consequence);
+  // A sessão só encerra sem ninguém chamado (RN-SES-01): sem isso, o atendimento ficaria sem estação.
+  const anyCalled = day.stations.some((e) => e.calledItemId !== null) || day.items.some((i) => i.state === "called");
+  if (consequence === "closes_session" && anyCalled) return failure("station_has_call");
   // A pausa sai (em pausa, vira parada no histórico); o tempo fechada conta a partir de agora.
   const current = advance(station, now);
   const left = current.pause ? leavePause(current, "Fechar a estação", now) : current;

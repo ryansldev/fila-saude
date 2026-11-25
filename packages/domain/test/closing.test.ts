@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { callNext, finish, noShow } from "../src/call.ts";
+import { callNext, closeStation, closingConsequence, finish, noShow } from "../src/call.ts";
 import {
   cancel,
   cancelEntry,
   chooseDate,
   close,
+  closeStage,
   entryOutcome,
   giveUp,
   holdsSlot,
@@ -749,5 +750,82 @@ describe("holdsSlot", () => {
     expect(holdsSlot(e("awaiting_referral", null))).toBe(false);
     expect(holdsSlot(e("waiting", null))).toBe(false);
     expect(holdsSlot(e("in_reserve"))).toBe(false);
+  });
+});
+
+describe("fechar a última estação (RN-EST-07)", () => {
+  const triageAndCare = (ids: string[]) =>
+    dayWith(ids, {
+      requiresTriage: true,
+      stations: [
+        { id: "tri", stage: "triage", services: ["cli"], open: true, calledItemId: null },
+        { id: "e1", stage: "care", services: ["cli"], open: true, calledItemId: null },
+      ],
+    });
+
+  const present = (day: SessionDay) => step(checkIn(day, { itemId: "ana" }, T - 10 * MIN));
+
+  it("a última estação aberta: pede confirmação, porque fechar encerra a sessão", () => {
+    const day = dayWith(["ana"]);
+    expect(closingConsequence(day, "e1")).toBe("closes_session");
+    expect(closeStation(day, E1, T)).toEqual({ ok: false, error: "closes_session" });
+    const closed = step(closeStation(day, { ...E1, confirmed: true }, T));
+    expect(closed.stations[0]?.open).toBe(false);
+    // Com outra estação aberta, fecha sem confirmar e nada muda para quem espera.
+    const two = freeze({
+      ...day,
+      stations: [
+        ...day.stations,
+        { id: "e2", stage: "care" as const, services: ["cli"], open: true, calledItemId: null },
+      ],
+    });
+    expect(closingConsequence(two, "e1")).toBeNull();
+    expect(step(closeStation(two, E1, T)).state).toBe("open");
+  });
+
+  it("a última do atendimento com a triagem aberta também encerra a sessão (ninguém mais seria atendido)", () => {
+    expect(closingConsequence(triageAndCare(["ana"]), "e1")).toBe("closes_session");
+  });
+
+  it("a última da triagem com o atendimento aberto: encerra só para quem espera a triagem", () => {
+    const base = triageAndCare(["ana", "bruno"]);
+    const day = withItem(base, "ana", { stage: "triage" });
+    expect(closingConsequence(day, "tri")).toBe("closes_stage");
+    expect(closeStation(day, { stationId: "tri" }, T)).toEqual({ ok: false, error: "closes_stage" });
+    const d = step(closeStation(day, { stationId: "tri", confirmed: true }, T));
+    const r = closeStage(d, inQueue(["ana", "bruno"]), "triage", T, PRIVATE);
+    const { day: after, entries } = apply(r);
+    expect(after.state).toBe("open");
+    expect(item(after, "ana").state).not.toBe("remote");
+    expect(item(after, "bruno").state).toBe(item(day, "bruno").state);
+    expect(ent(entries, "ent-ana").state).not.toBe("in_queue");
+    expect(ent(entries, "ent-bruno").state).toBe("in_queue");
+    expect(events(r).map((e) => [e.kind, e.itemId])).toEqual([["reassigned", "ana"]]);
+    // Sem ninguém esperando a triagem, fechar a última dela não pede nada.
+    expect(closingConsequence(base, "tri")).toBeNull();
+  });
+
+  it("a falta de quem esperava a triagem fechada entra nas faltas do encerramento", () => {
+    let day = withItem(triageAndCare(["ana", "bruno"]), "ana", { stage: "triage" });
+    day = alreadyNotified(day, "ana", T - 2 * H, 30);
+    day = step(closeStation(day, { stationId: "tri", confirmed: true }, T));
+    const staged = apply(closeStage(day, inQueue(["ana", "bruno"]), "triage", T, PRIVATE));
+    expect(item(staged.day, "ana").exitReason).toBe("no_show");
+    const { day: closed } = apply(close(staged.day, staged.entries, T + H, WITHOUT_NOTICE));
+    expect(closed.closing?.noShows).toContain("ana");
+  });
+
+  it("não fecha a última do atendimento com paciente chamado em outra estação (a sessão não encerraria)", () => {
+    const day = step(
+      callNext(present(withItem(triageAndCare(["ana"]), "ana", { stage: "triage" })), { stationId: "tri" }, T),
+    );
+    expect(closeStation(day, { ...E1, confirmed: true }, T)).toEqual({ ok: false, error: "station_has_call" });
+  });
+
+  it("closeStage só fecha a triagem, e só sem estação aberta nela", () => {
+    const day = withItem(triageAndCare(["ana"]), "ana", { stage: "triage" });
+    expect(error(closeStage(day, inQueue(["ana"]), "triage", T, PRIVATE))).toBe("forbidden_transition");
+    const closed = step(closeStation(day, { stationId: "tri", confirmed: true }, T));
+    expect(error(closeStage(closed, inQueue(["ana"]), "care", T, PRIVATE))).toBe("forbidden_transition");
   });
 });

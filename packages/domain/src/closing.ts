@@ -1,3 +1,4 @@
+import { openIn } from "./call.ts";
 import {
   applyTransition,
   ENTRY_TRANSITIONS,
@@ -9,7 +10,7 @@ import {
 } from "./contracts.ts";
 import { type Entry, type Exit, type Origin, otherDateInSession, type Service, type SessionSlots } from "./list.ts";
 import { endOutages } from "./outage.ts";
-import { type ExitReason, lateness, type QueueItem, type SessionDay } from "./queue.ts";
+import { type ExitReason, lateness, type QueueItem, type SessionDay, type Stage } from "./queue.ts";
 import { type Event, failure, ok, type Result } from "./result.ts";
 import { alreadyInSession, byQueue, createdItem, free, hasSlot, situation, take, withOpening } from "./session.ts";
 import { sameDay } from "./time.ts";
@@ -157,6 +158,79 @@ function closeWithOutcome(e: Entry, day: SessionDay, events: Event[]): Entry {
 type DayAndEntries = { day: SessionDay; entries: Entry[] };
 
 /**
+ * Desfecho de quem está na fila (RN-SES-02) para os itens que passam em `which`, com as entradas deles; com
+ * `reserve`, a reserva da sessão também é cancelada (só no encerramento da sessão).
+ */
+function closeItems(
+  day: SessionDay,
+  entries: Entry[],
+  now: number,
+  origin: Origin,
+  which: (x: QueueItem) => boolean,
+  reserve: boolean,
+): { items: QueueItem[]; entries: Entry[]; events: Event[]; noShows: string[] } {
+  const events: Event[] = [];
+  const noShows: string[] = [];
+  const byEntry = new Map<string, { outcome: Outcome; condition: string }>();
+  const items = day.items.map((x) => {
+    if (!inQueue(x) || !which(x)) return x;
+    const { outcome, condition } = outcomeInClosing(day, x, now);
+    const to = guaranteed(ITEM_TRANSITIONS, x.state, ITEM_CLOSED, (t) => t.condition === condition);
+    byEntry.set(x.entryId, { outcome, condition });
+    const ids = { itemId: x.id, entryId: x.entryId, sessionId: day.sessionId };
+    if (outcome === "no_show") {
+      noShows.push(x.id);
+      const reason = "perdeu o prazo de chegada";
+      events.push({ kind: "no_show", ...ids, reason }, { kind: "left_queue", ...ids });
+    } else {
+      events.push({ kind: "reassigned", ...ids, reason: condition });
+    }
+    return { ...x, state: to, lockedBehind: [], exitReason: outcome === "no_show" ? ("no_show" as const) : null };
+  });
+
+  const fresh = entries.map((e) => {
+    if (e.sessionId !== day.sessionId) return e;
+    if (reserve && e.state === "in_reserve") {
+      events.push({ kind: "cancelled", entryId: e.id, sessionId: day.sessionId, reason: "sessão encerrada" });
+      return { ...e, state: guaranteed(ENTRY_TRANSITIONS, e.state, ENTRY_RESERVE_CLOSES) };
+    }
+    const end = byEntry.get(e.id);
+    if (e.state !== "in_queue") return e;
+    if (end === undefined) return closeWithOutcome(e, day, events);
+    const event =
+      end.outcome === "no_show"
+        ? ENTRY_NO_SHOW
+        : end.condition === "A vez não passou"
+          ? ENTRY_BEFORE_TURN
+          : ENTRY_CLOSED_WITHOUT_NO_SHOW;
+    const to = guaranteed(ENTRY_TRANSITIONS, e.state, event);
+    return end.outcome === "no_show" ? { ...e, state: to } : reassign(e, to, origin);
+  });
+
+  return { items, entries: fresh, events, noShows };
+}
+
+/**
+ * RN-EST-07: a última estação da triagem fechou com o atendimento ainda aberto (`closingConsequence`): quem
+ * espera a triagem sai como no encerramento (remanejado, ou falta se perdeu o prazo); a sessão segue para os
+ * demais. Recusa com paciente chamado na triagem. A falta fica no item e entra nas faltas do encerramento.
+ */
+export function closeStage(
+  day: SessionDay,
+  entries: Entry[],
+  stage: Stage,
+  now: number,
+  origin: Origin,
+): Result<DayAndEntries> {
+  if (day.state !== "open") return failure("session_closed");
+  // Só a triagem fecha sozinha (a última do atendimento encerra a sessão), e só sem estação aberta nela.
+  if (stage !== "triage" || openIn(day, stage, "")) return failure("forbidden_transition");
+  if (day.items.some((i) => i.state === "called" && i.stage === stage)) return failure("station_has_call");
+  const r = closeItems(day, entries, now, origin, (x) => x.stage === stage && x.state !== "called", false);
+  return ok<DayAndEntries>({ day: { ...day, items: r.items }, entries: r.entries }, r.events);
+}
+
+/**
  * RN-SES-01..04: o admin encerra a sessão aberta, sem estação com paciente chamado. Cada um ainda
  * na fila vira remanejado ou leva falta (RN-SES-02); a reserva é cancelada. Entrada ainda "Na
  * fila" cujo item já teve desfecho no dia é fechada por `entryOutcome`. Sinal perdido sem
@@ -175,49 +249,17 @@ export function close(
     return failure("station_has_call");
   }
 
-  const events: Event[] = [];
-  const noShows: string[] = [];
-  const byEntry = new Map<string, { outcome: Outcome; condition: string }>();
-  const items = day.items.map((x) => {
-    if (!inQueue(x)) return x;
-    const { outcome, condition } = outcomeInClosing(day, x, now);
-    const to = guaranteed(ITEM_TRANSITIONS, x.state, ITEM_CLOSED, (t) => t.condition === condition);
-    byEntry.set(x.entryId, { outcome, condition });
-    const ids = { itemId: x.id, entryId: x.entryId, sessionId: day.sessionId };
-    if (outcome === "no_show") {
-      noShows.push(x.id);
-      const reason = "perdeu o prazo de chegada";
-      events.push({ kind: "no_show", ...ids, reason }, { kind: "left_queue", ...ids });
-    } else {
-      events.push({ kind: "reassigned", ...ids, reason: condition });
-    }
-    return { ...x, state: to, lockedBehind: [], exitReason: outcome === "no_show" ? ("no_show" as const) : null };
-  });
-
-  const fresh = entries.map((e) => {
-    if (e.sessionId !== day.sessionId) return e;
-    if (e.state === "in_reserve") {
-      events.push({ kind: "cancelled", entryId: e.id, sessionId: day.sessionId, reason: "sessão encerrada" });
-      return { ...e, state: guaranteed(ENTRY_TRANSITIONS, e.state, ENTRY_RESERVE_CLOSES) };
-    }
-    const end = byEntry.get(e.id);
-    if (e.state !== "in_queue") return e;
-    if (end === undefined) return closeWithOutcome(e, day, events);
-    const event =
-      end.outcome === "no_show"
-        ? ENTRY_NO_SHOW
-        : end.condition === "A vez não passou"
-          ? ENTRY_BEFORE_TURN
-          : ENTRY_CLOSED_WITHOUT_NO_SHOW;
-    const to = guaranteed(ENTRY_TRANSITIONS, e.state, event);
-    return end.outcome === "no_show" ? { ...e, state: to } : reassign(e, to, options.origin);
-  });
-
+  const { items, entries: fresh, events, noShows } = closeItems(day, entries, now, options.origin, () => true, true);
   const closed: SessionDay = {
     ...endOutages(day, now),
     state: "closed",
     items,
-    closing: { at: now, noShows, origin: options.origin },
+    // As faltas de quem esperava a triagem fechada antes (closeStage) também contam.
+    closing: {
+      at: now,
+      noShows: [...day.items.filter((i) => i.exitReason === "no_show").map((i) => i.id), ...noShows],
+      origin: options.origin,
+    },
   };
   const r = ok<DayAndEntries>({ day: closed, entries: fresh }, events);
   return options.withoutSignalWithoutContingency ? { ...r, notice: "signal_lost" } : r;

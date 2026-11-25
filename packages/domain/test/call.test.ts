@@ -303,7 +303,7 @@ describe("RN-EST-05: estação", () => {
     expect(closeStation(d, { stationId: "e1" }, T)).toEqual({ ok: false, error: "station_has_call" });
     expect(station(d, "e1").open).toBe(true);
     d = apply(finish(d, { stationId: "e1" }, T + MIN));
-    const r = closeStation(d, { stationId: "e1" }, T + 2 * MIN);
+    const r = closeStation(d, { stationId: "e1", confirmed: true }, T + 2 * MIN);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(station(r.state, "e1")).toMatchObject({ open: false, closedAt: T + 2 * MIN });
@@ -415,8 +415,8 @@ describe("pureza", () => {
     recall(called, { stationId: "e1" }, T);
     finish(called, { stationId: "e1" }, T);
     noShow(called, { stationId: "e1" }, T);
-    closeStation(called, { stationId: "e1" }, T);
-    closeStation(d, { stationId: "e1" }, T);
+    closeStation(called, { stationId: "e1", confirmed: true }, T);
+    closeStation(d, { stationId: "e1", confirmed: true }, T);
     toleranceExceeded(called, "e1", T);
     const oneSkip = withItem(called, "ana", { skips: 1 });
     noShow(oneSkip, { stationId: "e1" }, T);

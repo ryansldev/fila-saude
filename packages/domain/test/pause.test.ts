@@ -143,7 +143,7 @@ describe("voltar de novo", () => {
     expect(late).toMatchObject({ ok: true, events: [] });
     if (late.ok) expect(station(late.state).pause).toBeUndefined();
     // Estação fechada não volta (reabre).
-    const closed = apply(closeStation(back, { stationId: "e1" }, T + 40 * MIN));
+    const closed = apply(closeStation(back, { stationId: "e1", confirmed: true }, T + 40 * MIN));
     expect(resumeStation(closed, { stationId: "e1" }, T + 41 * MIN)).toEqual({
       ok: false,
       error: "forbidden_transition",
@@ -184,7 +184,7 @@ describe("máquina de estados da pausa (PAUSE_TRANSITIONS)", () => {
 describe("fechar e reabrir a estação (RN-EST-07)", () => {
   it("fechar tira a pausa; reabrir devolve a estação à sessão", () => {
     let d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
-    d = apply(closeStation(d, { stationId: "e1" }, T));
+    d = apply(closeStation(d, { stationId: "e1", confirmed: true }, T));
     expect(station(d)).toMatchObject({ open: false });
     expect(station(d).pause).toBeUndefined();
     d = apply(reopenStation(d, { stationId: "e1" }, T));
@@ -196,10 +196,14 @@ describe("fechar e reabrir a estação (RN-EST-07)", () => {
 describe("fechar depois de uma pausa", () => {
   it("a pausa que já acabou entra no histórico só até a volta; fechar de novo não muda nada", () => {
     let d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: { inMin: 15 } }, T));
-    d = apply(closeStation(d, { stationId: "e1" }, T + 120 * MIN));
+    d = apply(closeStation(d, { stationId: "e1", confirmed: true }, T + 120 * MIN));
     expect(station(d).stops).toEqual([{ start: T, end: T + 15 * MIN }]);
     // Fechar de novo (toque duplo, nova tentativa) não muda nada.
-    expect(closeStation(d, { stationId: "e1" }, T + 130 * MIN)).toEqual({ ok: true, state: d, events: [] });
+    expect(closeStation(d, { stationId: "e1", confirmed: true }, T + 130 * MIN)).toEqual({
+      ok: true,
+      state: d,
+      events: [],
+    });
   });
 });
 
@@ -209,7 +213,7 @@ describe("auditoria e quem está a caminho", () => {
     expect(p.ok && p.events).toEqual([{ kind: "station_paused", stationId: "e1", data: { from: T, until: null } }]);
     const r = resumeStation(apply(p), { stationId: "e1" }, T + MIN);
     expect(r.ok && r.events).toEqual([{ kind: "station_resumed", stationId: "e1" }]);
-    const c = closeStation(dayWith(["ana"]), { stationId: "e1" }, T);
+    const c = closeStation(dayWith(["ana"]), { stationId: "e1", confirmed: true }, T);
     expect(c.ok && c.events).toEqual([{ kind: "station_closed", stationId: "e1" }]);
     const o = reopenStation(apply(c), { stationId: "e1" }, T + MIN);
     expect(o.ok && o.events).toEqual([{ kind: "station_reopened", stationId: "e1" }]);
@@ -224,7 +228,7 @@ describe("auditoria e quem está a caminho", () => {
   it("sem estação chamando, o sinal parado é o último sinal (não uma hora no futuro)", () => {
     const st = (last: number) => ({ hasTv: false, tvSignalAt: null, stationSignalAt: last, serverStartedAt: 0 });
     let d = freeze(trackOutage(dayWith(["ana"]), T, st(T)));
-    d = apply(closeStation(d, { stationId: "e1" }, T + MIN));
+    d = apply(closeStation(d, { stationId: "e1", confirmed: true }, T + MIN));
     expect(stalledSince(d, T + 2 * MIN)).toBe(T);
   });
 
@@ -321,7 +325,7 @@ describe("estimativa e avisos com a pausa (RN-ETA)", () => {
     // 15, 15, 15 e 35 - 20 de pausa = 15.
     expect(averageTime(d, "care", d.serviceId, T + 40 * MIN)).toBe(15);
     let c: SessionDay = freeze({ ...present(dayWith(ids), ...ids), calls: at as never });
-    c = apply(closeStation(c, { stationId: "e1" }, T + 10 * MIN));
+    c = apply(closeStation(c, { stationId: "e1", confirmed: true }, T + 10 * MIN));
     c = apply(reopenStation(c, { stationId: "e1" }, T + 30 * MIN));
     c = freeze({
       ...c,
@@ -649,7 +653,9 @@ describe("queda percebida com a pausa (QP6)", () => {
     d = apply(pauseStation(d, { stationId: "e1", back: null }, T));
     d = apply(resumeStation(d, { stationId: "e1" }, T + 60 * MIN));
     expect(freeze(trackOutage(d, T + 65 * MIN, signal(T))).outages ?? []).toEqual([]);
-    let c = apply(closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1" }, T));
+    let c = apply(
+      closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1", confirmed: true }, T),
+    );
     c = apply(reopenStation(c, { stationId: "e1" }, T + 60 * MIN));
     expect(freeze(trackOutage(c, T + 65 * MIN, signal(T))).outages ?? []).toEqual([]);
   });
@@ -789,7 +795,9 @@ describe("queda percebida com a pausa (QP6)", () => {
     let d = freeze(trackOutage(dayWith(["ana"]), T, signal(T)));
     d = apply(pauseStation(d, { stationId: "e1", back: null }, T));
     expect(trackOutage(d, T + 15 * MIN, signal(T)).outages ?? []).toEqual([]);
-    const closed = apply(closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1" }, T));
+    const closed = apply(
+      closeStation(freeze(trackOutage(dayWith(["ana"]), T, signal(T))), { stationId: "e1", confirmed: true }, T),
+    );
     expect(trackOutage(closed, T + 15 * MIN, signal(T)).outages ?? []).toEqual([]);
   });
 });
