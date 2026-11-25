@@ -73,6 +73,7 @@ export type CheckError =
 const BY_EXIT: Record<string, { title: string; text?: string; exit: "schedule" | "queue" }> = {
   session_closed: { title: "este atendimento não está aberto", exit: "schedule" },
   private_session: { title: "este atendimento não está aberto", exit: "schedule" },
+  triage_closed: { title: "a triagem está fechada agora", exit: "schedule" },
   limit_per_account: { title: "limite de pessoas da conta", exit: "queue" },
   referral_pending: { title: "falta o pedido médico", exit: "queue" },
   duplicate: { title: "já inscrito neste serviço", exit: "queue" },

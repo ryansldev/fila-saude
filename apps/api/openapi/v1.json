@@ -3318,7 +3318,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -3364,9 +3365,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -3566,7 +3573,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -3612,9 +3620,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -3810,7 +3824,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -3856,9 +3871,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4058,7 +4079,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -4104,9 +4126,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4325,9 +4353,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4515,7 +4549,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -4561,9 +4596,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4759,7 +4800,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -4805,9 +4847,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -5003,7 +5051,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -5049,9 +5098,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -5247,7 +5302,8 @@
                         "type": "string",
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
-                      "refer": { "type": "boolean" }
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" }
                     }
                   },
                   { "type": "null" }
@@ -5293,9 +5349,15 @@
                             },
                             { "type": "null" }
                           ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt"],
+                      "required": ["id", "name", "stage", "closedAt", "closing"],
                       "additionalProperties": false
                     },
                     "session": {

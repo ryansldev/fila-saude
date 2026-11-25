@@ -214,20 +214,25 @@ function closeItems(
  * RN-EST-07: a última estação da triagem fechou com o atendimento ainda aberto (`closingConsequence`): quem
  * espera a triagem sai como no encerramento (remanejado, ou falta se perdeu o prazo); a sessão segue para os
  * demais. Recusa com paciente chamado na triagem. A falta fica no item e entra nas faltas do encerramento.
+ * O remanejado sai da sessão e libera a vaga (`session`), que a reserva ocupa quando a triagem reabrir
+ * (`fillFromReserve`); a falta não libera.
  */
 export function closeStage(
   day: SessionDay,
   entries: Entry[],
+  session: SessionSlots,
   stage: Stage,
   now: number,
   origin: Origin,
-): Result<DayAndEntries> {
-  if (day.state !== "open") return failure("session_closed");
+): Result<DayAndEntries & { session: SessionSlots }> {
+  if (day.state !== "open" || session.id !== day.sessionId) return failure("session_closed");
   // Só a triagem fecha sozinha (a última do atendimento encerra a sessão), e só sem estação aberta nela.
   if (stage !== "triage" || openIn(day, stage, "")) return failure("forbidden_transition");
   if (day.items.some((i) => i.state === "called" && i.stage === stage)) return failure("station_has_call");
   const r = closeItems(day, entries, now, origin, (x) => x.stage === stage && x.state !== "called", false);
-  return ok<DayAndEntries>({ day: { ...day, items: r.items }, entries: r.entries }, r.events);
+  const left = r.entries.filter((e, i) => e.sessionId === null && entries[i]?.sessionId === day.sessionId).length;
+  const freed = { ...session, taken: Math.max(0, session.taken - left) };
+  return ok({ day: { ...day, items: r.items }, entries: r.entries, session: freed }, r.events);
 }
 
 /**

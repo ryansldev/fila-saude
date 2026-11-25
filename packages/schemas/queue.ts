@@ -77,13 +77,27 @@ export const calledSchema = z.object({
  * chamado) e, só com vermelho, `encaminhar` à emergência, que tira da fila desta unidade (AD-059).
  */
 export const commandBodySchema = z
-  .object({ confirmedRisk: riskLevelSchema.optional(), refer: z.boolean().optional() })
+  .object({
+    confirmedRisk: riskLevelSchema.optional(),
+    refer: z.boolean().optional(),
+    /** Fechar a última estação (RN-EST-07): confirma que encerra a sessão ou fecha a triagem (`station.closing`). */
+    confirmed: z.boolean().optional(),
+  })
   .default({});
 
 /** Tela da estação (T3.7): a sessão aberta de hoje que ela atende, o chamado e quantos aguardam presentes. */
 export const stationOperationSchema = z.object({
-  /** `closedAt`: a estação fechou nesta sessão (RN-EST-07), desde quando; `null` aberta. */
-  station: z.object({ id: z.uuid(), name: z.string(), stage: stageSchema, closedAt: z.iso.datetime().nullable() }),
+  /**
+   * `closedAt`: a estação fechou nesta sessão (RN-EST-07), desde quando; `null` aberta. `closing`: o que fechá-la
+   * agora faz (é a última do atendimento, encerra a sessão; a última da triagem, fecha a triagem); `null` nada.
+   */
+  station: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    stage: stageSchema,
+    closedAt: z.iso.datetime().nullable(),
+    closing: z.enum(["closes_session", "closes_stage"]).nullable(),
+  }),
   session: z.object({ id: z.uuid(), service: z.string(), state: z.string() }).nullable(),
   called: calledSchema.nullable(),
   waiting: z.number().int().min(0),

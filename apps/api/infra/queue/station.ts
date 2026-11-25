@@ -1,11 +1,15 @@
 import {
   type Action,
   callNext,
+  close,
+  closeStage,
   closeStation,
+  closingConsequence,
   type Entry,
   type Event,
   eligible,
   entryOutcome,
+  fillFromReserve,
   finish,
   firstName,
   noShow,
@@ -16,10 +20,12 @@ import {
   recall,
   reopenStation,
   type SessionDay,
+  sessionOrigin,
   showedUp,
   showedUpAt,
   TARGET_TIME_MIN,
   toleranceExceeded,
+  triageClosed,
   undoShowedUp,
 } from "@fila-saude/domain";
 import type { StationCommand, StationOperation } from "@fila-saude/schemas/queue";
@@ -32,7 +38,7 @@ import type { TenantDatabase } from "infra/database/tenants";
 import { ApiError } from "infra/errors";
 import { type ActionContext, runAction } from "infra/panel/action";
 import { allowed, type Caveats } from "infra/panel/guard";
-import { inSession, readDay } from "./day";
+import { inSession, readDay, type SessionContext } from "./day";
 import { entryNames } from "./panel";
 import { stationSignal } from "./signal";
 
@@ -105,6 +111,7 @@ async function build(
       name: e.name,
       stage: e.stage,
       closedAt: est?.closedAt === undefined ? null : new Date(est.closedAt).toISOString(),
+      closing: day?.state === "open" ? closingConsequence(day, e.id) : null,
     },
     session: s,
     called:
@@ -166,6 +173,40 @@ function withConfirmedRisk(entries: Entry[], events: Event[]): Entry[] {
   return entries.map((en) => (level.has(en.id) ? { ...en, confirmedRisk: level.get(en.id) ?? null } : en));
 }
 
+/**
+ * RN-EST-07: fechar a última estação (já confirmado) encerra a sessão ou fecha a triagem na mesma transação;
+ * reabrir a triagem fechada põe a reserva nas vagas livres. Nulo quando o comando não mexe na sessão.
+ */
+function closingAfter(c: SessionContext, day: SessionDay, stationId: string, command: "close" | "reopen", now: number) {
+  const before = c.day as SessionDay;
+  const origin = sessionOrigin(c.session, c.service);
+  if (command === "reopen") {
+    if (!triageClosed(before) || triageClosed(day)) return null;
+    const r = fillFromReserve(c.session, day, c.entries, { service: c.service, acceptedPhotos: [] }, now);
+    if (!r.ok) throw new ApiError(409, r.error);
+    return {
+      consequence: null,
+      day: r.state.day ?? day,
+      entries: r.state.entries,
+      session: r.state.session,
+      events: r.events,
+    };
+  }
+  // Já fechada antes (toque duplo), o comando não mudou nada: a sessão também não muda.
+  const consequence = closingConsequence(before, stationId);
+  if (consequence === "closes_session") {
+    const r = close(day, c.entries, now, { withoutSignalWithoutContingency: false, origin });
+    if (!r.ok) throw new ApiError(409, r.error);
+    return { consequence, day: r.state.day, entries: r.state.entries, session: null, events: r.events };
+  }
+  if (consequence === "closes_stage") {
+    const r = closeStage(day, c.entries, c.session, "triage", now, origin);
+    if (!r.ok) throw new ApiError(409, r.error);
+    return { consequence, day: r.state.day, entries: r.state.entries, session: r.state.session, events: r.events };
+  }
+  return null;
+}
+
 const COMMANDS: Record<
   StationCommand,
   (
@@ -189,15 +230,17 @@ export async function commandInStation(
   ctx: ActionContext,
   stationId: string,
   command: StationCommand,
-  body: { confirmedRisk?: RiskLevel | undefined; refer?: boolean | undefined } = {},
+  body: { confirmedRisk?: RiskLevel | undefined; refer?: boolean | undefined; confirmed?: boolean | undefined } = {},
 ): Promise<StationOperation> {
-  const { confirmedRisk, refer } = body;
+  const { confirmedRisk, refer, confirmed } = body;
   const e = await requireStation(ctx.db, stationId);
   const classifies = await canClassify(ctx, e.unitId);
   if (!classifies && (confirmedRisk !== undefined || refer))
     throw new ApiError(403, "no_permission", undefined, "A classificação de risco é do enfermeiro.");
   // A auditoria diz sobre quem o comando caiu (`before`) e quem ficou chamado depois (`after`).
   let before: string | null = null;
+  // Fechar a última estação (RN-EST-07): o que aconteceu com a sessão fica na auditoria.
+  let consequence: ReturnType<typeof closingConsequence> = null;
   return runAction(
     ctx,
     {
@@ -205,7 +248,7 @@ export async function commandInStation(
       target: { kind: "station", id: stationId },
       unitId: e.unitId,
       caveats: caveatsOf(e),
-      data: (r) => ({ command, before, after: r.called?.ticket ?? null }),
+      data: (r) => ({ command, before, after: r.called?.ticket ?? null, ...(consequence ? { consequence } : {}) }),
     },
     async (tx) => {
       await stationSignal(tx, stationId, ctx.now);
@@ -223,7 +266,8 @@ export async function commandInStation(
         }
         const extra =
           closes && called ? { ...(confirmedRisk ? { confirmedRisk } : {}), ...(refer ? { refer } : {}) } : {};
-        const r = COMMANDS[command](c.day, { stationId, ...extra, classifies }, ctx.now);
+        const close = command === "close" && confirmed ? { confirmed } : {};
+        const r = COMMANDS[command](c.day, { stationId, ...extra, ...close, classifies }, ctx.now);
         if (!r.ok) {
           if (r.error === "none_eligible" && command === "call") {
             return { result: await build(tx, e, s, c.day, ctx.now, classifies, "nobody_waiting") };
@@ -233,13 +277,20 @@ export async function commandInStation(
           }
           throw new ApiError(409, r.error);
         }
-        const day = r.state;
+        const after =
+          command === "close" || command === "reopen" ? closingAfter(c, r.state, stationId, command, ctx.now) : null;
+        if (after) consequence = after.consequence;
+        const day = after?.day ?? r.state;
+        const entries = after?.entries ?? closeEntries(day, withConfirmedRisk(c.entries, r.events));
+        const events = [...r.events, ...(after?.events ?? [])];
         const nobody = command === "call" && !day.stations.find((x) => x.id === stationId)?.calledItemId;
+        const op = { ...s, state: day.state };
         return {
           day,
-          entries: closeEntries(day, withConfirmedRisk(c.entries, r.events)),
-          events: r.events,
-          result: await build(tx, e, s, day, ctx.now, classifies, nobody ? "nobody_waiting" : null),
+          entries,
+          events,
+          ...(after?.session ? { session: after.session } : {}),
+          result: await build(tx, e, op, day, ctx.now, classifies, nobody ? "nobody_waiting" : null),
         };
       });
     },
