@@ -1,5 +1,6 @@
 import {
   type Action,
+  advancePauses,
   callNext,
   close,
   closeStage,
@@ -14,11 +15,15 @@ import {
   firstName,
   noShow,
   OPERATE_CAVEAT_STAGE,
+  type PauseBack,
+  pausedAt,
+  pauseStation,
   type QueueItem,
   type Result,
   type RiskLevel,
   recall,
   reopenStation,
+  resumeStation,
   type SessionDay,
   sessionOrigin,
   showedUp,
@@ -87,7 +92,9 @@ async function build(
   classifies: boolean,
   notice: StationOperation["notice"] = null,
 ): Promise<StationOperation> {
-  const est = day?.stations.find((x) => x.id === e.id);
+  // O relógio da pausa até agora (a varredura grava o mesmo a cada giro).
+  const current = day ? advancePauses(day, now) : null;
+  const est = current?.stations.find((x) => x.id === e.id);
   const item = est?.calledItemId ? day?.items.find((i) => i.id === est.calledItemId) : undefined;
   const queue = day && est ? eligible(day, e.id, { classifies }) : [];
   const remote = day ? day.items.filter((i) => i.state === "remote" && i.stage === e.stage) : [];
@@ -112,6 +119,8 @@ async function build(
       stage: e.stage,
       closedAt: est?.closedAt === undefined ? null : new Date(est.closedAt).toISOString(),
       closing: day?.state === "open" ? closingConsequence(day, e.id) : null,
+      pause: est?.pause ? pauseOf(est.pause) : null,
+      pauseStartsAt: day ? pauseStartsAt(day, e.id, now) : null,
     },
     session: s,
     called:
@@ -140,6 +149,23 @@ async function build(
     classifies: e.stage === "triage" && classifies,
     timeZone: day?.config.timeZone ?? null,
   };
+}
+
+const iso = (t: number) => new Date(t).toISOString();
+
+type StationPause = NonNullable<SessionDay["stations"][number]["pause"]>;
+
+const pauseOf = (p: StationPause) => ({
+  state: p.state,
+  from: iso(p.state === "paused" ? p.since : p.from),
+  until: p.until === null ? null : iso(p.until),
+});
+
+/** RN-EST-06: quando a pausa começaria se tocasse "Pausar" agora (o domínio decide, sem gravar); nulo se não pausa. */
+function pauseStartsAt(day: SessionDay, stationId: string, now: number): string | null {
+  const r = pauseStation(day, { stationId, back: null }, now);
+  const p = r.ok ? r.state.stations.find((x) => x.id === stationId)?.pause : undefined;
+  return p ? pauseOf(p).from : null;
 }
 
 /** RN-PERF-05: só o enfermeiro confirma o nível de risco (Cofen 661/2021). */
@@ -211,7 +237,7 @@ const COMMANDS: Record<
   StationCommand,
   (
     d: SessionDay,
-    cmd: { stationId: string; confirmedRisk?: RiskLevel; refer?: boolean; classifies?: boolean },
+    cmd: { stationId: string; confirmedRisk?: RiskLevel; refer?: boolean; classifies?: boolean; back?: PauseBack },
     now: number,
   ) => Result<SessionDay>
 > = {
@@ -223,6 +249,8 @@ const COMMANDS: Record<
   "undo-showed-up": undoShowedUp,
   close: closeStation,
   reopen: reopenStation,
+  pause: (d, cmd, now) => pauseStation(d, { stationId: cmd.stationId, back: cmd.back ?? null }, now),
+  resume: resumeStation,
 };
 
 // T3.7 / RN-CHAM: o comando trava a sessão (INV-04) e passa pelo guard e pela auditoria.
@@ -230,9 +258,20 @@ export async function commandInStation(
   ctx: ActionContext,
   stationId: string,
   command: StationCommand,
-  body: { confirmedRisk?: RiskLevel | undefined; refer?: boolean | undefined; confirmed?: boolean | undefined } = {},
+  body: {
+    confirmedRisk?: RiskLevel | undefined;
+    refer?: boolean | undefined;
+    confirmed?: boolean | undefined;
+    back?: { at: string } | { inMin: number } | null | undefined;
+  } = {},
 ): Promise<StationOperation> {
   const { confirmedRisk, refer, confirmed } = body;
+  const back: PauseBack | undefined =
+    body.back === undefined || body.back === null
+      ? body.back
+      : "at" in body.back
+        ? { at: Date.parse(body.back.at) }
+        : body.back;
   const e = await requireStation(ctx.db, stationId);
   const classifies = await canClassify(ctx, e.unitId);
   if (!classifies && (confirmedRisk !== undefined || refer))
@@ -267,7 +306,8 @@ export async function commandInStation(
         const extra =
           closes && called ? { ...(confirmedRisk ? { confirmedRisk } : {}), ...(refer ? { refer } : {}) } : {};
         const close = command === "close" && confirmed ? { confirmed } : {};
-        const r = COMMANDS[command](c.day, { stationId, ...extra, ...close, classifies }, ctx.now);
+        const pause = command === "pause" && back !== undefined ? { back } : {};
+        const r = COMMANDS[command](c.day, { stationId, ...extra, ...close, ...pause, classifies }, ctx.now);
         if (!r.ok) {
           if (r.error === "none_eligible" && command === "call") {
             return { result: await build(tx, e, s, c.day, ctx.now, classifies, "nobody_waiting") };
@@ -283,7 +323,9 @@ export async function commandInStation(
         const day = after?.day ?? r.state;
         const entries = after?.entries ?? closeEntries(day, withConfirmedRisk(c.entries, r.events));
         const events = [...r.events, ...(after?.events ?? [])];
-        const nobody = command === "call" && !day.stations.find((x) => x.id === stationId)?.calledItemId;
+        // Sem ninguém chamado depois de "chamar": ninguém aguardando, a não ser que a pausa tenha começado (só finalizou).
+        const here = day.stations.find((x) => x.id === stationId);
+        const nobody = command === "call" && here !== undefined && !here.calledItemId && !pausedAt(day, here, ctx.now);
         // Encerrou a sessão: a estação fica sem sessão aberta (como na próxima consulta), com o aviso, sem "Reabrir".
         const ended = after?.consequence === "closes_session";
         const result = ended

@@ -1,4 +1,5 @@
 import {
+  advancePauses,
   awaitedItems,
   comeNowNotices,
   inManualMode,
@@ -51,7 +52,9 @@ async function generateTimeNotices(
           if (c.day?.state !== "open") return { result: null };
           // PV5 (AD-076): a queda percebida (unidade sem sinal, varredura parada) para o relógio do prazo; com
           // a unidade sem sinal, modo manual (RN-SES-05): nenhum aviso de tempo sai.
-          const day = trackOutage(c.day, now, { ...(await sessionSignal(tx, id)), serverStartedAt });
+          // RN-EST-06: o relógio da pausa (a marcada começa, a hora da volta passa) antes de julgar a queda.
+          const paused = advancePauses(c.day, now);
+          const day = trackOutage(paused, now, { ...(await sessionSignal(tx, id)), serverStartedAt });
           const mode = { manualMode: inManualMode(day) };
           // AD-057: o "venha agora" fica registrado no dia com a hora; o prazo de chegada conta dela.
           const come = comeNowNotices(day, now, mode);

@@ -3319,7 +3319,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -3371,9 +3392,47 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -3576,7 +3635,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -3628,9 +3708,47 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -3829,7 +3947,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -3881,9 +4020,47 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4086,7 +4263,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -4138,9 +4336,47 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4367,9 +4603,47 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4541,9 +4815,9 @@
         }
       }
     },
-    "/v1/panel/stations/{stationId}/recall": {
+    "/v1/panel/stations/{stationId}/pause": {
       "post": {
-        "summary": "Chamar de novo",
+        "summary": "Pausar a estação",
         "tags": ["Painel"],
         "requestBody": {
           "required": true,
@@ -4560,7 +4834,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -4612,9 +4907,359 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
+                      "additionalProperties": false
+                    },
+                    "session": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "service": { "type": "string" },
+                            "state": { "type": "string" }
+                          },
+                          "required": ["id", "service", "state"],
+                          "additionalProperties": false
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "called": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "itemId": { "type": "string" },
+                            "ticket": { "type": "string" },
+                            "name": { "type": "string" },
+                            "stage": { "type": "string", "enum": ["triage", "care"] },
+                            "skips": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                            "calledAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "toleranceExceeded": { "type": "boolean" },
+                            "showedUpAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                { "type": "null" }
+                              ]
+                            },
+                            "priority": { "type": "array", "items": { "type": "string" } },
+                            "triage": {
+                              "type": "object",
+                              "properties": {
+                                "suggestedRisk": {
+                                  "type": "string",
+                                  "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
+                                },
+                                "rule": { "type": "string" },
+                                "support": { "type": "boolean" }
+                              },
+                              "required": ["suggestedRisk", "rule", "support"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "itemId",
+                            "ticket",
+                            "name",
+                            "stage",
+                            "skips",
+                            "calledAt",
+                            "toleranceExceeded",
+                            "showedUpAt",
+                            "priority"
+                          ],
+                          "additionalProperties": false
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "waiting": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    "remote": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    "toleranceMin": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    "notice": {
+                      "anyOf": [{ "type": "string", "enum": ["nobody_waiting", "session_closed"] }, { "type": "null" }]
+                    },
+                    "upcoming": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ticket": { "type": "string" },
+                          "name": { "type": "string" },
+                          "presentSince": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": ["ticket", "name", "presentSince"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "onTheWay": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": { "ticket": { "type": "string" }, "name": { "type": "string" } },
+                        "required": ["ticket", "name"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "oldest": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "presentSince": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "targetTimeMin": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+                          },
+                          "required": ["presentSince", "targetTimeMin"],
+                          "additionalProperties": false
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "now": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "classifies": { "type": "boolean" },
+                    "timeZone": { "type": ["string", "null"] }
+                  },
+                  "required": [
+                    "station",
+                    "session",
+                    "called",
+                    "waiting",
+                    "remote",
+                    "toleranceMin",
+                    "notice",
+                    "upcoming",
+                    "onTheWay",
+                    "oldest",
+                    "now",
+                    "classifies",
+                    "timeZone"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "no_permission",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "404": {
+            "description": "unknown_municipality, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "409": {
+            "description": "birth_date_verified, closes_session, closes_stage, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, triage_closed, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/v1/panel/stations/{stationId}/recall": {
+      "post": {
+        "summary": "Chamar de novo",
+        "tags": ["Painel"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "default": {},
+                    "type": "object",
+                    "properties": {
+                      "confirmedRisk": {
+                        "type": "string",
+                        "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
+                      },
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
+                    }
+                  },
+                  { "type": "null" }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+            "in": "path",
+            "name": "stationId",
+            "required": true,
+            "description": "uuid"
+          }
+        ],
+        "security": [{ "panelCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "station": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": { "type": "string" },
+                        "stage": { "type": "string", "enum": ["triage", "care"] },
+                        "closedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
+                        }
+                      },
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -4813,7 +5458,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -4865,9 +5531,359 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
+                      "additionalProperties": false
+                    },
+                    "session": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "service": { "type": "string" },
+                            "state": { "type": "string" }
+                          },
+                          "required": ["id", "service", "state"],
+                          "additionalProperties": false
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "called": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "itemId": { "type": "string" },
+                            "ticket": { "type": "string" },
+                            "name": { "type": "string" },
+                            "stage": { "type": "string", "enum": ["triage", "care"] },
+                            "skips": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                            "calledAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "toleranceExceeded": { "type": "boolean" },
+                            "showedUpAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                { "type": "null" }
+                              ]
+                            },
+                            "priority": { "type": "array", "items": { "type": "string" } },
+                            "triage": {
+                              "type": "object",
+                              "properties": {
+                                "suggestedRisk": {
+                                  "type": "string",
+                                  "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
+                                },
+                                "rule": { "type": "string" },
+                                "support": { "type": "boolean" }
+                              },
+                              "required": ["suggestedRisk", "rule", "support"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "itemId",
+                            "ticket",
+                            "name",
+                            "stage",
+                            "skips",
+                            "calledAt",
+                            "toleranceExceeded",
+                            "showedUpAt",
+                            "priority"
+                          ],
+                          "additionalProperties": false
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "waiting": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    "remote": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    "toleranceMin": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+                    "notice": {
+                      "anyOf": [{ "type": "string", "enum": ["nobody_waiting", "session_closed"] }, { "type": "null" }]
+                    },
+                    "upcoming": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ticket": { "type": "string" },
+                          "name": { "type": "string" },
+                          "presentSince": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": ["ticket", "name", "presentSince"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "onTheWay": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": { "ticket": { "type": "string" }, "name": { "type": "string" } },
+                        "required": ["ticket", "name"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "oldest": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "presentSince": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "targetTimeMin": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }
+                          },
+                          "required": ["presentSince", "targetTimeMin"],
+                          "additionalProperties": false
+                        },
+                        { "type": "null" }
+                      ]
+                    },
+                    "now": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "classifies": { "type": "boolean" },
+                    "timeZone": { "type": ["string", "null"] }
+                  },
+                  "required": [
+                    "station",
+                    "session",
+                    "called",
+                    "waiting",
+                    "remote",
+                    "toleranceMin",
+                    "notice",
+                    "upcoming",
+                    "onTheWay",
+                    "oldest",
+                    "now",
+                    "classifies",
+                    "timeZone"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "invalid_input",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "401": {
+            "description": "not_authenticated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "403": {
+            "description": "no_permission",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "404": {
+            "description": "unknown_municipality, not_found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          },
+          "409": {
+            "description": "birth_date_verified, closes_session, closes_stage, cpf_in_use, duplicate, email_in_use, emergency, forbidden_transition, invalid_qr, last_manager, limit_per_account, login_in_use, municipality_exists, no_permission, no_show_up, no_slot, none_eligible, outdated_version, own_account_cpf, past_deadline, pause_back_before_start, pause_during_outage, pending_check, person_has_account, person_mismatch, prefix_in_use, private_session, referral_coming_soon, referral_pending, regulated_service, remove_self, service_has_entries, service_in_triage_station, session_break, session_closed, session_has_patients, session_open, slots_below_taken, station_already_paused, station_busy, station_has_call, station_in_use, station_paused, triage_closed, unit_has_entries, unit_has_sessions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } }
+          }
+        }
+      }
+    },
+    "/v1/panel/stations/{stationId}/resume": {
+      "post": {
+        "summary": "Voltar da pausa (ou desmarcar a pausa marcada)",
+        "tags": ["Painel"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "default": {},
+                    "type": "object",
+                    "properties": {
+                      "confirmedRisk": {
+                        "type": "string",
+                        "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
+                      },
+                      "refer": { "type": "boolean" },
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
+                    }
+                  },
+                  { "type": "null" }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": { "type": "string", "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" },
+            "in": "path",
+            "name": "stationId",
+            "required": true,
+            "description": "uuid"
+          }
+        ],
+        "security": [{ "panelCookie": [] }],
+        "responses": {
+          "200": {
+            "description": "Sucesso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "station": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": { "type": "string" },
+                        "stage": { "type": "string", "enum": ["triage", "care"] },
+                        "closedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "closing": {
+                          "anyOf": [
+                            { "type": "string", "enum": ["closes_session", "closes_stage"] },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
+                        }
+                      },
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -5066,7 +6082,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -5118,9 +6155,47 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {
@@ -5319,7 +6394,28 @@
                         "enum": ["emergency", "very_urgent", "urgent", "attention", "routine"]
                       },
                       "refer": { "type": "boolean" },
-                      "confirmed": { "type": "boolean" }
+                      "confirmed": { "type": "boolean" },
+                      "back": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": ["at"]
+                          },
+                          {
+                            "type": "object",
+                            "properties": { "inMin": { "type": "integer", "minimum": 1, "maximum": 1440 } },
+                            "required": ["inMin"]
+                          },
+                          { "type": "null" }
+                        ]
+                      }
                     }
                   },
                   { "type": "null" }
@@ -5371,9 +6467,47 @@
                             { "type": "string", "enum": ["closes_session", "closes_stage"] },
                             { "type": "null" }
                           ]
+                        },
+                        "pause": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "state": { "type": "string", "enum": ["scheduled", "paused"] },
+                                "from": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "until": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    { "type": "null" }
+                                  ]
+                                }
+                              },
+                              "required": ["state", "from", "until"],
+                              "additionalProperties": false
+                            },
+                            { "type": "null" }
+                          ]
+                        },
+                        "pauseStartsAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            { "type": "null" }
+                          ]
                         }
                       },
-                      "required": ["id", "name", "stage", "closedAt", "closing"],
+                      "required": ["id", "name", "stage", "closedAt", "closing", "pause", "pauseStartsAt"],
                       "additionalProperties": false
                     },
                     "session": {

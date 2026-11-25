@@ -394,3 +394,13 @@ Decisões da migração das rotas para o schema no Fastify (DOC2, [plano](../../
 | FE2 | Textos da confirmação da última estação (o design só tinha o "Fechar" comum) | "Fechar Sala 1 e encerrar a sessão?" ("Fechar e encerrar") e "Fechar Acolhimento e a triagem de hoje?" ("Fechar a triagem"), dizendo que quem espera é remanejado ou leva falta | Um aviso à parte depois do "Fechar" comum | Baixo: só texto |
 | FE3 | Vaga de quem a triagem fechada remanejou | O remanejado sai da sessão e libera a vaga; quem levou falta não libera. Ao reabrir a triagem, a reserva ocupa as vagas livres | Não liberar (a reserva continua esperando outra vaga) | Baixo: no pior caso, entra da reserva alguém que não entraria |
 | FE4 | Outra estação fecha entre a tela carregar e o toque (a tela ainda mostra o "Fechar" comum) | A API recusa com `closes_session` ou `closes_stage`; o painel avisa e o toque seguinte já abre a confirmação certa (e manda `confirmed`) | Abrir a segunda confirmação na hora | Baixo: um toque a mais num caso raro |
+
+## Pausar agora e voltar (fatia 3 da pausa, 2026-11-25)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| PZ1 | Pausa marcada (alguém a caminho) antes da fatia 4, que traz a faixa "Pausa às 12:32" e "Desmarcar a pausa" | O botão **Pausar** some enquanto há pausa, marcada ou em curso; a marcada ainda não aparece na tela (só na fatia 4) | Mostrar já uma faixa simples | Baixo: até a fatia 4, quem pausou com alguém a caminho não vê a pausa marcada; ela começa sozinha na hora |
+| PZ2 | "Horário" da volta | Hora do dia em que a pausa começa, no fuso da unidade; antes (ou igual) ao início é recusado na hora, com "A volta precisa ser depois do início da pausa (12:32)" | Aceitar a hora do dia seguinte | Baixo: pausa que vira o dia não existe numa sessão |
+| PZ3 | O que os pacientes veem ("O app mostra aos pacientes: …", "os pacientes veem 'pausa, volta às 13:32'") | Fora dos textos da estação até a fatia 4, que leva a pausa ao app | Mostrar já o texto | Baixo: só texto |
+| PZ4 | Quando a pausa começaria, no painel "Pausar a estação" | A API calcula com o próprio domínio (`pauseStation` sem gravar) e manda em `station.pauseStartsAt`; nulo quando não pausa (paciente chamado, já com pausa, unidade sem sinal) | Calcular no painel | Baixo: uma regra só, no domínio |
+
