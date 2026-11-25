@@ -17,6 +17,7 @@ import {
   pausedPill,
   pausedText,
   pauseStartText,
+  scheduledBand,
   waitText,
 } from "@/lib/station";
 
@@ -135,12 +136,27 @@ describe("lib/estacao", () => {
       expect(pauseBack("at", "10:20", at(30), TZ)).toEqual({
         error: "A volta precisa ser depois do início da pausa (10:30).",
       });
-      expect(backText(NOW + 75 * 60_000, TZ)).toBe("Volta às 11:15.");
-      expect(backText(null, TZ)).toBe('Sem hora de volta: a estação fica em pausa até você tocar em "Voltar agora".');
+      expect(backText(NOW + 75 * 60_000, TZ)).toBe(
+        "Volta às 11:15. Com todas as estações da etapa em pausa, o app mostra aos pacientes a pausa e a hora em que a primeira estação volta.",
+      );
+      expect(backText(null, TZ)).toBe(
+        'Sem hora de volta: a estação fica em pausa até você tocar em "Voltar agora". Com todas as estações da etapa em pausa, o app mostra aos pacientes a pausa e a hora em que a primeira estação volta.',
+      );
+    });
+
+    it("pausa marcada: a faixa diz quando começa, que segue chamando, e a volta", () => {
+      expect(scheduledBand(at(30), at(90), TZ)).toEqual({
+        title: "Pausa às 10:30",
+        text: "Chame normalmente até lá. Não sai mais 'venha agora' para quem chegaria durante a pausa.",
+        pill: "volta às 11:30",
+      });
+      expect(scheduledBand(at(30), null, TZ).pill).toBeNull();
     });
 
     it("em pausa: desde quando e a pílula da volta (vermelha depois da hora)", () => {
-      expect(pausedText(at(-10), TZ)).toBe("Desde 09:50. A fila espera a sua volta.");
+      expect(pausedText(at(-10), TZ)).toBe(
+        "Desde 09:50. A fila espera a sua volta. Com a etapa toda em pausa, os pacientes veem a pausa e a hora em que a primeira estação volta.",
+      );
       expect(pausedPill(at(20), NOW, TZ)).toEqual({ text: "volta às 10:20", late: false });
       expect(pausedPill(at(-1), NOW, TZ)).toEqual({ text: "devia ter voltado às 09:59", late: true });
       expect(pausedPill(null, NOW, TZ)).toBeNull();
@@ -301,7 +317,7 @@ describe("PainelDaEstacao", () => {
       />,
     );
     expect(screen.getByText("Em pausa")).toBeDefined();
-    expect(screen.getByText("Desde 09:50. A fila espera a sua volta.")).toBeDefined();
+    expect(screen.getByText(/^Desde 09:50\. A fila espera a sua volta/)).toBeDefined();
     expect(screen.getByText("volta às 10:20")).toBeDefined();
     expect(screen.queryByText("Chamar o próximo")).toBeNull();
     screen.getByText("Voltar agora").click();
@@ -322,5 +338,33 @@ describe("PainelDaEstacao", () => {
       />,
     );
     expect(screen.getByText("A volta precisa ser depois do início da pausa e de agora.")).toBeDefined();
+  });
+
+  it("RN-EST-06: pausa marcada, a faixa no topo com 'desmarcar a pausa'; a estação segue chamando", () => {
+    const sent: string[] = [];
+    render(
+      <StationPanel
+        op={operation({
+          called: null,
+          waiting: 2,
+          timeZone: "America/Sao_Paulo",
+          station: {
+            id: "e1",
+            name: "Consultório 2",
+            stage: "care",
+            closedAt: null,
+            closing: null,
+            pause: { state: "scheduled", from: new Date(NOW + 30 * 60_000).toISOString(), until: null },
+            pauseStartsAt: null,
+          },
+        })}
+        {...props}
+        onCommand={(c) => sent.push(c)}
+      />,
+    );
+    expect(screen.getByText("Pausa às 10:30")).toBeDefined();
+    expect(screen.getByText("Chamar o próximo")).toBeDefined();
+    screen.getByText("desmarcar a pausa").click();
+    expect(sent).toEqual(["resume"]);
   });
 });

@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { RiskCard } from "@/components/ui/risk-card";
 import { stopwatch } from "@/lib/queue";
-import { calledPhase, closedText, oldestPill, pausedPill, pausedText, waitText } from "@/lib/station";
+import { calledPhase, closedText, oldestPill, pausedPill, pausedText, scheduledBand, waitText } from "@/lib/station";
 import { canRefer, levelColor, needsClassify, priorityText, TRIAGE_COLORS } from "@/lib/triage";
 import { cn } from "@/lib/utils";
 
@@ -180,6 +180,41 @@ function Paused({
   );
 }
 
+/** RN-EST-06: a pausa marcada (alguém a caminho), no topo: a estação segue chamando até a hora. */
+function Scheduled({
+  op,
+  from,
+  until,
+  onCommand,
+  sending,
+}: {
+  op: StationOperation;
+  from: string;
+  until: string | null;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+}) {
+  const zone = op.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const band = scheduledBand(from, until, zone);
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-b-4 border-amber-300 bg-amber-50 px-4 py-3">
+      <CoffeeIcon className="size-5 text-amber-700" aria-hidden />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="font-extrabold text-amber-950">{band.title}</p>
+        <p className="text-sm text-amber-900">{band.text}</p>
+      </div>
+      {band.pill ? (
+        <Pill tone="alert" icon={<ClockIcon className="size-3" aria-hidden />}>
+          {band.pill}
+        </Pill>
+      ) : null}
+      <Button variant="text" disabled={sending} onClick={() => onCommand("resume")}>
+        desmarcar a pausa
+      </Button>
+    </div>
+  );
+}
+
 /** A estação com a sessão aberta: a fila, quem está chamado (em duas fases) e as ações. */
 export function StationPanel({ op, color, onChooseColor, onCommand, sending, now }: Props) {
   const called = op.called;
@@ -205,6 +240,9 @@ export function StationPanel({ op, color, onChooseColor, onCommand, sending, now
   const pause = op.station.pause;
   return (
     <div className="flex flex-col gap-3">
+      {pause?.state === "scheduled" ? (
+        <Scheduled op={op} from={pause.from} until={pause.until} onCommand={onCommand} sending={sending} />
+      ) : null}
       <StationQueue op={op} now={now} />
       {!called && pause?.state === "paused" ? (
         <Paused op={op} from={pause.from} until={pause.until} onCommand={onCommand} sending={sending} now={now} />

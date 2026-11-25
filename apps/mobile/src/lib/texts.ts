@@ -7,7 +7,15 @@ export type Situation =
   | { kind: "turn"; ticket: string; station: string | null }
   | { kind: "reception" }
   | { kind: "come" }
-  | { kind: "position"; position: number; minutes: number; present: boolean; leave: boolean }
+  | {
+      kind: "position";
+      position: number;
+      minutes: number;
+      present: boolean;
+      leave: boolean;
+      /** RN-EST-06: a pausa da etapa que atrasa a vez; sem hora de volta (`noReturn`), o tempo não vale. */
+      pause?: StagePause;
+    }
   /** Sessão ainda planejada e antes do horário. */
   | { kind: "waiting" }
   /** Fila aberta, mas sem previsão (nenhuma estação aberta, modo manual, fora da ordem): nunca "vai começar". */
@@ -24,6 +32,29 @@ export type Situation =
   | { kind: "reassigned" }
   | { kind: "left" }
   | { kind: "cancelled" };
+
+/** A pausa como o app mostra: o título (com a hora, no fuso da unidade), se já começou e se tem hora de volta. */
+export type StagePause = {
+  title: string;
+  started: boolean;
+  noReturn: boolean;
+  /** Início, "13h02". */
+  at: string;
+};
+
+/** RN-EST-06: "pausa, volta às 13h32", "pausa por tempo indeterminado" ou, à frente, "pausa às 13h02, …". */
+function stagePause(p: { from: number; until: number | null }, now: number, timeZone: string): StagePause {
+  const at = (t: number) => hour(new Date(t).toISOString(), timeZone);
+  const started = p.from <= now;
+  const noReturn = p.until === null;
+  const back = p.until === null ? null : at(p.until);
+  const title = started
+    ? back === null
+      ? "pausa por tempo indeterminado"
+      : `pausa, volta às ${back}`
+    : `pausa às ${at(p.from)}, ${back === null ? "sem hora de volta" : `volta às ${back}`}`;
+  return { title, started, noReturn, at: at(p.from) };
+}
 
 /** O botão "cheguei na unidade": em casa e na fila, também em modo manual (a unidade sem TV ainda tem QR, QP5). */
 export function canCheckIn(sit: Situation, itemState: string | null): boolean {
@@ -54,7 +85,14 @@ export function entrySituation(e: MyEntry, now: number): Situation {
   if (est?.kind === "come_now") return { kind: "come" };
   if (est?.kind === "position") {
     const present = e.itemState === "present";
-    return { kind: "position", position: est.position, minutes: est.minutes, present, leave: !present && e.leaveHome };
+    return {
+      kind: "position",
+      position: est.position,
+      minutes: est.minutes,
+      present,
+      leave: !present && e.leaveHome,
+      ...(est.pause ? { pause: stagePause(est.pause, now, e.timeZone) } : {}),
+    };
   }
   if (e.session?.state === "planned") return beforeStart ? { kind: "waiting" } : { kind: "late" };
   const present = e.itemState === "present";
@@ -145,7 +183,10 @@ export function entrySummary(
         return { badge: "venha agora", tone: "yellow" as Tone, inQueue: true, stage: 1 };
       case "position":
         if (sit.present) return { badge: "na unidade", tone: "green" as Tone, inQueue: true, stage: 2 };
-        if (sit.leave) return { badge: "saia de casa", tone: "yellow" as Tone, inQueue: true, stage: 1 };
+        // A pausa em curso vence o "saia de casa" já recebido: ninguém está chamando.
+        if (sit.pause?.started) return { badge: "em pausa", tone: "yellow" as Tone, inQueue: true, stage: 1 };
+        // Uma pausa marcada vai atrasar a vez: o "saia de casa" de antes não vale mais.
+        if (sit.leave && !sit.pause) return { badge: "saia de casa", tone: "yellow" as Tone, inQueue: true, stage: 1 };
         return { badge: "na fila", tone: "blue" as Tone, inQueue: true, stage: 1 };
       case "no_estimate":
         return sit.present
@@ -222,7 +263,17 @@ export function nextStep(e: MyEntry, sit: Situation, now: number): string {
       return "a unidade ainda não abriu a fila. avisamos quando abrir.";
     case "position":
       if (sit.present) return inUnit(e);
-      return sit.leave ? "saia agora para chegar a tempo." : "pode esperar em casa. avisamos a hora de sair.";
+      // RN-EST-06: com a pausa em curso, o "saia de casa" de antes não vale; quem já saiu pode vir e esperar.
+      if (sit.leave && sit.pause?.started)
+        return "a unidade pausou. se já saiu, pode vir e esperar lá. avisamos quando a fila voltar.";
+      // Uma pausa marcada vai atrasar a vez: sair agora seria esperar a pausa na unidade (o "venha agora" ainda sai).
+      if (sit.leave && sit.pause)
+        return `a unidade pausa às ${sit.pause.at}. pode esperar em casa: avisamos quando for para vir.`;
+      if (sit.leave) return "saia agora para chegar a tempo.";
+      // Sem hora de volta não há hora de sair.
+      return sit.pause?.noReturn
+        ? "sem hora de volta: avisamos quando a fila andar."
+        : "pode esperar em casa. avisamos a hora de sair.";
     case "no_estimate":
       // RN-SES-05: em modo manual os avisos param e a unidade chama pela lista em papel.
       if (sit.manual) return "atendimento em modo manual. procure a recepção.";

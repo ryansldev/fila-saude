@@ -108,3 +108,31 @@ describe("o número nas abas de baixo", () => {
     expect(tabCount([])).toEqual({});
   });
 });
+
+describe("pausa na aba hoje (RN-EST-06)", () => {
+  const inPause = (noReturn: boolean, position = 5, minutes = 70): Situation => ({
+    kind: "position",
+    position,
+    minutes,
+    present: false,
+    leave: false,
+    pause: {
+      title: noReturn ? "pausa por tempo indeterminado" : "pausa, volta às 13h32",
+      started: true,
+      noReturn,
+      at: "12h32",
+    },
+  });
+
+  it("o bilhete diz a pausa na faixa; a linha mostra o tempo, ou a pausa sem hora de volta", () => {
+    expect(ticketCardFor({ ticket: "C-005", itemState: "remote" }, inPause(false))).toEqual({
+      banner: "pausa, volta às 13h32",
+      ticket: "C-005",
+      button: "qr",
+    });
+    expect(rowFor(inPause(false))).toEqual({ box: "5º", sentence: "cerca de 70 min" });
+    expect(rowFor(inPause(true))).toEqual({ box: "5º", sentence: "pausa por tempo indeterminado" });
+    // 1º da fila com a pausa em curso: o tempo (que soma a pausa) vale mais que "você é o próximo".
+    expect(rowFor(inPause(false, 1, 60))).toEqual({ box: "1º", sentence: "cerca de 60 min" });
+  });
+});

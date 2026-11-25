@@ -55,8 +55,9 @@ export const when = (en: MyEntry) =>
     : "";
 export const context = (en: MyEntry) =>
   `${en.unit} · ${en.service.toLowerCase()}${when(en)}${en.forMe ? "" : ` · para ${properName(en.person)}`}`;
-export const missing = (position: number, minutes: number) =>
-  minutes <= 0 || position <= 1 ? "você é o próximo" : `cerca de ${minutes} min para a sua vez`;
+/** Com pausa (`paused`), o tempo já a soma e vale mesmo no 1º lugar (ninguém chama até a volta). */
+export const missing = (position: number, minutes: number, paused = false) =>
+  !paused && (minutes <= 0 || position <= 1) ? "você é o próximo" : `cerca de ${minutes} min para a sua vez`;
 
 // "é a sua vez" dispensado não volta ao trocar de aba (a tela remonta); vale enquanto o app está aberto.
 export const SEEN_TURNS = new Set<string>();
@@ -143,7 +144,14 @@ export function YourTurn({ ticket, station, close }: { ticket: string; station: 
 function InQueue({ en, sit }: { en: MyEntry; sit: Situation }) {
   switch (sit.kind) {
     case "position":
-      return <Position ticket={en.ticket} position={sit.position} detail={missing(sit.position, sit.minutes)} />;
+      // RN-EST-06: sem hora de volta, o tempo não vale; a pausa é o que se sabe.
+      return (
+        <Position
+          ticket={en.ticket}
+          position={sit.position}
+          detail={sit.pause?.noReturn ? sit.pause.title : missing(sit.position, sit.minutes, sit.pause !== undefined)}
+        />
+      );
     case "no_estimate":
       return (
         <Position

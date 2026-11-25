@@ -399,8 +399,14 @@ Decisões da migração das rotas para o schema no Fastify (DOC2, [plano](../../
 
 | # | Contexto | O que foi feito | Alternativa | Custa se errado |
 | --- | --- | --- | --- | --- |
-| PZ1 | Pausa marcada (alguém a caminho) antes da fatia 4, que traz a faixa "Pausa às 12:32" e "Desmarcar a pausa" | O botão **Pausar** some enquanto há pausa, marcada ou em curso; a marcada ainda não aparece na tela (só na fatia 4) | Mostrar já uma faixa simples | Baixo: até a fatia 4, quem pausou com alguém a caminho não vê a pausa marcada; ela começa sozinha na hora |
 | PZ2 | "Horário" da volta | Hora do dia em que a pausa começa, no fuso da unidade; antes (ou igual) ao início é recusado na hora, com "A volta precisa ser depois do início da pausa (12:32)" | Aceitar a hora do dia seguinte | Baixo: pausa que vira o dia não existe numa sessão |
-| PZ3 | O que os pacientes veem ("O app mostra aos pacientes: …", "os pacientes veem 'pausa, volta às 13:32'") | Fora dos textos da estação até a fatia 4, que leva a pausa ao app | Mostrar já o texto | Baixo: só texto |
 | PZ4 | Quando a pausa começaria, no painel "Pausar a estação" | A API calcula com o próprio domínio (`pauseStation` sem gravar) e manda em `station.pauseStartsAt`; nulo quando não pausa (paciente chamado, já com pausa, unidade sem sinal) | Calcular no painel | Baixo: uma regra só, no domínio |
+
+## Pausa marcada e o app (fatia 4 da pausa, 2026-11-25)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| PM1 | A hora no app (o design escreve "pausa, volta às 13:32") | "pausa, volta às 13h32", como as outras horas do app ("a fila abre às 7h") | "13:32" só na pausa | Baixo: só texto |
+| PM2 | A pausa que ainda vai começar antes da vez da pessoa (o design só mostra a pausa em curso) | O app já diz: "pausa às 13h02, volta às 14h02" (ou "sem hora de volta"), na faixa do bilhete e no destaque da fila; o selo "em pausa" só quando começou | Mostrar só quando começar | Baixo: a pessoa sabe antes por que o tempo cresceu |
+| PM3 | Selo da pessoa na unidade com a etapa em pausa | Continua "na unidade" (ela já está lá e vê a TV); "em pausa" só para quem está em casa | "em pausa" para todos | Baixo |
 

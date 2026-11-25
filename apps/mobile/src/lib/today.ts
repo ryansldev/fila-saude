@@ -47,9 +47,10 @@ export function ticketCardFor(en: { ticket: string | null; itemState: string | n
       // RN-SES-05: em modo manual, procure a recepção; o QR continua (a unidade sem TV pode tê-lo).
       if (sit.kind === "no_estimate" && sit.manual)
         return { banner: "procure a recepção", ticket: en.ticket, button: qr };
-      return sit.present
-        ? { banner: "você está na unidade", ticket: en.ticket, button: null }
-        : { banner: "você está na fila", ticket: en.ticket, button: qr };
+      if (sit.present) return { banner: "você está na unidade", ticket: en.ticket, button: null };
+      // RN-EST-06: em casa, a pausa que atrasa a vez vira a faixa ("pausa, volta às 13h32").
+      if (sit.kind === "position" && sit.pause) return { banner: sit.pause.title, ticket: en.ticket, button: qr };
+      return { banner: "você está na fila", ticket: en.ticket, button: qr };
     case "allocated":
       return { banner: "confirme a sua data", ticket: null, button: "confirm" };
     case "late":
@@ -68,7 +69,16 @@ export function rowFor(sit: Situation): { box: string | null; sentence: string }
       return {
         box: `${sit.position}º`,
         // Como na tela da fila: "o próximo" só na 1ª posição; tempo zero mais atrás é "já já".
-        sentence: sit.position <= 1 ? "você é o próximo" : sit.minutes <= 0 ? "já já" : `cerca de ${sit.minutes} min`,
+        // Com pausa, o tempo (que a soma) vale mesmo no 1º lugar; sem hora de volta, a pausa é o que se sabe.
+        sentence: sit.pause?.noReturn
+          ? sit.pause.title
+          : sit.pause
+            ? `cerca de ${sit.minutes} min`
+            : sit.position <= 1
+              ? "você é o próximo"
+              : sit.minutes <= 0
+                ? "já já"
+                : `cerca de ${sit.minutes} min`,
       };
     case "come":
       return { box: null, sentence: "venha agora" };

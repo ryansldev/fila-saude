@@ -3,9 +3,10 @@ import { and, eq } from "drizzle-orm";
 import { audit } from "infra/database/municipal/schema/audit";
 import { sessionDay } from "infra/database/municipal/schema/session-day";
 import { sweepMunicipality } from "infra/notices/sweep";
+import webserver from "infra/webserver";
 import orchestrator from "tests/orchestrator";
 import { loggedInUser, occupation } from "tests/panel";
-import { queueScenario, signUpPerson } from "tests/queue";
+import { CAPTCHA_OK, queueScenario, ROUTINE, signUpPerson } from "tests/queue";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 let c: Awaited<ReturnType<typeof queueScenario>>;
@@ -100,5 +101,36 @@ describe("pausar e voltar (RN-EST-06)", () => {
     const r = await cmd(c.e1, "call");
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ called: null, notice: null, station: { pause: { state: "paused" } } });
+  });
+});
+
+describe("a pausa no app (RN-EST-06, RN-ETA)", () => {
+  it("com todas as estações em pausa, a estimativa de quem está em casa traz a pausa e a volta", async () => {
+    const t = await queueScenario();
+    await t.request("POST", `/v1/panel/sessions/${t.sessionId}/open`, t.admin);
+    const ana = await orchestrator.loginPatient(orchestrator.registrationData({ name: "Ana Paciente" }));
+    const app = async (method: string, path: string, body?: unknown) => {
+      const r = await fetch(`${webserver.origin}/v1/municipalities/${t.slug}${path}`, {
+        method,
+        headers: {
+          cookie: ana.cookie,
+          ...CAPTCHA_OK,
+          ...(body !== undefined ? { "content-type": "application/json" } : {}),
+        },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      });
+      return { status: r.status, body: await r.json() };
+    };
+    expect(
+      (await app("POST", `/sessions/${t.sessionId}/sign-ups`, { forWhom: { kind: "me" }, answers: ROUTINE })).status,
+    ).toBe(201);
+    const pause = (id: string) => t.request("POST", `/v1/panel/stations/${id}/pause`, t.nurse, { back: { inMin: 60 } });
+    expect((await pause(t.e1)).status).toBe(200);
+    expect((await pause(t.e2)).status).toBe(200);
+    const [mine] = (await app("GET", "/mine")).body;
+    expect(mine.estimate).toMatchObject({ kind: "position", pause: { until: expect.any(Number) } });
+    // A pausa da etapa vai de quando a última estação parou até a primeira volta (a Sala 1 pausou antes).
+    expect(mine.estimate.pause.until - mine.estimate.pause.from).toBeGreaterThan(59 * MIN);
+    expect(mine.estimate.pause.until - mine.estimate.pause.from).toBeLessThanOrEqual(60 * MIN);
   });
 });

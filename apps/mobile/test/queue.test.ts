@@ -1,6 +1,6 @@
 import type { MyEntry } from "@fila-saude/schemas/queue";
 import { describe, expect, it } from "vitest";
-import { queueHighlight, queueSteps } from "@/lib/queue";
+import { queueHighlight, queueSteps, waitFigure } from "@/lib/queue";
 import { entrySituation } from "@/lib/texts";
 
 const base: MyEntry = {
@@ -126,5 +126,49 @@ describe("tela da fila: o destaque (senha grande)", () => {
       session: SESSION_PLANNED,
     };
     expect(highlight(signedUp)).toEqual({ tone: "gray", label: "a senha sai quando a fila abrir", ticket: null });
+  });
+});
+
+describe("tela da fila em pausa (RN-EST-06)", () => {
+  it("o destaque diz a pausa; sem hora de volta, sem tempo", () => {
+    const at = (until: number | null): MyEntry => ({
+      ...base,
+      estimate: { kind: "position", position: 3, minutes: 50, pause: { from: NOW - 60_000, until } },
+    });
+    expect(highlight(at(NOW + 3_600_000))).toEqual({
+      tone: "yellow",
+      label: "pausa, volta às 10h",
+      ticket: "V-002",
+      position: 3,
+      minutes: 50,
+      paused: true,
+    });
+    expect(highlight(at(null))).toEqual({
+      tone: "yellow",
+      label: "pausa por tempo indeterminado",
+      ticket: "V-002",
+      position: 3,
+      paused: true,
+    });
+  });
+
+  it("o número do tempo: sem hora de volta, sem previsão; em pausa, o tempo mesmo no 1º lugar", () => {
+    expect(waitFigure({ tone: "yellow", label: "", ticket: "V", position: 5, paused: true })).toEqual({
+      value: "sem previsão",
+      legend: "a pausa não tem hora de volta",
+    });
+    expect(waitFigure({ tone: "yellow", label: "", ticket: "V", position: 1, minutes: 60, paused: true })).toEqual({
+      value: "~60 min",
+      legend: "para a sua vez",
+    });
+    // Sem pausa, como antes.
+    expect(waitFigure({ tone: "blue", label: "", ticket: "V", position: 1, minutes: 0 })).toEqual({
+      value: "já já",
+      legend: "você é o próximo",
+    });
+    expect(waitFigure({ tone: "blue", label: "", ticket: "V", position: 3, minutes: 20 })).toEqual({
+      value: "~20 min",
+      legend: "para a sua vez",
+    });
   });
 });

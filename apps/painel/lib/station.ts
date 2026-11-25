@@ -119,16 +119,37 @@ export function pauseBack(
   return { back: { at: new Date(until).toISOString() }, until };
 }
 
-/** A frase da volta, embaixo da escolha. */
+/**
+ * O que os pacientes veem da pausa (RN-EST-06): o app só a mostra com a etapa toda parada, e com a volta da primeira
+ * estação da etapa (que pode não ser esta).
+ */
+const PATIENTS_SEE = "a pausa e a hora em que a primeira estação volta";
+
+/** A frase da volta, embaixo da escolha, com o que os pacientes vão ver. */
 export function backText(until: number | null, timeZone: string): string {
-  return until === null
-    ? 'Sem hora de volta: a estação fica em pausa até você tocar em "Voltar agora".'
-    : `Volta às ${hhmm(until, timeZone)}.`;
+  const own =
+    until === null
+      ? 'Sem hora de volta: a estação fica em pausa até você tocar em "Voltar agora".'
+      : `Volta às ${hhmm(until, timeZone)}.`;
+  return `${own} Com todas as estações da etapa em pausa, o app mostra aos pacientes ${PATIENTS_SEE}.`;
 }
 
-/** O cartão "Em pausa": desde quando. */
+/** O cartão "Em pausa": desde quando e o que os pacientes veem. */
 export function pausedText(from: string, timeZone: string): string {
-  return `Desde ${hhmm(Date.parse(from), timeZone)}. A fila espera a sua volta.`;
+  return `Desde ${hhmm(Date.parse(from), timeZone)}. A fila espera a sua volta. Com a etapa toda em pausa, os pacientes veem ${PATIENTS_SEE}.`;
+}
+
+/** A faixa da pausa marcada (alguém a caminho): quando começa, que segue chamando, e a volta. */
+export function scheduledBand(
+  from: string,
+  until: string | null,
+  timeZone: string,
+): { title: string; text: string; pill: string | null } {
+  return {
+    title: `Pausa às ${hhmm(Date.parse(from), timeZone)}`,
+    text: "Chame normalmente até lá. Não sai mais 'venha agora' para quem chegaria durante a pausa.",
+    pill: until === null ? null : `volta às ${hhmm(Date.parse(until), timeZone)}`,
+  };
 }
 
 /** A pílula da volta: amarela até a hora, vermelha depois ("devia ter voltado"); sem hora de volta, nenhuma. */

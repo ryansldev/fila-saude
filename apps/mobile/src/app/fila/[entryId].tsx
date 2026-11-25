@@ -20,7 +20,7 @@ import {
 } from "@/components/ui";
 import { properName } from "@/lib/account";
 import { hour } from "@/lib/dates";
-import { type QueueHighlight, queueHighlight, queueSteps, type Step } from "@/lib/queue";
+import { type QueueHighlight, queueHighlight, queueSteps, type Step, waitFigure } from "@/lib/queue";
 import { canCheckIn, entrySummary, nextStep, WORSENED_GUIDANCE } from "@/lib/texts";
 
 /**
@@ -179,10 +179,7 @@ function TicketBlock({ d }: { d: QueueHighlight }) {
       {d.position !== undefined ? (
         <View style={{ flexDirection: "row", gap: 10, alignSelf: "stretch" }}>
           <Figure value={`${d.position}º`} legend="na fila" />
-          <Figure
-            value={d.position <= 1 || (d.minutes ?? 0) <= 0 ? "já já" : `~${d.minutes} min`}
-            legend={d.position <= 1 ? "você é o próximo" : "para a sua vez"}
-          />
+          <Figure {...waitFigure(d)} />
         </View>
       ) : null}
     </View>

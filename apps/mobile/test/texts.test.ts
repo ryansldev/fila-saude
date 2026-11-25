@@ -382,3 +382,66 @@ describe("mensagens de erro no estilo do app (minúsculas)", () => {
     );
   });
 });
+
+describe("pausa da estação no app (RN-EST-06, fatia 4 da pausa)", () => {
+  const MIN = 60_000;
+  // 12:32 em Brasília.
+  const T = Date.UTC(2026, 10, 25, 15, 32);
+  const paused = (from: number, until: number | null, extra: Partial<MyEntry> = {}): MyEntry => ({
+    ...base,
+    ...extra,
+    estimate: { kind: "position", position: 5, minutes: 70, pause: { from, until } },
+  });
+
+  it("em pausa: o título diz a volta (ou que não tem hora); sem hora de volta, não há tempo", () => {
+    expect(entrySituation(paused(T - 10 * MIN, T + 60 * MIN), T)).toMatchObject({
+      kind: "position",
+      position: 5,
+      minutes: 70,
+      pause: { title: "pausa, volta às 13h32", started: true, noReturn: false },
+    });
+    expect(entrySituation(paused(T - 10 * MIN, null), T)).toMatchObject({
+      pause: { title: "pausa por tempo indeterminado", started: true, noReturn: true },
+    });
+  });
+
+  it("pausa à frente (começa antes da vez): diz quando começa", () => {
+    expect(entrySituation(paused(T + 30 * MIN, T + 90 * MIN), T)).toMatchObject({
+      pause: { title: "pausa às 13h02, volta às 14h02", started: false, noReturn: false },
+    });
+    expect(entrySituation(paused(T + 30 * MIN, null), T)).toMatchObject({
+      pause: { title: "pausa às 13h02, sem hora de volta", started: false, noReturn: true },
+    });
+  });
+
+  it("em pausa, o selo é 'em pausa' (amarelo); o próximo passo diz quando avisamos", () => {
+    const withBack = paused(T - 10 * MIN, T + 60 * MIN);
+    const s1 = entrySituation(withBack, T);
+    expect(entrySummary(withBack, s1, T)).toMatchObject({ badge: "em pausa", tone: "yellow", stage: 1 });
+    expect(nextStep(withBack, s1, T)).toBe("pode esperar em casa. avisamos a hora de sair.");
+    const noBack = paused(T - 10 * MIN, null);
+    expect(nextStep(noBack, entrySituation(noBack, T), T)).toBe("sem hora de volta: avisamos quando a fila andar.");
+    // Já tinha recebido "saia de casa": com a pausa em curso, a pausa vence (ninguém está chamando).
+    const left = paused(T - 10 * MIN, null, { leaveHome: true });
+    const s2 = entrySituation(left, T);
+    expect(entrySummary(left, s2, T)).toMatchObject({ badge: "em pausa" });
+    expect(nextStep(left, s2, T)).toBe(
+      "a unidade pausou. se já saiu, pode vir e esperar lá. avisamos quando a fila voltar.",
+    );
+    // Com hora de volta, também não manda quem já saiu ficar em casa.
+    const leftBack = paused(T - 10 * MIN, T + 60 * MIN, { leaveHome: true });
+    expect(nextStep(leftBack, entrySituation(leftBack, T), T)).toBe(
+      "a unidade pausou. se já saiu, pode vir e esperar lá. avisamos quando a fila voltar.",
+    );
+    // Recebeu "saia de casa" e uma pausa marcada vai atrasar a vez: não manda sair agora.
+    const ahead = paused(T + 30 * MIN, T + 90 * MIN, { leaveHome: true });
+    const s3 = entrySituation(ahead, T);
+    expect(nextStep(ahead, s3, T)).toBe(
+      "a unidade pausa às 13h02. pode esperar em casa: avisamos quando for para vir.",
+    );
+    expect(entrySummary(ahead, s3, T)).toMatchObject({ badge: "na fila" });
+    // Na unidade, segue "na unidade": a pessoa já está lá.
+    const present = paused(T - 10 * MIN, null, { itemState: "present" });
+    expect(entrySummary(present, entrySituation(present, T), T)).toMatchObject({ badge: "na unidade" });
+  });
+});
