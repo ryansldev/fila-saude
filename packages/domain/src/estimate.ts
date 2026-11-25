@@ -110,6 +110,7 @@ function withPause(
   ahead: number,
   queue: number,
   now: number,
+  ready: number,
 ): { minutes: number; pause?: Pause; blocked: boolean } {
   // Já com "venha agora" e a caminho (PA6): a pausa do consultório começa depois do prazo dele, então só o
   // intervalo da sessão, que não espera ninguém, entra no tempo. Uma queda que comece depois de marcada a pausa
@@ -129,7 +130,7 @@ function withPause(
   // O primeiro em casa não recebe "venha agora" na pausa nem se o prazo de chegada cair nela.
   const blocked = p.from <= now || (remote && ahead === 0 && p.from <= now + deadline);
   // Em casa, a vez vale com o prazo de chegada (o "venha agora" não sai se o prazo cai na pausa).
-  const wait = pausedWait(day, item.stage, now, queue * MIN, remote ? deadline : 0);
+  const wait = pausedWait(day, item.stage, now, queue * MIN, remote ? deadline : 0, ready);
   if (!wait.pause) return { minutes: queue, blocked };
   // Sem hora de volta: sem tempo (a pausa vai junto para o app dizer "por tempo indeterminado").
   if (wait.end === null) return { minutes: queue, pause: wait.pause, blocked };
@@ -137,9 +138,23 @@ function withPause(
 }
 
 /**
+ * Em quanto tempo a estação tem alguém da fila à frente de `item` para atender: já, com alguém presente; quando
+ * chega o primeiro a caminho ("venha agora"); ou, todos em casa, o prazo de chegada do primeiro chamado.
+ */
+function readyIn(day: SessionDay, inStage: QueueItem[], item: QueueItem, now: number): number {
+  const others = inStage.filter((i) => i.id !== item.id && lateness(day, i, now) !== "late");
+  if (others.some((i) => i.state === "present")) return 0;
+  const arrivals = others.map((i) => arrivalDeadlineEnd(day, i)).filter((e): e is number => e !== null);
+  if (arrivals.length > 0) return Math.max(0, Math.min(...arrivals) - now);
+  return (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
+}
+
+/**
  * A espera com todas as pausas da etapa no caminho (PA1): a fila anda até cada pausa, para nela e segue na
  * volta. `lead` é o prazo de chegada de quem está em casa: a vez que cairia a menos dele de uma pausa só sai
- * na volta. Devolve quando chega a vez (nulo se uma pausa sem hora de volta cair no caminho) e a 1ª pausa.
+ * na volta. `ready` é quando a estação tem alguém para atender (o 1º da fila em casa ainda vem): antes da
+ * 1ª pausa, só o tempo depois disso anda a fila. Devolve quando chega a vez (nulo se uma pausa sem hora de
+ * volta cair no caminho) e a 1ª pausa.
  */
 function pausedWait(
   day: SessionDay,
@@ -147,17 +162,23 @@ function pausedWait(
   start: number,
   work: number,
   lead: number,
+  ready = 0,
 ): { end: number | null; pause?: Pause } {
   let t = start;
+  let wait = ready;
   let left = work;
   let first: Pause | undefined;
   for (let guard = 0; guard < 20; guard++) {
     const p = stagePause(day, stage, t);
-    if (!p || (p.from > t && t + left + lead < p.from)) return { end: t + left, ...(first ? { pause: first } : {}) };
+    const busy = left > 0 ? wait : 0;
+    if (!p || (p.from > t && t + busy + left + lead < p.from)) {
+      return { end: t + left, ...(first ? { pause: first } : {}) };
+    }
     first ??= p;
     if (p.until === null) return { end: null, pause: first };
-    left = Math.max(0, left - Math.max(0, p.from - t));
+    left = Math.max(0, left - Math.max(0, p.from - t - busy));
     t = p.until;
+    wait = 0;
   }
   return { end: t + left, ...(first ? { pause: first } : {}) };
 }
@@ -203,7 +224,7 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const avg = averageTime(day, item.stage, day.serviceId, now);
   const n = capacity(stations, now + ((ahead * avg) / stations.length) * MIN);
   const queue = (ahead * avg) / n;
-  const { minutes, pause, blocked } = withPause(day, item, ahead, queue, now);
+  const { minutes, pause, blocked } = withPause(day, item, ahead, queue, now, readyIn(day, inStage, item, now));
   const comeNow = item.state === "remote" && ahead === 0 && !blocked;
   const primary: Estimate = comeNow
     ? { kind: "come_now" }

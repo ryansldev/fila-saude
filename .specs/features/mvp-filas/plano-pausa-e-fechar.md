@@ -34,7 +34,7 @@ Hoje a estação da sessão está sempre "aberta": não existe pausar nem fechar
 1. **Domínio.** `Station` ganha o estado da pausa (`pause: { from, until | null }`) e `open` passa a valer de verdade; a sessão passa de `start`/`end` a uma lista de faixas (`start`/`end` continuam como a primeira e a última, para quem já lê). Funções: `pause`, `resume`, `closeStation`/`reopenStation`; a estimativa e os avisos ("saia de casa", "venha agora") respeitam a pausa; `trackOutage` ignora estações em pausa ou fechadas. Contratos e specs.
 2. **API.** Rotas da estação: pausar, voltar, fechar, reabrir (com auditoria). Sessão: as faixas na criação, na edição e na série (migração: cada sessão antiga vira uma faixa). O painel recebe os alertas de sinal na consulta da unidade. "Finalizar e chamar o próximo" com a pausa começando devolve ok sem chamado: a rota da estação olha a pausa da estação no dia devolvido e não responde "ninguém aguardando". `npm run docs:openapi`.
 3. **Painel.** Estação: "Pausar" (com a volta), a faixa "pausa às 12:30" e "em pausa, volta às 13:00" com **Voltar**, "Fechar a estação" e **Reabrir**. Sessão: as faixas de horário, com "adicionar horário". A faixa de alerta de sinal. Tudo com os botões do kit.
-4. **App.** "pausa para o almoço, volta às 13:00" no cartão e no bilhete; o tempo da estimativa conta a pausa.
+4. **App.** "pausa para o almoço, volta às 13:00" no cartão e no bilhete; o tempo da estimativa conta a pausa. Com todas as estações da etapa fechadas, a estimativa diz `awaiting_start` (PE5): o app não pode mostrar "aguardando início".
 5. **Limpeza.** QP6 e QP2 saem de `decisoes-para-revisar.md` e entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`.
 
 ## Fora deste plano

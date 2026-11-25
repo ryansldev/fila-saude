@@ -263,7 +263,9 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     // No intervalo da sessão, "voltar agora" não resolve, a não ser que a pausa própria passe dele.
     const own = stationOf(current, station.id).pause;
     const breakEnd = Math.max(...(current.breaks ?? []).filter((b) => b.start <= now && now < b.end).map((b) => b.end));
-    const ownPastBreak = own?.state === "paused" && (own.until === null || own.until > breakEnd);
+    // A pausa própria em curso, ou marcada para começar ainda no intervalo, que passa dele.
+    const ownInBreak = own?.state === "paused" || (own?.state === "scheduled" && own.from < breakEnd);
+    const ownPastBreak = own !== undefined && ownInBreak && (own.until === null || own.until > breakEnd);
     return failure(inBreak(current, now) && !ownPastBreak ? "session_break" : "station_paused");
   }
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true })[0];
