@@ -1,3 +1,4 @@
+import { callingAt, resumedAt } from "./pause-time.ts";
 import type { SessionDay } from "./queue.ts";
 
 /** RN-SES-05: a unidade com TV e a TV sem sinal por mais de ~2 min caiu (a TV fica sempre na frente). */
@@ -65,27 +66,54 @@ export function trackOutage(day: SessionDay, now: number, signal: UnitSignal): S
   const useTv = signal.hasTv && signal.tvSignalAt !== null && (tvLive || day.tvLiveAt !== undefined);
   const signalAt = useTv ? signal.tvSignalAt : signal.stationSignalAt;
   const silence = useTv ? OUTAGE_SILENCE_MS : NO_TV_SILENCE_MS;
-  const live = signalAt !== null && now - signalAt <= silence;
-  const calling = callingStations(day);
+  const anyCalling = callingStations(day, now);
+  // Pausa que acabou: o silêncio conta da volta (a aba pode ter ficado fechada na pausa).
+  const ref = expectedSince(day, signalAt, now);
+  // A volta da pausa só adia a queda; "no ar" de verdade (a unidade começou) é o sinal recente.
+  const live = ref !== null && now - ref <= silence;
+  const signalLive = signalAt !== null && now - signalAt <= silence;
   const seen = day.liveSignalAt !== undefined;
-  if (!live && calling && seen && !open && !restarted) {
+  if (!live && anyCalling && seen && !open && !restarted) {
     // Não volta para antes do fim da queda anterior (fechada quando ninguém chamava).
     const after = Math.max(...outages.map((o) => o.end ?? 0), 0);
-    outages = [...outages, { start: Math.max(signalAt ?? now, after), end: null }];
+    outages = [...outages, { start: Math.max(ref ?? now, after), end: null }];
   }
-  if (open && (live || !calling)) outages = outages.map((o) => (o === open ? { ...o, end: now } : o));
+  // Só o sinal de verdade fecha a queda (a volta de uma pausa apenas adia abrir uma nova), ou não sobrar estação
+  // aberta: pausa e intervalo não fecham (o prazo de quem está a caminho continua estendido).
+  const anyOpen = day.stations.some((e) => e.open && e.services.includes(day.serviceId));
+  if (open && (signalLive || !anyOpen)) outages = outages.map((o) => (o === open ? { ...o, end: now } : o));
   return {
     ...day,
     outages,
     lastSweepAt: now,
     unitSignalAt: signalAt,
     signalSource: useTv ? "tv" : "stations",
-    ...(live ? { liveSignalAt: signalAt as number } : {}),
+    ...(signalLive ? { liveSignalAt: signalAt as number } : {}),
     ...(tvLive ? { tvLiveAt: signal.tvSignalAt as number } : {}),
   };
 }
 
-const callingStations = (day: SessionDay) => day.stations.some((e) => e.open && e.services.includes(day.serviceId));
+// Estação em pausa ou fechada não chama: o silêncio dela não é queda (QP6).
+const calling = (day: SessionDay, now: number) =>
+  day.stations.filter((e) => e.services.includes(day.serviceId) && callingAt(day, e, now));
+const callingStations = (day: SessionDay, now: number) => calling(day, now).length > 0;
+
+/**
+ * Desde quando a unidade devia dar sinal: o último sinal, ou a volta da pausa, se veio depois (desde que a
+ * primeira estação voltou a chamar). Nulo sem nenhum sinal da fonte que conta.
+ */
+function expectedSince(day: SessionDay, signalAt: number | null, now: number): number | null {
+  if (signalAt === null) return null;
+  const stations = calling(day, now);
+  if (stations.length === 0) return signalAt;
+  const since = Math.min(...stations.map((e) => resumedAt(day, e, now)));
+  return Math.max(signalAt, since);
+}
+
+/** Desde quando o sinal que conta está parado (o último sinal, ou a volta da pausa, se veio depois). */
+export function stalledSince(day: SessionDay, now: number): number | null {
+  return day.unitSignalAt === undefined ? null : expectedSince(day, day.unitSignalAt, now);
+}
 
 /**
  * Queda ainda não confirmada: o sinal que conta está parado, alguém chama e a unidade já deu sinal nesta sessão.
@@ -98,11 +126,12 @@ export function pendingOutage(day: SessionDay, now: number): boolean {
   const at = day.unitSignalAt;
   const sweep = day.lastSweepAt;
   if (at === undefined || sweep === undefined || inManualMode(day) || day.liveSignalAt === undefined) return false;
-  if (!callingStations(day)) return false;
-  if (at === null) return true;
+  if (!callingStations(day, now)) return false;
+  const ref = expectedSince(day, at, now);
+  if (ref === null) return true;
   // Dia salvo antes de guardar a fonte: o limite das estações, o mais longo.
   const fresh = day.signalSource === "tv" ? TV_FRESH_MS : STATION_FRESH_MS;
-  return sweep - at > fresh || now - at > fresh + SWEEP_MS || now - sweep > 2 * SWEEP_MS;
+  return sweep - ref > fresh || now - ref > fresh + SWEEP_MS || now - sweep > 2 * SWEEP_MS;
 }
 
 /** O fim da sessão (encerrada ou cancelada) fecha a queda aberta: o dia que acabou não fica em modo manual. */

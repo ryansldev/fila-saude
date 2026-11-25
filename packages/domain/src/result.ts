@@ -9,6 +9,14 @@ export const ERROR_CODES = [
   "none_eligible",
   "station_busy",
   "station_has_call",
+  "station_paused",
+  "pause_back_before_start",
+  "pause_during_outage",
+  "station_already_paused",
+  "closes_session",
+  "closes_stage",
+  "triage_closed",
+  "session_break",
   "no_show_up",
   "invalid_qr",
   "referral_pending",
@@ -59,7 +67,11 @@ export type EventKind =
   | "archived"
   | "still_needs"
   | "reactivated"
-  | "cancelled";
+  | "cancelled"
+  | "station_paused"
+  | "station_resumed"
+  | "station_closed"
+  | "station_reopened";
 
 export type Event = {
   kind: EventKind;

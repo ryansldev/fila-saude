@@ -1,5 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
+import { advance, inBreak, leavePause, pausedAt } from "./pause-time.ts";
 import {
   eligible,
   orderKey,
@@ -222,11 +223,16 @@ function closeCalled(
   return { day: { ...withItem(free, triaged), nextNumber: free.nextNumber + 1 }, events };
 }
 
+const stationOf = (day: SessionDay, id: string): Station => day.stations.find((e) => e.id === id) as Station;
+const withStationState = (day: SessionDay, e: Station): SessionDay =>
+  e === stationOf(day, e.id) ? day : { ...day, stations: day.stations.map((x) => (x.id === e.id ? e : x)) };
+
 /**
  * RN-CHAM-01/02: encerra o chamado anterior desta estação e chama o 1º elegível dela. Na triagem,
  * `confirmedRisk` confirma ou reclassifica o risco de quem sai (RN-TRI-03).
  * Sem elegível, o chamado anterior é finalizado e a estação fica livre (ok, sem evento "chamado");
- * sem chamado anterior (ou estação fechada), `nenhum_elegivel` sem mudar nada. A seleção usa o estado recebido: uma 2ª estação chamando
+ * sem chamado anterior (ou estação fechada), `nenhum_elegivel` sem mudar nada. Em pausa (RN-EST-06), só
+ * finaliza o chamado anterior; sem ele, `station_paused`. A seleção usa o estado recebido: uma 2ª estação chamando
  * sobre o estado devolvido pela 1ª não pega o mesmo paciente (INV-04).
  */
 export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<SessionDay> {
@@ -248,6 +254,19 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     const closed = closeCalled(current, station, previous, now, cmd.confirmedRisk, cmd.refer, cmd.classifies);
     current = closed.day;
     events.push(...closed.events);
+  }
+  // O relógio da pausa: o atendimento que acabou de terminar deixa a pausa marcada começar agora.
+  current = withStationState(current, advance(stationOf(current, station.id), now, events.length > 0));
+  // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
+  if (pausedAt(current, stationOf(current, station.id), now)) {
+    if (events.length > 0) return ok(current, events);
+    // No intervalo da sessão, "voltar agora" não resolve, a não ser que a pausa própria passe dele.
+    const own = stationOf(current, station.id).pause;
+    const breakEnd = Math.max(...(current.breaks ?? []).filter((b) => b.start <= now && now < b.end).map((b) => b.end));
+    // A pausa própria em curso, ou marcada para começar ainda no intervalo, que passa dele.
+    const ownInBreak = own?.state === "paused" || (own?.state === "scheduled" && own.from < breakEnd);
+    const ownPastBreak = own !== undefined && ownInBreak && (own.until === null || own.until > breakEnd);
+    return failure(inBreak(current, now) && !ownPastBreak ? "session_break" : "station_paused");
   }
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true })[0];
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").
@@ -296,7 +315,8 @@ export function finish(day: SessionDay, cmd: CmdClose, now: number): Result<Sess
   const present = requireShowUp(day, found.station, found.item, now);
   if (!present.ok) return failure("no_show_up");
   const closed = closeCalled(present.day, found.station, found.item, now, cmd.confirmedRisk, cmd.refer, cmd.classifies);
-  return ok(closed.day, closed.events);
+  const free = closed.day;
+  return ok(withStationState(free, advance(stationOf(free, found.station.id), now, true)), closed.events);
 }
 
 /** Linha do contrato escolhida pelos pulos no dia (a transição depende da condição). */
@@ -325,10 +345,11 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   const ids = base(day, item, cmd.stationId);
   const skipped: Event = { kind: "skipped", ...ids, data: { skips, for: to, at: now } };
   const lastCall = day.calls.findLastIndex((c) => c.itemId === item.id);
-  const markSkip = (d: SessionDay): SessionDay => ({
-    ...d,
-    calls: d.calls.map((c, i) => (i === lastCall ? { ...c, noShow: true } : c)),
-  });
+  // O atendimento terminou: a pausa marcada que chegou nele começa agora.
+  const markSkip = (d: SessionDay): SessionDay => {
+    const marked = { ...d, calls: d.calls.map((c, i) => (i === lastCall ? { ...c, noShow: true } : c)) };
+    return withStationState(marked, advance(stationOf(marked, cmd.stationId), now, true));
+  };
 
   if (to === "present") {
     const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, { applyDelay: false });
@@ -350,16 +371,48 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   ]);
 }
 
+export const openIn = (day: SessionDay, stage: Stage, except: string) =>
+  day.stations.some((e) => e.id !== except && e.open && e.stage === stage && e.services.includes(day.serviceId));
+
+/**
+ * RN-EST-07: o que fechar a estação faz com a fila. Fechar é de verdade (só a pausa é passageira): sem outra
+ * estação aberta no atendimento, a última etapa, ninguém mais seria atendido e a sessão é encerrada
+ * (`closes_session`); sem outra na triagem, a triagem fecha: quem espera por ela sai como no encerramento
+ * (`closes_stage`, `closeStage`) e a sessão não aceita gente nova até reabrir (`triageClosed`). Nulo quando a
+ * fila segue com as outras estações.
+ */
+export function closingConsequence(day: SessionDay, stationId: string): "closes_session" | "closes_stage" | null {
+  const station = day.stations.find((e) => e.id === stationId);
+  if (!station?.open || !station.services.includes(day.serviceId)) return null;
+  if (station.stage === "care") return openIn(day, "care", station.id) ? null : "closes_session";
+  return !day.requiresTriage || openIn(day, "triage", station.id) ? null : "closes_stage";
+}
+
 /**
  * RN-EST-05: não fecha com paciente chamado (de qualquer sessão); finalize ou marque "Não compareceu".
- * Como as ações vizinhas, só com a sessão aberta (m5).
+ * Como as ações vizinhas, só com a sessão aberta (m5). Se fechar encerra a sessão ou a triagem
+ * (`closingConsequence`), recusa com esse código até vir `confirmed`; quem chama encerra em seguida
+ * (`close` ou `closeStage`).
  */
-export function closeStation(day: SessionDay, cmd: Cmd): Result<SessionDay> {
+export function closeStation(day: SessionDay, cmd: Cmd & { confirmed?: boolean }, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const station = day.stations.find((e) => e.id === cmd.stationId);
   if (!station) return failure("forbidden_transition");
+  // Já fechada (toque duplo, nova tentativa): nada muda.
+  if (!station.open) return ok(day);
   if (station.calledItemId !== null) return failure("station_has_call");
-  return ok(withStation(day, station.id, { open: false }));
+  const consequence = closingConsequence(day, station.id);
+  if (consequence !== null && !cmd.confirmed) return failure(consequence);
+  // A sessão só encerra sem ninguém chamado (RN-SES-01): sem isso, o atendimento ficaria sem estação.
+  const anyCalled = day.stations.some((e) => e.calledItemId !== null) || day.items.some((i) => i.state === "called");
+  if (consequence === "closes_session" && anyCalled) return failure("station_has_call");
+  // A pausa sai (em pausa, vira parada no histórico); o tempo fechada conta a partir de agora.
+  const current = advance(station, now);
+  const left = current.pause ? leavePause(current, "Fechar a estação", now) : current;
+  const closed = { ...left, open: false, closedAt: now };
+  return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) }, [
+    { kind: "station_closed", stationId: station.id },
+  ]);
 }
 
 /**

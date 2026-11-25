@@ -15,7 +15,7 @@ Hoje a estação da sessão está sempre "aberta": não existe pausar nem fechar
 - **Fechar** é a estação deixar de atender nesta sessão (o médico foi embora). Pode reabrir, e a reabertura fica na auditoria.
 - **Alerta (QP2):** uma faixa no painel quando a TV ou uma estação perde o sinal.
 
-## Regras novas (entram na spec de chamada com IDs novos)
+## Regras novas (RN-EST-06, RN-EST-07 e RN-SES-06 na spec de chamada; AD-077)
 
 **Pausa avisada (estação).** O profissional toca **Pausar**, escolhe a volta (opcional: 30 min, 1 h ou um horário) e a pausa começa depois do prazo de chegada da unidade. Até lá, a estação segue chamando quem está na unidade ou a caminho. Se a etapa ficaria sem estação chamando durante a pausa, deixa de sair "venha agora" e "saia de casa" para quem chegaria nela. **Voltar** encerra a pausa na hora. Não pausa com paciente chamado (como fechar, RN-EST-05).
 
@@ -32,9 +32,9 @@ Hoje a estação da sessão está sempre "aberta": não existe pausar nem fechar
 ## Passos (TDD em cada um)
 
 1. **Domínio.** `Station` ganha o estado da pausa (`pause: { from, until | null }`) e `open` passa a valer de verdade; a sessão passa de `start`/`end` a uma lista de faixas (`start`/`end` continuam como a primeira e a última, para quem já lê). Funções: `pause`, `resume`, `closeStation`/`reopenStation`; a estimativa e os avisos ("saia de casa", "venha agora") respeitam a pausa; `trackOutage` ignora estações em pausa ou fechadas. Contratos e specs.
-2. **API.** Rotas da estação: pausar, voltar, fechar, reabrir (com auditoria). Sessão: as faixas na criação, na edição e na série (migração: cada sessão antiga vira uma faixa). O painel recebe os alertas de sinal na consulta da unidade. `npm run docs:openapi`.
-3. **Painel.** Estação: "Pausar" (com a volta), a faixa "pausa às 12:30" e "em pausa, volta às 13:00" com **Voltar**, "Fechar a estação" e **Reabrir**. Sessão: as faixas de horário, com "adicionar horário". A faixa de alerta de sinal. Tudo com os botões do kit.
-4. **App.** "pausa para o almoço, volta às 13:00" no cartão e no bilhete; o tempo da estimativa conta a pausa.
+2. **API.** Rotas da estação: pausar, voltar, fechar, reabrir (com auditoria). Sessão: as faixas na criação, na edição e na série (migração: cada sessão antiga vira uma faixa). O painel recebe os alertas de sinal na consulta da unidade. Fechar a estação: com `closes_session` ou `closes_stage` (`closingConsequence`), o painel confirma e a rota, na mesma transação, fecha com `confirmed` e chama `close` ou `closeStage`. Reabrir a triagem roda `fillFromReserve` (as vagas livres enquanto ela estava fechada ficaram esperando). "Finalizar e chamar o próximo" com a pausa começando devolve ok sem chamado: a rota da estação olha a pausa da estação no dia devolvido e não responde "ninguém aguardando". `npm run docs:openapi`.
+3. **Painel.** Estação: "Pausar" (com a volta), a faixa "pausa às 12:30" e "em pausa, volta às 13:00" com **Voltar**, "Fechar a estação" (com a confirmação quando encerra a sessão ou a triagem) e **Reabrir**. O balcão recusado com `triage_closed` diz que a triagem está fechada. Sessão: as faixas de horário, com "adicionar horário". A faixa de alerta de sinal. Tudo com os botões do kit.
+4. **App.** "pausa para o almoço, volta às 13:00" no cartão e no bilhete; o tempo da estimativa conta a pausa. A inscrição recusada com `triage_closed` diz que a sessão não aceita inscrições agora.
 5. **Limpeza.** QP6 e QP2 saem de `decisoes-para-revisar.md` e entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`.
 
 ## Fora deste plano

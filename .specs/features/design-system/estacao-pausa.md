@@ -11,6 +11,18 @@
 - **Fechar:** confirmação "Fechar o Consultório 2?", "Ele não chama mais nesta sessão e sai da previsão de tempo dos pacientes. Use quando o atendimento desta sala acabou hoje. Dá para reabrir.", **cancelar** e **Fechar** (`danger`).
 - **Fechada:** quadro tracejado "Consultório 2 fechado", "Fechado às 15:10. Não chama mais nesta sessão." e **Reabrir** (`secondary`).
 
+## Antes de pausar: quem chegou no prazo (opção C)
+
+Na hora da pausa, se alguém que estava a caminho chegou e não foi chamado: aviso na estação "**Bia Souza chegou no prazo e ainda não foi chamada.** Atender antes de pausar? A pausa começa quando você finalizar, e a volta passa para 13:47." com **atender a Bia** (`primary`) e **pausar agora** (`secondary`).
+
+Justificativa para quem ficou para a volta (texto fixo, aprovado em 2026-11-24):
+
+- Push, com volta: título "o consultório entrou em pausa"; texto "a equipe precisou pausar antes de chamar você. a sua vez é a primeira na volta, às 13:32. se precisar sair, esteja de volta até esse horário. obrigado pela paciência."
+- Push, sem volta: "a equipe precisou pausar antes de chamar você. a sua vez é a primeira quando o atendimento voltar. avisamos por aqui quando for a hora. obrigado pela paciência."
+- App (aba "hoje"), com volta: "**pausa antes da sua vez**", "a equipe do consultório precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez é a primeira na volta, às 13:32.", "se precisar sair, esteja de volta até esse horário. obrigado pela paciência."
+- App, sem volta: o mesmo, com "a sua vez é a primeira quando o atendimento voltar." e "avisamos por aqui quando for a hora. obrigado pela paciência."
+- "o consultório" é o nome da estação. Quem sai e volta atrasado segue as regras do "não compareceu" (2 chamados).
+
 ## Faixa de alerta de sinal (todas as telas do painel da unidade)
 
 - TV: vermelha, "TV da recepção sem sinal há 5 min", "Os pacientes não veem as chamadas nem o QR. Confira se ela está ligada e com internet."
@@ -23,4 +35,4 @@
 
 ## App
 
-Pílula amarela "em pausa"; título "pausa, volta às 13:32" (sem hora: "a unidade está em pausa"); a senha; a posição e o tempo, que soma a pausa ("5º na fila, cerca de 1 h 10 min"); "pode esperar em casa. avisamos a hora de sair." (sem hora: "sem hora de volta: avisamos quando a fila andar.").
+Pílula amarela "em pausa"; título "pausa, volta às 13:32" (sem hora: "pausa por tempo indeterminado", deixando claro que não há hora de volta; você, 2026-11-24); a senha; a posição e o tempo, que soma a pausa ("5º na fila, cerca de 1 h 10 min"); "pode esperar em casa. avisamos a hora de sair." (sem hora: "sem hora de volta: avisamos quando a fila andar.").

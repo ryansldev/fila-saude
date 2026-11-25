@@ -182,6 +182,8 @@ export const estimateSchema = z.discriminatedUnion("kind", [
     position: z.number().int(),
     minutes: z.number().int(),
     query: z.object({ minutes: z.number() }).optional(),
+    /** A pausa da etapa que atrasa a vez; `until` nulo, sem hora de volta (o tempo não a soma). */
+    pause: z.object({ from: z.number(), until: z.number().nullable() }).optional(),
   }),
   z.object({ kind: z.literal("come_now"), query: z.object({ minutes: z.number() }).optional() }),
   z.object({ kind: z.literal("awaiting_start") }),

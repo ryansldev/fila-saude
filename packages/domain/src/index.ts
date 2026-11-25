@@ -2,6 +2,7 @@ export {
   awaitedItems,
   callNext,
   closeStation,
+  closingConsequence,
   finish,
   noShow,
   recall,
@@ -16,6 +17,7 @@ export {
   cancelEntry,
   chooseDate,
   close,
+  closeStage,
   entryOutcome,
   giveUp,
   holdsSlot,
@@ -33,12 +35,13 @@ export type {
   ValidationResult,
 } from "./configuration.ts";
 export { effectiveConfig, validateConfig } from "./configuration.ts";
-export type { EntryState, ItemState, SessionState, Transition } from "./contracts.ts";
+export type { EntryState, ItemState, PauseState, SessionState, Transition } from "./contracts.ts";
 export {
   applyTransition,
   ENTRY_TRANSITIONS,
   INACTIVE_ENTRY_STATES,
   ITEM_TRANSITIONS,
+  PAUSE_TRANSITIONS,
   SESSION_TRANSITIONS,
   singleTransition,
 } from "./contracts.ts";
@@ -84,6 +87,18 @@ export {
 export { firstName, properName, sameName } from "./names.ts";
 export type { OrderKey, Risk, SuggestionKey } from "./order.ts";
 export { inManualMode, trackOutage, type UnitSignal } from "./outage.ts";
+export {
+  advancePauses,
+  callingAt,
+  type Pause,
+  type PauseBack,
+  pausedAt,
+  pauseState,
+  pauseStation,
+  reopenStation,
+  resumeStation,
+  stagePause,
+} from "./pause.ts";
 export type { Action, Cell, MatrixRow, Profile } from "./permissions.ts";
 export { can, cellText, conditions, MATRIX, OPERATE_CAVEAT_STAGE, PROFILES } from "./permissions.ts";
 export type { GivePriorityContext, Group, LegalPriority } from "./priority.ts";
@@ -132,6 +147,7 @@ export {
   signUpPublic,
   switchReserve,
   ticketOf,
+  triageClosed,
 } from "./session.ts";
 export type { Assignments, Occupation, Role, ScopedProfile, ScopedRole, UnitLink } from "./staff.ts";
 export { assignmentUnitKey, canRegister, OCCUPATIONS, ROLES, rolesOf, staffProblems } from "./staff.ts";

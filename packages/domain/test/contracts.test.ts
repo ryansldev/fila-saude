@@ -5,6 +5,7 @@ import {
   type EntryState,
   ITEM_TRANSITIONS,
   type ItemState,
+  PAUSE_TRANSITIONS,
   SESSION_TRANSITIONS,
   type SessionState,
   singleTransition,
@@ -15,6 +16,7 @@ const DATA = {
   entry: ENTRY_TRANSITIONS,
   item: ITEM_TRANSITIONS,
   session: SESSION_TRANSITIONS,
+  pause: PAUSE_TRANSITIONS,
 } as const;
 
 const tuples = (rows: { de: string; qualifier?: string | undefined; event: string; for: string }[]) =>
@@ -23,7 +25,7 @@ const tuples = (rows: { de: string; qualifier?: string | undefined; event: strin
 const TABLES = readTables();
 
 describe("contratos (AD-051)", () => {
-  for (const machine of ["entry", "item", "session"] as Machine[]) {
+  for (const machine of ["entry", "item", "session", "pause"] as Machine[]) {
     it(`contratos AD-051: toda linha das specs está nos dados (${machine})`, () => {
       const fromSpecs = TABLES.filter((l) => l.machine === machine);
       expect(fromSpecs.length).toBeGreaterThan(0);

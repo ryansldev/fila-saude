@@ -14,13 +14,19 @@ import {
   ENTRY_TRANSITIONS,
   ITEM_TRANSITIONS,
   MATRIX,
+  PAUSE_TRANSITIONS,
   SESSION_TRANSITIONS,
 } from "../packages/domain/src/index.ts";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 export const SPECS_DIR = join(ROOT, ".specs/specs");
 
-const TRANSITIONS = { entry: ENTRY_TRANSITIONS, item: ITEM_TRANSITIONS, session: SESSION_TRANSITIONS };
+const TRANSITIONS = {
+  entry: ENTRY_TRANSITIONS,
+  item: ITEM_TRANSITIONS,
+  session: SESSION_TRANSITIONS,
+  pause: PAUSE_TRANSITIONS,
+};
 
 const LABELS = {
   entry: {
@@ -45,6 +51,7 @@ const LABELS = {
     reassigned: "Remanejado",
   },
   session: { planned: "Planejada", open: "Aberta", cancelled: "Cancelada", closed: "Encerrada" },
+  pause: { none: "Sem pausa", scheduled: "Marcada", paused: "Em pausa" },
 };
 
 const PROFILES = [
@@ -92,7 +99,7 @@ function cellFor(machine, t) {
 }
 
 // The specs stay in Portuguese: their markers name the machines as "entrada", "item" and "sessao".
-const MACHINE_FROM_MARKER = { entrada: "entry", item: "item", sessao: "session" };
+const MACHINE_FROM_MARKER = { entrada: "entry", item: "item", sessao: "session", pausa: "pause" };
 
 /** Tabela de transições: linhas seguidas com o mesmo `textOf` (e o resto igual) viram uma linha só. */
 function contractTable(spec, machines) {

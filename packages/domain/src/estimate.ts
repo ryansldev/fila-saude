@@ -1,3 +1,4 @@
+import { type Pause, pausedBetween, stagePause, stopsForGood } from "./pause-time.ts";
 import {
   arrivalDeadlineEnd,
   DEFAULT_CONFIG,
@@ -6,6 +7,7 @@ import {
   type QueueItem,
   type SessionDay,
   type Stage,
+  type Station,
   stageOrder,
   turnPassed,
 } from "./queue.ts";
@@ -14,7 +16,8 @@ import type { Event } from "./result.ts";
 const MIN = 60_000;
 
 export type Estimate =
-  | { kind: "position"; position: number; minutes: number; query?: { minutes: number } }
+  /** `pause`: a pausa da etapa que atrasa a vez (atual ou à frente); o tempo já a soma, menos sem hora de volta. */
+  | { kind: "position"; position: number; minutes: number; query?: { minutes: number }; pause?: Pause }
   | { kind: "come_now"; query?: { minutes: number } }
   | { kind: "awaiting_start" }
   | { kind: "manual_mode" }
@@ -46,12 +49,17 @@ export function averageTime(day: SessionDay, stage: Stage, serviceId: string, no
     byStation.set(c.stationId, [...(byStation.get(c.stationId) ?? []), { at: c.at, skip: Boolean(c.noShow) }]);
   }
   const durations: { end: number; min: number }[] = [];
-  for (const times of byStation.values()) {
+  for (const [stationId, times] of byStation) {
+    const station = day.stations.find((e) => e.id === stationId);
     const sorted = [...times].sort((a, b) => a.at - b.at);
     sorted.forEach((start, k) => {
       const next = sorted[k + 1];
-      // "Não compareceu" não é atendimento concluído (RN-ETA-05.2).
-      if (next !== undefined && !start.skip) durations.push({ end: next.at, min: (next.at - start.at) / MIN });
+      if (next === undefined || start.skip) return;
+      // "Não compareceu" não é atendimento concluído (RN-ETA-05.2); a pausa no meio não é atendimento.
+      // Consulta que atravessa o intervalo da sessão: não se sabe quanto foi atendimento, então não entra.
+      if (inBreakBetween(day, start.at, next.at)) return;
+      const paused = pausedBetween(day, station, start.at, next.at, false);
+      durations.push({ end: next.at, min: (next.at - start.at - paused) / MIN });
     });
   }
   const last = durations
@@ -64,6 +72,17 @@ export function averageTime(day: SessionDay, stage: Stage, serviceId: string, no
   if (valid.length < 3) return initial(day, stage);
   return valid.reduce((s, m) => s + m, 0) / valid.length;
 }
+
+/** A consulta atravessa o intervalo da sessão. */
+const inBreakBetween = (day: SessionDay, a: number, b: number) =>
+  (day.breaks ?? []).some((x) => x.start < b && x.end > a);
+
+/**
+ * Capacidade (PA3): a estação que para sem hora de volta antes da vez (`by`) não conta; a pausa com volta é
+ * passageira e conta. Todas paradas: conta as abertas, para o tempo depois da volta (a pausa da etapa decide).
+ */
+const capacity = (stations: Station[], by: number) =>
+  stations.filter((e) => !stopsForGood(e, by)).length || stations.length;
 
 const open = (day: SessionDay, stage: Stage) =>
   day.stations.filter((e) => e.open && e.stage === stage && e.services.includes(day.serviceId));
@@ -79,6 +98,90 @@ const aheadIn = (day: SessionDay, set: QueueItem[], item: QueueItem): number =>
   stageOrder(day, item.stage, set.some((i) => i.id === item.id) ? set : [...set, item]).findIndex(
     (i) => i.id === item.id,
   );
+
+/**
+ * A pausa da etapa no tempo (plano-pausa-e-fechar): em pausa agora, soma o resto dela; o próximo em casa que
+ * chegaria (prazo de chegada) dentro da pausa não recebe "venha agora" e espera a volta; quem seria chamado
+ * depois do início de uma pausa à frente soma a duração. Sem hora de volta, o tempo não a soma.
+ */
+function withPause(
+  day: SessionDay,
+  item: QueueItem,
+  ahead: number,
+  queue: number,
+  now: number,
+  ready: number,
+): { minutes: number; pause?: Pause; blocked: boolean } {
+  // Já com "venha agora" e a caminho (PA6): a pausa do consultório começa depois do prazo dele, então só o
+  // intervalo da sessão, que não espera ninguém, entra no tempo. Uma queda que comece depois de marcada a pausa
+  // pode fazê-lo chegar e esperar a volta (PA4).
+  const onTheWay =
+    item.state === "remote" && arrivalDeadlineEnd(day, item) !== null && lateness(day, item, now) !== "late";
+  if (onTheWay) {
+    const sessionOnly = { ...day, stations: day.stations.map(({ pause: _, ...e }) => e) };
+    const wait = pausedWait(sessionOnly, item.stage, now, queue * MIN, 0);
+    if (!wait.pause) return { minutes: queue, blocked: false };
+    return { minutes: wait.end === null ? queue : (wait.end - now) / MIN, pause: wait.pause, blocked: false };
+  }
+  const p = stagePause(day, item.stage, now);
+  if (!p) return { minutes: queue, blocked: false };
+  const deadline = (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
+  const remote = item.state === "remote";
+  // O primeiro em casa não recebe "venha agora" na pausa nem se o prazo de chegada cair nela.
+  const blocked = p.from <= now || (remote && ahead === 0 && p.from <= now + deadline);
+  // Em casa, a vez vale com o prazo de chegada (o "venha agora" não sai se o prazo cai na pausa).
+  const wait = pausedWait(day, item.stage, now, queue * MIN, remote ? deadline : 0, ready);
+  if (!wait.pause) return { minutes: queue, blocked };
+  // Sem hora de volta: sem tempo (a pausa vai junto para o app dizer "por tempo indeterminado").
+  if (wait.end === null) return { minutes: queue, pause: wait.pause, blocked };
+  return { minutes: (wait.end - now) / MIN, pause: wait.pause, blocked };
+}
+
+/**
+ * Em quanto tempo a estação tem alguém da fila à frente de `item` para atender: já, com alguém presente; quando
+ * chega o primeiro a caminho ("venha agora"); ou, todos em casa, o prazo de chegada do primeiro chamado.
+ */
+function readyIn(day: SessionDay, inStage: QueueItem[], item: QueueItem, now: number): number {
+  const others = inStage.filter((i) => i.id !== item.id && lateness(day, i, now) !== "late");
+  if (others.some((i) => i.state === "present")) return 0;
+  const arrivals = others.map((i) => arrivalDeadlineEnd(day, i)).filter((e): e is number => e !== null);
+  if (arrivals.length > 0) return Math.max(0, Math.min(...arrivals) - now);
+  return (day.config.arrivalDeadlineMin ?? DEFAULT_CONFIG.arrivalDeadlineMin) * MIN;
+}
+
+/**
+ * A espera com todas as pausas da etapa no caminho (PA1): a fila anda até cada pausa, para nela e segue na
+ * volta. `lead` é o prazo de chegada de quem está em casa: a vez que cairia a menos dele de uma pausa só sai
+ * na volta. `ready` é quando a estação tem alguém para atender (o 1º da fila em casa ainda vem): antes da
+ * 1ª pausa, só o tempo depois disso anda a fila. Devolve quando chega a vez (nulo se uma pausa sem hora de
+ * volta cair no caminho) e a 1ª pausa.
+ */
+function pausedWait(
+  day: SessionDay,
+  stage: Stage,
+  start: number,
+  work: number,
+  lead: number,
+  ready = 0,
+): { end: number | null; pause?: Pause } {
+  let t = start;
+  let wait = ready;
+  let left = work;
+  let first: Pause | undefined;
+  for (let guard = 0; guard < 20; guard++) {
+    const p = stagePause(day, stage, t);
+    const busy = left > 0 ? wait : 0;
+    if (!p || (p.from > t && t + busy + left + lead < p.from)) {
+      return { end: t + left, ...(first ? { pause: first } : {}) };
+    }
+    first ??= p;
+    if (p.until === null) return { end: null, pause: first };
+    left = Math.max(0, left - Math.max(0, p.from - t - busy));
+    t = p.until;
+    wait = 0;
+  }
+  return { end: t + left, ...(first ? { pause: first } : {}) };
+}
 
 /**
  * RN-ETA-01/01b/01c/02/04 (AD-002, AD-003, AD-009) e RN-SES-05 (AD-043).
@@ -97,7 +200,6 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   if (options.manualMode) return { kind: "manual_mode" };
 
   const stations = open(day, item.stage);
-  const n = stations.length;
   const first = stations[0];
   if (!first) return { kind: "awaiting_start" };
 
@@ -119,14 +221,21 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
             item,
           );
   if (ahead < 0) return { kind: "awaiting_start" };
-  const comeNow = item.state === "remote" && ahead === 0;
-  const minutes = Math.ceil((ahead * averageTime(day, item.stage, day.serviceId, now)) / n);
-  const primary: Estimate = comeNow ? { kind: "come_now" } : { kind: "position", position: ahead + 1, minutes };
+  const avg = averageTime(day, item.stage, day.serviceId, now);
+  const n = capacity(stations, now + ((ahead * avg) / stations.length) * MIN);
+  const queue = (ahead * avg) / n;
+  const { minutes, pause, blocked } = withPause(day, item, ahead, queue, now, readyIn(day, inStage, item, now));
+  const comeNow = item.state === "remote" && ahead === 0 && !blocked;
+  const primary: Estimate = comeNow
+    ? { kind: "come_now" }
+    : { kind: "position", position: ahead + 1, minutes: Math.ceil(minutes), ...(pause ? { pause } : {}) };
   if (item.stage !== "triage") return primary;
 
   // RN-ETA-01c/AD-009: na triagem, a previsão da consulta vai à parte (inclusive com "venha agora").
-  const nA = open(day, "care").length;
-  if (nA === 0) return primary;
+  const careStations = open(day, "care");
+  if (careStations.length === 0) return primary;
+  // Sem hora de volta na triagem, não há como prever a consulta.
+  if (pause?.until === null) return primary;
   // Quem já está na fila do atendimento é atendido antes de X chegar lá (RN-TRI-04: fila nova);
   // da triagem, contam os que vêm antes de X, como na posição (quem perdeu a vez vai para o fim, AD-076).
   const fromTriage = passed(item)
@@ -137,9 +246,16 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
         item,
       );
   const beforeQuery = day.items.filter((i) => i.id !== item.id && inQueue(i) && i.stage === "care").length + fromTriage;
-  const triageWeight = (ahead * averageTime(day, "triage", day.serviceId, now)) / n;
-  const query = Math.ceil(triageWeight + (beforeQuery * averageTime(day, "care", day.serviceId, now)) / nA);
-  return { ...primary, query: { minutes: query } };
+  // A triagem com a pausa dela (o tempo da posição); o atendimento soma a pausa dele se cair na espera.
+  const triageWeight = comeNow ? 0 : minutes;
+  const careStart = now + triageWeight * MIN;
+  const careAvg = averageTime(day, "care", day.serviceId, now);
+  const nA = capacity(careStations, careStart + ((beforeQuery * careAvg) / careStations.length) * MIN);
+  const careQueue = (beforeQuery * careAvg) / nA;
+  // Todas as pausas do atendimento no caminho; uma sem hora de volta: não há como prever a consulta.
+  const careWait = pausedWait(day, "care", careStart, careQueue * MIN, 0);
+  if (careWait.end === null) return primary;
+  return { ...primary, query: { minutes: Math.ceil((careWait.end - now) / MIN) } };
 }
 
 /**
@@ -155,7 +271,9 @@ export function leaveHomeNotices(day: SessionDay, now: number, options: Options)
   for (const i of day.items) {
     if (i.state !== "remote" || alreadySent(i)) continue;
     const e = estimate(day, i.id, now, options);
-    const minutes = e.kind === "come_now" ? 0 : e.kind === "position" ? e.minutes : null;
+    // Pausa sem hora de volta: não há como saber a hora de sair.
+    const unknown = e.kind === "position" && e.pause?.until === null;
+    const minutes = e.kind === "come_now" ? 0 : e.kind === "position" && !unknown ? e.minutes : null;
     if (minutes === null || minutes >= day.config.leaveHomeMin) continue;
     fresh.push(i);
     events.push({

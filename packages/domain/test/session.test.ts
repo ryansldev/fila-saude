@@ -1041,3 +1041,73 @@ describe("RN-RISCO-03: refazer o questionário", () => {
     expect(p.entry.classification.level).toBe("urgent");
   });
 });
+
+describe("triagem fechada com o atendimento aberto (RN-EST-07)", () => {
+  // A triagem fechou (a última estação dela), o atendimento segue.
+  const closedTriage = (partial: Partial<SessionDay> = {}) =>
+    plannedDay({
+      state: "open",
+      requiresTriage: true,
+      stations: [
+        { id: "tri", stage: "triage", services: ["cli"], open: false, calledItemId: null, closedAt: START },
+        { id: "e1", stage: "care", services: ["cli"], open: true, calledItemId: null },
+      ],
+      ...partial,
+    });
+
+  it("a sessão não aceita gente nova: inscrição e balcão recusam", () => {
+    const day = closedTriage();
+    const session = publicOne({ slots: 5 });
+    const r = signUpPublic(
+      session,
+      day,
+      {
+        service: FREE,
+        person: { name: "ana", birthDate: "1990-01-01", cpf: null },
+        guardianId: "ana",
+        answers: answers(),
+        id: "ana",
+        activeEntries: [],
+        acceptedPhoto: false,
+      },
+      START + MIN,
+    );
+    expect(error(r)).toBe("triage_closed");
+    const desk = includeAtDesk(
+      day,
+      {
+        service: FREE,
+        session: sessionSlots({ taken: 2 }),
+        person: { name: "ze", birthDate: "1960-05-05", cpf: null },
+        answers: answers(),
+        id: "ze",
+        activeEntries: [],
+      },
+      START + MIN,
+    );
+    expect(error(desk)).toBe("triage_closed");
+  });
+
+  it("a reserva espera: a vaga livre não puxa ninguém enquanto a triagem está fechada", () => {
+    const day = closedTriage();
+    const session = publicOne({ slots: 5 });
+    const reserve = [entry("bia", { state: "in_reserve", sessionId: "s1" })];
+    const r = apply(fillFromReserve(session, day, reserve, { service: FREE, acceptedPhotos: [] }, START + MIN));
+    expect(r.entries).toEqual(reserve);
+    expect(r.day).toBe(day);
+  });
+
+  it("reaberta a triagem, volta a aceitar", () => {
+    const day = closedTriage({
+      stations: [
+        { id: "tri", stage: "triage", services: ["cli"], open: true, calledItemId: null },
+        { id: "e1", stage: "care", services: ["cli"], open: true, calledItemId: null },
+      ],
+    });
+    const reserve = [entry("bia", { state: "in_reserve", sessionId: "s1" })];
+    const r = apply(
+      fillFromReserve(publicOne({ slots: 5 }), day, reserve, { service: FREE, acceptedPhotos: [] }, START + MIN),
+    );
+    expect(r.entries[0]?.state).toBe("in_queue");
+  });
+});
