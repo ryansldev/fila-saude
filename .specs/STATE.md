@@ -17,10 +17,11 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.
 - **Push no Android na `main`** (PR #35; AD-071 a AD-074). Rodar `npm run db:migrate`. **Na produção, a API só depois do app novo instalado** (o canal do push mudou para `avisos`). iOS pede o `bundleIdentifier` e a conta da Apple.
 - **RV7, perder a vez e queda percebida na `main`** (PRs #36 a #38; AD-075, AD-076). Confirmar a leitura da lei com o advogado (D5). Fonte do sinal e sinal parado julgado por fonte e no giro na `main` (PRs #39 e #40, QP7).
+- **Pausa no domínio na `main`** (PR #42, AD-077): revisar PE1 a PE4 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md).
 
 ## Próximo passo
 
-Pausa, fechar a estação e alerta de sinal ([plano](features/mvp-filas/plano-pausa-e-fechar.md)), em PRs pequenas: o domínio (AD-077, PR #42, pausa como máquina de estados) espera revisão, com PE1 a PE4 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md); depois a opção C ("atender antes de pausar", branch de referência `wip/pause-option-c`), API, painel, app. Em seguida, numa PR própria: a urgência confirmada que não chega recebe 2 "venha agora" e sai da fila com falta (PA5). Depois, a revisão de UI do app (lista de unidades, tirar os "·" que nenhum design aprovado usa) e o plano da fatia 5 (pré-cadastro).
+Pausa e fechar a estação em fatias ponta a ponta para a branch pai `feat/pause-and-close` ([plano](features/mvp-filas/plano-pausa-e-fechar.md#fatias-tdd-em-cada-uma)), uma PR por vez: a fatia 1 (fechar e reabrir) espera revisão; depois fechar a última estação, pausar, pausa marcada e o app, opção C, faixas de horário, alerta de sinal. Em seguida, numa branch pai própria: a urgência confirmada que não chega (PA5). Depois, a revisão de UI do app e o plano da fatia 5 (pré-cadastro).
 
 ## Fora do código
 

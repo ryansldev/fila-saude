@@ -1,3 +1,4 @@
+import { instantToLocal } from "@fila-saude/domain";
 import type { StationOperation } from "@fila-saude/schemas/queue";
 import { minutesSince } from "@/lib/queue";
 
@@ -17,4 +18,10 @@ export function oldestPill(m: StationOperation["oldest"], now: number): { text: 
   const min = minutesSince(m.presentSince, now);
   const text = min === 0 ? "o mais antigo chegou agora" : `o mais antigo há ${min} min`;
   return { text, late: min > m.targetTimeMin };
+}
+
+/** RN-EST-07: o texto do quadro da estação fechada, com a hora na unidade (sem o fuso, a deste computador). */
+export function closedText(name: string, closedAt: string, timeZone: string | null): string {
+  const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return `${name} fechou às ${instantToLocal(Date.parse(closedAt), zone).slice(11, 16)}. Não chama mais nesta sessão.`;
 }

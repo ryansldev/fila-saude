@@ -3,6 +3,7 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ClockIcon,
+  DoorClosedIcon,
   FootprintsIcon,
   HeartIcon,
   MegaphoneIcon,
@@ -16,7 +17,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { RiskCard } from "@/components/ui/risk-card";
 import { stopwatch } from "@/lib/queue";
-import { calledPhase, oldestPill, waitText } from "@/lib/station";
+import { calledPhase, closedText, oldestPill, waitText } from "@/lib/station";
 import { canRefer, levelColor, needsClassify, priorityText, TRIAGE_COLORS } from "@/lib/triage";
 import { cn } from "@/lib/utils";
 
@@ -141,6 +142,24 @@ function Tracejado({
 export function StationPanel({ op, color, onChooseColor, onCommand, sending, now }: Props) {
   const called = op.called;
   const triage = op.station.stage === "triage";
+  // RN-EST-07: fechada, não chama nesta sessão; a fila continua à vista.
+  if (op.station.closedAt !== null) {
+    return (
+      <div className="flex flex-col gap-3">
+        <StationQueue op={op} now={now} />
+        <Tracejado
+          icon={<DoorClosedIcon className="size-5" aria-hidden />}
+          title="Estação fechada"
+          text={closedText(op.station.name, op.station.closedAt, op.timeZone)}
+          action={
+            <Button variant="secondary" disabled={sending} onClick={() => onCommand("reopen")}>
+              Reabrir
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-3">
       <StationQueue op={op} now={now} />

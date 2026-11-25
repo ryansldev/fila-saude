@@ -7,6 +7,7 @@ import { useConfirm } from "@/components/dialogs";
 import { Notice } from "@/components/form";
 import { PageHeader } from "@/components/page";
 import { StationPanel } from "@/components/station/station-panel";
+import { Button } from "@/components/ui/button";
 import { StationCard } from "@/components/ui/station-card";
 import { useApi } from "@/lib/api-context";
 import { useCurrentUnit } from "@/lib/current-unit";
@@ -86,6 +87,18 @@ export default function Station() {
   }
 
   async function command(c: StationCommand, refer = false) {
+    // RN-EST-07: fechar é de verdade (a pausa é que é passageira), então confirma.
+    if (
+      c === "close" &&
+      !(await confirm({
+        title: `Fechar ${op.detail?.station.name ?? "a estação"}?`,
+        description:
+          "Ela não chama mais nesta sessão e sai da previsão de tempo dos pacientes. Use quando o atendimento desta sala acabou hoje. Dá para reabrir.",
+        action: "Fechar",
+        danger: true,
+      }))
+    )
+      return;
     if (
       c === "no-show" &&
       !(await confirm({ title: "Marcar que o paciente não compareceu?", action: "Não compareceu", danger: true }))
@@ -143,7 +156,20 @@ export default function Station() {
             </span>
           ) : null}
         </div>
-        <StationCard stations={stations} current={stationId} onChoose={chooseStation} />
+        <div className="flex flex-wrap items-center gap-2">
+          {d?.session && d.station.closedAt === null ? (
+            <Button
+              variant="dangerText"
+              size="compact"
+              disabled={sending || called !== null}
+              title={called !== null ? "Finalize o atendimento antes." : undefined}
+              onClick={() => command("close")}
+            >
+              Fechar a estação
+            </Button>
+          ) : null}
+          <StationCard stations={stations} current={stationId} onChoose={chooseStation} />
+        </div>
       </div>
       <Notice
         text={op.error ?? today.error ?? notice?.text ?? null}

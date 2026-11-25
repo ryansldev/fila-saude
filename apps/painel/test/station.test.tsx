@@ -2,7 +2,7 @@ import type { StationOperation } from "@fila-saude/schemas/queue";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { StationPanel } from "@/components/station/station-panel";
-import { calledPhase, oldestPill, waitText } from "@/lib/station";
+import { calledPhase, closedText, oldestPill, waitText } from "@/lib/station";
 
 afterEach(cleanup);
 
@@ -11,7 +11,7 @@ const ago = (min: number) => new Date(NOW - min * 60_000).toISOString();
 
 function operation(partial: Partial<StationOperation> = {}): StationOperation {
   return {
-    station: { id: "e1", name: "Triagem 1", stage: "triage" },
+    station: { id: "e1", name: "Triagem 1", stage: "triage", closedAt: null },
     session: { id: "s1", service: "Clínico geral", state: "open" },
     called: {
       itemId: "i1",
@@ -34,6 +34,7 @@ function operation(partial: Partial<StationOperation> = {}): StationOperation {
     oldest: { presentSince: ago(12), targetTimeMin: 30 },
     now: new Date(NOW).toISOString(),
     classifies: true,
+    timeZone: "America/Sao_Paulo",
     ...partial,
   };
 }
@@ -55,6 +56,12 @@ describe("lib/estacao", () => {
     expect(oldestPill({ presentSince: ago(31), targetTimeMin: 30 }, NOW)?.late).toBe(true);
     expect(oldestPill({ presentSince: ago(0), targetTimeMin: 30 }, NOW)?.text).toBe("o mais antigo chegou agora");
     expect(oldestPill({ presentSince: ago(30), targetTimeMin: 30 }, NOW)?.late).toBe(false);
+  });
+
+  it("estação fechada: desde quando, na hora da unidade", () => {
+    expect(closedText("Triagem 1", "2026-11-16T18:10:00Z", "America/Sao_Paulo")).toBe(
+      "Triagem 1 fechou às 15:10. Não chama mais nesta sessão.",
+    );
   });
 
   it("texto da espera", () => {
@@ -128,7 +135,7 @@ describe("PainelDaEstacao", () => {
     const support = inRoom(o, o.called?.triage && { ...o.called.triage, support: true });
     const { rerender } = render(<StationPanel op={support} {...props} />);
     expect(screen.getAllByText(/188/).length).toBeGreaterThan(0);
-    const care = operation({ station: { id: "a1", name: "Consultório 1", stage: "care" } });
+    const care = operation({ station: { id: "a1", name: "Consultório 1", stage: "care", closedAt: null } });
     rerender(
       <StationPanel
         op={inRoom({ ...care, called: care.called && { ...care.called, stage: "care" } }, null)}
@@ -149,5 +156,24 @@ describe("PainelDaEstacao", () => {
     expect(screen.getByText("ninguém ainda")).toBeDefined();
     expect(screen.getByText("ninguém")).toBeDefined();
     expect(screen.getByText("Ninguém aguardando agora")).toBeDefined();
+  });
+
+  it("RN-EST-07: fechada, o quadro diz desde quando e Reabrir; não chama", () => {
+    const sent: string[] = [];
+    render(
+      <StationPanel
+        op={operation({
+          called: null,
+          station: { id: "e1", name: "Consultório 2", stage: "care", closedAt: "2026-11-16T18:10:00Z" },
+        })}
+        {...props}
+        onCommand={(c) => sent.push(c)}
+      />,
+    );
+    expect(screen.getByText("Estação fechada")).toBeDefined();
+    expect(screen.getByText("Consultório 2 fechou às 15:10. Não chama mais nesta sessão.")).toBeDefined();
+    expect(screen.queryByText("Chamar o próximo")).toBeNull();
+    screen.getByText("Reabrir").click();
+    expect(sent).toEqual(["reopen"]);
   });
 });
