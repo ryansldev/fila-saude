@@ -1280,7 +1280,6 @@ export const PAUSE_TRANSITIONS: Transition<PauseState>[] = [
  * Se os destinos divergem (ex.: "Não compareceu" por nº de pulos), é erro de
  * programação: quem depende da condição escolhe a linha na tabela.
  */
-
 export function applyTransition<S extends string>(table: Transition<S>[], de: S, event: string): S | "(mesmo)" | null {
   const rows = table.filter((t) => t.de === de && t.event === event);
   const first = rows[0];
