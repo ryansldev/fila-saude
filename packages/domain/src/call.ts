@@ -377,16 +377,15 @@ export const openIn = (day: SessionDay, stage: Stage, except: string) =>
 /**
  * RN-EST-07: o que fechar a estação faz com a fila. Fechar é de verdade (só a pausa é passageira): sem outra
  * estação aberta no atendimento, a última etapa, ninguém mais seria atendido e a sessão é encerrada
- * (`closes_session`); sem outra na triagem e com gente esperando por ela, a triagem fecha para essas pessoas
- * (`closes_stage`, `closeStage`). Nulo quando a fila segue com as outras estações.
+ * (`closes_session`); sem outra na triagem, a triagem fecha: quem espera por ela sai como no encerramento
+ * (`closes_stage`, `closeStage`) e a sessão não aceita gente nova até reabrir (`triageClosed`). Nulo quando a
+ * fila segue com as outras estações.
  */
 export function closingConsequence(day: SessionDay, stationId: string): "closes_session" | "closes_stage" | null {
   const station = day.stations.find((e) => e.id === stationId);
   if (!station?.open || !station.services.includes(day.serviceId)) return null;
   if (station.stage === "care") return openIn(day, "care", station.id) ? null : "closes_session";
-  if (openIn(day, "triage", station.id)) return null;
-  const waiting = (i: QueueItem) => (i.state === "remote" || i.state === "present") && i.stage === "triage";
-  return day.items.some(waiting) ? "closes_stage" : null;
+  return !day.requiresTriage || openIn(day, "triage", station.id) ? null : "closes_stage";
 }
 
 /**

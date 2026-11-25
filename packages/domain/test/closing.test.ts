@@ -785,6 +785,8 @@ describe("fechar a última estação (RN-EST-07)", () => {
 
   it("a última do atendimento com a triagem aberta também encerra a sessão (ninguém mais seria atendido)", () => {
     expect(closingConsequence(triageAndCare(["ana"]), "e1")).toBe("closes_session");
+    // Serviço sem triagem obrigatória: a estação de triagem fecha sem pedir nada.
+    expect(closingConsequence({ ...triageAndCare(["ana"]), requiresTriage: false }, "tri")).toBeNull();
   });
 
   it("a última da triagem com o atendimento aberto: encerra só para quem espera a triagem", () => {
@@ -801,8 +803,8 @@ describe("fechar a última estação (RN-EST-07)", () => {
     expect(ent(entries, "ent-ana").state).not.toBe("in_queue");
     expect(ent(entries, "ent-bruno").state).toBe("in_queue");
     expect(events(r).map((e) => [e.kind, e.itemId])).toEqual([["reassigned", "ana"]]);
-    // Sem ninguém esperando a triagem, fechar a última dela não pede nada.
-    expect(closingConsequence(base, "tri")).toBeNull();
+    // Mesmo sem ninguém esperando a triagem, fechar a última dela pede confirmação: a sessão para de aceitar gente.
+    expect(closingConsequence(base, "tri")).toBe("closes_stage");
   });
 
   it("a falta de quem esperava a triagem fechada entra nas faltas do encerramento", () => {

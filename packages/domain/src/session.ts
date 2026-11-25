@@ -86,11 +86,25 @@ export const withOpening = (to: EntryState, open: boolean): EntryState =>
 
 export type Situation = { ok: true; open: boolean } | { ok: false; error: ErrorCode };
 
-/** O dia da sessão, se houver: `null` ou planejada = ainda não abriu; encerrada ou cancelada = fechada. */
+/**
+ * RN-EST-07: a triagem fechou (a última estação dela) e o atendimento segue: a sessão não aceita gente nova,
+ * porque ninguém faria a triagem dela. Reabrir a triagem volta a aceitar.
+ */
+export function triageClosed(day: SessionDay): boolean {
+  if (day.state !== "open" || !day.requiresTriage) return false;
+  const triage = day.stations.filter((e) => e.stage === "triage" && e.services.includes(day.serviceId));
+  return triage.length > 0 && !triage.some((e) => e.open);
+}
+
+/**
+ * O dia da sessão, se houver: `null` ou planejada = ainda não abriu; encerrada ou cancelada = fechada; aberta com
+ * a triagem fechada não aceita gente nova (`triage_closed`).
+ */
 export function situation(day: SessionDay | null, session: SessionSlots): Situation {
   if (day === null) return { ok: true, open: false };
   if (day.sessionId !== session.id) return { ok: false, error: "forbidden_transition" };
   if (day.state === "planned") return { ok: true, open: false };
+  if (triageClosed(day)) return { ok: false, error: "triage_closed" };
   if (day.state === "open") return { ok: true, open: true };
   return { ok: false, error: "session_closed" };
 }
@@ -259,6 +273,8 @@ export function fillFromReserve(
 ): Result<Slots> {
   if (cmd.service.id !== session.serviceId) return failure("forbidden_transition");
   const sit = situation(day, session);
+  // Com a triagem fechada, a reserva espera (a vaga continua livre).
+  if (!sit.ok && sit.error === "triage_closed") return ok({ session, day, entries });
   if (!sit.ok) return failure(sit.error);
   if (session.visibility !== "public") return ok({ session, day, entries });
 
@@ -443,6 +459,7 @@ export function includeAtDesk(
   }
   if (service.mode === "regulated") return failure("regulated_service");
   if (day.state !== "open") return failure("session_closed");
+  if (triageClosed(day)) return failure("triage_closed");
   if (alreadyInSession(day, cmd.id)) return failure("duplicate");
   const created = createEntry(
     cmd.activeEntries,

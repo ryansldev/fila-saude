@@ -147,6 +147,7 @@ export {
   signUpPublic,
   switchReserve,
   ticketOf,
+  triageClosed,
 } from "./session.ts";
 export type { Assignments, Occupation, Role, ScopedProfile, ScopedRole, UnitLink } from "./staff.ts";
 export { assignmentUnitKey, canRegister, OCCUPATIONS, ROLES, rolesOf, staffProblems } from "./staff.ts";

@@ -15,6 +15,7 @@ export const ERROR_CODES = [
   "station_already_paused",
   "closes_session",
   "closes_stage",
+  "triage_closed",
   "session_break",
   "no_show_up",
   "invalid_qr",
