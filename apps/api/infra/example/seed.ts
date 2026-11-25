@@ -275,7 +275,7 @@ export async function seedExample(deps: {
     const office2 = await createStation(asAdmin, ubs.id, {
       name: "Consultório 2",
       stage: "care",
-      services: [dental.id],
+      services: [dental.id, general.id],
     });
     const procedures = await createStation(asAdmin, ubs.id, {
       name: "Sala de procedimentos",
@@ -304,7 +304,8 @@ export async function seedExample(deps: {
       visibility: "public",
       waivesPreRegistration: false,
       professional: "Dra. Helena",
-      stations: [triage1.id, office1.id],
+      // Dois consultórios: dá para fechar um e ver a fila seguir no outro (RN-EST-07).
+      stations: [triage1.id, office1.id, office2.id],
     });
     const afternoon = { ini: tomorrow(now, "13:00"), end: tomorrow(now, "17:00") };
     await createSession(asAdmin, ubs.id, {
