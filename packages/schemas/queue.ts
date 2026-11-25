@@ -103,7 +103,8 @@ export const stationOperationSchema = z.object({
   waiting: z.number().int().min(0),
   remote: z.number().int().min(0),
   toleranceMin: z.number().int().min(0),
-  notice: z.enum(["nobody_waiting"]).nullable(),
+  /** `session_closed`: fechar a última estação do atendimento acabou de encerrar a sessão (RN-EST-07). */
+  notice: z.enum(["nobody_waiting", "session_closed"]).nullable(),
   /** Até 3 presentes, na ordem em que esta estação vai chamar; só o primeiro nome. */
   upcoming: z.array(z.object({ ticket: z.string(), name: z.string(), presentSince: z.iso.datetime() })),
   /** Até 3 a caminho (remotos da etapa), na ordem da fila; só o primeiro nome. */

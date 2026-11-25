@@ -63,3 +63,12 @@ export function closingFromError(e: unknown): Closing {
   if (!(e instanceof ApiError)) return null;
   return e.error === "closes_session" || e.error === "closes_stage" ? e.error : null;
 }
+
+/** O aviso que a resposta do comando traz, na faixa da estação. */
+export function noticeText(notice: StationOperation["notice"]): { text: string; kind: "ok" } | null {
+  if (notice === "nobody_waiting") return { text: "Ninguém que esta estação possa chamar agora.", kind: "ok" };
+  if (notice === "session_closed") {
+    return { text: "A sessão foi encerrada: esta era a última estação aberta do atendimento.", kind: "ok" };
+  }
+  return null;
+}

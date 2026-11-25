@@ -3,7 +3,15 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { StationPanel } from "@/components/station/station-panel";
 import { ApiError } from "@/lib/api";
-import { calledPhase, closeConfirm, closedText, closingFromError, oldestPill, waitText } from "@/lib/station";
+import {
+  calledPhase,
+  closeConfirm,
+  closedText,
+  closingFromError,
+  noticeText,
+  oldestPill,
+  waitText,
+} from "@/lib/station";
 
 afterEach(cleanup);
 
@@ -81,6 +89,12 @@ describe("lib/estacao", () => {
     expect(closingFromError(new ApiError(409, "closes_stage"))).toBe("closes_stage");
     expect(closingFromError(new ApiError(409, "station_has_call"))).toBeNull();
     expect(closingFromError(new Error("rede"))).toBeNull();
+  });
+
+  it("aviso da resposta: ninguém para chamar; a sessão encerrou ao fechar a última estação", () => {
+    expect(noticeText("nobody_waiting")).toEqual({ text: "Ninguém que esta estação possa chamar agora.", kind: "ok" });
+    expect(noticeText("session_closed")?.text).toMatch(/sessão foi encerrada/);
+    expect(noticeText(null)).toBeNull();
   });
 
   it("texto da espera", () => {

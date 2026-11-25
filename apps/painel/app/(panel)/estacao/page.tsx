@@ -14,7 +14,7 @@ import { useCurrentUnit } from "@/lib/current-unit";
 import { errorMessage } from "@/lib/forms/errors";
 import { stationsItOperates } from "@/lib/queue";
 import { useMe } from "@/lib/session";
-import { closeConfirm, closingFromError } from "@/lib/station";
+import { closeConfirm, closingFromError, noticeText } from "@/lib/station";
 import { useQuery } from "@/lib/use-query";
 
 const KEY = "fila-painel:estacao";
@@ -126,10 +126,8 @@ export default function Station() {
       // Trocou de estação durante o pedido: a resposta é da anterior e não vai para a tela.
       if (stationIdRef.current !== asked) return;
       op.setDetail(r);
-      // "Chamar o próximo" sem ninguém que esta estação possa chamar: diz por que nada mudou.
-      setNotice(
-        r.notice === "nobody_waiting" ? { text: "Ninguém que esta estação possa chamar agora.", kind: "ok" } : null,
-      );
+      // "Chamar o próximo" sem ninguém que esta estação possa chamar, ou a sessão que encerrou: diz o que houve.
+      setNotice(noticeText(r.notice));
     } catch (e) {
       setNotice({ text: errorMessage(e), kind: "error" });
       // Outra estação fechou antes: o próximo toque já mostra a confirmação certa e manda `confirmed`.

@@ -65,7 +65,8 @@ describe("fechar a última estação do atendimento (RN-EST-07)", () => {
     expect((await close(t.e1, {})).body).toMatchObject({ error: "closes_session" });
     const r = await close(t.e1, { confirmed: true });
     expect(r.status).toBe(200);
-    expect(r.body.session).toMatchObject({ id: t.sessionId, state: "closed" });
+    // A resposta é a da estação sem sessão (como a próxima consulta), com o aviso de que encerrou: sem "Reabrir".
+    expect(r.body).toMatchObject({ session: null, notice: "session_closed", station: { closedAt: null } });
     const db = orchestrator.municipalityDatabase(t.slug);
     const [row] = await db.select({ state: session.state }).from(session).where(eq(session.id, t.sessionId));
     expect(row?.state).toBe("closed");

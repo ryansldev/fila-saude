@@ -284,14 +284,12 @@ export async function commandInStation(
         const entries = after?.entries ?? closeEntries(day, withConfirmedRisk(c.entries, r.events));
         const events = [...r.events, ...(after?.events ?? [])];
         const nobody = command === "call" && !day.stations.find((x) => x.id === stationId)?.calledItemId;
-        const op = { ...s, state: day.state };
-        return {
-          day,
-          entries,
-          events,
-          ...(after?.session ? { session: after.session } : {}),
-          result: await build(tx, e, op, day, ctx.now, classifies, nobody ? "nobody_waiting" : null),
-        };
+        // Encerrou a sessão: a estação fica sem sessão aberta (como na próxima consulta), com o aviso, sem "Reabrir".
+        const ended = after?.consequence === "closes_session";
+        const result = ended
+          ? await build(tx, e, null, null, ctx.now, classifies, "session_closed")
+          : await build(tx, e, s, day, ctx.now, classifies, nobody ? "nobody_waiting" : null);
+        return { day, entries, events, ...(after?.session ? { session: after.session } : {}), result };
       });
     },
   );
