@@ -14,6 +14,7 @@ import { useCurrentUnit } from "@/lib/current-unit";
 import { errorMessage } from "@/lib/forms/errors";
 import { stationsItOperates } from "@/lib/queue";
 import { useMe } from "@/lib/session";
+import { closeConfirm, closingFromError, noticeText } from "@/lib/station";
 import { useQuery } from "@/lib/use-query";
 
 const KEY = "fila-painel:estacao";
@@ -87,16 +88,11 @@ export default function Station() {
   }
 
   async function command(c: StationCommand, refer = false) {
-    // RN-EST-07: fechar é de verdade (a pausa é que é passageira), então confirma.
+    // RN-EST-07: fechar é de verdade (a pausa é que é passageira), então confirma; a última aberta confirma o fim.
+    const closing = op.detail?.station.closing ?? null;
     if (
       c === "close" &&
-      !(await confirm({
-        title: `Fechar ${op.detail?.station.name ?? "a estação"}?`,
-        description:
-          "Ela não chama mais nesta sessão e sai da previsão de tempo dos pacientes. Use quando o atendimento desta sala acabou hoje. Dá para reabrir.",
-        action: "Fechar",
-        danger: true,
-      }))
+      !(await confirm({ ...closeConfirm(op.detail?.station.name ?? "a estação", closing), danger: true }))
     )
       return;
     if (
@@ -120,17 +116,26 @@ export default function Station() {
     setSending(true);
     const asked = stationId;
     try {
-      const body = classifies && color ? { confirmedRisk: color, ...(refer ? { refer: true } : {}) } : {};
+      const body =
+        classifies && color
+          ? { confirmedRisk: color, ...(refer ? { refer: true } : {}) }
+          : c === "close" && closing !== null
+            ? { confirmed: true }
+            : {};
       const r = await api.post<StationOperation>(`/v1/panel/stations/${asked}/${c}`, body);
       // Trocou de estação durante o pedido: a resposta é da anterior e não vai para a tela.
       if (stationIdRef.current !== asked) return;
       op.setDetail(r);
-      // "Chamar o próximo" sem ninguém que esta estação possa chamar: diz por que nada mudou.
-      setNotice(
-        r.notice === "nobody_waiting" ? { text: "Ninguém que esta estação possa chamar agora.", kind: "ok" } : null,
-      );
+      // "Chamar o próximo" sem ninguém que esta estação possa chamar, ou a sessão que encerrou: diz o que houve.
+      setNotice(noticeText(r.notice));
     } catch (e) {
       setNotice({ text: errorMessage(e), kind: "error" });
+      // Outra estação fechou antes: o próximo toque já mostra a confirmação certa e manda `confirmed`.
+      const now = closingFromError(e);
+      const shown = op.detail;
+      if (now !== null && shown && stationIdRef.current === asked) {
+        op.setDetail({ ...shown, station: { ...shown.station, closing: now } });
+      }
     } finally {
       setSending(false);
     }

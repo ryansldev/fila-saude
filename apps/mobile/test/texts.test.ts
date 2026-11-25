@@ -374,6 +374,9 @@ describe("mensagens de erro no estilo do app (minúsculas)", () => {
     expect(errorMessage(new ApiError(409, "session_closed", "Este atendimento já terminou."))).toBe(
       "este atendimento já foi encerrado.",
     );
+    expect(errorMessage(new ApiError(409, "triage_closed"))).toBe(
+      "a triagem deste atendimento fechou e ninguém novo entra por enquanto. tente de novo mais tarde ou escolha outro atendimento.",
+    );
     expect(errorMessage(new ApiError(409, "limit_per_account", "Uma conta põe até 5 pessoas."))).toBe(
       "uma conta põe até 5 pessoas.",
     );

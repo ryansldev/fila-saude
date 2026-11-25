@@ -21,7 +21,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 
 ## Próximo passo
 
-Pausa e fechar a estação em fatias ponta a ponta para a branch pai `feat/pause-and-close` ([plano](features/mvp-filas/plano-pausa-e-fechar.md#fatias-tdd-em-cada-uma)), uma PR por vez: a fatia 1 (fechar e reabrir) espera revisão; depois fechar a última estação, pausar, pausa marcada e o app, opção C, faixas de horário, alerta de sinal. Em seguida, numa branch pai própria: a urgência confirmada que não chega (PA5). Depois, a revisão de UI do app e o plano da fatia 5 (pré-cadastro).
+Pausa e fechar a estação em fatias ponta a ponta para a branch pai `feat/pause-and-close` ([plano](features/mvp-filas/plano-pausa-e-fechar.md#fatias-tdd-em-cada-uma)), uma PR por vez: a fatia 1 (fechar e reabrir) na branch pai (PR #43); a fatia 2 (fechar a última estação) espera revisão (FE1 a FE4 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md)); depois pausar, pausa marcada e o app, opção C, faixas de horário, alerta de sinal. Em seguida, numa branch pai própria: a urgência confirmada que não chega (PA5). Depois, a revisão de UI do app e o plano da fatia 5 (pré-cadastro).
 
 ## Fora do código
 

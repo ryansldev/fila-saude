@@ -26,7 +26,7 @@ QUANDO o profissional tocar **Pausar** (sem paciente chamado), O SISTEMA DEVE ma
 - *Dado* Bia em casa recebeu "venha agora" às 12:00, *quando* o Consultório 2 toca Pausar às 12:02, *então* a pausa começa às 12:32 e a Bia é atendida antes dela.
 
 **RN-EST-07 · Fechar e reabrir**
-QUANDO o profissional tocar **Fechar a estação** (sem paciente chamado), a estação DEVE sair da sessão de hoje: não chama, não conta na estimativa nem na queda percebida (RN-SES-05). **Reabrir** a devolve (fechou por engano). As duas ações ficam na auditoria. Fechar é de verdade (só a pausa é passageira): QUANDO a estação for a última aberta do atendimento, O SISTEMA DEVE pedir confirmação e encerrar a sessão (RN-SES-01, com o aviso de que fechou); QUANDO for a última da triagem, com o atendimento aberto, O SISTEMA DEVE pedir confirmação, dar a quem espera a triagem o desfecho do encerramento (RN-SES-02) e parar de aceitar gente nova (inscrição, balcão, troca de data e agendamento regulado; a reserva espera) até a triagem reabrir; a sessão segue para quem já passou da triagem. Depois de encerrada, não há reabrir.
+QUANDO o profissional tocar **Fechar a estação** (sem paciente chamado), a estação DEVE sair da sessão de hoje: não chama, não conta na estimativa nem na queda percebida (RN-SES-05). **Reabrir** a devolve (fechou por engano). As duas ações ficam na auditoria. Fechar é de verdade (só a pausa é passageira): QUANDO a estação for a última aberta do atendimento, O SISTEMA DEVE pedir confirmação e encerrar a sessão (RN-SES-01, com o aviso de que fechou); QUANDO for a última da triagem, com o atendimento aberto, O SISTEMA DEVE pedir confirmação, dar a quem espera a triagem o desfecho do encerramento (RN-SES-02) e parar de aceitar gente nova (inscrição, balcão, troca de data e agendamento regulado; a reserva espera) até a triagem reabrir; a sessão segue para quem já passou da triagem. Quem a triagem fechada remanejou sai da sessão e libera a vaga; ao reabrir a triagem, a reserva ocupa as vagas livres (RN-PUB-02). Depois de encerrada, não há reabrir.
 *Decisões: AD-077.*
 
 ## Chamar
@@ -92,7 +92,7 @@ O horário da sessão é uma lista de faixas sem sobreposição (ex.: 09:00 às 
 *Decisões: AD-077.*
 
 **RN-SES-01 · Só o admin encerra**
-A sessão só encerra quando o admin a encerra. No horário de fim, o painel lembra o admin.
+A sessão só encerra quando o admin a encerra, ou quando o profissional fecha a última estação aberta do atendimento, com confirmação (RN-EST-07). No horário de fim, o painel lembra o admin.
 
 **RN-SES-02 · Faltas e remanejados**
 QUANDO a sessão for encerrada, O SISTEMA DEVE, para cada um ainda na fila:

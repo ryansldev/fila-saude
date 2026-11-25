@@ -74,6 +74,8 @@ const MESSAGES: Record<string, string> = {
   emergency: "isso pode ser uma emergência. ligue 192.",
   private_session: "este atendimento é só por agendamento da unidade.",
   session_closed: "este atendimento já foi encerrado.",
+  triage_closed:
+    "a triagem deste atendimento fechou e ninguém novo entra por enquanto. tente de novo mais tarde ou escolha outro atendimento.",
   regulated_service: "este atendimento é marcado pela regulação.",
   referral_pending: "este atendimento pede requisição médica.",
   invalid_cpf: "CPF inválido.",

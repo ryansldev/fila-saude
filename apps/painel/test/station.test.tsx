@@ -2,7 +2,16 @@ import type { StationOperation } from "@fila-saude/schemas/queue";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { StationPanel } from "@/components/station/station-panel";
-import { calledPhase, closedText, oldestPill, waitText } from "@/lib/station";
+import { ApiError } from "@/lib/api";
+import {
+  calledPhase,
+  closeConfirm,
+  closedText,
+  closingFromError,
+  noticeText,
+  oldestPill,
+  waitText,
+} from "@/lib/station";
 
 afterEach(cleanup);
 
@@ -11,7 +20,7 @@ const ago = (min: number) => new Date(NOW - min * 60_000).toISOString();
 
 function operation(partial: Partial<StationOperation> = {}): StationOperation {
   return {
-    station: { id: "e1", name: "Triagem 1", stage: "triage", closedAt: null },
+    station: { id: "e1", name: "Triagem 1", stage: "triage", closedAt: null, closing: null },
     session: { id: "s1", service: "Clínico geral", state: "open" },
     called: {
       itemId: "i1",
@@ -62,6 +71,30 @@ describe("lib/estacao", () => {
     expect(closedText("Triagem 1", "2026-11-16T18:10:00Z", "America/Sao_Paulo")).toBe(
       "Triagem 1 fechou às 15:10. Não chama mais nesta sessão.",
     );
+  });
+
+  it("fechar: a confirmação diz o que acontece com a fila (RN-EST-07)", () => {
+    expect(closeConfirm("Sala 2", null)).toMatchObject({ title: "Fechar Sala 2?", action: "Fechar" });
+    const session = closeConfirm("Sala 1", "closes_session");
+    expect(session).toMatchObject({ title: "Fechar Sala 1 e encerrar a sessão?", action: "Fechar e encerrar" });
+    expect(session.description).toMatch(/última estação aberta do atendimento/);
+    expect(session.description).toMatch(/remanejad/);
+    const stage = closeConfirm("Acolhimento", "closes_stage");
+    expect(stage).toMatchObject({ title: "Fechar Acolhimento e a triagem de hoje?", action: "Fechar a triagem" });
+    expect(stage.description).toMatch(/não aceita gente nova até a triagem reabrir/);
+  });
+
+  it("a recusa por ser a última aberta vira o 'closing' da próxima confirmação (outra estação fechou antes)", () => {
+    expect(closingFromError(new ApiError(409, "closes_session"))).toBe("closes_session");
+    expect(closingFromError(new ApiError(409, "closes_stage"))).toBe("closes_stage");
+    expect(closingFromError(new ApiError(409, "station_has_call"))).toBeNull();
+    expect(closingFromError(new Error("rede"))).toBeNull();
+  });
+
+  it("aviso da resposta: ninguém para chamar; a sessão encerrou ao fechar a última estação", () => {
+    expect(noticeText("nobody_waiting")).toEqual({ text: "Ninguém que esta estação possa chamar agora.", kind: "ok" });
+    expect(noticeText("session_closed")?.text).toMatch(/sessão foi encerrada/);
+    expect(noticeText(null)).toBeNull();
   });
 
   it("texto da espera", () => {
@@ -135,7 +168,9 @@ describe("PainelDaEstacao", () => {
     const support = inRoom(o, o.called?.triage && { ...o.called.triage, support: true });
     const { rerender } = render(<StationPanel op={support} {...props} />);
     expect(screen.getAllByText(/188/).length).toBeGreaterThan(0);
-    const care = operation({ station: { id: "a1", name: "Consultório 1", stage: "care", closedAt: null } });
+    const care = operation({
+      station: { id: "a1", name: "Consultório 1", stage: "care", closedAt: null, closing: null },
+    });
     rerender(
       <StationPanel
         op={inRoom({ ...care, called: care.called && { ...care.called, stage: "care" } }, null)}
@@ -164,7 +199,7 @@ describe("PainelDaEstacao", () => {
       <StationPanel
         op={operation({
           called: null,
-          station: { id: "e1", name: "Consultório 2", stage: "care", closedAt: "2026-11-16T18:10:00Z" },
+          station: { id: "e1", name: "Consultório 2", stage: "care", closedAt: "2026-11-16T18:10:00Z", closing: null },
         })}
         {...props}
         onCommand={(c) => sent.push(c)}
