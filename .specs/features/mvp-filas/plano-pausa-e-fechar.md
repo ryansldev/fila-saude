@@ -1,6 +1,6 @@
 # Plano: pausa, fechar a estação e o alerta de sinal
 
-> Combinado na conversa de 2026-11-24 (QP2 e QP6 da AD-076). Vem depois do PR #37 (queda percebida), na branch `feat/station-pause`.
+> Combinado na conversa de 2026-11-24 (QP2 e QP6 da AD-076). Domínio na `main` (PR #42); o resto em fatias na branch pai `feat/pause-and-close` (2026-11-25).
 
 ## Por quê
 
@@ -29,13 +29,20 @@ Hoje a estação da sessão está sempre "aberta": não existe pausar nem fechar
 
 **Alerta (QP2).** Faixa no painel (recepção, admin e estações da unidade): "TV sem sinal há 5 min", "Consultório 2 sem sinal há 3 min" (estação aberta e fora de pausa). Some quando o sinal volta.
 
-## Passos (TDD em cada um)
+## Fatias (TDD em cada uma)
 
-1. **Domínio.** `Station` ganha o estado da pausa (`pause: { from, until | null }`) e `open` passa a valer de verdade; a sessão passa de `start`/`end` a uma lista de faixas (`start`/`end` continuam como a primeira e a última, para quem já lê). Funções: `pause`, `resume`, `closeStation`/`reopenStation`; a estimativa e os avisos ("saia de casa", "venha agora") respeitam a pausa; `trackOutage` ignora estações em pausa ou fechadas. Contratos e specs.
-2. **API.** Rotas da estação: pausar, voltar, fechar, reabrir (com auditoria). Sessão: as faixas na criação, na edição e na série (migração: cada sessão antiga vira uma faixa). O painel recebe os alertas de sinal na consulta da unidade. Fechar a estação: com `closes_session` ou `closes_stage` (`closingConsequence`), o painel confirma e a rota, na mesma transação, fecha com `confirmed` e chama `close` ou `closeStage`. Reabrir a triagem roda `fillFromReserve` (as vagas livres enquanto ela estava fechada ficaram esperando). "Finalizar e chamar o próximo" com a pausa começando devolve ok sem chamado: a rota da estação olha a pausa da estação no dia devolvido e não responde "ninguém aguardando". `npm run docs:openapi`.
-3. **Painel.** Estação: "Pausar" (com a volta), a faixa "pausa às 12:30" e "em pausa, volta às 13:00" com **Voltar**, "Fechar a estação" (com a confirmação quando encerra a sessão ou a triagem) e **Reabrir**. O balcão recusado com `triage_closed` diz que a triagem está fechada. Sessão: as faixas de horário, com "adicionar horário". A faixa de alerta de sinal. Tudo com os botões do kit.
-4. **App.** "pausa para o almoço, volta às 13:00" no cartão e no bilhete; o tempo da estimativa conta a pausa. A inscrição recusada com `triage_closed` diz que a sessão não aceita inscrições agora.
-5. **Limpeza.** QP6 e QP2 saem de `decisoes-para-revisar.md` e entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`.
+O domínio entrou na `main` (PR #42). O resto vai em fatias pequenas e **ponta a ponta** (API, painel e app no que couber, para testar clicando), uma PR por vez para a branch pai `feat/pause-and-close`, que vai para a `main` no fim.
+
+1. **Fechar e reabrir a estação.** Guardar no banco a estação fechada (`closedAt`, as paradas); rotas fechar e reabrir, com auditoria; no painel, **Fechar a estação** e **Reabrir** na estação. Só o caso com outra estação aberta (a fila segue).
+2. **Fechar a última estação.** Com `closes_session` ou `closes_stage` (`closingConsequence`), o painel confirma e a rota, na mesma transação, fecha com `confirmed` e chama `close` ou `closeStage`. Reabrir a triagem roda `fillFromReserve`. Mensagens de `triage_closed` no balcão (painel) e na inscrição (app).
+3. **Pausar agora e voltar.** Guardar a pausa da estação; rotas pausar e voltar, com auditoria; a varredura roda `advancePauses`; no painel, **Pausar** (com a volta: 30 min, 1 h ou um horário), "em pausa, volta às 13:00" e **Voltar agora**. "Finalizar e chamar o próximo" com a pausa começando não responde "ninguém aguardando".
+4. **Pausa marcada e o app.** Com alguém a caminho, a pausa começa depois do prazo: no painel, a faixa "pausa às 12:30" e **Desmarcar a pausa**; no app, "pausa para o almoço, volta às 13:00" (ou "por tempo indeterminado") no cartão e no bilhete, com o tempo contando a pausa.
+5. **Opção C.** Na hora da pausa, quem chegou no prazo sem ser chamado: o profissional escolhe atender antes ou pausar agora, e a pessoa recebe a justificativa por escrito e continua na frente (domínio, API, painel e app; referência em `wip/pause-option-c`).
+6. **Horário em faixas.** A sessão com várias faixas na criação, na edição e na série (migração: cada sessão antiga vira uma faixa); no painel, "adicionar horário"; o vão entre faixas é o intervalo da sessão.
+7. **Alerta de sinal (QP2).** A consulta da unidade traz os alertas; no painel, a faixa "TV sem sinal há 5 min", "Consultório 2 sem sinal há 3 min".
+8. **Limpeza.** QP6 e QP2 entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`; a branch pai vai para a `main`.
+
+Depois, numa branch pai própria: a urgência confirmada que não chega recebe 2 "venha agora" e sai da fila com falta (PA5).
 
 ## Fora deste plano
 

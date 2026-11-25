@@ -18,6 +18,8 @@ const SUMMARY: Record<StationCommand, string> = {
   "no-show": "Não compareceu",
   "showed-up": "Compareceu",
   "undo-showed-up": "Desfazer o compareceu",
+  close: "Fechar a estação",
+  reopen: "Reabrir a estação",
 };
 
 // Uma rota por comando da estação (T3.7), todas com a mesma casca.

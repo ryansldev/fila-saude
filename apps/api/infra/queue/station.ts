@@ -1,6 +1,7 @@
 import {
   type Action,
   callNext,
+  closeStation,
   type Entry,
   type Event,
   eligible,
@@ -13,6 +14,7 @@ import {
   type Result,
   type RiskLevel,
   recall,
+  reopenStation,
   type SessionDay,
   showedUp,
   showedUpAt,
@@ -98,7 +100,12 @@ async function build(
   const came = day && item ? showedUpAt(day, e.id) : null;
   const last = item && day?.calls.findLast((ch) => ch.itemId === item.id && ch.stage === item.stage);
   return {
-    station: { id: e.id, name: e.name, stage: e.stage },
+    station: {
+      id: e.id,
+      name: e.name,
+      stage: e.stage,
+      closedAt: est?.closedAt === undefined ? null : new Date(est.closedAt).toISOString(),
+    },
     session: s,
     called:
       item && day
@@ -124,6 +131,7 @@ async function build(
     now: new Date(now).toISOString(),
     // RN-PERF-05: quem opera classifica o risco (enfermeiro); o técnico só acolhe.
     classifies: e.stage === "triage" && classifies,
+    timeZone: day?.config.timeZone ?? null,
   };
 }
 
@@ -172,6 +180,8 @@ const COMMANDS: Record<
   "no-show": noShow,
   "showed-up": showedUp,
   "undo-showed-up": undoShowedUp,
+  close: closeStation,
+  reopen: reopenStation,
 };
 
 // T3.7 / RN-CHAM: o comando trava a sessão (INV-04) e passa pelo guard e pela auditoria.

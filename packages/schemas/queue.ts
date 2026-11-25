@@ -82,7 +82,8 @@ export const commandBodySchema = z
 
 /** Tela da estação (T3.7): a sessão aberta de hoje que ela atende, o chamado e quantos aguardam presentes. */
 export const stationOperationSchema = z.object({
-  station: z.object({ id: z.uuid(), name: z.string(), stage: stageSchema }),
+  /** `closedAt`: a estação fechou nesta sessão (RN-EST-07), desde quando; `null` aberta. */
+  station: z.object({ id: z.uuid(), name: z.string(), stage: stageSchema, closedAt: z.iso.datetime().nullable() }),
   session: z.object({ id: z.uuid(), service: z.string(), state: z.string() }).nullable(),
   called: calledSchema.nullable(),
   waiting: z.number().int().min(0),
@@ -99,10 +100,21 @@ export const stationOperationSchema = z.object({
   now: z.iso.datetime(),
   /** RN-PERF-05: quem opera classifica o risco (enfermeiro); o técnico só acolhe e finaliza sem cor. */
   classifies: z.boolean(),
+  /** Fuso da unidade, para as horas da estação (ex.: "fechado às 15:10"); `null` sem sessão aberta. */
+  timeZone: z.string().nullable(),
 });
 export type StationOperation = z.infer<typeof stationOperationSchema>;
 
-export const stationCommandSchema = z.enum(["call", "recall", "finish", "no-show", "showed-up", "undo-showed-up"]);
+export const stationCommandSchema = z.enum([
+  "call",
+  "recall",
+  "finish",
+  "no-show",
+  "showed-up",
+  "undo-showed-up",
+  "close",
+  "reopen",
+]);
 export type StationCommand = z.infer<typeof stationCommandSchema>;
 
 // ---- App do paciente ----

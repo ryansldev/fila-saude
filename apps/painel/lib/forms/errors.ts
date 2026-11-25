@@ -31,6 +31,11 @@ const MESSAGES: Record<string, string | ((e: ApiError) => string)> = {
   station_paused: 'A estação está em pausa. Toque em "Voltar agora" para chamar de novo.',
   session_break: "A sessão está no intervalo entre as faixas de horário. A estação volta a chamar no fim dele.",
   pause_during_outage: "A unidade está sem sinal (modo manual). Pause depois que o sinal voltar, ou feche a estação.",
+  closes_session:
+    "Esta é a última estação aberta do atendimento: fechá-la encerra a sessão. Encerre a sessão pela fila do dia.",
+  closes_stage:
+    "Esta é a última estação aberta da triagem: fechá-la fecha a triagem de hoje. Ela continua aberta por enquanto.",
+  triage_closed: "A triagem desta sessão está fechada: não entra gente nova até ela reabrir.",
   station_already_paused: "A estação já tem uma pausa. Volte (ou desmarque a pausa) antes de pausar de novo.",
   pause_back_before_start: "A volta precisa ser depois do início da pausa e de agora.",
   reason_required: "Escreva o motivo.",
