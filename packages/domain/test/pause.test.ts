@@ -78,9 +78,9 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
     expect(startOf(station(late))).toBe(T + 26 * MIN + DEADLINE);
   });
 
-  it("'voltar agora' recusa a pausa que já acabou; no almoço, tira a pausa própria, mas o almoço segue", () => {
+  it("'voltar agora' com a pausa que já acabou não muda nada; no almoço, tira a pausa própria, mas o almoço segue", () => {
     const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: { inMin: 30 } }, T));
-    expect(resumeStation(d, { stationId: "e1" }, T + 40 * MIN)).toEqual({ ok: false, error: "forbidden_transition" });
+    expect(resumeStation(d, { stationId: "e1" }, T + 40 * MIN)).toMatchObject({ ok: true, events: [] });
     const lunch = apply(
       pauseStation(
         present(dayWith(["ana"], { breaks: [{ start: T, end: T + 60 * MIN }] }), "ana"),
@@ -131,7 +131,23 @@ describe("pausa avisada da estação (RN-EST-06)", () => {
     let d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: null }, T));
     d = apply(resumeStation(d, { stationId: "e1" }, T + 20 * MIN));
     expect(station(d).pause).toBeUndefined();
-    expect(resumeStation(d, { stationId: "e1" }, T)).toEqual({ ok: false, error: "forbidden_transition" });
+  });
+});
+
+describe("voltar de novo", () => {
+  it("'voltar agora' tocado duas vezes, ou depois da hora de volta, não dá erro e nada muda", () => {
+    const d = apply(pauseStation(dayWith(["ana"]), { stationId: "e1", back: { at: T + 60 * MIN } }, T));
+    const back = apply(resumeStation(d, { stationId: "e1" }, T + 30 * MIN));
+    expect(resumeStation(back, { stationId: "e1" }, T + 31 * MIN)).toEqual({ ok: true, state: back, events: [] });
+    const late = resumeStation(d, { stationId: "e1" }, T + 61 * MIN);
+    expect(late).toMatchObject({ ok: true, events: [] });
+    if (late.ok) expect(station(late.state).pause).toBeUndefined();
+    // Estação fechada não volta (reabre).
+    const closed = apply(closeStation(back, { stationId: "e1" }, T + 40 * MIN));
+    expect(resumeStation(closed, { stationId: "e1" }, T + 41 * MIN)).toEqual({
+      ok: false,
+      error: "forbidden_transition",
+    });
   });
 });
 

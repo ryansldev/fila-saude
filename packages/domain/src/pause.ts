@@ -52,16 +52,17 @@ export function pauseStation(day: SessionDay, cmd: Cmd & { back: PauseBack }, no
 }
 
 /**
- * "Voltar agora" (em pausa) ou "Desmarcar a pausa" (marcada): sem pausa. Em pausa, ela vira parada no
+ * "Voltar agora" (em pausa) ou "Desmarcar a pausa" (marcada): sem pausa (já sem ela, nada muda). Em pausa, ela vira parada no
  * histórico e o silêncio conta da volta. No intervalo da sessão, tira a pausa própria, mas a estação só chama
  * no fim dele (que já conta como volta).
  */
 export function resumeStation(day: SessionDay, cmd: Cmd, now: number): Result<SessionDay> {
   if (day.state !== "open") return failure("session_closed");
   const found = day.stations.find((x) => x.id === cmd.stationId);
-  if (!found) return failure("forbidden_transition");
+  if (!found?.open) return failure("forbidden_transition");
   const e = advance(found, now);
-  if (!e.pause) return failure("forbidden_transition");
+  // Já sem pausa (toque duplo, ou a hora de volta passou antes da varredura): nada muda além do relógio.
+  if (!e.pause) return ok(e === found ? day : withStation(day, e));
   const paused = e.pause.state === "paused";
   const back = leavePause(e, paused ? "Voltar agora" : "Desmarcar a pausa", now);
   const since = paused && !inBreak(day, now) ? { callingSince: now } : {};

@@ -66,14 +66,14 @@ export function trackOutage(day: SessionDay, now: number, signal: UnitSignal): S
   const useTv = signal.hasTv && signal.tvSignalAt !== null && (tvLive || day.tvLiveAt !== undefined);
   const signalAt = useTv ? signal.tvSignalAt : signal.stationSignalAt;
   const silence = useTv ? OUTAGE_SILENCE_MS : NO_TV_SILENCE_MS;
-  const calling = callingStations(day, now);
+  const anyCalling = callingStations(day, now);
   // Pausa que acabou: o silêncio conta da volta (a aba pode ter ficado fechada na pausa).
   const ref = expectedSince(day, signalAt, now);
   // A volta da pausa só adia a queda; "no ar" de verdade (a unidade começou) é o sinal recente.
   const live = ref !== null && now - ref <= silence;
   const signalLive = signalAt !== null && now - signalAt <= silence;
   const seen = day.liveSignalAt !== undefined;
-  if (!live && calling && seen && !open && !restarted) {
+  if (!live && anyCalling && seen && !open && !restarted) {
     // Não volta para antes do fim da queda anterior (fechada quando ninguém chamava).
     const after = Math.max(...outages.map((o) => o.end ?? 0), 0);
     outages = [...outages, { start: Math.max(ref ?? now, after), end: null }];
