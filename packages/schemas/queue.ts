@@ -82,6 +82,20 @@ export const commandBodySchema = z
     refer: z.boolean().optional(),
     /** Fechar a última estação (RN-EST-07): confirma que encerra a sessão ou fecha a triagem (`station.closing`). */
     confirmed: z.boolean().optional(),
+    /** "Pausar" (RN-EST-06): a volta num horário, em minutos contados do início da pausa, ou sem hora (`null`). */
+    back: z
+      .union([
+        z.object({ at: z.iso.datetime() }),
+        z.object({
+          inMin: z
+            .number()
+            .int()
+            .min(1)
+            .max(24 * 60),
+        }),
+        z.null(),
+      ])
+      .optional(),
   })
   .default({});
 
@@ -97,6 +111,19 @@ export const stationOperationSchema = z.object({
     stage: stageSchema,
     closedAt: z.iso.datetime().nullable(),
     closing: z.enum(["closes_session", "closes_stage"]).nullable(),
+    /**
+     * A pausa da estação (RN-EST-06): marcada (começa em `from`) ou em curso (desde `from`); `until` nulo, sem hora de
+     * volta. `null` sem pausa.
+     */
+    pause: z
+      .object({
+        state: z.enum(["scheduled", "paused"]),
+        from: z.iso.datetime(),
+        until: z.iso.datetime().nullable(),
+      })
+      .nullable(),
+    /** Se tocar "Pausar" agora, a pausa começa nesta hora (depois do prazo de quem está a caminho); `null` não pausa. */
+    pauseStartsAt: z.iso.datetime().nullable(),
   }),
   session: z.object({ id: z.uuid(), service: z.string(), state: z.string() }).nullable(),
   called: calledSchema.nullable(),
@@ -129,6 +156,8 @@ export const stationCommandSchema = z.enum([
   "undo-showed-up",
   "close",
   "reopen",
+  "pause",
+  "resume",
 ]);
 export type StationCommand = z.infer<typeof stationCommandSchema>;
 

@@ -20,6 +20,8 @@ const SUMMARY: Record<StationCommand, string> = {
   "undo-showed-up": "Desfazer o compareceu",
   close: "Fechar a estação",
   reopen: "Reabrir a estação",
+  pause: "Pausar a estação",
+  resume: "Voltar da pausa (ou desmarcar a pausa marcada)",
 };
 
 // Uma rota por comando da estação (T3.7), todas com a mesma casca.

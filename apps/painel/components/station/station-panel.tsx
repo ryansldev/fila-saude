@@ -3,6 +3,7 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ClockIcon,
+  CoffeeIcon,
   DoorClosedIcon,
   FootprintsIcon,
   HeartIcon,
@@ -17,7 +18,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { RiskCard } from "@/components/ui/risk-card";
 import { stopwatch } from "@/lib/queue";
-import { calledPhase, closedText, oldestPill, waitText } from "@/lib/station";
+import { calledPhase, closedText, oldestPill, pausedPill, pausedText, waitText } from "@/lib/station";
 import { canRefer, levelColor, needsClassify, priorityText, TRIAGE_COLORS } from "@/lib/triage";
 import { cn } from "@/lib/utils";
 
@@ -138,6 +139,47 @@ function Tracejado({
   );
 }
 
+/** RN-EST-06: a estação em pausa, no lugar de "Estação livre": desde quando, a volta e "Voltar agora". */
+function Paused({
+  op,
+  from,
+  until,
+  onCommand,
+  sending,
+  now,
+}: {
+  op: StationOperation;
+  from: string;
+  until: string | null;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+  now: number;
+}) {
+  const zone = op.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const pill = pausedPill(until, now, zone);
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl border-2 border-b-4 border-[var(--ds-line)] bg-white px-5 py-4">
+      <span className="flex size-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+        <CoffeeIcon className="size-5" aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="font-extrabold text-slate-900">Em pausa</p>
+        <p className="text-sm text-slate-600">{pausedText(from, zone)}</p>
+        {pill ? (
+          <span>
+            <Pill tone={pill.late ? "late" : "alert"} icon={<ClockIcon className="size-3" aria-hidden />}>
+              {pill.text}
+            </Pill>
+          </span>
+        ) : null}
+      </div>
+      <Button disabled={sending} onClick={() => onCommand("resume")}>
+        Voltar agora
+      </Button>
+    </div>
+  );
+}
+
 /** A estação com a sessão aberta: a fila, quem está chamado (em duas fases) e as ações. */
 export function StationPanel({ op, color, onChooseColor, onCommand, sending, now }: Props) {
   const called = op.called;
@@ -160,10 +202,13 @@ export function StationPanel({ op, color, onChooseColor, onCommand, sending, now
       </div>
     );
   }
+  const pause = op.station.pause;
   return (
     <div className="flex flex-col gap-3">
       <StationQueue op={op} now={now} />
-      {called ? (
+      {!called && pause?.state === "paused" ? (
+        <Paused op={op} from={pause.from} until={pause.until} onCommand={onCommand} sending={sending} now={now} />
+      ) : called ? (
         <Called
           op={op}
           called={called}

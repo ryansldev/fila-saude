@@ -1,15 +1,22 @@
 import type { StationOperation } from "@fila-saude/schemas/queue";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import { PausePanel } from "@/components/station/pause-panel";
 import { StationPanel } from "@/components/station/station-panel";
 import { ApiError } from "@/lib/api";
 import {
+  backText,
   calledPhase,
   closeConfirm,
   closedText,
   closingFromError,
   noticeText,
   oldestPill,
+  pauseActionText,
+  pauseBack,
+  pausedPill,
+  pausedText,
+  pauseStartText,
   waitText,
 } from "@/lib/station";
 
@@ -20,7 +27,15 @@ const ago = (min: number) => new Date(NOW - min * 60_000).toISOString();
 
 function operation(partial: Partial<StationOperation> = {}): StationOperation {
   return {
-    station: { id: "e1", name: "Triagem 1", stage: "triage", closedAt: null, closing: null },
+    station: {
+      id: "e1",
+      name: "Triagem 1",
+      stage: "triage",
+      closedAt: null,
+      closing: null,
+      pause: null,
+      pauseStartsAt: null,
+    },
     session: { id: "s1", service: "Clínico geral", state: "open" },
     called: {
       itemId: "i1",
@@ -97,6 +112,41 @@ describe("lib/estacao", () => {
     expect(noticeText(null)).toBeNull();
   });
 
+  describe("pausar (RN-EST-06)", () => {
+    const TZ = "America/Sao_Paulo";
+    // 13:00 UTC = 10:00 em Brasília.
+    const at = (min: number) => new Date(NOW + min * 60_000).toISOString();
+
+    it("quando começa: agora, ou depois do prazo de quem está a caminho", () => {
+      expect(pauseStartText(at(0), NOW, TZ)).toBe("A pausa começa agora.");
+      expect(pauseActionText(at(0), NOW, TZ)).toBe("Pausar agora");
+      expect(pauseStartText(at(30), NOW, TZ)).toBe(
+        "A pausa começa às 10:30, daqui a 30 min: quem já está a caminho chega e é atendido. Até lá, chame normalmente.",
+      );
+      expect(pauseActionText(at(30), NOW, TZ)).toBe("Pausar às 10:30");
+    });
+
+    it("a volta: sem hora, em minutos do início ou num horário do dia", () => {
+      expect(pauseBack("none", "", at(0), TZ)).toEqual({ back: null, until: null });
+      expect(pauseBack("30", "", at(30), TZ)).toEqual({ back: { inMin: 30 }, until: NOW + 60 * 60_000 });
+      expect(pauseBack("60", "", at(0), TZ)).toEqual({ back: { inMin: 60 }, until: NOW + 60 * 60_000 });
+      expect(pauseBack("at", "11:15", at(0), TZ)).toEqual({ back: { at: at(75) }, until: NOW + 75 * 60_000 });
+      expect(pauseBack("at", "", at(0), TZ)).toEqual({ error: "Escolha o horário da volta." });
+      expect(pauseBack("at", "10:20", at(30), TZ)).toEqual({
+        error: "A volta precisa ser depois do início da pausa (10:30).",
+      });
+      expect(backText(NOW + 75 * 60_000, TZ)).toBe("Volta às 11:15.");
+      expect(backText(null, TZ)).toBe('Sem hora de volta: a estação fica em pausa até você tocar em "Voltar agora".');
+    });
+
+    it("em pausa: desde quando e a pílula da volta (vermelha depois da hora)", () => {
+      expect(pausedText(at(-10), TZ)).toBe("Desde 09:50. A fila espera a sua volta.");
+      expect(pausedPill(at(20), NOW, TZ)).toEqual({ text: "volta às 10:20", late: false });
+      expect(pausedPill(at(-1), NOW, TZ)).toEqual({ text: "devia ter voltado às 09:59", late: true });
+      expect(pausedPill(null, NOW, TZ)).toBeNull();
+    });
+  });
+
   it("texto da espera", () => {
     expect(waitText(ago(12), NOW)).toBe("há 12 min");
     expect(waitText(new Date(NOW - 20_000).toISOString(), NOW)).toBe("agora");
@@ -169,7 +219,15 @@ describe("PainelDaEstacao", () => {
     const { rerender } = render(<StationPanel op={support} {...props} />);
     expect(screen.getAllByText(/188/).length).toBeGreaterThan(0);
     const care = operation({
-      station: { id: "a1", name: "Consultório 1", stage: "care", closedAt: null, closing: null },
+      station: {
+        id: "a1",
+        name: "Consultório 1",
+        stage: "care",
+        closedAt: null,
+        closing: null,
+        pause: null,
+        pauseStartsAt: null,
+      },
     });
     rerender(
       <StationPanel
@@ -199,7 +257,15 @@ describe("PainelDaEstacao", () => {
       <StationPanel
         op={operation({
           called: null,
-          station: { id: "e1", name: "Consultório 2", stage: "care", closedAt: "2026-11-16T18:10:00Z", closing: null },
+          station: {
+            id: "e1",
+            name: "Consultório 2",
+            stage: "care",
+            closedAt: "2026-11-16T18:10:00Z",
+            closing: null,
+            pause: null,
+            pauseStartsAt: null,
+          },
         })}
         {...props}
         onCommand={(c) => sent.push(c)}
@@ -210,5 +276,51 @@ describe("PainelDaEstacao", () => {
     expect(screen.queryByText("Chamar o próximo")).toBeNull();
     screen.getByText("Reabrir").click();
     expect(sent).toEqual(["reopen"]);
+  });
+
+  it("RN-EST-06: em pausa, o cartão diz desde quando, a volta e Voltar agora; não chama", () => {
+    const sent: string[] = [];
+    render(
+      <StationPanel
+        op={operation({
+          called: null,
+          waiting: 2,
+          timeZone: "America/Sao_Paulo",
+          station: {
+            id: "e1",
+            name: "Consultório 2",
+            stage: "care",
+            closedAt: null,
+            closing: null,
+            pause: { state: "paused", from: ago(10), until: new Date(NOW + 20 * 60_000).toISOString() },
+            pauseStartsAt: null,
+          },
+        })}
+        {...props}
+        onCommand={(c) => sent.push(c)}
+      />,
+    );
+    expect(screen.getByText("Em pausa")).toBeDefined();
+    expect(screen.getByText("Desde 09:50. A fila espera a sua volta.")).toBeDefined();
+    expect(screen.getByText("volta às 10:20")).toBeDefined();
+    expect(screen.queryByText("Chamar o próximo")).toBeNull();
+    screen.getByText("Voltar agora").click();
+    expect(sent).toEqual(["resume"]);
+  });
+
+  it("RN-EST-06: a recusa da pausa aparece dentro do painel 'Pausar a estação' (o painel cobre a página)", () => {
+    render(
+      <PausePanel
+        open
+        onClose={() => {}}
+        startsAt={new Date(NOW).toISOString()}
+        timeZone="America/Sao_Paulo"
+        now={NOW}
+        sending={false}
+        error="A volta precisa ser depois do início da pausa e de agora."
+        onPause={() => {}}
+      />,
+    );
+    expect(screen.getByText("A volta precisa ser depois do início da pausa e de agora.")).toBeDefined();
   });
 });

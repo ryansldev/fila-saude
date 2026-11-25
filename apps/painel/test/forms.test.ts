@@ -194,6 +194,8 @@ describe("erros que sumiam (revisão 2026-11-13)", () => {
 
   it("códigos de conflito com mensagem própria", () => {
     expect(errorMessage(new ApiError(409, "station_has_call"))).toMatch(/paciente chamado/);
+    // Vale para encerrar a sessão, fechar e pausar a estação: não fala de uma ação só.
+    expect(errorMessage(new ApiError(409, "station_has_call"))).not.toMatch(/encerrar/);
     expect(errorMessage(new ApiError(400, "reason_required"))).toMatch(/motivo/);
     expect(errorMessage(new ApiError(409, "station_in_use"))).toMatch(/sessão/);
     expect(errorMessage(new ApiError(409, "session_closed"))).toMatch(/sessão/);
