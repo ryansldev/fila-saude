@@ -3,6 +3,7 @@ import { audit } from "infra/database/municipal/schema/audit";
 import { entry } from "infra/database/municipal/schema/entry";
 import { session } from "infra/database/municipal/schema/session";
 import orchestrator from "tests/orchestrator";
+import { loggedInUser, occupation } from "tests/panel";
 import { queueScenario, signUpPerson } from "tests/queue";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -56,11 +57,32 @@ const stateOf = async (slug: string, entryId: string) =>
     ?.s;
 
 describe("fechar a última estação do atendimento (RN-EST-07)", () => {
+  // FE1: encerrar a sessão é da gestão da unidade; a enfermeira que também gere a unidade fecha e encerra.
+  const nurseManager = async (t: Awaited<ReturnType<typeof queueScenario>>) =>
+    (await loggedInUser(t.slug, t.manager, "enfermeira_gestora", occupation(t.unitId, "nurse", "unit_manager"))).cookie;
+
+  it("quem não gere a unidade não encerra a sessão: com a confirmação, recusa e a sessão segue aberta", async () => {
+    const t = await queueScenario();
+    await t.request("POST", `/v1/panel/sessions/${t.sessionId}/open`, t.admin);
+    const close = (id: string, body: unknown) => t.request("POST", `/v1/panel/stations/${id}/close`, t.nurse, body);
+    expect((await close(t.e2, {})).status).toBe(200);
+    const op = await t.request("GET", `/v1/panel/stations/${t.e1}/operation`, t.nurse);
+    expect(op.body).toMatchObject({ station: { closing: "closes_session" }, canCloseSession: false });
+    const r = await close(t.e1, { confirmed: true });
+    expect(r.status).toBe(403);
+    expect(r.body).toMatchObject({ error: "no_permission" });
+    const db = orchestrator.municipalityDatabase(t.slug);
+    const [row] = await db.select({ state: session.state }).from(session).where(eq(session.id, t.sessionId));
+    expect(row?.state).toBe("open");
+  });
+
   it("com a confirmação, fecha e encerra a sessão: quem espera é remanejado", async () => {
     const t = await queueScenario();
     await t.request("POST", `/v1/panel/sessions/${t.sessionId}/open`, t.admin);
     const ana = await signUpPerson(t.slug, t.sessionId, "Ana Souza");
-    const close = (id: string, body: unknown) => t.request("POST", `/v1/panel/stations/${id}/close`, t.nurse, body);
+    const boss = await nurseManager(t);
+    expect((await t.request("GET", `/v1/panel/stations/${t.e1}/operation`, boss)).body.canCloseSession).toBe(true);
+    const close = (id: string, body: unknown) => t.request("POST", `/v1/panel/stations/${id}/close`, boss, body);
     expect((await close(t.e2, {})).status).toBe(200);
     expect((await close(t.e1, {})).body).toMatchObject({ error: "closes_session" });
     const r = await close(t.e1, { confirmed: true });

@@ -91,6 +91,7 @@ export {
   advancePauses,
   callingAt,
   heldNow,
+  operateStation,
   PAUSE_ANSWER_MS,
   type Pause,
   type PauseBack,

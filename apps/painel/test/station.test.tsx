@@ -8,6 +8,7 @@ import {
   askingNotice,
   backText,
   calledPhase,
+  closeBlocked,
   closeConfirm,
   closedText,
   closingFromError,
@@ -61,6 +62,7 @@ function operation(partial: Partial<StationOperation> = {}): StationOperation {
     oldest: { presentSince: ago(12), targetTimeMin: 30 },
     now: new Date(NOW).toISOString(),
     classifies: true,
+    canCloseSession: true,
     timeZone: "America/Sao_Paulo",
     ...partial,
   };
@@ -100,6 +102,15 @@ describe("lib/estacao", () => {
     const stage = closeConfirm("Acolhimento", "closes_stage");
     expect(stage).toMatchObject({ title: "Fechar Acolhimento e a triagem de hoje?", action: "Fechar a triagem" });
     expect(stage.description).toMatch(/não aceita gente nova até a triagem reabrir/);
+  });
+
+  it("FE1: sem a gestão da unidade, a última do atendimento não fecha e a tela diz a quem pedir", () => {
+    expect(closeBlocked("closes_session", false)).toBe(
+      "Esta é a última estação aberta do atendimento: fechá-la encerraria a sessão, e isso é com a gestão da unidade. Peça na Fila do dia.",
+    );
+    expect(closeBlocked("closes_session", true)).toBeNull();
+    expect(closeBlocked("closes_stage", false)).toBeNull();
+    expect(closeBlocked(null, false)).toBeNull();
   });
 
   it("a recusa por ser a última aberta vira o 'closing' da próxima confirmação (outra estação fechou antes)", () => {

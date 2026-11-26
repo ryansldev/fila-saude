@@ -86,6 +86,11 @@ export type Station = {
   stops?: { start: number; end: number }[];
   /** Fechada desde (RN-EST-07); a reabertura vira uma parada em `stops`. */
   closedAt?: number;
+  /**
+   * Falso: quem opera agora não classifica (técnico, RN-PERF-05) e não chama quem já foi acolhido. Guardado a cada
+   * ação da estação (`operateStation`); sem o campo, classifica.
+   */
+  classifies?: false;
 };
 
 /** `recalls`: horários de "Rechamar" (RN-CHAM-02), para a TV repetir o anúncio; `em` não muda. */

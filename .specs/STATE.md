@@ -21,7 +21,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 
 ## Próximo passo
 
-Pausa e fechar a estação em fatias ponta a ponta na branch `feat/pause-and-close` ([plano](features/mvp-filas/plano-pausa-e-fechar.md#fatias-tdd-em-cada-uma)), uma branch só e uma PR para a `main` no fim: fatias 1 a 5 feitas (a 5, opção C, espera revisão de PA7 e OC1 a OC11; a 4, de FE1 a FE4, PZ2, PZ4 e PM1 a PM3, em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md)); depois faixas de horário e alerta de sinal. Em seguida, numa branch própria: a urgência confirmada que não chega (PA5). Depois, a revisão de UI do app e o plano da fatia 5 (pré-cadastro).
+Pausa e fechar a estação em fatias ponta a ponta na branch `feat/pause-and-close` ([plano](features/mvp-filas/plano-pausa-e-fechar.md#fatias-tdd-em-cada-uma)), uma branch só e uma PR para a `main` no fim: fatias 1 a 5 feitas e revisadas (AD-078; ainda esperam você FE3, FE4, PZ2, PZ4, PM2, PM3, OC3, OC7 e OC11 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md)); depois faixas de horário e alerta de sinal. Em seguida, numa branch própria: a urgência confirmada que não chega (PA5). Depois, a revisão de UI do app e o plano da fatia 5 (pré-cadastro).
 
 ## Fora do código
 

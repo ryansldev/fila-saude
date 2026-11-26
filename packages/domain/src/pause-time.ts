@@ -11,9 +11,10 @@ import type { Event } from "./result.ts";
 
 /**
  * A pausa da etapa, para a estimativa: desde `from`; `until` nulo, sem hora de volta. `beforeTurn`: a pessoa
- * chegou no prazo e a estação pausou antes de chamá-la (opção C, com a justificativa).
+ * chegou no prazo e a estação pausou antes de chamá-la (opção C, com a justificativa); `alone`, e só ela está
+ * segurada na etapa (a vez dela vem logo na volta).
  */
-export type Pause = { from: number; until: number | null; beforeTurn?: true };
+export type Pause = { from: number; until: number | null; beforeTurn?: true; alone?: true };
 
 type Interval = { start: number; end: number };
 
@@ -63,14 +64,23 @@ function callingStored(x: Station, now: number, ahead: boolean): boolean {
   return p.state === "paused" && p.until !== null && p.until <= now;
 }
 
+/** A estação pode chamar a pessoa: quem já foi acolhido só quem classifica chama (RN-PERF-05, OC9). */
+const canCall = (x: Station, i: QueueItem) => !(i.welcomed && x.classifies === false);
+
 /**
- * Outra estação da etapa vai chamar quem espera, fora do intervalo da sessão (`callingStored`). Lê o estado
- * gravado, sem `advance`, para não andar em círculo entre estações.
+ * Outra estação da etapa vai chamar a pessoa, fora do intervalo da sessão (`callingStored`). Lê o estado gravado,
+ * sem `advance`, para não andar em círculo entre estações.
  */
-export function othersCalling(day: SessionDay, e: Station, now: number, ahead = false): boolean {
+export function othersCalling(day: SessionDay, e: Station, i: QueueItem, now: number, ahead = false): boolean {
   if (inBreak(day, now)) return false;
-  return day.stations.some((x) => x.id !== e.id && serves(day, x, e.stage) && callingStored(x, now, ahead));
+  return day.stations.some(
+    (x) => x.id !== e.id && serves(day, x, e.stage) && canCall(x, i) && callingStored(x, now, ahead),
+  );
 }
+
+/** Opção C: de `ids`, quem espera e nenhuma outra estação da etapa vai chamar (só esses seguram a pergunta). */
+export const onlyHere = (day: SessionDay, e: Station, ids: readonly string[], now: number) =>
+  waitingIn(day, e, ids).filter((i) => !othersCalling(day, e, i, now));
 
 /**
  * Guarda quem recebeu a justificativa (opção C), de qual estação e de qual parada dela (`since`: o início da
@@ -100,14 +110,15 @@ const earliest = (a: number | null, b: number | null) => (a === null ? b : b ===
 
 /**
  * A pausa que segura a pessoa (opção C): a mesma parada (pausa ou fechamento) da estação que mandou a
- * justificativa, enquanto nenhuma outra estação da etapa chama. A volta é a primeira da etapa: a desta estação (em
+ * justificativa, enquanto nenhuma outra estação da etapa a chama. A volta é a primeira da etapa: a desta estação (em
  * pausa) ou a de outra; sem nenhuma, sem hora. Nulo se nada a segura.
  */
-export function heldPause(day: SessionDay, itemId: string, now: number): Pause | null {
+function holding(day: SessionDay, itemId: string, now: number): Pause | null {
   for (const h of day.heldByPause ?? []) {
     if (h.id !== itemId) continue;
     const e = day.stations.find((x) => x.id === h.stationId);
-    if (!e || othersCalling(day, e, now, true)) continue;
+    const i = day.items.find((x) => x.id === itemId);
+    if (!e || !i || othersCalling(day, e, i, now, true)) continue;
     if (!e.open && e.closedAt === h.since) return { from: h.since, until: othersReturn(day, e), beforeTurn: true };
     if (e.open && e.pause?.state === "paused" && e.pause.since === h.since)
       return { from: h.since, until: earliest(e.pause.until, othersReturn(day, e)), beforeTurn: true };
@@ -115,19 +126,35 @@ export function heldPause(day: SessionDay, itemId: string, now: number): Pause |
   return null;
 }
 
-/** Quem a pausa segura agora (`heldPause`). */
+/** Quem a pausa segura agora (`holding`). */
 export function heldNow(day: SessionDay, now: number): Set<string> {
-  return new Set((day.heldByPause ?? []).filter((h) => heldPause(day, h.id, now) !== null).map((h) => h.id));
+  return new Set((day.heldByPause ?? []).filter((h) => holding(day, h.id, now) !== null).map((h) => h.id));
+}
+
+/**
+ * A pausa que segura a pessoa, para a estimativa (`holding`). `alone`: só ela está segurada na etapa, então a vez
+ * dela vem logo na volta (o mesmo critério do `first` da justificativa, OC8 e OC10).
+ */
+export function heldPause(day: SessionDay, itemId: string, now: number): Pause | null {
+  const p = holding(day, itemId, now);
+  const i = day.items.find((x) => x.id === itemId);
+  if (!p || !i) return p;
+  const held = heldNow(day, now);
+  const others = day.items.some(
+    (x) => x.id !== itemId && held.has(x.id) && x.state === "present" && x.stage === i.stage,
+  );
+  return others ? p : { ...p, alone: true };
 }
 
 /** A justificativa (opção C) para quem esperava; nada se outra estação da etapa vai chamá-los. */
 export function pauseNotices(day: SessionDay, e: Station, until: number | null, now: number): Event[] {
   const p = e.pause;
-  if ((p?.state !== "asking" && p?.state !== "serving") || othersCalling(day, e, now, true)) return [];
-  // Quem já recebeu a justificativa (de outra estação, ou ao fechar) não recebe de novo.
+  if (p?.state !== "asking" && p?.state !== "serving") return [];
+  // Quem já recebeu a justificativa (de outra estação, ou ao fechar) não recebe de novo; quem outra estação da
+  // etapa vai chamar também não.
   const held = heldNow(day, now);
-  const who = waitingIn(day, e, p.waitFor).filter((i) => !held.has(i.id));
-  // Só a única pessoa segurada pela pausa na etapa ouve que é a primeira na volta.
+  const who = waitingIn(day, e, p.waitFor).filter((i) => !held.has(i.id) && !othersCalling(day, e, i, now, true));
+  // Só a única pessoa segurada pela pausa na etapa ouve que a vez dela vem logo na volta.
   const heldHere = day.items.some((i) => held.has(i.id) && i.state === "present" && i.stage === e.stage);
   // A volta que a pessoa ouve é a primeira da etapa, a mesma que o app mostra (`heldPause`).
   const back = earliest(until, othersReturn(day, e));
@@ -179,11 +206,12 @@ export function closeNotices(day: SessionDay, e: Station, now: number): Event[] 
   // Fechada, a volta que vale é a de outra estação da etapa (se houver).
   const until = othersReturn(day, e);
   if (p?.state !== "paused") return pauseNotices(day, e, until, now);
-  if (othersCalling(day, e, now, true)) return [];
   const mine = new Set(
     (day.heldByPause ?? []).filter((h) => h.stationId === e.id && h.since === p.since).map((h) => h.id),
   );
-  const who = day.items.filter((i) => mine.has(i.id) && i.state === "present" && i.stage === e.stage);
+  const who = day.items.filter(
+    (i) => mine.has(i.id) && i.state === "present" && i.stage === e.stage && !othersCalling(day, e, i, now, true),
+  );
   const held = heldNow(day, now);
   const heldElsewhere = day.items.some(
     (i) => held.has(i.id) && !mine.has(i.id) && i.state === "present" && i.stage === e.stage,
@@ -224,7 +252,7 @@ export function advance(day: SessionDay, e: Station, now: number, callEnded = fa
         return withoutPause(s);
       }
       const waitFor = arrivedInTime(day, s, p);
-      if (waitFor.length > 0 && !othersCalling(day, s, now)) {
+      if (onlyHere(day, s, waitFor, now).length > 0) {
         move(s, "Hora da pausa com quem chegou no prazo esperando");
         // Segue: a hora da volta pode já ter passado (a varredura viu tarde).
         s = { ...s, pause: { state: "asking", since, askedAt: now, until: p.until, waitFor } };
@@ -238,7 +266,7 @@ export function advance(day: SessionDay, e: Station, now: number, callEnded = fa
       // Livre: o atendimento antes terminou (pelas ações, ou por outro caminho que tirou a chamada).
       if (s.calledItemId !== null) return s;
       const until = p.length === null ? null : now + p.length;
-      if (waitingIn(day, s, p.waitFor).length > 0 && !othersCalling(day, s, now)) {
+      if (onlyHere(day, s, p.waitFor, now).length > 0) {
         move(s, "Fim do atendimento com mais alguém esperando");
         return { ...s, pause: { state: "asking", since: now, askedAt: now, until, waitFor: p.waitFor } };
       }
@@ -255,7 +283,7 @@ export function advance(day: SessionDay, e: Station, now: number, callEnded = fa
         callingSince: Math.max(s.callingSince ?? back, back),
       };
     }
-    if (p.state === "asking" && waitingIn(day, s, p.waitFor).length === 0) {
+    if (p.state === "asking" && onlyHere(day, s, p.waitFor, now).length === 0) {
       move(s, "Ninguém mais esperando");
       s = { ...s, pause: { state: "paused", since: p.since, until: p.until } };
       continue;

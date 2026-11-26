@@ -3,6 +3,8 @@ import { callNext, closeStation, finish, noShow } from "../src/call.ts";
 import { estimate } from "../src/estimate.ts";
 import {
   advancePauses,
+  heldNow,
+  operateStation,
   PAUSE_ANSWER_MS,
   pauseAnswerTimeouts,
   pauseNow,
@@ -811,5 +813,84 @@ describe("quem estava a caminho chegou e não foi chamado antes da pausa (opçã
       expect(r.ok && r.events[0]?.data).toMatchObject({ until: T + 60 * MIN });
       expect(estimate(apply(r), "bia", T + 33 * MIN, AUTO)).toMatchObject({ pause: { until: T + 60 * MIN } });
     });
+  });
+});
+
+/**
+ * OC9: na triagem, o Acolhimento (técnica) não classifica; a estação guarda isso (`operateStation`). Bia já foi
+ * acolhida e só a Classificação (enfermeiro) a chama; Caio ainda não foi acolhido e o Acolhimento o chama.
+ */
+describe("quem a outra estação pode chamar (OC9)", () => {
+  const triage = (pause: NonNullable<Station["pause"]>, ...ids: string[]) => {
+    const base = dayWith(ids);
+    return freeze({
+      ...base,
+      items: base.items.map((i) => ({
+        ...i,
+        stage: "triage" as const,
+        state: "present" as const,
+        presentSince: T - 5 * MIN,
+        welcomed: i.id === "bia" || i.id === "dani",
+      })),
+      stations: [
+        { id: "t1", stage: "triage" as const, services: ["cli"], open: true, calledItemId: null, pause },
+        {
+          id: "a1",
+          stage: "triage" as const,
+          services: ["cli"],
+          open: true,
+          calledItemId: null,
+          classifies: false as const,
+        },
+      ],
+    });
+  };
+  const asking = (...ids: string[]) =>
+    triage({ state: "asking", since: T, askedAt: T, until: T + 60 * MIN, waitFor: ids }, ...ids);
+
+  it("operar a estação guarda se quem opera classifica", () => {
+    const d = asking("bia");
+    expect(station(operateStation(d, "t1", false), "t1").classifies).toBe(false);
+    expect(station(operateStation(d, "a1", true), "a1")).not.toHaveProperty("classifies");
+    expect(operateStation(d, "t1", true)).toBe(d);
+  });
+
+  it("o Acolhimento aberto não chama a acolhida: pausar agora manda a justificativa para a Bia", () => {
+    const r = pauseNow(asking("bia"), { stationId: "t1" }, T + MIN);
+    expect(kinds(r)).toEqual([
+      ["turn_after_pause", "bia"],
+      ["station_paused", null],
+    ]);
+    expect([...heldNow(apply(r), T + 2 * MIN)]).toEqual(["bia"]);
+  });
+
+  it("quem ainda não foi acolhido o Acolhimento chama: só a Bia recebe a justificativa", () => {
+    const r = pauseNow(asking("bia", "caio"), { stationId: "t1" }, T + MIN);
+    expect(kinds(r)).toEqual([
+      ["turn_after_pause", "bia"],
+      ["station_paused", null],
+    ]);
+  });
+
+  it("perguntando, se só sobra quem o Acolhimento chama, a Classificação entra em pausa (não fica parada perguntando)", () => {
+    expect(pauseState(station(advancePauses(asking("caio"), T + MIN), "t1"))).toBe("paused");
+  });
+
+  it("o app sabe se a pessoa é a única que a pausa segura na etapa, como o push (OC8, OC10)", () => {
+    const one = apply(pauseNow(asking("bia", "caio"), { stationId: "t1" }, T + MIN));
+    expect(estimate(one, "bia", T + 2 * MIN, AUTO)).toMatchObject({ pause: { beforeTurn: true, alone: true } });
+    const two = apply(pauseNow(asking("bia", "dani"), { stationId: "t1" }, T + MIN));
+    const bia = estimate(two, "bia", T + 2 * MIN, AUTO);
+    expect(bia).toMatchObject({ pause: { beforeTurn: true } });
+    expect(bia && "pause" in bia ? bia.pause : null).not.toHaveProperty("alone");
+  });
+
+  it("a pergunta só fala de quem o Acolhimento não chama", () => {
+    expect(waitingBeforePause(asking("bia", "caio"), "t1", T + MIN).map((i) => i.id)).toEqual(["bia"]);
+  });
+
+  it("na hora da pausa, com o Acolhimento aberto e a Bia acolhida esperando, a Classificação pergunta", () => {
+    const d = triage({ state: "scheduled", from: T, until: T + 60 * MIN, waitFor: [{ id: "bia", by: T }] }, "bia");
+    expect(pauseState(station(advancePauses(d, T + MIN), "t1"))).toBe("asking");
   });
 });

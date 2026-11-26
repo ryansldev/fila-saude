@@ -115,15 +115,15 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
       };
     case "turn_after_pause": {
       // Opção C (AD-077): a pausa começou antes de chamar quem chegou no prazo; texto aprovado em 2026-11-24.
-      // Com mais gente na mesma situação, ninguém ouve que é "a primeira" (OC10).
-      const turn =
-        d.first === false
-          ? "você não perdeu o lugar: quem chegou no prazo é atendido primeiro"
-          : "a sua vez é a primeira";
+      // Com mais gente na mesma situação, ninguém ouve que vem logo (OC10); quem ouve sabe que a prioridade da lei
+      // ainda vem antes (OC8).
+      const first = d.first !== false;
+      const turn = first ? "a sua vez vem logo" : "você não perdeu o lugar: quem chegou no prazo é atendido primeiro";
+      const law = first ? ", respeitando as prioridades da lei" : "";
       const back =
         typeof d.until === "number"
-          ? `${turn} na volta, às ${ctx.time(d.until)}. se precisar sair, esteja de volta até esse horário.`
-          : `${turn} quando o atendimento voltar. avisamos por aqui quando for a hora.`;
+          ? `${turn} na volta, às ${ctx.time(d.until)}${law}. se precisar sair, esteja de volta até esse horário.`
+          : `${turn} quando o atendimento voltar${law}. avisamos por aqui quando for a hora.`;
       return {
         kind: "turn_after_pause",
         key: `${PAUSE_BEFORE_TURN_KEY}:${item}:${d.stage}:${ev.stationId}:${d.at}`,

@@ -156,6 +156,11 @@ export const stationOperationSchema = z.object({
   now: z.iso.datetime(),
   /** RN-PERF-05: quem opera classifica o risco (enfermeiro); o técnico só acolhe e finaliza sem cor. */
   classifies: z.boolean(),
+  /**
+   * FE1: quem opera também encerra a sessão (gestão da unidade). Sem isso, a última estação do atendimento não fecha
+   * (`station.closing` "closes_session"): a sessão encerra pela fila do dia.
+   */
+  canCloseSession: z.boolean(),
   /** Fuso da unidade, para as horas da estação (ex.: "fechado às 15:10"); `null` sem sessão aberta. */
   timeZone: z.string().nullable(),
 });
@@ -256,10 +261,16 @@ export const estimateSchema = z.discriminatedUnion("kind", [
     query: z.object({ minutes: z.number() }).optional(),
     /**
      * A pausa da etapa que atrasa a vez; `until` nulo, sem hora de volta (o tempo não a soma). `beforeTurn`: a
-     * pessoa chegou no prazo e a estação pausou antes de chamá-la (opção C, com a justificativa).
+     * pessoa chegou no prazo e a estação pausou antes de chamá-la (opção C, com a justificativa); `alone`, e só ela
+     * está segurada na etapa (a vez dela vem logo na volta, como diz o push).
      */
     pause: z
-      .object({ from: z.number(), until: z.number().nullable(), beforeTurn: z.literal(true).optional() })
+      .object({
+        from: z.number(),
+        until: z.number().nullable(),
+        beforeTurn: z.literal(true).optional(),
+        alone: z.literal(true).optional(),
+      })
       .optional(),
   }),
   z.object({ kind: z.literal("come_now"), query: z.object({ minutes: z.number() }).optional() }),

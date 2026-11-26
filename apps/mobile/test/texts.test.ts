@@ -449,20 +449,26 @@ describe("pausa da estação no app (RN-EST-06, fatia 4 da pausa)", () => {
     const held = (until: number | null): MyEntry => ({
       ...base,
       itemState: "present",
-      estimate: { kind: "position", position: 1, minutes: 60, pause: { from: T - MIN, until, beforeTurn: true } },
+      estimate: {
+        kind: "position",
+        position: 1,
+        minutes: 60,
+        pause: { from: T - MIN, until, beforeTurn: true, alone: true },
+      },
     });
     const withBack = held(T + 60 * MIN);
     const s1 = entrySituation(withBack, T);
     expect(s1).toMatchObject({ pause: { beforeTurn: true, back: "13h32" } });
     expect(entrySummary(withBack, s1, T)).toMatchObject({ badge: "na unidade" });
     expect(nextStep(withBack, s1, T)).toBe(
-      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez é a primeira na volta, às 13h32. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez vem logo na volta, às 13h32, respeitando as prioridades da lei. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
     );
+    // Com outra pessoa segurada pela pausa na etapa, não promete que vem logo, mesmo em 1º (o mesmo que o push).
     const second: MyEntry = {
       ...withBack,
       estimate: {
         kind: "position",
-        position: 2,
+        position: 1,
         minutes: 70,
         pause: { from: T - MIN, until: T + 60 * MIN, beforeTurn: true },
       },
@@ -472,7 +478,7 @@ describe("pausa da estação no app (RN-EST-06, fatia 4 da pausa)", () => {
     );
     const noBack = held(null);
     expect(nextStep(noBack, entrySituation(noBack, T), T)).toBe(
-      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez é a primeira quando o atendimento voltar. avisamos por aqui quando for a hora. obrigado pela paciência.",
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez vem logo quando o atendimento voltar, respeitando as prioridades da lei. avisamos por aqui quando for a hora. obrigado pela paciência.",
     );
   });
 });

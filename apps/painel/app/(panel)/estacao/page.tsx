@@ -15,7 +15,7 @@ import { useCurrentUnit } from "@/lib/current-unit";
 import { errorMessage } from "@/lib/forms/errors";
 import { stationsItOperates } from "@/lib/queue";
 import { useMe } from "@/lib/session";
-import { closeConfirm, closingFromError, noticeText } from "@/lib/station";
+import { closeBlocked, closeConfirm, closingFromError, noticeText } from "@/lib/station";
 import { useQuery } from "@/lib/use-query";
 
 const KEY = "fila-painel:estacao";
@@ -96,6 +96,11 @@ export default function Station() {
   async function command(c: StationCommand, refer = false, back: PauseBody = null) {
     // RN-EST-07: fechar é de verdade (a pausa é que é passageira), então confirma; a última aberta confirma o fim.
     const closing = op.detail?.station.closing ?? null;
+    const blocked = c === "close" ? closeBlocked(closing, op.detail?.canCloseSession ?? false) : null;
+    if (blocked) {
+      setNotice({ text: blocked, kind: "error" });
+      return;
+    }
     if (
       c === "close" &&
       !(await confirm({ ...closeConfirm(op.detail?.station.name ?? "a estação", closing), danger: true }))

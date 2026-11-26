@@ -7,8 +7,8 @@ import {
   inBreak,
   leavePause,
   move,
+  onlyHere,
   pauseNotices,
-  waitingIn,
   withHeld,
   withStop,
 } from "./pause-time.ts";
@@ -36,6 +36,17 @@ const withStation = (day: SessionDay, e: Station): SessionDay => ({
   ...day,
   stations: day.stations.map((x) => (x.id === e.id ? e : x)),
 });
+
+/**
+ * Quem opera a estação agora (OC9): guarda se classifica, para a opção C saber quem ela pode chamar (o técnico não
+ * chama quem já foi acolhido). O dia não muda se já era assim.
+ */
+export function operateStation(day: SessionDay, stationId: string, classifies: boolean): SessionDay {
+  const e = day.stations.find((x) => x.id === stationId);
+  if (!e || (e.classifies === undefined) === classifies) return day;
+  const { classifies: _, ...rest } = e;
+  return withStation(day, classifies ? rest : { ...rest, classifies: false });
+}
 
 /** Quem da etapa está a caminho: recebeu "venha agora" e ainda está no prazo (a urgência que passou dele não, PA5). */
 function onTheWay(
@@ -119,7 +130,7 @@ export function waitingBeforePause(day: SessionDay, stationId: string, now: numb
   if (!found) return [];
   const e = advance(day, found, now);
   const p = e.pause;
-  return p?.state === "asking" || p?.state === "serving" ? waitingIn(day, e, p.waitFor) : [];
+  return p?.state === "asking" || p?.state === "serving" ? onlyHere(day, e, p.waitFor, now) : [];
 }
 
 type AskingEvent = "Pausar agora" | "Sem resposta" | "Ninguém dos que esperam pode ser chamado aqui";
@@ -165,7 +176,7 @@ export function serveBeforePause(
   if (inBreak(day, now)) return failure("session_break");
   const p = e.pause;
   if (p?.state !== "asking") return failure("forbidden_transition");
-  const ids = new Set(waitingIn(day, e, p.waitFor).map((i) => i.id));
+  const ids = new Set(onlyHere(day, e, p.waitFor, now).map((i) => i.id));
   const next = eligible(day, e.id, { classifies: cmd.classifies ?? true }).find((i) => ids.has(i.id));
   if (!next) return pauseAsking(day, e, "Ninguém dos que esperam pode ser chamado aqui", now);
   move(e, "Atender antes de pausar");

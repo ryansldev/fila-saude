@@ -58,6 +58,15 @@ export function closeConfirm(name: string, closing: Closing): { title: string; d
   };
 }
 
+/**
+ * FE1: encerrar a sessão é da gestão da unidade. Quem só opera a estação não fecha a última do atendimento: em vez
+ * da confirmação, a tela diz a quem pedir. Nulo quando pode fechar.
+ */
+export function closeBlocked(closing: Closing, canCloseSession: boolean): string | null {
+  if (closing !== "closes_session" || canCloseSession) return null;
+  return "Esta é a última estação aberta do atendimento: fechá-la encerraria a sessão, e isso é com a gestão da unidade. Peça na Fila do dia.";
+}
+
 /** A API recusou o "Fechar" porque, nesse meio-tempo, a estação virou a última aberta: o que a próxima confirmação diz. */
 export function closingFromError(e: unknown): Closing {
   if (!(e instanceof ApiError)) return null;

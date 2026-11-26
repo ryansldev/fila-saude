@@ -68,13 +68,13 @@ describe("justificativa da pausa antes da vez (opção C)", () => {
   const ev = (data: Record<string, unknown>): Event =>
     ({ kind: "turn_after_pause", itemId: "item-1", entryId: "ent-1", stationId: "e1", data }) as Event;
 
-  it("com volta: a sua vez é a primeira na volta, com a hora", () => {
+  it("com volta: a sua vez vem logo na volta, com a hora e as prioridades da lei (OC8)", () => {
     const t = noticeText(ev({ until: 1, at: 7, stage: "care", first: true }), ctx);
     expect(t).toEqual({
       kind: "turn_after_pause",
       key: "pausa_antes:item-1:care:e1:7",
       title: "consultório 2 entrou em pausa",
-      body: "a equipe precisou pausar antes de chamar você. a sua vez é a primeira na volta, às 13h32. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+      body: "a equipe precisou pausar antes de chamar você. a sua vez vem logo na volta, às 13h32, respeitando as prioridades da lei. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
     });
   });
 
@@ -86,7 +86,7 @@ describe("justificativa da pausa antes da vez (opção C)", () => {
 
   it("sem volta: avisamos quando for a hora", () => {
     expect(noticeText(ev({ until: null, at: 7, stage: "care", first: true }), ctx)?.body).toBe(
-      "a equipe precisou pausar antes de chamar você. a sua vez é a primeira quando o atendimento voltar. avisamos por aqui quando for a hora. obrigado pela paciência.",
+      "a equipe precisou pausar antes de chamar você. a sua vez vem logo quando o atendimento voltar, respeitando as prioridades da lei. avisamos por aqui quando for a hora. obrigado pela paciência.",
     );
   });
 

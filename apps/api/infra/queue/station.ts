@@ -16,6 +16,7 @@ import {
   firstName,
   noShow,
   OPERATE_CAVEAT_STAGE,
+  operateStation,
   type PauseBack,
   pausedAt,
   pauseNow,
@@ -39,6 +40,7 @@ import {
 } from "@fila-saude/domain";
 import type { StationCommand, StationOperation } from "@fila-saude/schemas/queue";
 import { and, desc, eq } from "drizzle-orm";
+import { SESSION } from "infra/config/common";
 import { requireStation } from "infra/config/stations";
 import { entry } from "infra/database/municipal/schema/entry";
 import { service } from "infra/database/municipal/schema/service";
@@ -94,9 +96,10 @@ async function build(
   s: { id: string; service: string; state: string } | null,
   day: SessionDay | null,
   now: number,
-  classifies: boolean,
+  who: Operator,
   notice: StationOperation["notice"] = null,
 ): Promise<StationOperation> {
+  const { classifies } = who;
   // O relógio da pausa até agora (a varredura grava o mesmo a cada giro).
   const current = day ? advancePauses(day, now) : null;
   const est = current?.stations.find((x) => x.id === e.id);
@@ -167,6 +170,7 @@ async function build(
     now: new Date(now).toISOString(),
     // RN-PERF-05: quem opera classifica o risco (enfermeiro); o técnico só acolhe.
     classifies: e.stage === "triage" && classifies,
+    canCloseSession: who.closesSession,
     timeZone: day?.config.timeZone ?? null,
   };
 }
@@ -234,12 +238,19 @@ function pauseStartsAt(day: SessionDay, stationId: string, now: number): string 
 /** RN-PERF-05: só o enfermeiro confirma o nível de risco (Cofen 661/2021). */
 const canClassify = (ctx: ActionContext, unitId: string) => allowed(ctx.actor.profiles, "confirm_risk_level", unitId);
 
+/** Quem opera: classifica o risco (RN-PERF-05) e encerra a sessão (FE1, gestão da unidade). */
+type Operator = { classifies: boolean; closesSession: boolean };
+const operator = async (ctx: ActionContext, unitId: string): Promise<Operator> => ({
+  classifies: await canClassify(ctx, unitId),
+  closesSession: await allowed(ctx.actor.profiles, SESSION, unitId),
+});
+
 export async function stationOperation(ctx: ActionContext, stationId: string): Promise<StationOperation> {
   const e = await requireStation(ctx.db, stationId);
   if (!(await allowed(ctx.actor.profiles, OPERATE, e.unitId, caveatsOf(e)))) throw new ApiError(403, "no_permission");
   await stationSignal(ctx.db, stationId, ctx.now);
   const s = await openSession(ctx.db, stationId);
-  return build(ctx.db, e, s, s ? await readDay(ctx.db, s.id) : null, ctx.now, await canClassify(ctx, e.unitId));
+  return build(ctx.db, e, s, s ? await readDay(ctx.db, s.id) : null, ctx.now, await operator(ctx, e.unitId));
 }
 
 // Itens que ficaram finais nesta ação fecham a entrada (desfechoDaEntrada).
@@ -338,7 +349,8 @@ export async function commandInStation(
         ? { at: Date.parse(body.back.at) }
         : body.back;
   const e = await requireStation(ctx.db, stationId);
-  const classifies = await canClassify(ctx, e.unitId);
+  const who = await operator(ctx, e.unitId);
+  const { classifies } = who;
   if (!classifies && (confirmedRisk !== undefined || refer))
     throw new ApiError(403, "no_permission", undefined, "A classificação de risco é do enfermeiro.");
   // A auditoria diz sobre quem o comando caiu (`before`) e quem ficou chamado depois (`after`).
@@ -371,11 +383,23 @@ export async function commandInStation(
         const extra =
           closes && called ? { ...(confirmedRisk ? { confirmedRisk } : {}), ...(refer ? { refer } : {}) } : {};
         const close = command === "close" && confirmed ? { confirmed } : {};
+        // FE1: fechar a última do atendimento encerra a sessão, e isso é da gestão da unidade. Sem confirmar, o
+        // domínio responde `closes_session` (a tela mostra a quem pedir).
+        if (
+          confirmed &&
+          command === "close" &&
+          !who.closesSession &&
+          closingConsequence(c.day, stationId) === "closes_session"
+        ) {
+          throw new ApiError(403, "no_permission", undefined, "Só a gestão da unidade encerra a sessão.");
+        }
         const pause = command === "pause" && back !== undefined ? { back } : {};
-        const r = COMMANDS[command](c.day, { stationId, ...extra, ...close, ...pause, classifies }, ctx.now);
+        // OC9: a estação guarda se quem a opera classifica (o técnico não chama quem já foi acolhido).
+        const operated = e.stage === "triage" ? operateStation(c.day, stationId, classifies) : c.day;
+        const r = COMMANDS[command](operated, { stationId, ...extra, ...close, ...pause, classifies }, ctx.now);
         if (!r.ok) {
           if (r.error === "none_eligible" && command === "call") {
-            return { result: await build(tx, e, s, c.day, ctx.now, classifies, "nobody_waiting") };
+            return { result: await build(tx, e, s, c.day, ctx.now, who, "nobody_waiting") };
           }
           if (r.error === "no_show_up") {
             throw new ApiError(409, r.error, undefined, "Marque Compareceu antes de classificar.");
@@ -394,8 +418,8 @@ export async function commandInStation(
         // Encerrou a sessão: a estação fica sem sessão aberta (como na próxima consulta), com o aviso, sem "Reabrir".
         const ended = after?.consequence === "closes_session";
         const result = ended
-          ? await build(tx, e, null, null, ctx.now, classifies, "session_closed")
-          : await build(tx, e, s, day, ctx.now, classifies, nobody ? "nobody_waiting" : null);
+          ? await build(tx, e, null, null, ctx.now, who, "session_closed")
+          : await build(tx, e, s, day, ctx.now, who, nobody ? "nobody_waiting" : null);
         return { day, entries, events, ...(after?.session ? { session: after.session } : {}), result };
       });
     },
