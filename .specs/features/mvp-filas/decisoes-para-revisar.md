@@ -429,3 +429,12 @@ Aprovadas na revisão de 2026-11-26 e levadas à **AD-078**: PA7, OC1, OC2, OC4,
 | HF5 | "Adicionar horário" no painel. Ex.: a faixa termina às 12:00 | A nova linha já vem das 13:00 às 17:00 (uma hora depois, quatro de duração, como o almoço comum), para editar | Linha vazia | Baixo: só o valor inicial |
 | HF6 | O app com duas faixas. Ex.: o card da unidade e o bilhete | "8h às 12h e 13h às 17h" (no bilhete, "hoje, das 8h às 12h e 13h às 17h") | Só "8h às 17h", como antes | Baixo: só texto |
 
+## Alerta de sinal (fatia 7 da pausa, 2026-11-26)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| AS1 | Quanto tempo sem sinal até a faixa. Ex.: o Consultório 1 com a aba em segundo plano | TV com mais de 2 min (o mesmo tempo da queda com TV); estação com mais de 3 min (a aba em segundo plano consulta até 1 vez por minuto) | 10 min para a estação, como a queda sem TV | Baixo: faixa amarela à toa ou atrasada; o número é uma constante (`STATION_ALERT_MS`) |
+| AS2 | Estação que ainda não deu sinal na sessão. Ex.: a sessão abriu às 07:00 e o médico chega às 07:20 | Entra na faixa depois de 3 min da abertura: "Consultório 2 sem sinal há 15 min" (a tela está fechada; se a sala não vai atender, pause ou feche) | Só alertar depois do primeiro sinal da estação na sessão | Baixo: uma faixa amarela no começo do dia até o médico abrir a tela |
+| AS3 | A TV não tem nome no cadastro. Ex.: unidade com a TV da recepção e a do corredor | A faixa diz "TV" e, com duas ou mais, "2 TVs" | Dar nome às TVs no pareamento | Baixo: com várias TVs, a recepção confere qual na tela "TVs" |
+| AS4 | Quem vê a faixa | Quem tem alguma ação da fila na unidade (recepção, admin, estações), como a Fila do dia; quem não tem nenhuma delas, não | Todos os perfis da unidade | Baixo |
+

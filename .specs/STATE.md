@@ -21,7 +21,7 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 
 ## Próximo passo
 
-Pausa e fechar a estação em fatias ponta a ponta na branch `feat/pause-and-close` ([plano](features/mvp-filas/plano-pausa-e-fechar.md#fatias-tdd-em-cada-uma)), uma branch só e uma PR para a `main` no fim: fatias 1 a 5 feitas e revisadas (AD-078) e a 6 (horário em faixas) feita; esperam você FE3, FE4, PZ2, PZ4, PM2, PM3, OC3, OC7, OC11, OC12 e HF1 a HF6 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md). Rodar `npm run db:migrate` (coluna `breaks`); depois o alerta de sinal. Em seguida, numa branch própria: a urgência confirmada que não chega (PA5). Depois, a revisão de UI do app e o plano da fatia 5 (pré-cadastro).
+Pausa e fechar a estação em fatias ponta a ponta na branch `feat/pause-and-close` ([plano](features/mvp-filas/plano-pausa-e-fechar.md#fatias-tdd-em-cada-uma)), uma branch só e uma PR para a `main` no fim: fatias 1 a 5 feitas e revisadas (AD-078), a 6 (horário em faixas) e a 7 (alerta de sinal, RN-SES-07) feitas; esperam você FE3, FE4, PZ2, PZ4, PM2, PM3, OC3, OC7, OC11, OC12, HF1 a HF6 e AS1 a AS4 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md). Rodar `npm run db:migrate` (coluna `breaks`); depois a fatia 8 (limpeza e a PR para a `main`). Em seguida, numa branch própria: a urgência confirmada que não chega (PA5). Depois, a revisão de UI do app e o plano da fatia 5 (pré-cadastro).
 
 ## Fora do código
 

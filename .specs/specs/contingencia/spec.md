@@ -28,6 +28,12 @@ QUANDO a unidade perder o sinal, O SISTEMA DEVE pôr as sessões abertas dela em
 - *Dado* só a internet da UBS (com TV) caiu e a API continua no ar, *quando* passam 2 min sem sinal da TV, *então* nenhum paciente recebe "saia de casa" até o sinal voltar.
 - *Dado* uma UBS sem TV com a aba da estação em segundo plano, *quando* passam 5 min sem sinal, *então* não é queda; com 10 min, é, desde o último sinal.
 
+**RN-SES-07 · Alerta de sinal no painel**
+COM sessão aberta na unidade, O SISTEMA DEVE mostrar uma faixa no topo de todas as telas do painel da unidade (para quem tem alguma ação da fila nela) QUANDO a TV pareada passar de 2 min sem sinal (vermelha: "TV sem sinal há 5 min", os pacientes não veem as chamadas nem o QR) ou uma estação aberta e fora de pausa e do intervalo passar de 3 min (amarela: "Consultório 1 sem sinal há 3 min", se a sala parou, pause ou feche a estação). Várias ao mesmo tempo viram uma faixa só ("TV e Consultório 1 sem sinal"). O silêncio conta do último sinal, da abertura da sessão ou da volta da pausa, o que veio por último. Some quando o sinal volta. Sem sessão aberta, ou depois do fim marcado dela (a sessão esquecida aberta), nenhuma faixa: a TV e as estações podem estar desligadas.
+*Decisões: AD-076 (QP2).*
+- *Dado* a sessão aberta e a TV desligada há 5 min, *quando* a recepção abre a Fila do dia, *então* vê a faixa vermelha "TV sem sinal há 5 min".
+- *Dado* o Consultório 2 em pausa com a aba fechada, *quando* passam 20 min, *então* não há faixa dele.
+
 ## Transições
 
 <!-- gerado: contratos:contingencia:item,entrada -->

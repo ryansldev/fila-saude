@@ -143,6 +143,8 @@ export type SessionDay = {
    * fora do ar (reiniciado). `end` nulo: a queda continua (modo manual). Ausente nos dias de antes.
    */
   outages?: { start: number; end: number | null }[];
+  /** Hora em que a sessão abriu de verdade (pode ser depois do início marcado); ausente nos dias de antes. */
+  openedAt?: number;
   /** Pausas planejadas de todas as estações: o vão entre as faixas de horário da sessão. */
   breaks?: { start: number; end: number }[];
   /** Hora do último giro da varredura nesta sessão: o servidor reiniciado depois dela esteve fora do ar. */

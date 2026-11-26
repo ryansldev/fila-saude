@@ -91,3 +91,15 @@ export const todaySummarySchema = z.object({
   nextOpening: z.iso.datetime().nullable(),
 });
 export type TodaySummary = z.infer<typeof todaySummarySchema>;
+
+/**
+ * QP2: a TV ou a estação sem sinal na unidade, para a faixa do painel. `name`: o da estação (a TV não tem
+ * nome); `since`: desde quando está em silêncio.
+ */
+export const signalAlertSchema = z.object({
+  kind: z.enum(["tv", "station"]),
+  id: z.uuid(),
+  name: z.string().nullable(),
+  since: z.iso.datetime(),
+});
+export type SignalAlertOutput = z.infer<typeof signalAlertSchema>;

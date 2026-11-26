@@ -180,7 +180,7 @@ const byDate = (a: Entry, b: Entry): number =>
 export function open(day: SessionDay, entries: Entry[], now: number): Result<{ day: SessionDay; entries: Entry[] }> {
   if (applyTransition(SESSION_TRANSITIONS, day.state, SESSION_OPENS) !== "open") return failure("forbidden_transition");
   const itemState = createdItem(ITEM_SESSION_OPENS);
-  let nextDay: SessionDay = { ...day, state: "open" };
+  let nextDay: SessionDay = { ...day, state: "open", openedAt: now };
   let nextEntries = entries;
   const events: Event[] = [];
   const confirmed = entries.filter((e) => e.sessionId === day.sessionId && e.state === "confirmed").sort(byDate);

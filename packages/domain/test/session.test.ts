@@ -156,6 +156,11 @@ describe("abertura (RN-FILA-01)", () => {
     const { day } = apply(open(plannedDay({ requiresTriage: true }), freeze([e]), START));
     expect(day.items[0]?.stage).toBe("triage");
   });
+
+  it("RN-SES-07: guarda a hora em que abriu (o alerta de sinal conta dela)", () => {
+    const { day } = apply(open(plannedDay(), [], START + 40 * 60_000));
+    expect(day.openedAt).toBe(START + 40 * 60_000);
+  });
 });
 
 describe("sessão pública (RN-PUB)", () => {
