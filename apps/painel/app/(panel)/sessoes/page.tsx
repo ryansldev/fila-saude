@@ -4,7 +4,7 @@ import type { Service as ServiceSchema } from "@fila-saude/schemas/service";
 import type { Session } from "@fila-saude/schemas/session";
 
 import { sessionEditSchema, sessionInputSchema, visibilityInputSchema } from "@fila-saude/schemas/session";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/dialogs";
 import {
@@ -29,11 +29,12 @@ import { errorMessage, type SendingErrors, sendingErrors, validateClient } from 
 import {
   adjustVisibility,
   allowedVisibilities,
+  type BandInput,
+  bandsForSending,
+  bandsText,
   readSlots,
   serviceStations,
   sessionsOfDayPath,
-  timeForScreen,
-  timeForSending,
   todayInTimeZone,
   type Visibility,
   validDay,
@@ -45,15 +46,6 @@ type Service = Pick<ServiceSchema, "id" | "name" | "mode">;
 type Station = { id: string; name: string; stage: "triage" | "care"; services: string[] };
 
 const WITHOUT_ERRORS: SendingErrors = { general: null, fields: {} };
-
-/** Horário digitado → ISO; vazio ou inválido vira "" para o schema apontar o campo. */
-function timeOrEmpty(data: string, hour: string, timeZone: string): string {
-  try {
-    return timeForSending(data, hour, timeZone);
-  } catch {
-    return "";
-  }
-}
 
 /** Vagas do formulário: "sem limite" ligado vale null; desligado precisa de um inteiro ≥ 1. */
 function formSlots(
@@ -114,10 +106,86 @@ function SlotField({
   );
 }
 
+/**
+ * RN-SES-06: o horário em faixas ("das 08:00 às 12:00" e "das 13:00 às 17:00"); o vão entre duas faixas é o
+ * intervalo, em que nenhuma estação chama.
+ */
+function Bands({
+  bands,
+  error,
+  onChange,
+}: {
+  bands: BandInput[];
+  error: string | undefined;
+  onChange: (bands: BandInput[]) => void;
+}) {
+  const swap = (i: number, part: keyof BandInput, hour: string) =>
+    onChange(bands.map((b, k) => (k === i ? { ...b, [part]: hour } : b)));
+  // A próxima faixa começa uma hora depois do fim da última (o almoço comum) e dura quatro.
+  const next = (): BandInput => {
+    const [h = 12, m = 0] = (bands.at(-1)?.end ?? "12:00").split(":").map(Number);
+    const at = (plus: number) => `${String(Math.min(h + plus, 23)).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    return { start: at(1), end: at(5) };
+  };
+  return (
+    <FormField label="Horário" error={error}>
+      <div className="flex flex-col gap-2">
+        {bands.map((b, i) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: faixas editáveis sem id próprio
+          <div key={i} className="flex items-center gap-2">
+            <Text
+              type="time"
+              required
+              aria-label={`Início do horário ${i + 1}`}
+              className="w-28"
+              value={b.start}
+              onChange={(hour) => swap(i, "start", hour)}
+            />
+            <span className="text-sm text-slate-500">às</span>
+            <Text
+              type="time"
+              required
+              aria-label={`Fim do horário ${i + 1}`}
+              className="w-28"
+              value={b.end}
+              onChange={(hour) => swap(i, "end", hour)}
+            />
+            {bands.length > 1 ? (
+              <Button
+                type="button"
+                variant="text"
+                size="icon"
+                aria-label={`Remover o horário ${i + 1}`}
+                title="Remover horário"
+                onClick={() => onChange(bands.filter((_, k) => k !== i))}
+              >
+                <XIcon />
+              </Button>
+            ) : null}
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="secondary"
+          size="compact"
+          className="self-start"
+          onClick={() => onChange([...bands, next()])}
+        >
+          <PlusIcon data-icon="inline-start" />
+          Adicionar horário
+        </Button>
+        {bands.length > 1 ? (
+          <p className="text-sm text-slate-500">No intervalo entre os horários, nenhuma estação chama.</p>
+        ) : null}
+      </div>
+    </FormField>
+  );
+}
+
 type NewValues = {
   serviceId: string;
-  start: string;
-  end: string;
+  /** RN-SES-06: as faixas do horário; o vão entre duas é o intervalo da sessão. */
+  bands: BandInput[];
   withoutLimit: boolean;
   slots: string;
   visibility: Visibility;
@@ -128,8 +196,7 @@ type NewValues = {
 
 const NEW: NewValues = {
   serviceId: "",
-  start: "08:00",
-  end: "12:00",
+  bands: [{ start: "08:00", end: "12:00" }],
   withoutLimit: true,
   slots: "",
   visibility: "private",
@@ -172,10 +239,13 @@ function NewSessionPanel({
   async function onSend() {
     const slots = formSlots(v.withoutLimit, v.slots);
     if (!slots.ok) return setErrors({ general: null, fields: { slots: slots.error } });
+    const time = bandsForSending(day, v.bands, timeZone);
+    if (!time.ok) return setErrors({ general: null, fields: { breaks: time.error } });
     const body = {
       serviceId: v.serviceId,
-      start: timeOrEmpty(day, v.start, timeZone),
-      end: timeOrEmpty(day, v.end, timeZone),
+      start: time.start,
+      end: time.end,
+      breaks: time.breaks,
       slots: slots.slots,
       visibility: v.visibility,
       waivesPreRegistration: v.visibility === "public" && v.waivesPreRegistration,
@@ -220,14 +290,11 @@ function NewSessionPanel({
             }}
           />
         </FormField>
-        <div className="grid gap-x-5 gap-y-5 sm:grid-cols-2">
-          <FormField label="Início" error={errors.fields.start}>
-            <Text type="time" required value={v.start} onChange={(start) => setV({ ...v, start })} />
-          </FormField>
-          <FormField label="Fim" error={errors.fields.end}>
-            <Text type="time" required value={v.end} onChange={(end) => setV({ ...v, end })} />
-          </FormField>
-        </div>
+        <Bands
+          bands={v.bands}
+          error={errors.fields.breaks ?? errors.fields.start ?? errors.fields.end}
+          onChange={(bands) => setV({ ...v, bands })}
+        />
       </Section>
       <Section title="Vagas">
         <SlotField
@@ -495,7 +562,7 @@ export default function Sessions() {
   }, [current]);
 
   const name = (id: string, list: { id: string; name: string }[]) => list.find((x) => x.id === id)?.name ?? "?";
-  const time = (s: Session) => `${timeForScreen(s.start, timeZone).hour}–${timeForScreen(s.end, timeZone).hour}`;
+  const time = (s: Session) => bandsText(s, timeZone).join(" e ");
 
   async function cancel(s: Session): Promise<boolean> {
     const yes = await confirm({
@@ -542,7 +609,13 @@ export default function Sessions() {
         <DataTable header={["Horário", "Serviço", "Vagas", "Visibilidade", "Profissional", "Estado", ""]}>
           {sessions.items.map((s) => (
             <TableRow key={s.id}>
-              <TableCell className="font-semibold text-slate-900">{time(s)}</TableCell>
+              <TableCell className="font-semibold text-slate-900">
+                {bandsText(s, timeZone).map((b) => (
+                  <span key={b} className="block">
+                    {b}
+                  </span>
+                ))}
+              </TableCell>
               <TableCell>{name(s.serviceId, services)}</TableCell>
               <TableCell>{s.slots === null ? `${s.taken} / sem limite` : `${s.taken} / ${s.slots}`}</TableCell>
               <TableCell>

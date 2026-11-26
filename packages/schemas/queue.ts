@@ -208,6 +208,8 @@ export const scheduleSessionSchema = z.object({
   service: z.object({ id: z.uuid(), name: z.string() }),
   start: z.iso.datetime(),
   end: z.iso.datetime(),
+  /** RN-SES-06: os intervalos entre as faixas do horário; vazio, uma faixa só. */
+  breaks: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
   professional: z.string().nullable(),
   remainingSlots: z.number().int().min(0).nullable(),
   state: z.enum(["planned", "open"]),
@@ -287,7 +289,16 @@ export const myEntrySchema = z.object({
   state: z.string(),
   service: z.string(),
   unit: z.string(),
-  session: z.object({ id: z.uuid(), start: z.iso.datetime(), end: z.iso.datetime(), state: z.string() }).nullable(),
+  session: z
+    .object({
+      id: z.uuid(),
+      start: z.iso.datetime(),
+      end: z.iso.datetime(),
+      /** RN-SES-06: os intervalos entre as faixas do horário. */
+      breaks: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
+      state: z.string(),
+    })
+    .nullable(),
   ticket: z.string().nullable(),
   itemState: itemStateSchema.nullable(),
   estimate: estimateSchema.nullable(),

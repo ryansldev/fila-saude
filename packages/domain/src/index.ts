@@ -1,3 +1,4 @@
+export { type Band, breaksError, fromBands, toBands } from "./bands.ts";
 export {
   awaitedItems,
   callNext,

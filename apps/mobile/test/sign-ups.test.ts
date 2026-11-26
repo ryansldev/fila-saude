@@ -25,7 +25,7 @@ const base: MyEntry = {
   state: "confirmed",
   service: "Curativos",
   unit: "UBS Centro",
-  session: { id: SESSION_1, start: "2026-11-20T11:00:00Z", end: "2026-11-20T15:00:00Z", state: "planned" },
+  session: { id: SESSION_1, start: "2026-11-20T11:00:00Z", end: "2026-11-20T15:00:00Z", breaks: [], state: "planned" },
   ticket: null,
   itemState: null,
   estimate: null,

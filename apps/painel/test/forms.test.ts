@@ -8,6 +8,8 @@ import { averageTimeText, MINUTES_FIELD, serviceForSending, showsTriageTime } fr
 import {
   adjustVisibility,
   allowedVisibilities,
+  bandsForSending,
+  bandsText,
   readSlots,
   serviceStations,
   sessionsOfDayPath,
@@ -133,6 +135,61 @@ describe("serviço e estação", () => {
     ];
     expect(servicesForStage(services, "triage").map((s) => s.id)).toEqual(["a"]);
     expect(servicesForStage(services, "care")).toHaveLength(2);
+  });
+});
+
+describe("sessão em faixas (RN-SES-06)", () => {
+  const TZ = "America/Sao_Paulo";
+  it("duas faixas vão como início da primeira, fim da última e o intervalo entre elas", () => {
+    expect(
+      bandsForSending(
+        "2026-11-12",
+        [
+          { start: "13:00", end: "17:00" },
+          { start: "08:00", end: "12:00" },
+        ],
+        TZ,
+      ),
+    ).toEqual({
+      ok: true,
+      start: "2026-11-12T11:00:00.000Z",
+      end: "2026-11-12T20:00:00.000Z",
+      breaks: [{ start: "2026-11-12T15:00:00.000Z", end: "2026-11-12T16:00:00.000Z" }],
+    });
+  });
+  it("faixa incompleta, invertida ou sobreposta aponta o erro nas faixas", () => {
+    expect(bandsForSending("2026-11-12", [{ start: "08:00", end: "" }], TZ)).toEqual({
+      ok: false,
+      error: "preencha o início e o fim de cada horário",
+    });
+    expect(bandsForSending("2026-11-12", [{ start: "12:00", end: "08:00" }], TZ)).toEqual({
+      ok: false,
+      error: "fim deve ser depois do início",
+    });
+    expect(
+      bandsForSending(
+        "2026-11-12",
+        [
+          { start: "08:00", end: "12:00" },
+          { start: "11:00", end: "17:00" },
+        ],
+        TZ,
+      ),
+    ).toEqual({ ok: false, error: "as faixas não podem se sobrepor" });
+    expect(bandsForSending("2026-11-12", [{ start: "08:00:00", end: "12:00" }], TZ)).toEqual({
+      ok: false,
+      error: "horário inválido",
+    });
+  });
+  it("a lista mostra cada faixa", () => {
+    const one = { start: "2026-11-12T11:00:00.000Z", end: "2026-11-12T15:00:00.000Z", breaks: [] };
+    expect(bandsText(one, TZ)).toEqual(["08:00–12:00"]);
+    const two = {
+      start: "2026-11-12T11:00:00.000Z",
+      end: "2026-11-12T20:00:00.000Z",
+      breaks: [{ start: "2026-11-12T15:00:00.000Z", end: "2026-11-12T16:00:00.000Z" }],
+    };
+    expect(bandsText(two, TZ)).toEqual(["08:00–12:00", "13:00–17:00"]);
   });
 });
 

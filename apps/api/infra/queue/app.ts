@@ -69,6 +69,7 @@ export async function schedule(db: TenantDb, now: number, unitId?: string): Prom
     service: { id: srv.id, name: srv.name },
     start: s.start.toISOString(),
     end: s.end.toISOString(),
+    breaks: s.breaks,
     professional: s.professional,
     remainingSlots: s.slots === null ? null : Math.max(0, s.slots - s.taken),
     state: s.state as "planned" | "open",
@@ -240,7 +241,9 @@ export async function mine(db: TenantDb, patientId: string, now: number): Promis
       state: e.state,
       service: srv.name,
       unit: u.name,
-      session: s ? { id: s.id, start: s.start.toISOString(), end: s.end.toISOString(), state: s.state } : null,
+      session: s
+        ? { id: s.id, start: s.start.toISOString(), end: s.end.toISOString(), breaks: s.breaks, state: s.state }
+        : null,
       ticket: item?.ticket ?? null,
       itemState: item?.state ?? null,
       estimate:

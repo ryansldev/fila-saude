@@ -1,4 +1,5 @@
 import {
+  breaksError,
   changeVisibility,
   fillFromReserve,
   INACTIVE_ENTRY_STATES,
@@ -31,6 +32,7 @@ export async function forSession(db: TenantDatabase, s: Row): Promise<Session> {
     serviceId: s.serviceId,
     start: s.start.toISOString(),
     end: s.end.toISOString(),
+    breaks: s.breaks,
     slots: s.slots,
     taken: s.taken,
     visibility: s.visibility,
@@ -87,6 +89,21 @@ export async function requireSession(db: TenantDatabase, id: string) {
   return row;
 }
 
+type Breaks = { start: string; end: string }[];
+
+/** RN-SES-06: os intervalos ficam dentro do horário, em ordem e sem se sobrepor. */
+function checkBreaks(start: Date, end: Date, breaks: Breaks) {
+  const ms = breaks.map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) }));
+  const error = breaksError(start.getTime(), end.getTime(), ms);
+  if (error) throw new ApiError(400, "invalid_input", { breaks: [error] });
+}
+
+/** Os intervalos em ordem e no formato da resposta (ISO normalizado). */
+const sorted = (breaks: Breaks): Breaks =>
+  breaks
+    .map((b) => ({ start: new Date(b.start).toISOString(), end: new Date(b.end).toISOString() }))
+    .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+
 // T2.5: sessão avulsa do serviço da unidade.
 export async function createSession(ctx: ActionContext, unitId: string, data: SessionInput): Promise<Session> {
   await requireUnit(ctx.db, unitId);
@@ -94,12 +111,14 @@ export async function createSession(ctx: ActionContext, unitId: string, data: Se
   if (!s || s.unitId !== unitId) throw new ApiError(400, "invalid_input", { serviceId: ["serviço desta unidade"] });
   return runAction(ctx, { action: CONFIGURE, target: { kind: "session", id: (x) => x.id }, unitId }, async (tx) => {
     await verify(tx, s, data);
+    checkBreaks(new Date(data.start), new Date(data.end), data.breaks);
     const [row] = await tx
       .insert(session)
       .values({
         serviceId: s.id,
         start: new Date(data.start),
         end: new Date(data.end),
+        breaks: sorted(data.breaks),
         slots: data.slots,
         visibility: data.visibility,
         waivesPreRegistration: data.waivesPreRegistration,
@@ -133,12 +152,18 @@ export async function editSession(ctx: ActionContext, id: string, data: SessionE
     lock(current, data.version);
     const start = data.start ? new Date(data.start) : current.start;
     const end = data.end ? new Date(data.end) : current.end;
-    const changedTime = start.getTime() !== current.start.getTime() || end.getTime() !== current.end.getTime();
+    // O jsonb devolve as chaves em outra ordem: os dois lados vão normalizados para comparar.
+    const breaks = sorted(data.breaks ?? current.breaks);
+    const changedTime =
+      start.getTime() !== current.start.getTime() ||
+      end.getTime() !== current.end.getTime() ||
+      JSON.stringify(breaks) !== JSON.stringify(sorted(current.breaks));
     if (changedTime && current.state !== "planned") throw new ApiError(409, "forbidden_transition");
     // Com a sessão aberta, as estações já estão no dia: tirar uma com paciente chamado travaria o encerramento.
     if (data.stations && current.state !== "planned")
       throw new ApiError(409, "forbidden_transition", undefined, "As estações só mudam antes de abrir a sessão.");
     if (end <= start) throw new ApiError(400, "invalid_input", { end: ["fim deve ser depois do início"] });
+    checkBreaks(start, end, breaks);
     const slots = data.slots !== undefined ? data.slots : current.slots;
     if (slots !== null && slots < current.taken) {
       throw new ApiError(409, "slots_below_taken", undefined, undefined, { taken: current.taken });
@@ -158,6 +183,7 @@ export async function editSession(ctx: ActionContext, id: string, data: SessionE
     const row = await save(tx, current, {
       start,
       end,
+      breaks,
       slots,
       ...(data.professional !== undefined ? { professional: data.professional } : {}),
     });

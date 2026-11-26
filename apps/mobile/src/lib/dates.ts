@@ -1,3 +1,5 @@
+import { toBands } from "@fila-saude/domain";
+
 const TIME_ZONE = "America/Sao_Paulo";
 
 /** "quinta, 12/11" (design do app). */
@@ -58,12 +60,14 @@ export function dayGreeting(now: number, timeZone = TIME_ZONE): "bom dia" | "boa
   return "boa noite";
 }
 
-/** "hoje, das 14h às 18h", "amanhã, das 8h às 12h30" ou "quarta, 18/11, das 8h às 12h". */
-export function careWindow(start: string, end: string, now: number, timeZone = TIME_ZONE): string {
-  const day = isToday(start, now, timeZone)
-    ? "hoje"
-    : isToday(start, now + ONE_DAY, timeZone)
-      ? "amanhã"
-      : shortDay(start, timeZone);
-  return `${day}, das ${hour(start, timeZone)} às ${hour(end, timeZone)}`;
+/** RN-SES-06: o horário da sessão em faixas, "8h às 12h e 13h às 17h"; sem intervalo, "8h às 12h". */
+export function sessionHours(
+  s: { start: string; end: string; breaks?: { start: string; end: string }[] },
+  timeZone = TIME_ZONE,
+): string {
+  const breaks = (s.breaks ?? []).map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) }));
+  const at = (t: number) => hour(new Date(t).toISOString(), timeZone);
+  return toBands(Date.parse(s.start), Date.parse(s.end), breaks)
+    .map((b) => `${at(b.start)} às ${at(b.end)}`)
+    .join(" e ");
 }

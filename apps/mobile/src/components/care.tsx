@@ -28,7 +28,7 @@ import {
 } from "@/components/ui";
 import { properName } from "@/lib/account";
 import { QUERY_INTERVAL_MS } from "@/lib/config";
-import { dayParts, hour, isToday, shortDay } from "@/lib/dates";
+import { dayParts, isToday, sessionHours, shortDay } from "@/lib/dates";
 import { useSession } from "@/lib/session";
 import { canRedo, SIGN_UP_PATH } from "@/lib/sign-ups";
 import {
@@ -326,7 +326,7 @@ function CareHeader({ en, sit, onOpen }: { en: MyEntry; sit: Situation; onOpen?:
           {en.service.toLowerCase()}
         </Text>
         <Small>
-          {en.session ? `${hour(en.session.start, en.timeZone)} às ${hour(en.session.end, en.timeZone)} · ` : ""}
+          {en.session ? `${sessionHours(en.session, en.timeZone)} · ` : ""}
           {en.unit}
           {en.forMe ? "" : ` · para ${properName(en.person)}`}
         </Small>
@@ -714,7 +714,7 @@ export function DayTicketCard({
         ) : (
           <SoftText style={{ textAlign: "center" }}>
             {b.button === "confirm"
-              ? `${en.session ? shortWindow(en.session.start, en.session.end, en.timeZone) : ""}`
+              ? `${en.session ? shortWindow(en.session, en.timeZone) : ""}`
               : "a senha sai quando a fila abrir."}
           </SoftText>
         )}
@@ -733,8 +733,8 @@ export function DayTicketCard({
   );
 }
 
-const shortWindow = (start: string, end: string, timeZone: string) =>
-  `${isToday(start, Date.now(), timeZone) ? "hoje" : shortDay(start, timeZone)}, das ${hour(start, timeZone)} às ${hour(end, timeZone)}`;
+const shortWindow = (s: { start: string; end: string; breaks: { start: string; end: string }[] }, timeZone: string) =>
+  `${isToday(s.start, Date.now(), timeZone) ? "hoje" : shortDay(s.start, timeZone)}, das ${sessionHours(s, timeZone)}`;
 
 /** O corte do bilhete: linha tracejada com dois meios-círculos na cor do fundo. */
 function Perforation() {

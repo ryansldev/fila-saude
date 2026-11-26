@@ -97,6 +97,7 @@ describe("contratos da configuração da v0.1", () => {
         serviceId: id,
         start: "2026-11-12T11:00:00.000Z",
         end: "2026-11-12T15:00:00.000Z",
+        breaks: [{ start: "2026-11-12T13:00:00.000Z", end: "2026-11-12T14:00:00.000Z" }],
         slots: null,
         taken: 0,
         visibility: "private",

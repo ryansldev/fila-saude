@@ -13,6 +13,7 @@ const base: MyEntry = {
     id: "00000000-0000-4000-8000-000000000002",
     start: "2026-11-14T11:00:00.000Z",
     end: "2026-11-14T15:00:00.000Z",
+    breaks: [],
     state: "open",
   },
   ticket: "V-002",
@@ -36,6 +37,7 @@ const SESSION_PLANNED = {
   id: "00000000-0000-4000-8000-000000000002",
   start: "2026-11-14T13:00:00.000Z",
   end: "2026-11-14T15:00:00.000Z",
+  breaks: [],
   state: "planned",
 };
 const NOW = Date.parse("2026-11-14T12:00:00.000Z");

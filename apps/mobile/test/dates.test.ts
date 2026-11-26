@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { careWindow, dayGreeting, dayParts, hour, isToday, shortDay } from "@/lib/dates";
+import { dayGreeting, dayParts, hour, isToday, sessionHours, shortDay } from "@/lib/dates";
 
 describe("cumprimento do Dr. pelo horário", () => {
   it("bom dia de manhã, boa tarde à tarde, boa noite à noite e de madrugada", () => {
@@ -44,13 +44,17 @@ describe("hoje no fuso da unidade", () => {
   });
 });
 
-describe("quando é o atendimento (cartão, revisão 2026-11-14)", () => {
-  const now = Date.parse("2026-11-14T12:00:00.000Z"); // sábado 9h em Brasília
-  it("hoje, amanhã ou o dia; com a faixa de horário", () => {
-    expect(careWindow("2026-11-14T17:00:00.000Z", "2026-11-14T21:00:00.000Z", now)).toBe("hoje, das 14h às 18h");
-    expect(careWindow("2026-11-15T11:00:00.000Z", "2026-11-15T15:30:00.000Z", now)).toBe("amanhã, das 8h às 12h30");
-    expect(careWindow("2026-11-18T11:00:00.000Z", "2026-11-18T15:00:00.000Z", now)).toBe(
-      "quarta, 18/11, das 8h às 12h",
+describe("horário em faixas (RN-SES-06)", () => {
+  it("uma faixa: 8h às 12h; duas: cada faixa, com o intervalo de fora", () => {
+    expect(sessionHours({ start: "2026-11-15T11:00:00.000Z", end: "2026-11-15T15:00:00.000Z", breaks: [] })).toBe(
+      "8h às 12h",
     );
+    expect(
+      sessionHours({
+        start: "2026-11-15T11:00:00.000Z",
+        end: "2026-11-15T20:30:00.000Z",
+        breaks: [{ start: "2026-11-15T15:00:00.000Z", end: "2026-11-15T16:00:00.000Z" }],
+      }),
+    ).toBe("8h às 12h e 13h às 17h30");
   });
 });

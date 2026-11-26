@@ -86,6 +86,7 @@ describe("minha fila: estado de cada entrada, como no design do app", () => {
       id: base.entryId,
       start: "2026-11-13T10:00:00.000Z",
       end: "2026-11-13T20:00:00.000Z",
+      breaks: [],
       state: "planned",
     };
     expect(sit({ ...base, session: planned, estimate: { kind: "awaiting_start" } }).kind).toBe("waiting");
@@ -131,6 +132,7 @@ describe("estados que não podem mentir para o paciente (revisão 2026-11-13)", 
     id: "00000000-0000-4000-8000-000000000009",
     start,
     end: "2026-11-13T20:00:00.000Z",
+    breaks: [],
     state,
   });
   const confirmed = { ...base, state: "confirmed", ticket: null, itemState: null };
@@ -204,9 +206,16 @@ describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 202
     id: base.entryId,
     start: "2026-11-14T11:00:00.000Z",
     end: "2026-11-14T20:00:00.000Z",
+    breaks: [],
     state: "open",
   };
-  const tomorrow = { ...today, start: "2026-11-15T11:00:00.000Z", end: "2026-11-15T15:00:00.000Z", state: "planned" };
+  const tomorrow = {
+    ...today,
+    start: "2026-11-15T11:00:00.000Z",
+    end: "2026-11-15T15:00:00.000Z",
+    breaks: [],
+    state: "planned",
+  };
   const r = (en: MyEntry) => entrySummary(en, entrySituation(en, NOW), NOW);
 
   it("lista de espera e reserva: ainda NÃO está em fila nenhuma, grupo sem data", () => {
@@ -267,6 +276,7 @@ describe("próximo passo, em uma frase (cartão, revisão 2026-11-14)", () => {
     id: base.entryId,
     start: "2026-11-14T17:00:00.000Z",
     end: "2026-11-14T21:00:00.000Z",
+    breaks: [],
     state: "planned",
   };
   it("diz o que fazer agora, com o horário quando importa", () => {
