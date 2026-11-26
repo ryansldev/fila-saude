@@ -24,7 +24,8 @@ const station = (day: SessionDay, id = "e1"): Station => {
   return e;
 };
 /** Quando a pausa da estação começa (marcada) ou começou (em pausa). */
-const startOf = (e: Station) => (e.pause?.state === "scheduled" ? e.pause.from : e.pause?.since);
+const startOf = (e: Station) =>
+  e.pause?.state === "scheduled" ? e.pause.from : e.pause && "since" in e.pause ? e.pause.since : undefined;
 const two = (day: SessionDay): SessionDay =>
   freeze({
     ...day,
@@ -175,7 +176,7 @@ describe("máquina de estados da pausa (PAUSE_TRANSITIONS)", () => {
     d = apply(pauseStation(d, { stationId: "e1", back: { at: T + 60 * MIN } }, T));
     d = apply(callNext(d, { stationId: "e1" }, T + 20 * MIN));
     // 12:30 chegou com a Ana na sala: ainda marcada, e a estação ainda conta como chamando.
-    expect(pauseState(advance(station(d), T + 35 * MIN))).toBe("scheduled");
+    expect(pauseState(advance(d, station(d), T + 35 * MIN))).toBe("scheduled");
     d = apply(finish(d, { stationId: "e1" }, T + 45 * MIN));
     expect(station(d).pause).toEqual({ state: "paused", since: T + 45 * MIN, until: T + 60 * MIN });
   });

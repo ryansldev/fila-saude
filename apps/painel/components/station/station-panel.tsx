@@ -18,7 +18,17 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { RiskCard } from "@/components/ui/risk-card";
 import { stopwatch } from "@/lib/queue";
-import { calledPhase, closedText, oldestPill, pausedPill, pausedText, scheduledBand, waitText } from "@/lib/station";
+import {
+  askingNotice,
+  calledPhase,
+  closedText,
+  oldestPill,
+  pausedPill,
+  pausedText,
+  scheduledBand,
+  servingBand,
+  waitText,
+} from "@/lib/station";
 import { canRefer, levelColor, needsClassify, priorityText, TRIAGE_COLORS } from "@/lib/triage";
 import { cn } from "@/lib/utils";
 
@@ -215,6 +225,73 @@ function Scheduled({
   );
 }
 
+type AskingPause = Extract<NonNullable<StationOperation["station"]["pause"]>, { state: "asking" }>;
+
+/** Opção C: na hora da pausa, quem chegou no prazo espera: atender antes de pausar ou pausar agora. */
+function Asking({
+  op,
+  pause,
+  onCommand,
+  sending,
+}: {
+  op: StationOperation;
+  pause: AskingPause;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+}) {
+  const zone = op.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const notice = askingNotice(pause.waiting, pause.untilIfServed, zone, pause.canServe);
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl border-2 border-b-4 border-amber-300 bg-amber-50 px-5 py-4">
+      <span className="flex size-10 items-center justify-center rounded-xl bg-white text-amber-700">
+        <CoffeeIcon className="size-5" aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="font-extrabold text-amber-950">{notice.title}</p>
+        <p className="text-sm text-amber-900">{notice.text}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {notice.serve ? (
+          <Button icon={MegaphoneIcon} disabled={sending} onClick={() => onCommand("serve-before-pause")}>
+            {notice.serve}
+          </Button>
+        ) : null}
+        <Button variant="secondary" icon={PauseIcon} disabled={sending} onClick={() => onCommand("pause-now")}>
+          Pausar agora
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Opção C: atendendo antes de pausar, a faixa no topo diz que a pausa começa ao finalizar. */
+function Serving({
+  lengthMin,
+  onCommand,
+  sending,
+}: {
+  lengthMin: number | null;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+}) {
+  const band = servingBand(lengthMin);
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-b-4 border-amber-300 bg-amber-50 px-4 py-3">
+      <CoffeeIcon className="size-5 text-amber-700" aria-hidden />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="font-extrabold text-amber-950">{band.title}</p>
+        <p className="text-sm text-amber-900">{band.text}</p>
+      </div>
+      <Pill tone="alert" icon={<ClockIcon className="size-3" aria-hidden />}>
+        {band.pill}
+      </Pill>
+      <Button variant="text" disabled={sending} onClick={() => onCommand("resume")}>
+        desmarcar a pausa
+      </Button>
+    </div>
+  );
+}
+
 /** A estação com a sessão aberta: a fila, quem está chamado (em duas fases) e as ações. */
 export function StationPanel({ op, color, onChooseColor, onCommand, sending, now }: Props) {
   const called = op.called;
@@ -243,8 +320,13 @@ export function StationPanel({ op, color, onChooseColor, onCommand, sending, now
       {pause?.state === "scheduled" ? (
         <Scheduled op={op} from={pause.from} until={pause.until} onCommand={onCommand} sending={sending} />
       ) : null}
+      {pause?.state === "serving" ? (
+        <Serving lengthMin={pause.lengthMin} onCommand={onCommand} sending={sending} />
+      ) : null}
       <StationQueue op={op} now={now} />
-      {!called && pause?.state === "paused" ? (
+      {!called && pause?.state === "asking" ? (
+        <Asking op={op} pause={pause} onCommand={onCommand} sending={sending} />
+      ) : !called && pause?.state === "paused" ? (
         <Paused op={op} from={pause.from} until={pause.until} onCommand={onCommand} sending={sending} now={now} />
       ) : called ? (
         <Called

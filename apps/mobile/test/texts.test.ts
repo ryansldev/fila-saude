@@ -444,4 +444,35 @@ describe("pausa da estação no app (RN-EST-06, fatia 4 da pausa)", () => {
     const present = paused(T - 10 * MIN, null, { itemState: "present" });
     expect(entrySummary(present, entrySituation(present, T), T)).toMatchObject({ badge: "na unidade" });
   });
+
+  it("opção C: na unidade, com a justificativa, a pausa antes da vez e quando é a vez", () => {
+    const held = (until: number | null): MyEntry => ({
+      ...base,
+      itemState: "present",
+      estimate: { kind: "position", position: 1, minutes: 60, pause: { from: T - MIN, until, beforeTurn: true } },
+    });
+    const withBack = held(T + 60 * MIN);
+    const s1 = entrySituation(withBack, T);
+    expect(s1).toMatchObject({ pause: { beforeTurn: true, back: "13h32" } });
+    expect(entrySummary(withBack, s1, T)).toMatchObject({ badge: "na unidade" });
+    expect(nextStep(withBack, s1, T)).toBe(
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez é a primeira na volta, às 13h32. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+    );
+    const second: MyEntry = {
+      ...withBack,
+      estimate: {
+        kind: "position",
+        position: 2,
+        minutes: 70,
+        pause: { from: T - MIN, until: T + 60 * MIN, beforeTurn: true },
+      },
+    };
+    expect(nextStep(second, entrySituation(second, T), T)).toBe(
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: quem chegou no prazo é atendido primeiro na volta, às 13h32. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+    );
+    const noBack = held(null);
+    expect(nextStep(noBack, entrySituation(noBack, T), T)).toBe(
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez é a primeira quando o atendimento voltar. avisamos por aqui quando for a hora. obrigado pela paciência.",
+    );
+  });
 });

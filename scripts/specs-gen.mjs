@@ -51,7 +51,13 @@ const LABELS = {
     reassigned: "Remanejado",
   },
   session: { planned: "Planejada", open: "Aberta", cancelled: "Cancelada", closed: "Encerrada" },
-  pause: { none: "Sem pausa", scheduled: "Marcada", paused: "Em pausa" },
+  pause: {
+    none: "Sem pausa",
+    scheduled: "Marcada",
+    asking: "Perguntando",
+    serving: "Atendendo antes",
+    paused: "Em pausa",
+  },
 };
 
 const PROFILES = [

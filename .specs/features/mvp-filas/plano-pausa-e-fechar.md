@@ -1,6 +1,6 @@
 # Plano: pausa, fechar a estação e o alerta de sinal
 
-> Combinado na conversa de 2026-11-24 (QP2 e QP6 da AD-076). Domínio na `main` (PR #42); o resto em fatias na branch pai `feat/pause-and-close` (2026-11-25).
+> Combinado na conversa de 2026-11-24 (QP2 e QP6 da AD-076). Domínio na `main` (PR #42); o resto em fatias na branch `feat/pause-and-close` (2026-11-25; uma branch só, sem branches filhas, 2026-11-26).
 
 ## Por quê
 
@@ -31,18 +31,18 @@ Hoje a estação da sessão está sempre "aberta": não existe pausar nem fechar
 
 ## Fatias (TDD em cada uma)
 
-O domínio entrou na `main` (PR #42). O resto vai em fatias pequenas e **ponta a ponta** (API, painel e app no que couber, para testar clicando), uma PR por vez para a branch pai `feat/pause-and-close`, que vai para a `main` no fim.
+O domínio entrou na `main` (PR #42). O resto vai em fatias pequenas e **ponta a ponta** (API, painel e app no que couber, para testar clicando), em commits na branch `feat/pause-and-close`, que vai para a `main` no fim (uma PR só).
 
 1. **Fechar e reabrir a estação.** Guardar no banco a estação fechada (`closedAt`, as paradas); rotas fechar e reabrir, com auditoria; no painel, **Fechar a estação** e **Reabrir** na estação. Só o caso com outra estação aberta (a fila segue).
 2. **Fechar a última estação.** Com `closes_session` ou `closes_stage` (`closingConsequence`), o painel confirma e a rota, na mesma transação, fecha com `confirmed` e chama `close` ou `closeStage`. Reabrir a triagem roda `fillFromReserve`. Mensagens de `triage_closed` no balcão (painel) e na inscrição (app).
 3. **Pausar agora e voltar.** Guardar a pausa da estação; rotas pausar e voltar, com auditoria; a varredura roda `advancePauses`; no painel, **Pausar** (com a volta: 30 min, 1 h ou um horário), "em pausa, volta às 13:00" e **Voltar agora**. "Finalizar e chamar o próximo" com a pausa começando não responde "ninguém aguardando".
 4. **Pausa marcada e o app.** Com alguém a caminho, a pausa começa depois do prazo: no painel, a faixa "pausa às 12:30" e **Desmarcar a pausa**; no app, "pausa para o almoço, volta às 13:00" (ou "por tempo indeterminado") no cartão e no bilhete, com o tempo contando a pausa.
-5. **Opção C.** Na hora da pausa, quem chegou no prazo sem ser chamado: o profissional escolhe atender antes ou pausar agora, e a pessoa recebe a justificativa por escrito e continua na frente (domínio, API, painel e app; referência em `wip/pause-option-c`).
+5. **Opção C.** Na hora da pausa, quem chegou no prazo sem ser chamado: o profissional escolhe atender antes ou pausar agora, e a pessoa recebe a justificativa por escrito e continua na frente (domínio, API, painel e app). Feita: na máquina de estados da pausa, com os estados "perguntando" e "atendendo antes".
 6. **Horário em faixas.** A sessão com várias faixas na criação, na edição e na série (migração: cada sessão antiga vira uma faixa); no painel, "adicionar horário"; o vão entre faixas é o intervalo da sessão.
 7. **Alerta de sinal (QP2).** A consulta da unidade traz os alertas; no painel, a faixa "TV sem sinal há 5 min", "Consultório 2 sem sinal há 3 min".
-8. **Limpeza.** QP6 e QP2 entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`; a branch pai vai para a `main`.
+8. **Limpeza.** QP6 e QP2 entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`; a branch vai para a `main`.
 
-Depois, numa branch pai própria: a urgência confirmada que não chega recebe 2 "venha agora" e sai da fila com falta (PA5).
+Depois, numa branch própria: a urgência confirmada que não chega recebe 2 "venha agora" e sai da fila com falta (PA5).
 
 ## Fora deste plano
 

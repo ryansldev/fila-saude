@@ -1,6 +1,7 @@
 import {
   type Action,
   advancePauses,
+  averageTime,
   callNext,
   close,
   closeStage,
@@ -17,6 +18,7 @@ import {
   OPERATE_CAVEAT_STAGE,
   type PauseBack,
   pausedAt,
+  pauseNow,
   pauseStation,
   type QueueItem,
   type Result,
@@ -25,6 +27,7 @@ import {
   reopenStation,
   resumeStation,
   type SessionDay,
+  serveBeforePause,
   sessionOrigin,
   showedUp,
   showedUpAt,
@@ -32,6 +35,7 @@ import {
   toleranceExceeded,
   triageClosed,
   undoShowedUp,
+  waitingBeforePause,
 } from "@fila-saude/domain";
 import type { StationCommand, StationOperation } from "@fila-saude/schemas/queue";
 import { and, desc, eq } from "drizzle-orm";
@@ -48,6 +52,7 @@ import { entryNames } from "./panel";
 import { stationSignal } from "./signal";
 
 const IN_QUEUE = 3;
+const MIN = 60_000;
 /** Sem cor confirmada (ainda não triado), o tempo-alvo da pílula "o mais antigo". */
 const UNCOLORED_TARGET_MIN = 30;
 
@@ -100,10 +105,17 @@ async function build(
   const remote = day ? day.items.filter((i) => i.state === "remote" && i.stage === e.stage) : [];
   const onTheWay = [...remote].sort((a, b) => a.number - b.number).slice(0, IN_QUEUE);
   const upcoming = queue.slice(0, IN_QUEUE);
+  // Opção C: quem chegou no prazo e espera a estação responder "atender antes de pausar?".
+  const order =
+    current && est?.pause?.state === "asking"
+      ? inCallOrder(current, e.id, classifies, now)
+      : { items: [], canServe: false };
+  const asked = order.items;
   const names = await entryNames(db, [
     ...(item ? [item.entryId] : []),
     ...upcoming.map((i) => i.entryId),
     ...onTheWay.map((i) => i.entryId),
+    ...asked.map((i) => i.entryId),
   ]);
   const short = (i: QueueItem) => firstName(names.get(i.entryId) ?? "");
   const since = (i: QueueItem) => new Date(i.presentSince ?? now).toISOString();
@@ -119,7 +131,15 @@ async function build(
       stage: e.stage,
       closedAt: est?.closedAt === undefined ? null : new Date(est.closedAt).toISOString(),
       closing: day?.state === "open" ? closingConsequence(day, e.id) : null,
-      pause: est?.pause ? pauseOf(est.pause) : null,
+      pause:
+        est?.pause && current
+          ? pauseOf(est.pause, {
+              waiting: asked.map((i) => ({ ticket: i.ticket, name: names.get(i.entryId) ?? "" })),
+              canServe: order.canServe,
+              avgMin: averageTime(current, e.stage, current.serviceId, now),
+              now,
+            })
+          : null,
       pauseStartsAt: day ? pauseStartsAt(day, e.id, now) : null,
     },
     session: s,
@@ -153,19 +173,62 @@ async function build(
 
 const iso = (t: number) => new Date(t).toISOString();
 
+/**
+ * Opção C: quem espera a resposta, na ordem em que "atender antes" chama (os que esta estação pode chamar
+ * primeiro), para o botão "Atender <nome>" nomear quem vai mesmo ser chamado.
+ */
+function inCallOrder(
+  day: SessionDay,
+  stationId: string,
+  classifies: boolean,
+  now: number,
+): { items: QueueItem[]; canServe: boolean } {
+  const waiting = waitingBeforePause(day, stationId, now);
+  const ids = new Set(waiting.map((i) => i.id));
+  const callable = eligible(day, stationId, { classifies }).filter((i) => ids.has(i.id));
+  return { items: [...callable, ...waiting.filter((i) => !callable.includes(i))], canServe: callable.length > 0 };
+}
+
 type StationPause = NonNullable<SessionDay["stations"][number]["pause"]>;
 
-const pauseOf = (p: StationPause) => ({
-  state: p.state,
-  from: iso(p.state === "paused" ? p.since : p.from),
-  until: p.until === null ? null : iso(p.until),
-});
+type PausePanel = NonNullable<StationOperation["station"]["pause"]>;
+type Asked = { waiting: { ticket: string; name: string }[]; canServe: boolean; avgMin: number; now: number };
+const isoOrNull = (t: number | null) => (t === null ? null : iso(t));
+
+/**
+ * A pausa na tela da estação. Perguntando (opção C): quem espera e a volta se atender o primeiro antes (a pausa
+ * começa ao fim do atendimento, pelo tempo médio, com a mesma duração).
+ */
+function pauseOf(p: StationPause, asked?: Asked): PausePanel {
+  switch (p.state) {
+    case "scheduled":
+      return { state: p.state, from: iso(p.from), until: isoOrNull(p.until) };
+    case "paused":
+      return { state: p.state, from: iso(p.since), until: isoOrNull(p.until) };
+    case "serving":
+      return { state: p.state, lengthMin: p.length === null ? null : Math.round(p.length / MIN) };
+    case "asking": {
+      const servedAt = asked ? asked.now + asked.avgMin * MIN : null;
+      const untilIfServed = p.until === null || servedAt === null ? null : servedAt + (p.until - p.since);
+      return {
+        state: p.state,
+        from: iso(p.since),
+        until: isoOrNull(p.until),
+        waiting: asked?.waiting ?? [],
+        untilIfServed: isoOrNull(untilIfServed),
+        canServe: asked?.canServe ?? false,
+      };
+    }
+  }
+}
 
 /** RN-EST-06: quando a pausa começaria se tocasse "Pausar" agora (o domínio decide, sem gravar); nulo se não pausa. */
 function pauseStartsAt(day: SessionDay, stationId: string, now: number): string | null {
   const r = pauseStation(day, { stationId, back: null }, now);
   const p = r.ok ? r.state.stations.find((x) => x.id === stationId)?.pause : undefined;
-  return p ? pauseOf(p).from : null;
+  if (!p) return null;
+  const view = pauseOf(p);
+  return "from" in view ? view.from : null;
 }
 
 /** RN-PERF-05: só o enfermeiro confirma o nível de risco (Cofen 661/2021). */
@@ -251,6 +314,8 @@ const COMMANDS: Record<
   reopen: reopenStation,
   pause: (d, cmd, now) => pauseStation(d, { stationId: cmd.stationId, back: cmd.back ?? null }, now),
   resume: resumeStation,
+  "serve-before-pause": serveBeforePause,
+  "pause-now": pauseNow,
 };
 
 // T3.7 / RN-CHAM: o comando trava a sessão (INV-04) e passa pelo guard e pela auditoria.

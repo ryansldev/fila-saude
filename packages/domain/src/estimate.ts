@@ -1,4 +1,4 @@
-import { type Pause, pausedBetween, stagePause, stopsForGood } from "./pause-time.ts";
+import { advancePauses, heldPause, type Pause, pausedBetween, stagePause, stopsForGood } from "./pause-time.ts";
 import {
   arrivalDeadlineEnd,
   DEFAULT_CONFIG,
@@ -105,6 +105,30 @@ const aheadIn = (day: SessionDay, set: QueueItem[], item: QueueItem): number =>
  * depois do início de uma pausa à frente soma a duração. Sem hora de volta, o tempo não a soma.
  */
 function withPause(
+  seen: SessionDay,
+  item: QueueItem,
+  ahead: number,
+  queue: number,
+  now: number,
+  ready: number,
+): { minutes: number; pause?: Pause; blocked: boolean } {
+  const r = stagedPause(pendingFor(seen, item.id), item, ahead, queue, now, ready);
+  // Opção C: quem recebeu a justificativa vê a pausa da estação que o segurou ("antes da sua vez"), mesmo fechada.
+  const held = heldPause(seen, item.id, now);
+  return held ? { ...r, pause: held } : r;
+}
+
+const withoutOwnPause = ({ pause: _, ...rest }: SessionDay["stations"][number]) => rest;
+
+/** Opção C: quem a estação pode atender antes de pausar (perguntando ou atendendo antes) não vê essa pausa. */
+function pendingFor(day: SessionDay, itemId: string): SessionDay {
+  const pending = (e: SessionDay["stations"][number]) =>
+    (e.pause?.state === "asking" || e.pause?.state === "serving") && e.pause.waitFor.includes(itemId);
+  if (!day.stations.some(pending)) return day;
+  return { ...day, stations: day.stations.map((e) => (pending(e) ? withoutOwnPause(e) : e)) };
+}
+
+function stagedPause(
   day: SessionDay,
   item: QueueItem,
   ahead: number,
@@ -154,7 +178,7 @@ function readyIn(day: SessionDay, inStage: QueueItem[], item: QueueItem, now: nu
  * volta. `lead` é o prazo de chegada de quem está em casa: a vez que cairia a menos dele de uma pausa só sai
  * na volta. `ready` é quando a estação tem alguém para atender (o 1º da fila em casa ainda vem): antes da
  * 1ª pausa, só o tempo depois disso anda a fila. Devolve quando chega a vez (nulo se uma pausa sem hora de
- * volta cair no caminho) e a 1ª pausa.
+ * volta cair no caminho) e a 1ª pausa. `origin`: o agora real (a pausa de quem atende antes conta dele).
  */
 function pausedWait(
   day: SessionDay,
@@ -163,13 +187,14 @@ function pausedWait(
   work: number,
   lead: number,
   ready = 0,
+  origin = start,
 ): { end: number | null; pause?: Pause } {
   let t = start;
   let wait = ready;
   let left = work;
   let first: Pause | undefined;
   for (let guard = 0; guard < 20; guard++) {
-    const p = stagePause(day, stage, t);
+    const p = stagePause(day, stage, t, origin);
     const busy = left > 0 ? wait : 0;
     if (!p || (p.from > t && t + busy + left + lead < p.from)) {
       return { end: t + left, ...(first ? { pause: first } : {}) };
@@ -191,7 +216,10 @@ function pausedWait(
  * sessão planejada aguarda o início; encerrada ou cancelada, ou item em estado final, está fora
  * da fila; chamado vê a chamada. Item inexistente é erro de programação: lança.
  */
-export function estimate(day: SessionDay, itemId: string, now: number, options: Options): Estimate {
+export function estimate(stored: SessionDay, itemId: string, now: number, options: Options): Estimate {
+  // O dia gravado pode estar um giro atrás (a pausa marcada que já pergunta, a volta que passou): o relógio da
+  // pausa até agora, uma vez, para a fila e a pausa se verem do mesmo jeito.
+  const day = advancePauses(stored, now);
   const item = day.items.find((i) => i.id === itemId);
   if (!item) throw new Error(`item ${itemId} não existe`);
   if (day.state === "planned") return { kind: "awaiting_start" };
@@ -253,7 +281,7 @@ export function estimate(day: SessionDay, itemId: string, now: number, options: 
   const nA = capacity(careStations, careStart + ((beforeQuery * careAvg) / careStations.length) * MIN);
   const careQueue = (beforeQuery * careAvg) / nA;
   // Todas as pausas do atendimento no caminho; uma sem hora de volta: não há como prever a consulta.
-  const careWait = pausedWait(day, "care", careStart, careQueue * MIN, 0);
+  const careWait = pausedWait(day, "care", careStart, careQueue * MIN, 0, 0, now);
   if (careWait.end === null) return primary;
   return { ...primary, query: { minutes: Math.ceil((careWait.end - now) / MIN) } };
 }

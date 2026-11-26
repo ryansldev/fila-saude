@@ -1,6 +1,6 @@
 import { applyTransition, ITEM_TRANSITIONS, type ItemState } from "./contracts.ts";
 import { isUrgent, type RiskLevel } from "./kinds.ts";
-import { advance, inBreak, leavePause, pausedAt } from "./pause-time.ts";
+import { advance, closeNotices, dropWaiting, inBreak, leavePause, pausedAt, withHeld } from "./pause-time.ts";
 import {
   eligible,
   orderKey,
@@ -228,6 +228,45 @@ const withStationState = (day: SessionDay, e: Station): SessionDay =>
   e === stationOf(day, e.id) ? day : { ...day, stations: day.stations.map((x) => (x.id === e.id ? e : x)) };
 
 /**
+ * O relógio da pausa da estação depois de um atendimento (`callEnded`): a marcada que chegou nele começa agora;
+ * atendendo antes de pausar (opção C), a pausa começa (com o evento) ou a estação pergunta de novo. `ended`: quem
+ * saiu da chamada; nulo sem chamada encerrada.
+ */
+function afterCall(day: SessionDay, stationId: string, now: number, ended: string | null): Result<SessionDay> {
+  // Quem saiu da chamada (atendido, acolhido) não segura mais a pausa de ninguém.
+  if (ended !== null) day = dropWaiting(day, ended);
+  const callEnded = ended !== null;
+  const before = stationOf(day, stationId);
+  const after = advance(day, before, now, callEnded);
+  const current = withStationState(day, after);
+  if (before.pause?.state !== "serving" || after.pause?.state !== "paused") return ok(current);
+  return ok(current, [
+    { kind: "station_paused", stationId, data: { from: after.pause.since, until: after.pause.until } },
+  ]);
+}
+
+/** Chama `next` na estação (RN-CHAM-01): o item vira "chamado", a chamada fica registrada e as travas sobre ele acabam. */
+export function callItem(day: SessionDay, stationId: string, next: QueueItem, now: number): Result<SessionDay> {
+  if (applyTransition(ITEM_TRANSITIONS, next.state, EVENT_CALL) !== "called") {
+    throw new Error(`contrato: ${next.state} não é chamado`);
+  }
+  let current = releaseLocks(day, next.id);
+  // Chamado: a pausa antes da vez (opção C) acabou para ele.
+  if (current.heldByPause?.some((h) => h.id === next.id)) {
+    current = { ...current, heldByPause: current.heldByPause.filter((h) => h.id !== next.id) };
+  }
+  current = withItem(current, { ...next, state: "called", lockedBehind: [] });
+  current = withStation(current, stationId, { calledItemId: next.id });
+  current = {
+    ...current,
+    calls: [...current.calls, { itemId: next.id, stage: next.stage, stationId, at: now, orderKey: orderKey(next) }],
+  };
+  return ok(current, [
+    { kind: "called", ...base(day, next, stationId), data: { ticket: next.ticket, stage: next.stage, at: now } },
+  ]);
+}
+
+/**
  * RN-CHAM-01/02: encerra o chamado anterior desta estação e chama o 1º elegível dela. Na triagem,
  * `confirmedRisk` confirma ou reclassifica o risco de quem sai (RN-TRI-03).
  * Sem elegível, o chamado anterior é finalizado e a estação fica livre (ok, sem evento "chamado");
@@ -256,12 +295,20 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
     events.push(...closed.events);
   }
   // O relógio da pausa: o atendimento que acabou de terminar deixa a pausa marcada começar agora.
-  current = withStationState(current, advance(stationOf(current, station.id), now, events.length > 0));
+  const clock = afterCall(current, station.id, now, events.length > 0 && previous ? previous.id : null);
+  if (!clock.ok) return clock;
+  current = clock.state;
+  events.push(...clock.events);
+  const own = stationOf(current, station.id).pause;
+  // Opção C: perguntando, a estação escolhe atender antes ou pausar agora (só finaliza o anterior).
+  if (own?.state === "asking") {
+    if (events.length > 0) return ok(current, events);
+    return failure(inBreak(current, now) ? "session_break" : "pause_has_waiting");
+  }
   // Em pausa (RN-EST-06): só finaliza o chamado anterior, não chama ninguém.
   if (pausedAt(current, stationOf(current, station.id), now)) {
     if (events.length > 0) return ok(current, events);
     // No intervalo da sessão, "voltar agora" não resolve, a não ser que a pausa própria passe dele.
-    const own = stationOf(current, station.id).pause;
     const breakEnd = Math.max(...(current.breaks ?? []).filter((b) => b.start <= now && now < b.end).map((b) => b.end));
     // A pausa própria em curso, ou marcada para começar ainda no intervalo, que passa dele.
     const ownInBreak = own?.state === "paused" || (own?.state === "scheduled" && own.from < breakEnd);
@@ -271,25 +318,8 @@ export function callNext(day: SessionDay, cmd: CmdClose, now: number): Result<Se
   const next = eligible(current, station.id, { classifies: cmd.classifies ?? true })[0];
   // RN-CHAM-01: sem elegível, o chamado anterior fica encerrado e a estação livre ("ninguém aguardando").
   if (!next) return events.length > 0 ? ok(current, events) : failure("none_eligible");
-  if (applyTransition(ITEM_TRANSITIONS, next.state, EVENT_CALL) !== "called") {
-    throw new Error(`contrato: ${next.state} não é chamado`);
-  }
-  current = releaseLocks(current, next.id);
-  current = withItem(current, { ...next, state: "called", lockedBehind: [] });
-  current = withStation(current, station.id, { calledItemId: next.id });
-  current = {
-    ...current,
-    calls: [
-      ...current.calls,
-      { itemId: next.id, stage: next.stage, stationId: station.id, at: now, orderKey: orderKey(next) },
-    ],
-  };
-  events.push({
-    kind: "called",
-    ...base(day, next, station.id),
-    data: { ticket: next.ticket, stage: next.stage, at: now },
-  });
-  return ok(current, events);
+  const called = callItem(current, station.id, next, now);
+  return called.ok ? ok(called.state, [...events, ...called.events]) : called;
 }
 
 /** RN-CHAM-02: repete o anúncio; a tolerância conta da chamada, então não reinicia. */
@@ -315,8 +345,8 @@ export function finish(day: SessionDay, cmd: CmdClose, now: number): Result<Sess
   const present = requireShowUp(day, found.station, found.item, now);
   if (!present.ok) return failure("no_show_up");
   const closed = closeCalled(present.day, found.station, found.item, now, cmd.confirmedRisk, cmd.refer, cmd.classifies);
-  const free = closed.day;
-  return ok(withStationState(free, advance(stationOf(free, found.station.id), now, true)), closed.events);
+  const clock = afterCall(closed.day, found.station.id, now, found.item.id);
+  return clock.ok ? ok(clock.state, [...closed.events, ...clock.events]) : clock;
 }
 
 /** Linha do contrato escolhida pelos pulos no dia (a transição depende da condição). */
@@ -345,15 +375,16 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
   const ids = base(day, item, cmd.stationId);
   const skipped: Event = { kind: "skipped", ...ids, data: { skips, for: to, at: now } };
   const lastCall = day.calls.findLastIndex((c) => c.itemId === item.id);
-  // O atendimento terminou: a pausa marcada que chegou nele começa agora.
-  const markSkip = (d: SessionDay): SessionDay => {
+  // O atendimento terminou: a pausa marcada que chegou nele começa agora (e a de quem atendia antes, opção C).
+  const markSkip = (d: SessionDay, evs: Event[]): Result<SessionDay> => {
     const marked = { ...d, calls: d.calls.map((c, i) => (i === lastCall ? { ...c, noShow: true } : c)) };
-    return withStationState(marked, advance(stationOf(marked, cmd.stationId), now, true));
+    const clock = afterCall(marked, cmd.stationId, now, item.id);
+    return clock.ok ? ok(clock.state, [...evs, ...clock.events]) : clock;
   };
 
   if (to === "present") {
     const eleg = stayEligible(withItem(free, { ...item, skips }), item.id, now, { applyDelay: false });
-    return ok(markSkip(eleg.state), [skipped]);
+    return markSkip(eleg.state, [skipped]);
   }
   const outside: QueueItem = {
     ...item,
@@ -364,7 +395,7 @@ export function noShow(day: SessionDay, cmd: Cmd, now: number): Result<SessionDa
     exitReason: "skips",
   };
   const current = releaseLocks(withItem(free, outside), item.id);
-  return ok(markSkip(current), [
+  return markSkip(current, [
     skipped,
     { kind: "no_show", ...ids, reason: "não compareceu à chamada" },
     { kind: "left_queue", ...ids },
@@ -407,10 +438,14 @@ export function closeStation(day: SessionDay, cmd: Cmd & { confirmed?: boolean }
   const anyCalled = day.stations.some((e) => e.calledItemId !== null) || day.items.some((i) => i.state === "called");
   if (consequence === "closes_session" && anyCalled) return failure("station_has_call");
   // A pausa sai (em pausa, vira parada no histórico); o tempo fechada conta a partir de agora.
-  const current = advance(station, now);
+  const current = advance(day, station, now);
+  // Opção C: quem chegou no prazo e esperava recebe a justificativa, sem hora de volta.
+  // Fechando a última estação, a sessão (ou a triagem) encerra: ninguém espera a volta.
+  const notices = consequence === null ? closeNotices(day, current, now) : [];
   const left = current.pause ? leavePause(current, "Fechar a estação", now) : current;
   const closed = { ...left, open: false, closedAt: now };
-  return ok({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) }, [
+  return ok(withHeld({ ...day, stations: day.stations.map((e) => (e.id === station.id ? closed : e)) }, notices, now), [
+    ...notices,
     { kind: "station_closed", stationId: station.id },
   ]);
 }

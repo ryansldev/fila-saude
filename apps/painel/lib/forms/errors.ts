@@ -29,6 +29,7 @@ const MESSAGES: Record<string, string | ((e: ApiError) => string)> = {
   remove_self: "Você não pode remover você mesmo da equipe.",
   station_has_call: "Há paciente chamado. Finalize o atendimento ou marque 'não compareceu' antes.",
   station_paused: 'A estação está em pausa. Toque em "Voltar agora" para chamar de novo.',
+  pause_has_waiting: "Quem chegou no prazo ainda não foi chamado. Escolha atender antes de pausar ou pausar agora.",
   session_break: "A sessão está no intervalo entre as faixas de horário. A estação volta a chamar no fim dele.",
   pause_during_outage: "A unidade está sem sinal (modo manual). Pause depois que o sinal voltar, ou feche a estação.",
   closes_session:

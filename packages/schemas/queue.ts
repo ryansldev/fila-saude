@@ -113,14 +113,28 @@ export const stationOperationSchema = z.object({
     closing: z.enum(["closes_session", "closes_stage"]).nullable(),
     /**
      * A pausa da estação (RN-EST-06): marcada (começa em `from`) ou em curso (desde `from`); `until` nulo, sem hora de
-     * volta. `null` sem pausa.
+     * volta. Opção C: perguntando (desde `from`), quem chegou no prazo e não foi chamado (`waiting`) e a volta se
+     * atender o primeiro deles antes (`untilIfServed`, pelo tempo médio); atendendo antes, a duração da pausa que
+     * começa ao finalizar (`lengthMin`, nulo sem hora de volta). `null` sem pausa.
      */
     pause: z
-      .object({
-        state: z.enum(["scheduled", "paused"]),
-        from: z.iso.datetime(),
-        until: z.iso.datetime().nullable(),
-      })
+      .discriminatedUnion("state", [
+        z.object({
+          state: z.enum(["scheduled", "paused"]),
+          from: z.iso.datetime(),
+          until: z.iso.datetime().nullable(),
+        }),
+        z.object({
+          state: z.literal("asking"),
+          from: z.iso.datetime(),
+          until: z.iso.datetime().nullable(),
+          waiting: z.array(z.object({ ticket: z.string(), name: z.string() })),
+          untilIfServed: z.iso.datetime().nullable(),
+          /** Alguém dos que esperam pode ser chamado por quem opera esta estação (o técnico não chama o acolhido). */
+          canServe: z.boolean(),
+        }),
+        z.object({ state: z.literal("serving"), lengthMin: z.number().int().min(0).nullable() }),
+      ])
       .nullable(),
     /** Se tocar "Pausar" agora, a pausa começa nesta hora (depois do prazo de quem está a caminho); `null` não pausa. */
     pauseStartsAt: z.iso.datetime().nullable(),
@@ -158,6 +172,8 @@ export const stationCommandSchema = z.enum([
   "reopen",
   "pause",
   "resume",
+  "serve-before-pause",
+  "pause-now",
 ]);
 export type StationCommand = z.infer<typeof stationCommandSchema>;
 
@@ -238,8 +254,13 @@ export const estimateSchema = z.discriminatedUnion("kind", [
     position: z.number().int(),
     minutes: z.number().int(),
     query: z.object({ minutes: z.number() }).optional(),
-    /** A pausa da etapa que atrasa a vez; `until` nulo, sem hora de volta (o tempo não a soma). */
-    pause: z.object({ from: z.number(), until: z.number().nullable() }).optional(),
+    /**
+     * A pausa da etapa que atrasa a vez; `until` nulo, sem hora de volta (o tempo não a soma). `beforeTurn`: a
+     * pessoa chegou no prazo e a estação pausou antes de chamá-la (opção C, com a justificativa).
+     */
+    pause: z
+      .object({ from: z.number(), until: z.number().nullable(), beforeTurn: z.literal(true).optional() })
+      .optional(),
   }),
   z.object({ kind: z.literal("come_now"), query: z.object({ minutes: z.number() }).optional() }),
   z.object({ kind: z.literal("awaiting_start") }),

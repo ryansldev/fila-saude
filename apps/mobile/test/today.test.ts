@@ -121,6 +121,7 @@ describe("pausa na aba hoje (RN-EST-06)", () => {
       started: true,
       noReturn,
       at: "12h32",
+      back: noReturn ? null : "13h32",
     },
   });
 
@@ -134,5 +135,28 @@ describe("pausa na aba hoje (RN-EST-06)", () => {
     expect(rowFor(inPause(true))).toEqual({ box: "5º", sentence: "pausa por tempo indeterminado" });
     // 1º da fila com a pausa em curso: o tempo (que soma a pausa) vale mais que "você é o próximo".
     expect(rowFor(inPause(false, 1, 60))).toEqual({ box: "1º", sentence: "cerca de 60 min" });
+  });
+
+  it("opção C: na unidade, quem recebeu a justificativa vê 'pausa antes da sua vez' na faixa", () => {
+    const held: Situation = {
+      kind: "position",
+      position: 1,
+      minutes: 60,
+      present: true,
+      leave: false,
+      pause: {
+        title: "pausa, volta às 13h32",
+        started: true,
+        noReturn: false,
+        at: "12h32",
+        back: "13h32",
+        beforeTurn: true,
+      },
+    };
+    expect(ticketCardFor({ ticket: "C-005", itemState: "present" }, held)).toEqual({
+      banner: "pausa antes da sua vez",
+      ticket: "C-005",
+      button: null,
+    });
   });
 });

@@ -5,6 +5,7 @@ import { PausePanel } from "@/components/station/pause-panel";
 import { StationPanel } from "@/components/station/station-panel";
 import { ApiError } from "@/lib/api";
 import {
+  askingNotice,
   backText,
   calledPhase,
   closeConfirm,
@@ -18,6 +19,7 @@ import {
   pausedText,
   pauseStartText,
   scheduledBand,
+  servingBand,
   waitText,
 } from "@/lib/station";
 
@@ -151,6 +153,36 @@ describe("lib/estacao", () => {
         pill: "volta às 11:30",
       });
       expect(scheduledBand(at(30), null, TZ).pill).toBeNull();
+    });
+
+    it("opção C, perguntando: quem chegou no prazo, a volta se atender antes, e os botões", () => {
+      const bia = { ticket: "C-007", name: "bia souza" };
+      expect(askingNotice([bia], at(77), TZ, true)).toEqual({
+        title: "Bia Souza chegou no prazo e ainda espera a chamada.",
+        text: "Atender antes de pausar? A pausa começa quando você finalizar, e a volta passa para 11:17.",
+        serve: "Atender Bia",
+      });
+      expect(askingNotice([bia], null, TZ, false)).toEqual({
+        title: "Bia Souza chegou no prazo e ainda espera a chamada.",
+        text: "Só outra estação pode chamar quem espera. Ao pausar, a pessoa recebe a justificativa por escrito.",
+        serve: null,
+      });
+      expect(askingNotice([bia, { ticket: "C-008", name: "Caio Lima" }], null, TZ, true)).toEqual({
+        title: "Bia Souza e Caio Lima chegaram no prazo e ainda esperam a chamada.",
+        text: "Atender antes de pausar? A pausa começa quando você finalizar.",
+        serve: "Atender Bia",
+      });
+    });
+
+    it("opção C, atendendo antes: a pausa começa ao finalizar, com a duração", () => {
+      expect(servingBand(60)).toEqual({
+        title: "Pausa ao finalizar",
+        text: "Você está atendendo quem chegou no prazo. A pausa começa quando finalizar, e a volta anda junto.",
+        pill: "1 h de pausa",
+      });
+      expect(servingBand(45).pill).toBe("45 min de pausa");
+      expect(servingBand(90).pill).toBe("1 h 30 min de pausa");
+      expect(servingBand(null).pill).toBe("sem hora de volta");
     });
 
     it("em pausa: desde quando e a pílula da volta (vermelha depois da hora)", () => {
@@ -366,5 +398,37 @@ describe("PainelDaEstacao", () => {
     expect(screen.getByText("Chamar o próximo")).toBeDefined();
     screen.getByText("desmarcar a pausa").click();
     expect(sent).toEqual(["resume"]);
+  });
+
+  it("opção C: perguntando, a estação mostra quem espera e manda atender antes ou pausar agora", () => {
+    const sent: string[] = [];
+    const op = operation({
+      called: null,
+      station: {
+        ...operation().station,
+        pause: {
+          state: "asking",
+          from: ago(1),
+          until: ago(-60),
+          waiting: [{ ticket: "C-007", name: "Bia Souza" }],
+          untilIfServed: ago(-75),
+          canServe: true,
+        },
+      },
+    });
+    render(<StationPanel op={op} {...props} onCommand={(c) => sent.push(c)} />);
+    expect(screen.getByText("Bia Souza chegou no prazo e ainda espera a chamada.")).toBeDefined();
+    expect(screen.queryByText("Chamar o próximo")).toBeNull();
+    screen.getByText("Atender Bia").click();
+    screen.getByText("Pausar agora").click();
+    expect(sent).toEqual(["serve-before-pause", "pause-now"]);
+  });
+
+  it("opção C: atendendo antes, a faixa da pausa ao finalizar e o atendimento à vista", () => {
+    const op = operation({ station: { ...operation().station, pause: { state: "serving", lengthMin: 60 } } });
+    render(<StationPanel op={op} {...props} />);
+    expect(screen.getByText("Pausa ao finalizar")).toBeDefined();
+    expect(screen.getByText("1 h de pausa")).toBeDefined();
+    expect(screen.getByText("Rechamar")).toBeDefined();
   });
 });

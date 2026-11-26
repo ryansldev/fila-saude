@@ -10,6 +10,7 @@ export const ERROR_CODES = [
   "station_busy",
   "station_has_call",
   "station_paused",
+  "pause_has_waiting",
   "pause_back_before_start",
   "pause_during_outage",
   "station_already_paused",
@@ -69,6 +70,7 @@ export type EventKind =
   | "reactivated"
   | "cancelled"
   | "station_paused"
+  | "turn_after_pause"
   | "station_resumed"
   | "station_closed"
   | "station_reopened";

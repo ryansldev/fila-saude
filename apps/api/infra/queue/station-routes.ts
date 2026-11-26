@@ -22,6 +22,8 @@ const SUMMARY: Record<StationCommand, string> = {
   reopen: "Reabrir a estação",
   pause: "Pausar a estação",
   resume: "Voltar da pausa (ou desmarcar a pausa marcada)",
+  "serve-before-pause": "Atender antes de pausar (quem chegou no prazo)",
+  "pause-now": "Pausar agora (quem chegou no prazo recebe a justificativa)",
 };
 
 // Uma rota por comando da estação (T3.7), todas com a mesma casca.

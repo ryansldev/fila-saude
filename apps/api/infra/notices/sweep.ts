@@ -2,8 +2,10 @@ import {
   advancePauses,
   awaitedItems,
   comeNowNotices,
+  heldNow,
   inManualMode,
   leaveHomeNotices,
+  pauseAnswerTimeouts,
   remoteItems,
   type SessionDay,
   trackOutage,
@@ -52,9 +54,13 @@ async function generateTimeNotices(
           if (c.day?.state !== "open") return { result: null };
           // PV5 (AD-076): a queda percebida (unidade sem sinal, varredura parada) para o relógio do prazo; com
           // a unidade sem sinal, modo manual (RN-SES-05): nenhum aviso de tempo sai.
-          // RN-EST-06: o relógio da pausa (a marcada começa, a hora da volta passa) antes de julgar a queda.
-          const paused = advancePauses(c.day, now);
-          const day = trackOutage(paused, now, { ...(await sessionSignal(tx, id)), serverStartedAt });
+          // RN-EST-06: o relógio da pausa (a marcada começa, a hora da volta passa) antes de julgar a queda; depois
+          // dela, a estação que não respondeu "atender antes de pausar?" a tempo pausa e manda a justificativa
+          // (opção C), só com a unidade com sinal (a queda deste giro já conta).
+          const clock = advancePauses(c.day, now);
+          const tracked = trackOutage(clock, now, { ...(await sessionSignal(tx, id)), serverStartedAt });
+          const paused = pauseAnswerTimeouts(tracked, now);
+          const day = paused.day;
           const mode = { manualMode: inManualMode(day) };
           // AD-057: o "venha agora" fica registrado no dia com a hora; o prazo de chegada conta dela.
           const come = comeNowNotices(day, now, mode);
@@ -63,6 +69,7 @@ async function generateTimeNotices(
           const lost = turnLostNotices(leave.day, now, mode);
           // Quem já é o próximo recebe só o "venha agora".
           const events = [
+            ...paused.events,
             ...come.events,
             ...leave.events.filter((e) => !come.events.some((v) => v.itemId === e.itemId)),
             ...lost.events,
@@ -95,7 +102,7 @@ type NoticeRef = { id: string; kind: string; state: string; entryId: string | nu
 const LIVE = new Set(["sent", "pending", "unconfirmed"]);
 
 /** O que a fila do dia mostra agora: quem ela espera entrar na sala e quem espera na fila, com a etapa. */
-export type QueueNow = { awaited: Set<string>; waiting: Map<string, string> };
+export type QueueNow = { awaited: Set<string>; waiting: Map<string, string>; present?: Map<string, string> };
 
 /**
  * AD-074: o envio sai na hora do evento, mas um envio que falha volta minutos depois, a varredura roda em
@@ -123,6 +130,13 @@ export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: 
     }
     const target = noticeTarget(a.key);
     if (!target) continue;
+    // Opção C: a justificativa só vale enquanto a pessoa espera na unidade, na mesma etapa.
+    if (target.kind === "present") {
+      // Uma justificativa mais nova (ao fechar, sem hora de volta) substitui esta.
+      const newer = laterOf(a).some((x) => x.kind === a.kind && noticeTarget(x.key)?.item === target.item);
+      if (queue.present?.get(target.item) !== target.stage || newer) stale.add(a.id);
+      continue;
+    }
     if (target.kind === "waiting") {
       // "Saia de casa" e um "venha agora" antigo não saem depois de um "venha agora" ("Vou sair" recomeça o
       // aviso, AD-057) ou de um "perdeu a vez" (AD-076) da mesma etapa que ainda vale.
@@ -145,14 +159,18 @@ export function staleNotices(claimed: NoticeRef[], history: NoticeRef[], queue: 
 
 /**
  * O estado da fila para os avisos (AD-074): quem as sessões abertas esperam entrar na sala (`awaitedItems`) e
- * quem espera em casa, por etapa (`remoteItems`). Sessão fechada ou cancelada não espera ninguém.
+ * quem espera em casa, por etapa (`remoteItems`), e quem espera na unidade segurado pela pausa (opção C). Sessão
+ * fechada ou cancelada não espera ninguém.
  */
-export function queueFrom(days: SessionDay[]): QueueNow {
-  const queue: QueueNow = { awaited: new Set(), waiting: new Map() };
+export function queueFrom(days: SessionDay[], now = Date.now()): QueueNow {
+  const queue = { awaited: new Set<string>(), waiting: new Map<string, string>(), present: new Map<string, string>() };
   for (const day of days) {
     if (day.state !== "open") continue;
     for (const i of awaitedItems(day)) queue.awaited.add(i);
     for (const [i, stage] of remoteItems(day)) queue.waiting.set(i, stage);
+    // Opção C: a justificativa só vale enquanto a pausa (ou o fechamento) segura a pessoa.
+    const held = heldNow(day, now);
+    for (const i of day.items) if (i.state === "present" && held.has(i.id)) queue.present.set(i.id, i.stage);
   }
   return queue;
 }

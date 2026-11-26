@@ -40,10 +40,18 @@ export type StagePause = {
   noReturn: boolean;
   /** Início, "13h02". */
   at: string;
+  /** A volta, "13h32"; nulo sem hora de volta. */
+  back: string | null;
+  /** Opção C: a pessoa chegou no prazo e a estação pausou antes de chamá-la (recebeu a justificativa). */
+  beforeTurn?: true;
 };
 
 /** RN-EST-06: "pausa, volta às 13h32", "pausa por tempo indeterminado" ou, à frente, "pausa às 13h02, …". */
-function stagePause(p: { from: number; until: number | null }, now: number, timeZone: string): StagePause {
+function stagePause(
+  p: { from: number; until: number | null; beforeTurn?: true },
+  now: number,
+  timeZone: string,
+): StagePause {
   const at = (t: number) => hour(new Date(t).toISOString(), timeZone);
   const started = p.from <= now;
   const noReturn = p.until === null;
@@ -53,7 +61,7 @@ function stagePause(p: { from: number; until: number | null }, now: number, time
       ? "pausa por tempo indeterminado"
       : `pausa, volta às ${back}`
     : `pausa às ${at(p.from)}, ${back === null ? "sem hora de volta" : `volta às ${back}`}`;
-  return { title, started, noReturn, at: at(p.from) };
+  return { title, started, noReturn, at: at(p.from), back, ...(p.beforeTurn ? { beforeTurn: true as const } : {}) };
 }
 
 /** O botão "cheguei na unidade": em casa e na fila, também em modo manual (a unidade sem TV ainda tem QR, QP5). */
@@ -226,6 +234,17 @@ export function cancellationNotice(sit: Pick<Situation, "kind">): string {
 }
 
 // RN-TRI-01/04: na unidade, o app diz em que etapa a pessoa está (a cor da triagem não aparece, H5).
+/** Opção C (texto aprovado em 2026-11-24): a estação pausou antes de chamar quem chegou no prazo. */
+function pauseBeforeTurn(back: string | null, first: boolean): string {
+  // Fora do 1º lugar, não promete que é a primeira (OC10).
+  const turn = first ? "a sua vez é a primeira" : "quem chegou no prazo é atendido primeiro";
+  const when =
+    back === null
+      ? `${turn} quando o atendimento voltar. avisamos por aqui quando for a hora.`
+      : `${turn} na volta, às ${back}. se precisar sair, esteja de volta até esse horário.`;
+  return `a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: ${when} obrigado pela paciência.`;
+}
+
 function inUnit(e: MyEntry): string {
   if (e.triaged) return "triagem feita. agora, o atendimento: fique de olho na TV.";
   if (e.stage === "triage") return "você está na unidade. primeiro, a triagem: fique de olho na TV.";
@@ -262,6 +281,7 @@ export function nextStep(e: MyEntry, sit: Situation, now: number): string {
     case "late":
       return "a unidade ainda não abriu a fila. avisamos quando abrir.";
     case "position":
+      if (sit.present && sit.pause?.beforeTurn) return pauseBeforeTurn(sit.pause.back, sit.position <= 1);
       if (sit.present) return inUnit(e);
       // RN-EST-06: com a pausa em curso, o "saia de casa" de antes não vale; quem já saiu pode vir e esperar.
       if (sit.leave && sit.pause?.started)

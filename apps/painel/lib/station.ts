@@ -1,4 +1,4 @@
-import { instantToLocal, localToInstant } from "@fila-saude/domain";
+import { firstName, instantToLocal, localToInstant, properName } from "@fila-saude/domain";
 import type { StationOperation } from "@fila-saude/schemas/queue";
 import { ApiError } from "@/lib/api";
 import { minutesSince } from "@/lib/queue";
@@ -163,4 +163,55 @@ export function pausedPill(
   return now < t
     ? { text: `volta às ${hhmm(t, timeZone)}`, late: false }
     : { text: `devia ter voltado às ${hhmm(t, timeZone)}`, late: true };
+}
+
+// ---- Opção C: quem chegou no prazo antes da pausa ----
+
+/** "Bia Souza", "Bia Souza e Caio Lima", "Ana, Bia e Caio". */
+const joined = (names: string[]) =>
+  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`;
+
+/**
+ * O aviso na estação na hora da pausa: quem chegou no prazo e não foi chamado, e se atender antes, quando a
+ * volta fica (pelo tempo médio). O texto não supõe o gênero de ninguém.
+ */
+export function askingNotice(
+  waiting: { ticket: string; name: string }[],
+  untilIfServed: string | null,
+  timeZone: string,
+  canServe: boolean,
+): { title: string; text: string; serve: string | null } {
+  const names = waiting.map((w) => properName(w.name));
+  const many = names.length > 1;
+  const title = `${joined(names)} ${many ? "chegaram" : "chegou"} no prazo e ainda ${many ? "esperam" : "espera"} a chamada.`;
+  // Quem opera aqui não chama nenhum deles (ex.: o técnico e o acolhido): só pausar.
+  if (!canServe) {
+    return {
+      title,
+      text: "Só outra estação pode chamar quem espera. Ao pausar, a pessoa recebe a justificativa por escrito.",
+      serve: null,
+    };
+  }
+  const back = untilIfServed === null ? "" : `, e a volta passa para ${hhmm(Date.parse(untilIfServed), timeZone)}`;
+  return {
+    title,
+    text: `Atender antes de pausar? A pausa começa quando você finalizar${back}.`,
+    serve: `Atender ${firstName(waiting[0]?.name ?? "")}`.trim(),
+  };
+}
+
+/** "45 min", "1 h", "1 h 30 min". */
+const duration = (min: number) => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h === 0 ? `${m} min` : m === 0 ? `${h} h` : `${h} h ${m} min`;
+};
+
+/** A faixa enquanto a estação atende antes de pausar: a pausa começa ao finalizar, com a mesma duração. */
+export function servingBand(lengthMin: number | null): { title: string; text: string; pill: string } {
+  return {
+    title: "Pausa ao finalizar",
+    text: "Você está atendendo quem chegou no prazo. A pausa começa quando finalizar, e a volta anda junto.",
+    pill: lengthMin === null ? "sem hora de volta" : `${duration(lengthMin)} de pausa`,
+  };
 }

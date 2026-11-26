@@ -69,9 +69,16 @@ export type Station = {
   services: string[];
   open: boolean;
   calledItemId: string | null;
-  /** Marcada (ainda não começou) ou em pausa (`since`); `until` nulo, sem hora de volta (`PAUSE_TRANSITIONS`). */
+  /**
+   * A pausa (`PAUSE_TRANSITIONS`); `until` nulo, sem hora de volta. Marcada: `waitFor`, quem estava a caminho e
+   * até quando podia chegar (`by`). Perguntando (opção C): na hora da pausa, quem chegou no prazo espera; parada
+   * desde `since`, e a pergunta vista desde `askedAt` (os 3 min contam dela). Atendendo antes:
+   * `length`, a duração da pausa que começa ao fim do atendimento, previsto para `from` (pelo tempo médio).
+   */
   pause?:
-    | { state: "scheduled"; from: number; until: number | null }
+    | { state: "scheduled"; from: number; until: number | null; waitFor?: { id: string; by: number }[] }
+    | { state: "asking"; since: number; askedAt: number; until: number | null; waitFor: string[] }
+    | { state: "serving"; from: number; length: number | null; waitFor: string[] }
     | { state: "paused"; since: number; until: number | null };
   /** Voltou a chamar ("voltar agora" de uma pausa em curso, ou reaberta): o silêncio de antes não é queda. */
   callingSince?: number;
@@ -101,6 +108,12 @@ export type Call = {
 
 export type SessionDay = {
   sessionId: string;
+  /**
+   * Opção C: quem chegou no prazo e recebeu a justificativa, de qual estação e de qual parada dela (`since`, o
+   * início da pausa ou a hora em que fechou); sai quando é chamado. Enquanto essa parada dura, vê a pausa como
+   * "antes da sua vez" e não recebe outra justificativa.
+   */
+  heldByPause?: { id: string; stationId: string; since: number }[];
   /** Serviço da sessão: a estação só chama se o atende. */
   serviceId: string;
   state: SessionState;

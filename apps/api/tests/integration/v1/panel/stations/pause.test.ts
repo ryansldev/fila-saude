@@ -1,6 +1,7 @@
 import type { SessionDay } from "@fila-saude/domain";
 import { and, eq } from "drizzle-orm";
 import { audit } from "infra/database/municipal/schema/audit";
+import { notice } from "infra/database/municipal/schema/notice";
 import { sessionDay } from "infra/database/municipal/schema/session-day";
 import { sweepMunicipality } from "infra/notices/sweep";
 import webserver from "infra/webserver";
@@ -132,5 +133,149 @@ describe("a pausa no app (RN-EST-06, RN-ETA)", () => {
     // A pausa da etapa vai de quando a última estação parou até a primeira volta (a Sala 1 pausou antes).
     expect(mine.estimate.pause.until - mine.estimate.pause.from).toBeGreaterThan(59 * MIN);
     expect(mine.estimate.pause.until - mine.estimate.pause.from).toBeLessThanOrEqual(60 * MIN);
+  });
+});
+
+describe("quem chegou no prazo antes da pausa (opção C)", () => {
+  let t: Awaited<ReturnType<typeof queueScenario>>;
+  let entryId: string;
+  const tdb = () => orchestrator.municipalityDatabase(t.slug);
+  const day = async () =>
+    (await tdb().select({ day: sessionDay.day }).from(sessionDay).where(eq(sessionDay.sessionId, t.sessionId)))[0]
+      ?.day as SessionDay;
+  const tcmd = (command: string) => t.request("POST", `/v1/panel/stations/${t.e1}/${command}`, t.nurse, {});
+  /** A Sala 2 em pausa e a Sala 1 perguntando, com a Bia (chegou no prazo) esperando. */
+  const asking = async (sinceAgo = MIN) => {
+    const d = await day();
+    const bia = d.items.find((i) => i.entryId === entryId);
+    if (!bia) throw new Error("bia");
+    const now = Date.now();
+    const pause = (e: SessionDay["stations"][number]): NonNullable<SessionDay["stations"][number]["pause"]> =>
+      e.id === t.e1
+        ? { state: "asking", since: now - sinceAgo, askedAt: now - sinceAgo, until: now + 60 * MIN, waitFor: [bia.id] }
+        : { state: "paused", since: now - sinceAgo, until: null };
+    const stations = d.stations.map((e) => ({ ...e, calledItemId: null, pause: pause(e) }));
+    await tdb()
+      .update(sessionDay)
+      .set({ day: { ...d, stations, heldByPause: [] } })
+      .where(eq(sessionDay.sessionId, t.sessionId));
+  };
+  const app = async (patient: { cookie: string }, method: string, path: string, body?: unknown) => {
+    const r = await fetch(`${webserver.origin}/v1/municipalities/${t.slug}${path}`, {
+      method,
+      headers: {
+        cookie: patient.cookie,
+        ...CAPTCHA_OK,
+        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    // biome-ignore lint/suspicious/noExplicitAny: a resposta é conferida pelo teste
+    return { status: r.status, body: (await r.json()) as any };
+  };
+  let bia: { cookie: string };
+  let desk: string;
+
+  beforeAll(async () => {
+    t = await queueScenario();
+    await t.request("POST", `/v1/panel/sessions/${t.sessionId}/open`, t.admin);
+    desk = (await loggedInUser(t.slug, t.manager, "reception", occupation(t.unitId, "reception"))).cookie;
+    bia = await orchestrator.loginPatient(orchestrator.registrationData({ name: "Bia Souza" }));
+    const r = await app(bia, "POST", `/sessions/${t.sessionId}/sign-ups`, {
+      forWhom: { kind: "me" },
+      answers: ROUTINE,
+    });
+    expect(r.status).toBe(201);
+    entryId = (await app(bia, "GET", "/mine")).body[0].entryId;
+    await t.request("POST", `/v1/panel/sessions/${t.sessionId}/attendance`, desk, { entryId, result: "matches" });
+  });
+
+  it("perguntando: a tela traz quem espera e a volta se atender antes; chamar pede a escolha", async () => {
+    await asking();
+    const op = await t.request("GET", `/v1/panel/stations/${t.e1}/operation`, t.nurse);
+    expect(op.body.station.pause).toMatchObject({
+      state: "asking",
+      waiting: [{ name: "Bia Souza" }],
+      untilIfServed: expect.any(String),
+      canServe: true,
+    });
+    expect(Date.parse(op.body.station.pause.untilIfServed)).toBeGreaterThan(Date.parse(op.body.station.pause.until));
+    expect((await tcmd("call")).body).toMatchObject({ error: "pause_has_waiting" });
+  });
+
+  it("com duas pessoas, a tela lista primeiro quem 'atender antes' vai chamar (a ordem da fila)", async () => {
+    const caio = await signUpPerson(t.slug, t.sessionId, "Caio Lima");
+    await t.request("POST", `/v1/panel/sessions/${t.sessionId}/attendance`, desk, {
+      entryId: caio.id,
+      result: "matches",
+    });
+    await asking();
+    const d = await day();
+    const caioItem = d.items.find((i) => i.entryId === caio.id);
+    if (!caioItem) throw new Error("caio");
+    // O Caio entrou depois, mas com risco maior: é chamado antes da Bia.
+    const stations = d.stations.map((e) =>
+      e.id === t.e1 && e.pause?.state === "asking"
+        ? { ...e, pause: { ...e.pause, waitFor: [...e.pause.waitFor, caioItem.id] } }
+        : e,
+    );
+    const items = d.items.map((i) =>
+      i.id === caioItem.id ? { ...i, risk: "urgent" as const, confirmedUrgency: true } : i,
+    );
+    await tdb()
+      .update(sessionDay)
+      .set({ day: { ...d, stations, items } })
+      .where(eq(sessionDay.sessionId, t.sessionId));
+    const op = await t.request("GET", `/v1/panel/stations/${t.e1}/operation`, t.nurse);
+    expect(op.body.station.pause.waiting.map((w: { name: string }) => w.name)).toEqual(["Caio Lima", "Bia Souza"]);
+    // Tira o Caio da fila para os próximos casos.
+    const after = await day();
+    await tdb()
+      .update(sessionDay)
+      .set({ day: { ...after, items: after.items.filter((i) => i.id !== caioItem.id) } })
+      .where(eq(sessionDay.sessionId, t.sessionId));
+  });
+
+  it("atender antes: chama a Bia e a pausa espera o fim do atendimento", async () => {
+    await asking();
+    const r = await tcmd("serve-before-pause");
+    expect(r.status).toBe(200);
+    expect(r.body.called).toMatchObject({ name: "Bia Souza" });
+    expect(r.body.station.pause).toEqual({ state: "serving", lengthMin: 61 });
+    // Volta para a fila para os próximos casos.
+    await tcmd("resume");
+    const d = await day();
+    await tdb()
+      .update(sessionDay)
+      .set({
+        day: {
+          ...d,
+          items: d.items.map((i) => (i.entryId === entryId ? { ...i, state: "present" as const } : i)),
+          stations: d.stations.map((e) => ({ ...e, calledItemId: null })),
+          calls: [],
+        },
+      })
+      .where(eq(sessionDay.sessionId, t.sessionId));
+  });
+
+  it("pausar agora: a Bia recebe a justificativa e o app mostra a pausa antes da vez", async () => {
+    await asking();
+    const r = await tcmd("pause-now");
+    expect(r.status).toBe(200);
+    expect(r.body.station.pause).toMatchObject({ state: "paused" });
+    const sent = await tdb().select({ title: notice.title }).from(notice).where(eq(notice.kind, "turn_after_pause"));
+    expect(sent.map((n) => n.title)).toEqual(["sala 1 entrou em pausa"]);
+    const [mine] = (await app(bia, "GET", "/mine")).body;
+    expect(mine.estimate).toMatchObject({ kind: "position", pause: { beforeTurn: true } });
+    await tcmd("resume");
+  });
+
+  it("sem resposta em 3 min, a varredura pausa e manda a justificativa", async () => {
+    await tdb().delete(notice).where(eq(notice.kind, "turn_after_pause"));
+    await asking(4 * MIN);
+    await sweepMunicipality(tdb(), Date.now(), async (list) => list.map(() => ({ ok: true })));
+    expect((await day()).stations.find((e) => e.id === t.e1)?.pause).toMatchObject({ state: "paused" });
+    const sent = await tdb().select({ kind: notice.kind }).from(notice).where(eq(notice.kind, "turn_after_pause"));
+    expect(sent).toHaveLength(1);
   });
 });
