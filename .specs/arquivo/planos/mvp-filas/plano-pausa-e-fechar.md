@@ -40,7 +40,7 @@ O domínio entrou na `main` (PR #42). O resto vai em fatias pequenas e **ponta a
 5. **Opção C.** Na hora da pausa, quem chegou no prazo sem ser chamado: o profissional escolhe atender antes ou pausar agora, e a pessoa recebe a justificativa por escrito e continua na frente (domínio, API, painel e app). Feita: na máquina de estados da pausa, com os estados "perguntando" e "atendendo antes".
 6. **Horário em faixas.** A sessão com várias faixas na criação, na edição e na série (migração: cada sessão antiga vira uma faixa); no painel, "adicionar horário"; o vão entre faixas é o intervalo da sessão. Feita: os intervalos gravados com a sessão (`breaks`), "Adicionar horário" na criação, as faixas na lista do painel e no app; a edição no painel e a série ficaram de fora (HF3, HF4).
 7. **Alerta de sinal (QP2).** A consulta da unidade traz os alertas; no painel, a faixa "TV sem sinal há 5 min", "Consultório 2 sem sinal há 3 min". Feita: a regra no domínio (`signal-alerts.ts`), `GET /v1/panel/units/:unitId/signal-alerts` (RN-SES-07) e a faixa no topo do painel, consultada a cada 30 s (AS1 a AS4).
-8. **Limpeza.** QP6 e QP2 entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`; a branch vai para a `main`.
+8. **Limpeza.** QP6 e QP2 entram na AD-076; este plano vai para `.specs/arquivo/planos/mvp-filas/`; a branch vai para a `main`. Feita (2026-11-26).
 
 Depois, numa branch própria: a urgência confirmada que não chega recebe 2 "venha agora" e sai da fila com falta (PA5).
 
