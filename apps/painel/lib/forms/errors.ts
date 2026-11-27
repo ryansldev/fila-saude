@@ -27,10 +27,16 @@ const MESSAGES: Record<string, string | ((e: ApiError) => string)> = {
   unit_has_entries: (e) =>
     `A unidade tem ${String(e.data?.activeEntries ?? "")} pacientes na lista de espera. Não dá para remover agora.`,
   remove_self: "Você não pode remover você mesmo da equipe.",
-  station_has_call: "Há paciente chamado em uma estação. Finalize ou marque 'não compareceu' antes de encerrar.",
+  station_has_call: "Há paciente chamado. Finalize o atendimento ou marque 'não compareceu' antes.",
   station_paused: 'A estação está em pausa. Toque em "Voltar agora" para chamar de novo.',
+  pause_has_waiting: "Quem chegou no prazo ainda não foi chamado. Escolha atender antes de pausar ou pausar agora.",
   session_break: "A sessão está no intervalo entre as faixas de horário. A estação volta a chamar no fim dele.",
   pause_during_outage: "A unidade está sem sinal (modo manual). Pause depois que o sinal voltar, ou feche a estação.",
+  closes_session:
+    'Outra estação acabou de fechar: esta agora é a última aberta do atendimento, e fechá-la encerra a sessão. Toque em "Fechar a estação" de novo para confirmar.',
+  closes_stage:
+    'Outra estação acabou de fechar: esta agora é a última aberta da triagem, e fechá-la fecha a triagem de hoje. Toque em "Fechar a estação" de novo para confirmar.',
+  triage_closed: "A triagem desta sessão está fechada: não entra gente nova até ela reabrir.",
   station_already_paused: "A estação já tem uma pausa. Volte (ou desmarque a pausa) antes de pausar de novo.",
   pause_back_before_start: "A volta precisa ser depois do início da pausa e de agora.",
   reason_required: "Escreva o motivo.",

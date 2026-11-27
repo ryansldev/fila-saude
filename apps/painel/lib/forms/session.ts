@@ -1,4 +1,4 @@
-import { instantToLocal, localToInstant, type ServiceMode } from "@fila-saude/domain";
+import { fromBands, instantToLocal, localToInstant, type ServiceMode, toBands } from "@fila-saude/domain";
 
 export type Visibility = "public" | "private";
 
@@ -10,6 +10,49 @@ export function timeForSending(data: string, hour: string, timeZone: string): st
 export function timeForScreen(iso: string, timeZone: string): { data: string; hour: string } {
   const local = instantToLocal(Date.parse(iso), timeZone);
   return { data: local.slice(0, 10), hour: local.slice(11, 16) };
+}
+
+/** Uma faixa do horário como digitada ("08:00" às "12:00"). */
+export type BandInput = { start: string; end: string };
+
+const iso = (t: number) => new Date(t).toISOString();
+
+/**
+ * RN-SES-06: as faixas digitadas no dia (em qualquer ordem) → o início da primeira, o fim da última e os intervalos
+ * entre elas, como a API recebe. Faixa incompleta, invertida ou sobreposta volta com o erro.
+ */
+export function bandsForSending(
+  day: string,
+  bands: BandInput[],
+  timeZone: string,
+): { ok: true; start: string; end: string; breaks: { start: string; end: string }[] } | { ok: false; error: string } {
+  if (bands.some((b) => !b.start || !b.end)) return { ok: false, error: "preencha o início e o fim de cada horário" };
+  const at = (hour: string) => localToInstant(`${day}T${hour}`, timeZone);
+  let typed: { start: number; end: number }[];
+  try {
+    typed = bands.map((b) => ({ start: at(b.start), end: at(b.end) }));
+  } catch {
+    // Hora fora de "HH:mm" (ex.: "08:00:00" de um navegador): o erro vai para o campo, não some no envio.
+    return { ok: false, error: "horário inválido" };
+  }
+  const r = fromBands(typed);
+  if (!r.ok) return r;
+  return {
+    ok: true,
+    start: iso(r.start),
+    end: iso(r.end),
+    breaks: r.breaks.map((b) => ({ start: iso(b.start), end: iso(b.end) })),
+  };
+}
+
+/** As faixas da sessão para a lista: ["08:00–12:00", "13:00–17:00"]. */
+export function bandsText(
+  s: { start: string; end: string; breaks: { start: string; end: string }[] },
+  timeZone: string,
+) {
+  const hour = (t: number) => timeForScreen(iso(t), timeZone).hour;
+  const breaks = s.breaks.map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) }));
+  return toBands(Date.parse(s.start), Date.parse(s.end), breaks).map((b) => `${hour(b.start)}–${hour(b.end)}`);
 }
 
 /** RN-PUB-03: privada perde a dispensa. */

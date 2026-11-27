@@ -21,7 +21,7 @@ import {
   Title,
   type Tone,
 } from "@/components/ui";
-import { hour } from "@/lib/dates";
+import { sessionHours } from "@/lib/dates";
 import { dayKey, daysWithCare, monthGrid, monthYear, validDay } from "@/lib/days";
 import { useSession } from "@/lib/session";
 import { type ServiceWithList, SIGN_UP_PATH, servicesWithList, signUpInSchedule } from "@/lib/sign-ups";
@@ -81,9 +81,7 @@ function SessionCard({ x, unit, mine }: { x: ScheduleSession; unit: string; mine
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Clock size={18} color={COLOR.inkMuted} strokeWidth={2.4} />
-          <Small>
-            {hour(x.start, x.unit.timeZone)} às {hour(x.end, x.unit.timeZone)}
-          </Small>
+          <Small>{sessionHours(x, x.unit.timeZone)}</Small>
         </View>
         {x.professional ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>

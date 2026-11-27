@@ -200,5 +200,6 @@ describe("createTenant", () => {
         c.query(`drop database if exists ${escapeIdentifier(elsewhere)} with (force)`),
       );
     }
-  });
+    // Cria e migra um banco inteiro e o apaga no fim: passa dos 5 s padrão com o servidor rodando junto.
+  }, 15_000);
 });

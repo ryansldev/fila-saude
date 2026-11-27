@@ -21,12 +21,12 @@ Ao fim da tolerância a estação avisa, mas não pula sozinha. Uma estação co
 *Decisões: AD-006, AD-043.*
 
 **RN-EST-06 · Pausa avisada**
-QUANDO o profissional tocar **Pausar** (sem paciente chamado), O SISTEMA DEVE marcar a pausa da estação, com a volta opcional. A pausa nunca pega ninguém a caminho: com alguém da etapa no prazo de chegada do "venha agora" (ou no prazo estendido por uma queda), ela começa depois do prazo da unidade (padrão 30 min), ou do prazo estendido, se for mais tarde; senão, agora. Quem já recebeu "venha agora" continua com ele. A volta é um horário ou minutos contados do início da pausa; volta antes do início é recusada. Com pausa marcada ou em curso, pausar de novo é recusado: para mudar, volte (ou desmarque) antes. A pausa que chega com paciente em atendimento começa quando ele sai, mantendo a volta marcada. Quem está a caminho não vê a pausa do consultório no tempo (só o intervalo da sessão). Com a unidade sem sinal (queda aberta ou por confirmar, RN-SES-05) não pausa: o prazo de quem vem pode crescer. Até lá a estação chama normalmente; na hora da pausa, "Finalizar e chamar o próximo" só finaliza. **Voltar agora** (ou **desmarcar a pausa**, antes de começar) tira a pausa; sem pausa (toque duplo, ou a volta já passou), não muda nada. QUANDO todas as estações abertas da etapa estiverem em pausa, ninguém chama: a estimativa soma o resto da pausa (sem hora de volta, fica sem tempo) e o "venha agora" não sai para quem chegaria (dentro do prazo) durante a pausa; o mesmo vale para uma pausa à frente. Antes de uma pausa à frente, a fila só anda com alguém para atender: com todos em casa, a partir do prazo de chegada do primeiro (ou da chegada de quem já está a caminho).
+QUANDO o profissional tocar **Pausar** (sem paciente chamado), O SISTEMA DEVE marcar a pausa da estação, com a volta opcional. A pausa nunca pega ninguém a caminho: com alguém da etapa no prazo de chegada do "venha agora" (ou no prazo estendido por uma queda), ela começa depois do prazo da unidade (padrão 30 min), ou do prazo estendido, se for mais tarde; senão, agora. Quem já recebeu "venha agora" continua com ele. A volta é um horário ou minutos contados do início da pausa; volta antes do início é recusada. Com pausa marcada ou em curso, pausar de novo é recusado: para mudar, volte (ou desmarque) antes. Na hora da pausa, se alguém que estava a caminho quando ela foi marcada chegou antes dela e não foi chamado (e nenhuma outra estação da etapa que possa chamá-lo está chamando: quem já foi acolhido na triagem só a estação de quem classifica chama, e a estação guarda se quem a opera classifica), a estação pergunta: **atender antes de pausar** (chama essa pessoa; a pausa começa quando o profissional finalizar, com a mesma duração, e a volta anda o mesmo tanto; com mais alguém esperando, pergunta de novo) ou **pausar agora** (a pessoa recebe a justificativa por escrito e continua na frente da fila para a volta); sem resposta em 3 min, a justificativa sai do mesmo jeito (a estação não chama nesse tempo). Quem não comparece à chamada não segura mais a pausa; fechar a estação manda a justificativa sem hora de volta. A pausa que chega com paciente em atendimento começa quando ele sai, mantendo a volta marcada. Quem está a caminho não vê a pausa do consultório no tempo (só o intervalo da sessão). Com a unidade sem sinal (queda aberta ou por confirmar, RN-SES-05) não pausa: o prazo de quem vem pode crescer. Até lá a estação chama normalmente; na hora da pausa, "Finalizar e chamar o próximo" só finaliza. **Voltar agora** (ou **desmarcar a pausa**, antes de começar) tira a pausa; sem pausa (toque duplo, ou a volta já passou), não muda nada. QUANDO todas as estações abertas da etapa estiverem em pausa, ninguém chama: a estimativa soma o resto da pausa (sem hora de volta, fica sem tempo) e o "venha agora" não sai para quem chegaria (dentro do prazo) durante a pausa; o mesmo vale para uma pausa à frente. Antes de uma pausa à frente, a fila só anda com alguém para atender: com todos em casa, a partir do prazo de chegada do primeiro (ou da chegada de quem já está a caminho).
 *Decisões: AD-077.*
 - *Dado* Bia em casa recebeu "venha agora" às 12:00, *quando* o Consultório 2 toca Pausar às 12:02, *então* a pausa começa às 12:32 e a Bia é atendida antes dela.
 
 **RN-EST-07 · Fechar e reabrir**
-QUANDO o profissional tocar **Fechar a estação** (sem paciente chamado), a estação DEVE sair da sessão de hoje: não chama, não conta na estimativa nem na queda percebida (RN-SES-05). **Reabrir** a devolve (fechou por engano). As duas ações ficam na auditoria. Fechar é de verdade (só a pausa é passageira): QUANDO a estação for a última aberta do atendimento, O SISTEMA DEVE pedir confirmação e encerrar a sessão (RN-SES-01, com o aviso de que fechou); QUANDO for a última da triagem, com o atendimento aberto, O SISTEMA DEVE pedir confirmação, dar a quem espera a triagem o desfecho do encerramento (RN-SES-02) e parar de aceitar gente nova (inscrição, balcão, troca de data e agendamento regulado; a reserva espera) até a triagem reabrir; a sessão segue para quem já passou da triagem. Depois de encerrada, não há reabrir.
+QUANDO o profissional tocar **Fechar a estação** (sem paciente chamado), a estação DEVE sair da sessão de hoje: não chama, não conta na estimativa nem na queda percebida (RN-SES-05). **Reabrir** a devolve (fechou por engano). As duas ações ficam na auditoria. Fechar é de verdade (só a pausa é passageira): QUANDO a estação for a última aberta do atendimento, O SISTEMA DEVE pedir confirmação e encerrar a sessão (RN-SES-01, com o aviso de que fechou), só se quem opera também gere a unidade; senão, a estação não fecha e a tela manda pedir o encerramento na Fila do dia; QUANDO for a última da triagem, com o atendimento aberto, O SISTEMA DEVE pedir confirmação, dar a quem espera a triagem o desfecho do encerramento (RN-SES-02) e parar de aceitar gente nova (inscrição, balcão, troca de data e agendamento regulado; a reserva espera) até a triagem reabrir; a sessão segue para quem já passou da triagem. Quem a triagem fechada remanejou sai da sessão e libera a vaga; ao reabrir a triagem, a reserva ocupa as vagas livres (RN-PUB-02). Depois de encerrada, não há reabrir.
 *Decisões: AD-077.*
 
 ## Chamar
@@ -79,12 +79,25 @@ Os estados da pausa da estação (gerado de `PAUSE_TRANSITIONS`):
 | --- | --- | --- | --- | --- |
 | Sem pausa | Pausar | Sem paciente chamado; unidade com sinal; começa agora ou depois do prazo de quem está a caminho | Marcada | Volta opcional |
 | Marcada | Hora da pausa com a estação livre | Na hora marcada, ou quando o atendimento em curso termina | Em pausa | Não chama mais |
+| Marcada | Hora da pausa com quem chegou no prazo esperando | Estação livre; alguém que estava a caminho quando a pausa foi marcada chegou antes dela e não foi chamado; nenhuma outra estação da etapa que possa chamá-lo chamando | Perguntando | Não chama; pergunta: atender antes de pausar ou pausar agora |
+| Perguntando | Atender antes de pausar | Alguém dos que esperam pode ser chamado por esta estação | Atendendo antes | Chama o primeiro deles; a pausa guarda a duração |
+| Perguntando | Ninguém dos que esperam pode ser chamado aqui | Atender antes de pausar, mas a estação não chama nenhum deles (ex.: técnico e acolhido) | Em pausa | Justificativa para quem espera |
+| Perguntando | Pausar agora | — | Em pausa | Justificativa para quem espera (sem outra estação da etapa que possa chamá-la) |
+| Perguntando | Sem resposta | 3 min perguntando (a varredura) | Em pausa | Justificativa para quem espera (sem outra estação da etapa que possa chamá-la) |
+| Perguntando | Ninguém mais esperando | Quem esperava foi chamado por outra estação, saiu da fila ou outra estação da etapa vai chamá-lo | Em pausa | Sem justificativa |
+| Perguntando | Hora da volta | Com volta marcada, ainda perguntando | Sem pausa | A espera vira parada no histórico |
+| Atendendo antes | Fim do atendimento com mais alguém esperando | Finalizar, chamar o próximo ou não compareceu | Perguntando | Pergunta de novo; a volta anda (a mesma duração, contada de agora) |
+| Atendendo antes | Fim do atendimento sem mais ninguém esperando | Finalizar, chamar o próximo ou não compareceu | Em pausa | A pausa começa agora, com a mesma duração |
 | Marcada | A volta passa durante o atendimento | O atendimento começou antes da pausa e terminou depois da volta | Sem pausa | A pausa não aconteceu |
 | Marcada | Desmarcar a pausa | — | Sem pausa | — |
+| Perguntando | Desmarcar a pausa | — | Sem pausa | A espera vira parada no histórico |
+| Atendendo antes | Desmarcar a pausa | — | Sem pausa | — |
 | Em pausa | Voltar agora | — | Sem pausa | A pausa vira parada no histórico |
 | Em pausa | Hora da volta | Com volta marcada | Sem pausa | A pausa vira parada no histórico |
 | Marcada | Fechar a estação | — | Sem pausa | — |
 | Em pausa | Fechar a estação | — | Sem pausa | A pausa vira parada no histórico |
+| Perguntando | Fechar a estação | — | Sem pausa | Justificativa sem hora de volta para quem espera (sem outra estação da etapa que possa chamá-la) |
+| Atendendo antes | Fechar a estação | Sem paciente chamado | Sem pausa | Justificativa sem hora de volta para quem ainda espera (sem outra estação da etapa que possa chamá-la) |
 <!-- /gerado -->
 
 **RN-SES-06 · Horário em faixas**
@@ -92,7 +105,7 @@ O horário da sessão é uma lista de faixas sem sobreposição (ex.: 09:00 às 
 *Decisões: AD-077.*
 
 **RN-SES-01 · Só o admin encerra**
-A sessão só encerra quando o admin a encerra. No horário de fim, o painel lembra o admin.
+A sessão só encerra quando o admin a encerra, pela Fila do dia ou fechando a última estação aberta do atendimento, com confirmação (RN-EST-07). O profissional que não gere a unidade não fecha a última estação. No horário de fim, o painel lembra o admin.
 
 **RN-SES-02 · Faltas e remanejados**
 QUANDO a sessão for encerrada, O SISTEMA DEVE, para cada um ainda na fila:

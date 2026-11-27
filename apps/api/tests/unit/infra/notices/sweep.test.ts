@@ -52,6 +52,37 @@ describe("chamadas que perderam a hora antes do envio (AD-074)", () => {
     expect(run(new Map([["i1", "triage"]]))).toEqual(new Set(["a", "b"]));
   });
 
+  it("opção C: a justificativa só sai enquanto a pessoa espera na unidade, na mesma etapa", () => {
+    const why = { id: "j", kind: "turn_after_pause", state: "pending", entryId: "e1", key: "pausa_antes:i1:care:e1:7" };
+    const run = (present: Map<string, string>) =>
+      staleNotices([why], [why], { awaited: new Set(), waiting: new Map(), present });
+    expect(run(new Map([["i1", "care"]]))).toEqual(new Set());
+    // Já chamada (a estação voltou), atendida ou fora da fila:
+    expect(run(new Map())).toEqual(new Set(["j"]));
+    expect(run(new Map([["i1", "triage"]]))).toEqual(new Set(["j"]));
+  });
+
+  it("opção C: uma justificativa mais nova (ao fechar, sem hora de volta) tira a velha da fila de envio", () => {
+    const old = {
+      id: "j1",
+      kind: "turn_after_pause",
+      state: "pending",
+      entryId: "e1",
+      key: "pausa_antes:i1:care:e1:7",
+    };
+    const fresh = {
+      id: "j2",
+      kind: "turn_after_pause",
+      state: "pending",
+      entryId: "e1",
+      key: "pausa_antes:i1:care:e1:9",
+    };
+    const present = new Map([["i1", "care"]]);
+    expect(staleNotices([old, fresh], [old, fresh], { awaited: new Set(), waiting: new Map(), present })).toEqual(
+      new Set(["j1"]),
+    );
+  });
+
   it("chamada de quem a fila não espera mais (atendido, pulado, já na sala) não sai", () => {
     expect(claim(["a"], [n("a", "your_turn")], new Set())).toEqual(new Set(["a"]));
     expect(claim(["a"], [n("a", "recalled")], new Set(["e2-care"]))).toEqual(new Set(["a"]));
@@ -288,6 +319,21 @@ describe("o estado da fila para os avisos (AD-074)", () => {
     ]);
     expect(q.awaited).toEqual(new Set(["a"]));
     expect(q.waiting).toEqual(new Map([["b", "triage"]]));
+  });
+
+  it("opção C: só quem a pausa ainda segura conta para a justificativa (a pausa acabou, ela perde a hora)", () => {
+    const base = (pause: object | undefined) =>
+      ({
+        state: "open",
+        items: [{ id: "c", state: "present", stage: "care" }],
+        calls: [],
+        stations: [
+          { id: "e1", stage: "care", services: [], open: true, calledItemId: null, ...(pause ? { pause } : {}) },
+        ],
+        heldByPause: [{ id: "c", stationId: "e1", since: 5 }],
+      }) as unknown as Parameters<typeof queueFrom>[0][number];
+    expect(queueFrom([base({ state: "paused", since: 5, until: null })]).present).toEqual(new Map([["c", "care"]]));
+    expect(queueFrom([base(undefined)]).present).toEqual(new Map());
   });
 
   it("sessão fechada ou cancelada não espera ninguém", () => {

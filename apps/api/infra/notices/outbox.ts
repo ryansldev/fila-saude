@@ -5,7 +5,13 @@ import { station } from "infra/database/municipal/schema/station";
 import type { TenantTx } from "infra/database/tenants";
 
 type Text = { kind: string; key: string; title: string; body: string };
-type Context = { unit: string; ticket: string; station: (id: string | undefined) => string };
+type Context = {
+  unit: string;
+  ticket: string;
+  station: (id: string | undefined) => string;
+  /** A hora no fuso da unidade, como nas outras horas do app ("13h32"). */
+  time: (at: number) => string;
+};
 
 const min = (s: string) => s.toLowerCase();
 
@@ -15,12 +21,17 @@ const RECALL_KEY = "rechamada";
 const LEAVE_HOME_KEY = "saia_de_casa";
 const COME_NOW_KEY = "venha_agora";
 const TURN_LOST_KEY = "perdeu_a_vez";
+const PAUSE_BEFORE_TURN_KEY = "pausa_antes";
 
-export type NoticeTarget = { kind: "call"; item: string } | { kind: "waiting"; item: string; stage: string };
+export type NoticeTarget =
+  | { kind: "call"; item: string }
+  | { kind: "waiting"; item: string; stage: string }
+  | { kind: "present"; item: string; stage: string };
 
 /**
  * O que o aviso supõe da fila, pela chave: chamada ("sua vez", rechamada) supõe o item chamado; "saia de
- * casa", "venha agora" e "perdeu a vez" supõem o item esperando em casa naquela etapa. `null` nos outros.
+ * casa", "venha agora" e "perdeu a vez" supõem o item esperando em casa naquela etapa; a justificativa da pausa
+ * (opção C), esperando na unidade. `null` nos outros.
  */
 export function noticeTarget(key: string): NoticeTarget | null {
   const [prefix, item, stage] = key.split(":");
@@ -28,6 +39,7 @@ export function noticeTarget(key: string): NoticeTarget | null {
   if (prefix === YOUR_TURN_KEY || prefix === RECALL_KEY) return { kind: "call", item };
   const waiting = prefix === LEAVE_HOME_KEY || prefix === COME_NOW_KEY || prefix === TURN_LOST_KEY;
   if (waiting && stage) return { kind: "waiting", item, stage };
+  if (prefix === PAUSE_BEFORE_TURN_KEY && stage) return { kind: "present", item, stage };
   return null;
 }
 
@@ -101,9 +113,34 @@ export function noticeText(ev: Event, ctx: Context): Text | null {
         title: "você perdeu a vez",
         body: `o prazo para chegar na ${ctx.unit} acabou. se ainda vier, leia o QR da TV: você vai para o fim da fila.`,
       };
+    case "turn_after_pause": {
+      // Opção C (AD-077): a pausa começou antes de chamar quem chegou no prazo; texto aprovado em 2026-11-24.
+      // Com mais gente na mesma situação, ninguém ouve que vem logo (OC10); quem ouve sabe que a prioridade da lei
+      // ainda vem antes (OC8).
+      const first = d.first !== false;
+      const turn = first ? "a sua vez vem logo" : "você não perdeu o lugar: quem chegou no prazo é atendido primeiro";
+      const law = first ? ", respeitando as prioridades da lei" : "";
+      const back =
+        typeof d.until === "number"
+          ? `${turn} na volta, às ${ctx.time(d.until)}${law}. se precisar sair, esteja de volta até esse horário.`
+          : `${turn} quando o atendimento voltar${law}. avisamos por aqui quando for a hora.`;
+      return {
+        kind: "turn_after_pause",
+        key: `${PAUSE_BEFORE_TURN_KEY}:${item}:${d.stage}:${ev.stationId}:${d.at}`,
+        title: `${min(ctx.station(ev.stationId))} entrou em pausa`,
+        body: `a equipe precisou pausar antes de chamar você. ${back} obrigado pela paciência.`,
+      };
+    }
     default:
       return null;
   }
+}
+
+/** "13h32" no fuso da unidade. */
+export function hourText(at: number, timeZone: string): string {
+  const f = new Intl.DateTimeFormat("pt-BR", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const p = f.formatToParts(new Date(at));
+  return `${Number(p.find((x) => x.type === "hour")?.value ?? 0)}h${p.find((x) => x.type === "minute")?.value ?? "00"}`;
 }
 
 /** Onde e quando é a sessão do evento, para os avisos que não têm item na fila (o "confirme"). */
@@ -166,6 +203,7 @@ export async function saveNotices(
       unit: local.unit,
       ticket: item.ticket,
       station: (id) => names.get(id ?? "") ?? "",
+      time: (at) => hourText(at, local.timeZone),
     });
     if (t) rows.push({ ...t, patientId: entry.guardianId, entryId: entry.id });
   }

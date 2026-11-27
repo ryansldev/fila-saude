@@ -73,7 +73,13 @@ describe("lista de espera no app (fatia 4)", () => {
   it("RN-CONF-01: alocada diz até quando confirmar", () => {
     const e = my({
       state: "allocated",
-      session: { id: "s", start: "2026-11-20T11:00:00.000Z", end: "2026-11-20T15:00:00.000Z", state: "planned" },
+      session: {
+        id: "s",
+        start: "2026-11-20T11:00:00.000Z",
+        end: "2026-11-20T15:00:00.000Z",
+        breaks: [],
+        state: "planned",
+      },
       confirmationDeadline: "2026-11-18T11:00:00.000Z",
     });
     expect(nextStep(e, entrySituation(e, 0), 0)).toBe("confirme até quarta, 18/11, às 8h.");

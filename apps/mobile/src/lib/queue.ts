@@ -58,7 +58,26 @@ export type QueueHighlight = {
   position?: number;
   minutes?: number;
   room?: string;
+  /** RN-EST-06: uma pausa atrasa a vez; o tempo já a soma (sem `minutes`, a pausa não tem hora de volta). */
+  paused?: true;
 };
+
+/**
+ * O número do tempo na tela da fila. Com pausa, o tempo vale mesmo no 1º lugar (ninguém chama até a volta), e sem
+ * hora de volta não há previsão; sem pausa, o 1º lugar (ou tempo zero) é "já já".
+ */
+export function waitFigure(h: QueueHighlight): { value: string; legend: string } {
+  const minutes = h.minutes ?? 0;
+  if (h.paused) {
+    if (h.minutes === undefined) return { value: "sem previsão", legend: "a pausa não tem hora de volta" };
+    return { value: `~${minutes} min`, legend: "para a sua vez" };
+  }
+  const first = (h.position ?? 0) <= 1;
+  return {
+    value: first || minutes <= 0 ? "já já" : `~${minutes} min`,
+    legend: first ? "você é o próximo" : "para a sua vez",
+  };
+}
 
 /** O topo da tela da fila: a senha bem grande e, na fila, a posição e o tempo. */
 export function queueHighlight(en: MyEntry, sit: Situation): QueueHighlight {
@@ -76,6 +95,13 @@ export function queueHighlight(en: MyEntry, sit: Situation): QueueHighlight {
     case "reception":
       return { tone: "yellow", label: "mostre na recepção", ticket };
     case "position":
+      // RN-EST-06: a pausa troca o rótulo; sem hora de volta, o tempo não vale e sai.
+      if (sit.pause) {
+        const { title, noReturn } = sit.pause;
+        return noReturn
+          ? { tone: "yellow", label: title, ticket, position: sit.position, paused: true }
+          : { tone: "yellow", label: title, ticket, position: sit.position, minutes: sit.minutes, paused: true };
+      }
       return { tone: "blue", label: "sua senha", ticket, position: sit.position, minutes: sit.minutes };
     case "no_estimate":
       return { tone: "blue", label: "sua senha", ticket };

@@ -28,7 +28,7 @@ import {
 } from "@/components/ui";
 import { properName } from "@/lib/account";
 import { QUERY_INTERVAL_MS } from "@/lib/config";
-import { dayParts, hour, isToday, shortDay } from "@/lib/dates";
+import { dayParts, isToday, sessionHours, shortDay } from "@/lib/dates";
 import { useSession } from "@/lib/session";
 import { canRedo, SIGN_UP_PATH } from "@/lib/sign-ups";
 import {
@@ -55,8 +55,9 @@ export const when = (en: MyEntry) =>
     : "";
 export const context = (en: MyEntry) =>
   `${en.unit} · ${en.service.toLowerCase()}${when(en)}${en.forMe ? "" : ` · para ${properName(en.person)}`}`;
-export const missing = (position: number, minutes: number) =>
-  minutes <= 0 || position <= 1 ? "você é o próximo" : `cerca de ${minutes} min para a sua vez`;
+/** Com pausa (`paused`), o tempo já a soma e vale mesmo no 1º lugar (ninguém chama até a volta). */
+export const missing = (position: number, minutes: number, paused = false) =>
+  !paused && (minutes <= 0 || position <= 1) ? "você é o próximo" : `cerca de ${minutes} min para a sua vez`;
 
 // "é a sua vez" dispensado não volta ao trocar de aba (a tela remonta); vale enquanto o app está aberto.
 export const SEEN_TURNS = new Set<string>();
@@ -143,7 +144,14 @@ export function YourTurn({ ticket, station, close }: { ticket: string; station: 
 function InQueue({ en, sit }: { en: MyEntry; sit: Situation }) {
   switch (sit.kind) {
     case "position":
-      return <Position ticket={en.ticket} position={sit.position} detail={missing(sit.position, sit.minutes)} />;
+      // RN-EST-06: sem hora de volta, o tempo não vale; a pausa é o que se sabe.
+      return (
+        <Position
+          ticket={en.ticket}
+          position={sit.position}
+          detail={sit.pause?.noReturn ? sit.pause.title : missing(sit.position, sit.minutes, sit.pause !== undefined)}
+        />
+      );
     case "no_estimate":
       return (
         <Position
@@ -318,7 +326,7 @@ function CareHeader({ en, sit, onOpen }: { en: MyEntry; sit: Situation; onOpen?:
           {en.service.toLowerCase()}
         </Text>
         <Small>
-          {en.session ? `${hour(en.session.start, en.timeZone)} às ${hour(en.session.end, en.timeZone)} · ` : ""}
+          {en.session ? `${sessionHours(en.session, en.timeZone)} · ` : ""}
           {en.unit}
           {en.forMe ? "" : ` · para ${properName(en.person)}`}
         </Small>
@@ -706,7 +714,7 @@ export function DayTicketCard({
         ) : (
           <SoftText style={{ textAlign: "center" }}>
             {b.button === "confirm"
-              ? `${en.session ? shortWindow(en.session.start, en.session.end, en.timeZone) : ""}`
+              ? `${en.session ? shortWindow(en.session, en.timeZone) : ""}`
               : "a senha sai quando a fila abrir."}
           </SoftText>
         )}
@@ -725,8 +733,8 @@ export function DayTicketCard({
   );
 }
 
-const shortWindow = (start: string, end: string, timeZone: string) =>
-  `${isToday(start, Date.now(), timeZone) ? "hoje" : shortDay(start, timeZone)}, das ${hour(start, timeZone)} às ${hour(end, timeZone)}`;
+const shortWindow = (s: { start: string; end: string; breaks: { start: string; end: string }[] }, timeZone: string) =>
+  `${isToday(s.start, Date.now(), timeZone) ? "hoje" : shortDay(s.start, timeZone)}, das ${sessionHours(s, timeZone)}`;
 
 /** O corte do bilhete: linha tracejada com dois meios-círculos na cor do fundo. */
 function Perforation() {

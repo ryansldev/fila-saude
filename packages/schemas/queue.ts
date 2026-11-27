@@ -77,18 +77,75 @@ export const calledSchema = z.object({
  * chamado) e, só com vermelho, `encaminhar` à emergência, que tira da fila desta unidade (AD-059).
  */
 export const commandBodySchema = z
-  .object({ confirmedRisk: riskLevelSchema.optional(), refer: z.boolean().optional() })
+  .object({
+    confirmedRisk: riskLevelSchema.optional(),
+    refer: z.boolean().optional(),
+    /** Fechar a última estação (RN-EST-07): confirma que encerra a sessão ou fecha a triagem (`station.closing`). */
+    confirmed: z.boolean().optional(),
+    /** "Pausar" (RN-EST-06): a volta num horário, em minutos contados do início da pausa, ou sem hora (`null`). */
+    back: z
+      .union([
+        z.object({ at: z.iso.datetime() }),
+        z.object({
+          inMin: z
+            .number()
+            .int()
+            .min(1)
+            .max(24 * 60),
+        }),
+        z.null(),
+      ])
+      .optional(),
+  })
   .default({});
 
 /** Tela da estação (T3.7): a sessão aberta de hoje que ela atende, o chamado e quantos aguardam presentes. */
 export const stationOperationSchema = z.object({
-  station: z.object({ id: z.uuid(), name: z.string(), stage: stageSchema }),
+  /**
+   * `closedAt`: a estação fechou nesta sessão (RN-EST-07), desde quando; `null` aberta. `closing`: o que fechá-la
+   * agora faz (é a última do atendimento, encerra a sessão; a última da triagem, fecha a triagem); `null` nada.
+   */
+  station: z.object({
+    id: z.uuid(),
+    name: z.string(),
+    stage: stageSchema,
+    closedAt: z.iso.datetime().nullable(),
+    closing: z.enum(["closes_session", "closes_stage"]).nullable(),
+    /**
+     * A pausa da estação (RN-EST-06): marcada (começa em `from`) ou em curso (desde `from`); `until` nulo, sem hora de
+     * volta. Opção C: perguntando (desde `from`), quem chegou no prazo e não foi chamado (`waiting`) e a volta se
+     * atender o primeiro deles antes (`untilIfServed`, pelo tempo médio); atendendo antes, a duração da pausa que
+     * começa ao finalizar (`lengthMin`, nulo sem hora de volta). `null` sem pausa.
+     */
+    pause: z
+      .discriminatedUnion("state", [
+        z.object({
+          state: z.enum(["scheduled", "paused"]),
+          from: z.iso.datetime(),
+          until: z.iso.datetime().nullable(),
+        }),
+        z.object({
+          state: z.literal("asking"),
+          from: z.iso.datetime(),
+          until: z.iso.datetime().nullable(),
+          waiting: z.array(z.object({ ticket: z.string(), name: z.string() })),
+          untilIfServed: z.iso.datetime().nullable(),
+          /** Alguém dos que esperam pode ser chamado por quem opera esta estação (o técnico não chama o acolhido). */
+          canServe: z.boolean(),
+        }),
+        z.object({ state: z.literal("serving"), lengthMin: z.number().int().min(0).nullable() }),
+      ])
+      .nullable(),
+    /** Se tocar "Pausar" agora, a pausa começa nesta hora (depois do prazo de quem está a caminho); `null` não pausa. */
+    pauseStartsAt: z.iso.datetime().nullable(),
+  }),
   session: z.object({ id: z.uuid(), service: z.string(), state: z.string() }).nullable(),
   called: calledSchema.nullable(),
   waiting: z.number().int().min(0),
   remote: z.number().int().min(0),
   toleranceMin: z.number().int().min(0),
-  notice: z.enum(["nobody_waiting"]).nullable(),
+  /** `session_closed`: fechar a última estação do atendimento acabou de encerrar a sessão (RN-EST-07). */
+  notice: z.enum(["nobody_waiting", "session_closed"]).nullable(),
   /** Até 3 presentes, na ordem em que esta estação vai chamar; só o primeiro nome. */
   upcoming: z.array(z.object({ ticket: z.string(), name: z.string(), presentSince: z.iso.datetime() })),
   /** Até 3 a caminho (remotos da etapa), na ordem da fila; só o primeiro nome. */
@@ -99,10 +156,30 @@ export const stationOperationSchema = z.object({
   now: z.iso.datetime(),
   /** RN-PERF-05: quem opera classifica o risco (enfermeiro); o técnico só acolhe e finaliza sem cor. */
   classifies: z.boolean(),
+  /**
+   * FE1: quem opera também encerra a sessão (gestão da unidade). Sem isso, a última estação do atendimento não fecha
+   * (`station.closing` "closes_session"): a sessão encerra pela fila do dia.
+   */
+  canCloseSession: z.boolean(),
+  /** Fuso da unidade, para as horas da estação (ex.: "fechado às 15:10"); `null` sem sessão aberta. */
+  timeZone: z.string().nullable(),
 });
 export type StationOperation = z.infer<typeof stationOperationSchema>;
 
-export const stationCommandSchema = z.enum(["call", "recall", "finish", "no-show", "showed-up", "undo-showed-up"]);
+export const stationCommandSchema = z.enum([
+  "call",
+  "recall",
+  "finish",
+  "no-show",
+  "showed-up",
+  "undo-showed-up",
+  "close",
+  "reopen",
+  "pause",
+  "resume",
+  "serve-before-pause",
+  "pause-now",
+]);
 export type StationCommand = z.infer<typeof stationCommandSchema>;
 
 // ---- App do paciente ----
@@ -131,6 +208,8 @@ export const scheduleSessionSchema = z.object({
   service: z.object({ id: z.uuid(), name: z.string() }),
   start: z.iso.datetime(),
   end: z.iso.datetime(),
+  /** RN-SES-06: os intervalos entre as faixas do horário; vazio, uma faixa só. */
+  breaks: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
   professional: z.string().nullable(),
   remainingSlots: z.number().int().min(0).nullable(),
   state: z.enum(["planned", "open"]),
@@ -182,8 +261,19 @@ export const estimateSchema = z.discriminatedUnion("kind", [
     position: z.number().int(),
     minutes: z.number().int(),
     query: z.object({ minutes: z.number() }).optional(),
-    /** A pausa da etapa que atrasa a vez; `until` nulo, sem hora de volta (o tempo não a soma). */
-    pause: z.object({ from: z.number(), until: z.number().nullable() }).optional(),
+    /**
+     * A pausa da etapa que atrasa a vez; `until` nulo, sem hora de volta (o tempo não a soma). `beforeTurn`: a
+     * pessoa chegou no prazo e a estação pausou antes de chamá-la (opção C, com a justificativa); `alone`, e só ela
+     * está segurada na etapa (a vez dela vem logo na volta, como diz o push).
+     */
+    pause: z
+      .object({
+        from: z.number(),
+        until: z.number().nullable(),
+        beforeTurn: z.literal(true).optional(),
+        alone: z.literal(true).optional(),
+      })
+      .optional(),
   }),
   z.object({ kind: z.literal("come_now"), query: z.object({ minutes: z.number() }).optional() }),
   z.object({ kind: z.literal("awaiting_start") }),
@@ -199,7 +289,16 @@ export const myEntrySchema = z.object({
   state: z.string(),
   service: z.string(),
   unit: z.string(),
-  session: z.object({ id: z.uuid(), start: z.iso.datetime(), end: z.iso.datetime(), state: z.string() }).nullable(),
+  session: z
+    .object({
+      id: z.uuid(),
+      start: z.iso.datetime(),
+      end: z.iso.datetime(),
+      /** RN-SES-06: os intervalos entre as faixas do horário. */
+      breaks: z.array(z.object({ start: z.iso.datetime(), end: z.iso.datetime() })),
+      state: z.string(),
+    })
+    .nullable(),
   ticket: z.string().nullable(),
   itemState: itemStateSchema.nullable(),
   estimate: estimateSchema.nullable(),

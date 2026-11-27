@@ -19,8 +19,8 @@ import {
   toneColor,
 } from "@/components/ui";
 import { properName } from "@/lib/account";
-import { hour } from "@/lib/dates";
-import { type QueueHighlight, queueHighlight, queueSteps, type Step } from "@/lib/queue";
+import { sessionHours } from "@/lib/dates";
+import { type QueueHighlight, queueHighlight, queueSteps, type Step, waitFigure } from "@/lib/queue";
 import { canCheckIn, entrySummary, nextStep, WORSENED_GUIDANCE } from "@/lib/texts";
 
 /**
@@ -100,13 +100,7 @@ export default function QueueScreen() {
         <Title>{en.service.toLowerCase()}</Title>
         {/* Horário, unidade e para quem viram pílulas (nada de "Info · Info · Info"). */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {en.session ? (
-            <Pill
-              text={`${hour(en.session.start, en.timeZone)} às ${hour(en.session.end, en.timeZone)}`}
-              Icon={Clock}
-              tone="blue"
-            />
-          ) : null}
+          {en.session ? <Pill text={sessionHours(en.session, en.timeZone)} Icon={Clock} tone="blue" /> : null}
           <Pill text={en.unit} Icon={Building2} tone="blue" />
           {en.forMe ? null : <Pill text={`para ${properName(en.person)}`} Icon={UserRound} tone="blue" />}
         </View>
@@ -179,10 +173,7 @@ function TicketBlock({ d }: { d: QueueHighlight }) {
       {d.position !== undefined ? (
         <View style={{ flexDirection: "row", gap: 10, alignSelf: "stretch" }}>
           <Figure value={`${d.position}º`} legend="na fila" />
-          <Figure
-            value={d.position <= 1 || (d.minutes ?? 0) <= 0 ? "já já" : `~${d.minutes} min`}
-            legend={d.position <= 1 ? "você é o próximo" : "para a sua vez"}
-          />
+          <Figure {...waitFigure(d)} />
         </View>
       ) : null}
     </View>

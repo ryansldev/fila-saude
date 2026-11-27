@@ -25,7 +25,7 @@ const base: MyEntry = {
   state: "confirmed",
   service: "Curativos",
   unit: "UBS Centro",
-  session: { id: SESSION_1, start: "2026-11-20T11:00:00Z", end: "2026-11-20T15:00:00Z", state: "planned" },
+  session: { id: SESSION_1, start: "2026-11-20T11:00:00Z", end: "2026-11-20T15:00:00Z", breaks: [], state: "planned" },
   ticket: null,
   itemState: null,
   estimate: null,
@@ -136,6 +136,12 @@ describe("conferência antes do questionário (/verificar): onde o erro aparece 
   it("sessão fechada ou privada: faixa com saída para os atendimentos; limite, requisição e duplicada: minha fila", () => {
     expect(checkError(error("session_closed"))).toMatchObject({ kind: "banner", exit: "schedule" });
     expect(checkError(error("private_session"))).toMatchObject({ kind: "banner", exit: "schedule" });
+    // RN-EST-07: a triagem fechou; a inscrição volta quando ela reabrir.
+    expect(checkError(error("triage_closed"))).toMatchObject({
+      kind: "banner",
+      title: "a triagem está fechada agora",
+      exit: "schedule",
+    });
     const limit = checkError(error("limit_per_account", "Uma conta inscreve até 5 pessoas."));
     expect(limit).toMatchObject({ kind: "banner", exit: "queue", text: "uma conta inscreve até 5 pessoas." });
     expect(checkError(error("referral_pending"))).toMatchObject({ kind: "banner", exit: "queue" });

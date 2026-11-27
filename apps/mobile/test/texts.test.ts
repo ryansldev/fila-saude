@@ -86,6 +86,7 @@ describe("minha fila: estado de cada entrada, como no design do app", () => {
       id: base.entryId,
       start: "2026-11-13T10:00:00.000Z",
       end: "2026-11-13T20:00:00.000Z",
+      breaks: [],
       state: "planned",
     };
     expect(sit({ ...base, session: planned, estimate: { kind: "awaiting_start" } }).kind).toBe("waiting");
@@ -131,6 +132,7 @@ describe("estados que não podem mentir para o paciente (revisão 2026-11-13)", 
     id: "00000000-0000-4000-8000-000000000009",
     start,
     end: "2026-11-13T20:00:00.000Z",
+    breaks: [],
     state,
   });
   const confirmed = { ...base, state: "confirmed", ticket: null, itemState: null };
@@ -204,9 +206,16 @@ describe("minha fila clara: etapa, se já está na fila e o grupo (redesenho 202
     id: base.entryId,
     start: "2026-11-14T11:00:00.000Z",
     end: "2026-11-14T20:00:00.000Z",
+    breaks: [],
     state: "open",
   };
-  const tomorrow = { ...today, start: "2026-11-15T11:00:00.000Z", end: "2026-11-15T15:00:00.000Z", state: "planned" };
+  const tomorrow = {
+    ...today,
+    start: "2026-11-15T11:00:00.000Z",
+    end: "2026-11-15T15:00:00.000Z",
+    breaks: [],
+    state: "planned",
+  };
   const r = (en: MyEntry) => entrySummary(en, entrySituation(en, NOW), NOW);
 
   it("lista de espera e reserva: ainda NÃO está em fila nenhuma, grupo sem data", () => {
@@ -267,6 +276,7 @@ describe("próximo passo, em uma frase (cartão, revisão 2026-11-14)", () => {
     id: base.entryId,
     start: "2026-11-14T17:00:00.000Z",
     end: "2026-11-14T21:00:00.000Z",
+    breaks: [],
     state: "planned",
   };
   it("diz o que fazer agora, com o horário quando importa", () => {
@@ -374,8 +384,111 @@ describe("mensagens de erro no estilo do app (minúsculas)", () => {
     expect(errorMessage(new ApiError(409, "session_closed", "Este atendimento já terminou."))).toBe(
       "este atendimento já foi encerrado.",
     );
+    expect(errorMessage(new ApiError(409, "triage_closed"))).toBe(
+      "a triagem deste atendimento fechou e ninguém novo entra por enquanto. tente de novo mais tarde ou escolha outro atendimento.",
+    );
     expect(errorMessage(new ApiError(409, "limit_per_account", "Uma conta põe até 5 pessoas."))).toBe(
       "uma conta põe até 5 pessoas.",
+    );
+  });
+});
+
+describe("pausa da estação no app (RN-EST-06, fatia 4 da pausa)", () => {
+  const MIN = 60_000;
+  // 12:32 em Brasília.
+  const T = Date.UTC(2026, 10, 25, 15, 32);
+  const paused = (from: number, until: number | null, extra: Partial<MyEntry> = {}): MyEntry => ({
+    ...base,
+    ...extra,
+    estimate: { kind: "position", position: 5, minutes: 70, pause: { from, until } },
+  });
+
+  it("em pausa: o título diz a volta (ou que não tem hora); sem hora de volta, não há tempo", () => {
+    expect(entrySituation(paused(T - 10 * MIN, T + 60 * MIN), T)).toMatchObject({
+      kind: "position",
+      position: 5,
+      minutes: 70,
+      pause: { title: "pausa, volta às 13h32", started: true, noReturn: false },
+    });
+    expect(entrySituation(paused(T - 10 * MIN, null), T)).toMatchObject({
+      pause: { title: "pausa por tempo indeterminado", started: true, noReturn: true },
+    });
+  });
+
+  it("pausa à frente (começa antes da vez): diz quando começa", () => {
+    expect(entrySituation(paused(T + 30 * MIN, T + 90 * MIN), T)).toMatchObject({
+      pause: { title: "pausa às 13h02, volta às 14h02", started: false, noReturn: false },
+    });
+    expect(entrySituation(paused(T + 30 * MIN, null), T)).toMatchObject({
+      pause: { title: "pausa às 13h02, sem hora de volta", started: false, noReturn: true },
+    });
+  });
+
+  it("em pausa, o selo é 'em pausa' (amarelo); o próximo passo diz quando avisamos", () => {
+    const withBack = paused(T - 10 * MIN, T + 60 * MIN);
+    const s1 = entrySituation(withBack, T);
+    expect(entrySummary(withBack, s1, T)).toMatchObject({ badge: "em pausa", tone: "yellow", stage: 1 });
+    expect(nextStep(withBack, s1, T)).toBe("pode esperar em casa. avisamos a hora de sair.");
+    const noBack = paused(T - 10 * MIN, null);
+    expect(nextStep(noBack, entrySituation(noBack, T), T)).toBe("sem hora de volta: avisamos quando a fila andar.");
+    // Já tinha recebido "saia de casa": com a pausa em curso, a pausa vence (ninguém está chamando).
+    const left = paused(T - 10 * MIN, null, { leaveHome: true });
+    const s2 = entrySituation(left, T);
+    expect(entrySummary(left, s2, T)).toMatchObject({ badge: "em pausa" });
+    expect(nextStep(left, s2, T)).toBe(
+      "a unidade pausou. se já saiu, pode vir e esperar lá. avisamos quando a fila voltar.",
+    );
+    // Com hora de volta, também não manda quem já saiu ficar em casa.
+    const leftBack = paused(T - 10 * MIN, T + 60 * MIN, { leaveHome: true });
+    expect(nextStep(leftBack, entrySituation(leftBack, T), T)).toBe(
+      "a unidade pausou. se já saiu, pode vir e esperar lá. avisamos quando a fila voltar.",
+    );
+    // Recebeu "saia de casa" e uma pausa marcada vai atrasar a vez: não manda sair agora.
+    const ahead = paused(T + 30 * MIN, T + 90 * MIN, { leaveHome: true });
+    const s3 = entrySituation(ahead, T);
+    expect(nextStep(ahead, s3, T)).toBe(
+      "a unidade pausa às 13h02. pode esperar em casa: avisamos quando for para vir.",
+    );
+    expect(entrySummary(ahead, s3, T)).toMatchObject({ badge: "na fila" });
+    // Na unidade, segue "na unidade": a pessoa já está lá.
+    const present = paused(T - 10 * MIN, null, { itemState: "present" });
+    expect(entrySummary(present, entrySituation(present, T), T)).toMatchObject({ badge: "na unidade" });
+  });
+
+  it("opção C: na unidade, com a justificativa, a pausa antes da vez e quando é a vez", () => {
+    const held = (until: number | null): MyEntry => ({
+      ...base,
+      itemState: "present",
+      estimate: {
+        kind: "position",
+        position: 1,
+        minutes: 60,
+        pause: { from: T - MIN, until, beforeTurn: true, alone: true },
+      },
+    });
+    const withBack = held(T + 60 * MIN);
+    const s1 = entrySituation(withBack, T);
+    expect(s1).toMatchObject({ pause: { beforeTurn: true, back: "13h32" } });
+    expect(entrySummary(withBack, s1, T)).toMatchObject({ badge: "na unidade" });
+    expect(nextStep(withBack, s1, T)).toBe(
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez vem logo na volta, às 13h32, respeitando as prioridades da lei. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+    );
+    // Com outra pessoa segurada pela pausa na etapa, não promete que vem logo, mesmo em 1º (o mesmo que o push).
+    const second: MyEntry = {
+      ...withBack,
+      estimate: {
+        kind: "position",
+        position: 1,
+        minutes: 70,
+        pause: { from: T - MIN, until: T + 60 * MIN, beforeTurn: true },
+      },
+    };
+    expect(nextStep(second, entrySituation(second, T), T)).toBe(
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: quem chegou no prazo é atendido primeiro na volta, às 13h32. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+    );
+    const noBack = held(null);
+    expect(nextStep(noBack, entrySituation(noBack, T), T)).toBe(
+      "a equipe precisou fazer uma pausa antes de chamar você. você não perdeu o lugar: a sua vez vem logo quando o atendimento voltar, respeitando as prioridades da lei. avisamos por aqui quando for a hora. obrigado pela paciência.",
     );
   });
 });

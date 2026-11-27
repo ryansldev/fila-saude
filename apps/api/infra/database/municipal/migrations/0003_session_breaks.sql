@@ -1,0 +1,1 @@
+ALTER TABLE "session" ADD COLUMN "breaks" jsonb DEFAULT '[]'::jsonb NOT NULL;

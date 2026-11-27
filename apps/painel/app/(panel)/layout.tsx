@@ -8,6 +8,7 @@ import { DialogsProvider } from "@/components/dialogs";
 import { Logo } from "@/components/logo";
 import { ProtectedContent } from "@/components/protected-content";
 import { MenuCounter } from "@/components/scheduling/menu-counter";
+import { SignalBand } from "@/components/signal-band";
 import { Button } from "@/components/ui/button";
 import { UnitInMenu } from "@/components/ui/unit-in-menu";
 import { useApi } from "@/lib/api-context";
@@ -128,6 +129,7 @@ function Frame({ children }: { children: ReactNode }) {
         </div>
       </nav>
       <main className="min-w-0 flex-1 px-10 py-8">
+        <SignalBand unitId={unitId} profiles={profiles.map((p) => p.profile)} />
         <DialogsProvider>
           <ProtectedContent path={path} profiles={profiles}>
             {children}

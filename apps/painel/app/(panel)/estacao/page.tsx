@@ -1,18 +1,21 @@
 "use client";
 
 import type { ApiRiskLevel, StationCommand, StationOperation, TodayInUnit } from "@fila-saude/schemas/queue";
-import { ClockIcon, StethoscopeIcon } from "lucide-react";
+import { ClockIcon, CoffeeIcon, StethoscopeIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useConfirm } from "@/components/dialogs";
 import { Notice } from "@/components/form";
 import { PageHeader } from "@/components/page";
+import { PausePanel } from "@/components/station/pause-panel";
 import { StationPanel } from "@/components/station/station-panel";
+import { Button } from "@/components/ui/button";
 import { StationCard } from "@/components/ui/station-card";
 import { useApi } from "@/lib/api-context";
 import { useCurrentUnit } from "@/lib/current-unit";
 import { errorMessage } from "@/lib/forms/errors";
 import { stationsItOperates } from "@/lib/queue";
 import { useMe } from "@/lib/session";
+import { closeBlocked, closeConfirm, closingFromError, noticeText } from "@/lib/station";
 import { useQuery } from "@/lib/use-query";
 
 const KEY = "fila-painel:estacao";
@@ -24,6 +27,9 @@ function readStation(): string | null {
     return null;
   }
 }
+
+/** O corpo de "pausar": a volta num horário, em minutos ou sem hora. */
+type PauseBody = { at: string } | { inMin: number } | null;
 
 /** Estação de chamada (T3.7): um paciente por vez; a tolerância só avisa (AD-006). */
 const NO_PROFILES: never[] = [];
@@ -40,6 +46,8 @@ export default function Station() {
   const op = useQuery<StationOperation>(stationId ? `/v1/panel/stations/${stationId}/operation` : null, 3_000);
   const [notice, setNotice] = useState<{ text: string; kind: "error" | "ok" } | null>(null);
   const [sending, setSending] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const [pauseError, setPauseError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   // Cor escolhida na triagem para quem está na sala; volta a nada a cada novo chamado e a cada mudança de
   // fase (desfazer o Compareceu, rechamar): uma cor de antes não pode ir junto sem ninguém escolher.
@@ -85,7 +93,19 @@ export default function Station() {
     }
   }
 
-  async function command(c: StationCommand, refer = false) {
+  async function command(c: StationCommand, refer = false, back: PauseBody = null) {
+    // RN-EST-07: fechar é de verdade (a pausa é que é passageira), então confirma; a última aberta confirma o fim.
+    const closing = op.detail?.station.closing ?? null;
+    const blocked = c === "close" ? closeBlocked(closing, op.detail?.canCloseSession ?? false) : null;
+    if (blocked) {
+      setNotice({ text: blocked, kind: "error" });
+      return;
+    }
+    if (
+      c === "close" &&
+      !(await confirm({ ...closeConfirm(op.detail?.station.name ?? "a estação", closing), danger: true }))
+    )
+      return;
     if (
       c === "no-show" &&
       !(await confirm({ title: "Marcar que o paciente não compareceu?", action: "Não compareceu", danger: true }))
@@ -107,17 +127,31 @@ export default function Station() {
     setSending(true);
     const asked = stationId;
     try {
-      const body = classifies && color ? { confirmedRisk: color, ...(refer ? { refer: true } : {}) } : {};
+      const body =
+        classifies && color
+          ? { confirmedRisk: color, ...(refer ? { refer: true } : {}) }
+          : c === "close" && closing !== null
+            ? { confirmed: true }
+            : c === "pause"
+              ? { back }
+              : {};
       const r = await api.post<StationOperation>(`/v1/panel/stations/${asked}/${c}`, body);
       // Trocou de estação durante o pedido: a resposta é da anterior e não vai para a tela.
       if (stationIdRef.current !== asked) return;
       op.setDetail(r);
-      // "Chamar o próximo" sem ninguém que esta estação possa chamar: diz por que nada mudou.
-      setNotice(
-        r.notice === "nobody_waiting" ? { text: "Ninguém que esta estação possa chamar agora.", kind: "ok" } : null,
-      );
+      if (c === "pause") setPausing(false);
+      // "Chamar o próximo" sem ninguém que esta estação possa chamar, ou a sessão que encerrou: diz o que houve.
+      setNotice(noticeText(r.notice));
     } catch (e) {
-      setNotice({ text: errorMessage(e), kind: "error" });
+      // A recusa da pausa vai para dentro do painel lateral, que cobre o aviso da página.
+      if (c === "pause") setPauseError(errorMessage(e));
+      else setNotice({ text: errorMessage(e), kind: "error" });
+      // Outra estação fechou antes: o próximo toque já mostra a confirmação certa e manda `confirmed`.
+      const now = closingFromError(e);
+      const shown = op.detail;
+      if (now !== null && shown && stationIdRef.current === asked) {
+        op.setDetail({ ...shown, station: { ...shown.station, closing: now } });
+      }
     } finally {
       setSending(false);
     }
@@ -130,6 +164,16 @@ export default function Station() {
     if (d?.now) setDeviation(Date.parse(d.now) - Date.now());
   }, [d?.now]);
   const called = d?.called ?? null;
+  // Deixou de dar para pausar (outra tela pausou, a unidade ficou sem sinal): o painel fecha e não volta sozinho.
+  const canPause = Boolean(d?.station.pauseStartsAt);
+  // A recusa que estava no painel vai para o aviso da página, para não sumir junto com ele.
+  // Só com o painel aberto: uma recusa de antes (painel já fechado) não volta depois de outra ação.
+  useEffect(() => {
+    if (canPause) return;
+    if (pausing && pauseError !== null) setNotice({ text: pauseError, kind: "error" });
+    setPausing(false);
+    setPauseError(null);
+  }, [canPause, pausing, pauseError]);
   const triage = d?.station.stage === "triage";
   return (
     <div className="flex w-full flex-col gap-4">
@@ -143,7 +187,35 @@ export default function Station() {
             </span>
           ) : null}
         </div>
-        <StationCard stations={stations} current={stationId} onChoose={chooseStation} />
+        <div className="flex flex-wrap items-center gap-2">
+          {d?.session && d.station.closedAt === null && d.station.pause === null ? (
+            <Button
+              variant="secondary"
+              size="compact"
+              icon={CoffeeIcon}
+              disabled={sending || called !== null || d.station.pauseStartsAt === null}
+              title={called !== null ? "Finalize o atendimento antes." : undefined}
+              onClick={() => {
+                setPauseError(null);
+                setPausing(true);
+              }}
+            >
+              Pausar
+            </Button>
+          ) : null}
+          {d?.session && d.station.closedAt === null ? (
+            <Button
+              variant="dangerText"
+              size="compact"
+              disabled={sending || called !== null}
+              title={called !== null ? "Finalize o atendimento antes." : undefined}
+              onClick={() => command("close")}
+            >
+              Fechar a estação
+            </Button>
+          ) : null}
+          <StationCard stations={stations} current={stationId} onChoose={chooseStation} />
+        </div>
       </div>
       <Notice
         text={op.error ?? today.error ?? notice?.text ?? null}
@@ -173,6 +245,21 @@ export default function Station() {
             now={now + deviation}
           />
         )
+      ) : null}
+      {d?.station.pauseStartsAt ? (
+        <PausePanel
+          open={pausing}
+          error={pauseError}
+          onClose={() => {
+            setPausing(false);
+            setPauseError(null);
+          }}
+          startsAt={d.station.pauseStartsAt}
+          timeZone={d.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone}
+          now={now + deviation}
+          sending={sending}
+          onPause={(back) => command("pause", false, back)}
+        />
       ) : null}
     </div>
   );

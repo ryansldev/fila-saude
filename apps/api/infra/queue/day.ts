@@ -102,6 +102,10 @@ export async function buildDay(db: TenantDatabase, sessionId: string): Promise<S
     nextNumber: 1,
     ticketPrefix: srv.prefix,
     requiresTriage: srv.requiresTriage,
+    // RN-SES-06: o vão entre as faixas é a pausa planejada de todas as estações.
+    ...(s.breaks.length > 0
+      ? { breaks: s.breaks.map((b) => ({ start: Date.parse(b.start), end: Date.parse(b.end) })) }
+      : {}),
   };
 }
 

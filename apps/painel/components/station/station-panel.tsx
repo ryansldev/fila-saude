@@ -3,6 +3,8 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ClockIcon,
+  CoffeeIcon,
+  DoorClosedIcon,
   FootprintsIcon,
   HeartIcon,
   MegaphoneIcon,
@@ -16,7 +18,17 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { RiskCard } from "@/components/ui/risk-card";
 import { stopwatch } from "@/lib/queue";
-import { calledPhase, oldestPill, waitText } from "@/lib/station";
+import {
+  askingNotice,
+  calledPhase,
+  closedText,
+  oldestPill,
+  pausedPill,
+  pausedText,
+  scheduledBand,
+  servingBand,
+  waitText,
+} from "@/lib/station";
 import { canRefer, levelColor, needsClassify, priorityText, TRIAGE_COLORS } from "@/lib/triage";
 import { cn } from "@/lib/utils";
 
@@ -137,14 +149,186 @@ function Tracejado({
   );
 }
 
+/** RN-EST-06: a estação em pausa, no lugar de "Estação livre": desde quando, a volta e "Voltar agora". */
+function Paused({
+  op,
+  from,
+  until,
+  onCommand,
+  sending,
+  now,
+}: {
+  op: StationOperation;
+  from: string;
+  until: string | null;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+  now: number;
+}) {
+  const zone = op.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const pill = pausedPill(until, now, zone);
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl border-2 border-b-4 border-[var(--ds-line)] bg-white px-5 py-4">
+      <span className="flex size-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700">
+        <CoffeeIcon className="size-5" aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="font-extrabold text-slate-900">Em pausa</p>
+        <p className="text-sm text-slate-600">{pausedText(from, zone)}</p>
+        {pill ? (
+          <span>
+            <Pill tone={pill.late ? "late" : "alert"} icon={<ClockIcon className="size-3" aria-hidden />}>
+              {pill.text}
+            </Pill>
+          </span>
+        ) : null}
+      </div>
+      <Button disabled={sending} onClick={() => onCommand("resume")}>
+        Voltar agora
+      </Button>
+    </div>
+  );
+}
+
+/** RN-EST-06: a pausa marcada (alguém a caminho), no topo: a estação segue chamando até a hora. */
+function Scheduled({
+  op,
+  from,
+  until,
+  onCommand,
+  sending,
+}: {
+  op: StationOperation;
+  from: string;
+  until: string | null;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+}) {
+  const zone = op.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const band = scheduledBand(from, until, zone);
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-b-4 border-amber-300 bg-amber-50 px-4 py-3">
+      <CoffeeIcon className="size-5 text-amber-700" aria-hidden />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="font-extrabold text-amber-950">{band.title}</p>
+        <p className="text-sm text-amber-900">{band.text}</p>
+      </div>
+      {band.pill ? (
+        <Pill tone="alert" icon={<ClockIcon className="size-3" aria-hidden />}>
+          {band.pill}
+        </Pill>
+      ) : null}
+      <Button variant="text" disabled={sending} onClick={() => onCommand("resume")}>
+        desmarcar a pausa
+      </Button>
+    </div>
+  );
+}
+
+type AskingPause = Extract<NonNullable<StationOperation["station"]["pause"]>, { state: "asking" }>;
+
+/** Opção C: na hora da pausa, quem chegou no prazo espera: atender antes de pausar ou pausar agora. */
+function Asking({
+  op,
+  pause,
+  onCommand,
+  sending,
+}: {
+  op: StationOperation;
+  pause: AskingPause;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+}) {
+  const zone = op.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const notice = askingNotice(pause.waiting, pause.untilIfServed, zone, pause.canServe);
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl border-2 border-b-4 border-amber-300 bg-amber-50 px-5 py-4">
+      <span className="flex size-10 items-center justify-center rounded-xl bg-white text-amber-700">
+        <CoffeeIcon className="size-5" aria-hidden />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="font-extrabold text-amber-950">{notice.title}</p>
+        <p className="text-sm text-amber-900">{notice.text}</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {notice.serve ? (
+          <Button icon={MegaphoneIcon} disabled={sending} onClick={() => onCommand("serve-before-pause")}>
+            {notice.serve}
+          </Button>
+        ) : null}
+        <Button variant="secondary" icon={PauseIcon} disabled={sending} onClick={() => onCommand("pause-now")}>
+          Pausar agora
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Opção C: atendendo antes de pausar, a faixa no topo diz que a pausa começa ao finalizar. */
+function Serving({
+  lengthMin,
+  onCommand,
+  sending,
+}: {
+  lengthMin: number | null;
+  onCommand: Props["onCommand"];
+  sending: boolean;
+}) {
+  const band = servingBand(lengthMin);
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-b-4 border-amber-300 bg-amber-50 px-4 py-3">
+      <CoffeeIcon className="size-5 text-amber-700" aria-hidden />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="font-extrabold text-amber-950">{band.title}</p>
+        <p className="text-sm text-amber-900">{band.text}</p>
+      </div>
+      <Pill tone="alert" icon={<ClockIcon className="size-3" aria-hidden />}>
+        {band.pill}
+      </Pill>
+      <Button variant="text" disabled={sending} onClick={() => onCommand("resume")}>
+        desmarcar a pausa
+      </Button>
+    </div>
+  );
+}
+
 /** A estação com a sessão aberta: a fila, quem está chamado (em duas fases) e as ações. */
 export function StationPanel({ op, color, onChooseColor, onCommand, sending, now }: Props) {
   const called = op.called;
   const triage = op.station.stage === "triage";
+  // RN-EST-07: fechada, não chama nesta sessão; a fila continua à vista.
+  if (op.station.closedAt !== null) {
+    return (
+      <div className="flex flex-col gap-3">
+        <StationQueue op={op} now={now} />
+        <Tracejado
+          icon={<DoorClosedIcon className="size-5" aria-hidden />}
+          title="Estação fechada"
+          text={closedText(op.station.name, op.station.closedAt, op.timeZone)}
+          action={
+            <Button variant="secondary" disabled={sending} onClick={() => onCommand("reopen")}>
+              Reabrir
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+  const pause = op.station.pause;
   return (
     <div className="flex flex-col gap-3">
+      {pause?.state === "scheduled" ? (
+        <Scheduled op={op} from={pause.from} until={pause.until} onCommand={onCommand} sending={sending} />
+      ) : null}
+      {pause?.state === "serving" ? (
+        <Serving lengthMin={pause.lengthMin} onCommand={onCommand} sending={sending} />
+      ) : null}
       <StationQueue op={op} now={now} />
-      {called ? (
+      {!called && pause?.state === "asking" ? (
+        <Asking op={op} pause={pause} onCommand={onCommand} sending={sending} />
+      ) : !called && pause?.state === "paused" ? (
+        <Paused op={op} from={pause.from} until={pause.until} onCommand={onCommand} sending={sending} now={now} />
+      ) : called ? (
         <Called
           op={op}
           called={called}

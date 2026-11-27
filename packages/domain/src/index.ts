@@ -1,3 +1,4 @@
+export { type Band, breaksError, fromBands, toBands } from "./bands.ts";
 export {
   awaitedItems,
   callNext,
@@ -90,14 +91,21 @@ export { inManualMode, trackOutage, type UnitSignal } from "./outage.ts";
 export {
   advancePauses,
   callingAt,
+  heldNow,
+  operateStation,
+  PAUSE_ANSWER_MS,
   type Pause,
   type PauseBack,
+  pauseAnswerTimeouts,
   pausedAt,
+  pauseNow,
   pauseState,
   pauseStation,
   reopenStation,
   resumeStation,
+  serveBeforePause,
   stagePause,
+  waitingBeforePause,
 } from "./pause.ts";
 export type { Action, Cell, MatrixRow, Profile } from "./permissions.ts";
 export { can, cellText, conditions, MATRIX, OPERATE_CAVEAT_STAGE, PROFILES } from "./permissions.ts";
@@ -149,6 +157,13 @@ export {
   ticketOf,
   triageClosed,
 } from "./session.ts";
+export {
+  type OpenSession,
+  type SignalAlert,
+  STATION_ALERT_MS,
+  signalAlerts,
+  TV_ALERT_MS,
+} from "./signal-alerts.ts";
 export type { Assignments, Occupation, Role, ScopedProfile, ScopedRole, UnitLink } from "./staff.ts";
 export { assignmentUnitKey, canRegister, OCCUPATIONS, ROLES, rolesOf, staffProblems } from "./staff.ts";
 export { ageAt, eve, instantToLocal, localToInstant, sameDay } from "./time.ts";

@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, integer, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { service } from "./service";
 import { station } from "./station";
 
@@ -16,6 +27,8 @@ export const session = pgTable(
       .references(() => service.id),
     start: timestamp("start", { withTimezone: true }).notNull(),
     end: timestamp("end", { withTimezone: true }).notNull(),
+    // RN-SES-06: os vãos entre as faixas do horário (ISO); vazio, uma faixa só.
+    breaks: jsonb("breaks").$type<{ start: string; end: string }[]>().notNull().default([]),
     slots: integer("slots"),
     taken: integer("taken").notNull().default(0),
     visibility: sessionVisibility("visibility").notNull().default("private"),

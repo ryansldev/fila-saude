@@ -275,7 +275,7 @@ export async function seedExample(deps: {
     const office2 = await createStation(asAdmin, ubs.id, {
       name: "Consultório 2",
       stage: "care",
-      services: [dental.id],
+      services: [dental.id, general.id],
     });
     const procedures = await createStation(asAdmin, ubs.id, {
       name: "Sala de procedimentos",
@@ -289,6 +289,7 @@ export async function seedExample(deps: {
       serviceId: dressings.id,
       start: new Date(fromNow.instant).toISOString(),
       end: new Date(fromNow.instant + 4 * 3600_000).toISOString(),
+      breaks: [],
       slots: 10,
       visibility: "public",
       waivesPreRegistration: false,
@@ -300,17 +301,23 @@ export async function seedExample(deps: {
       serviceId: general.id,
       start: new Date(fromNow.instant).toISOString(),
       end: new Date(fromNow.instant + 4 * 3600_000).toISOString(),
+      breaks: [],
       slots: 10,
       visibility: "public",
       waivesPreRegistration: false,
       professional: "Dra. Helena",
-      stations: [triage1.id, office1.id],
+      // Dois consultórios: dá para fechar um e ver a fila seguir no outro (RN-EST-07).
+      stations: [triage1.id, office1.id, office2.id],
     });
     const afternoon = { ini: tomorrow(now, "13:00"), end: tomorrow(now, "17:00") };
+    // RN-SES-06: Clínico geral de amanhã em duas faixas (08:00 às 12:00 e 13:00 às 17:00), com o almoço no meio.
     await createSession(asAdmin, ubs.id, {
       serviceId: general.id,
       start: new Date(morning.ini.instant).toISOString(),
-      end: new Date(morning.end.instant).toISOString(),
+      end: new Date(afternoon.end.instant).toISOString(),
+      breaks: [
+        { start: new Date(morning.end.instant).toISOString(), end: new Date(afternoon.ini.instant).toISOString() },
+      ],
       slots: 20,
       visibility: "public",
       waivesPreRegistration: false,
@@ -321,6 +328,7 @@ export async function seedExample(deps: {
       serviceId: dental.id,
       start: new Date(afternoon.ini.instant).toISOString(),
       end: new Date(afternoon.end.instant).toISOString(),
+      breaks: [],
       slots: 4,
       visibility: "private",
       waivesPreRegistration: false,
@@ -334,6 +342,7 @@ export async function seedExample(deps: {
       serviceId: dental.id,
       start: new Date(after.ini.instant).toISOString(),
       end: new Date(after.end.instant).toISOString(),
+      breaks: [],
       slots: 4,
       visibility: "private",
       waivesPreRegistration: false,

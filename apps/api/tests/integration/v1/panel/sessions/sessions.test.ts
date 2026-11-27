@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { session } from "infra/database/municipal/schema/session";
+import { sessionDay } from "infra/database/municipal/schema/session-day";
 import orchestrator from "tests/orchestrator";
 import { loggedInUser, municipalityWithUnit, unitManagerRoles } from "tests/panel";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -146,5 +147,71 @@ describe("sessões avulsas", () => {
       status: 409,
       body: { error: "session_has_patients" },
     });
+  });
+});
+
+describe("horário em faixas (RN-SES-06)", () => {
+  const lunch = [{ start: "2026-12-01T12:00:00.000Z", end: "2026-12-01T13:00:00.000Z" }];
+
+  it("sem intervalo, a sessão é uma faixa só (como as antigas)", async () => {
+    const r = await create(base());
+    expect(r.body.breaks).toEqual([]);
+  });
+
+  it("cria e edita com o intervalo entre duas faixas; ao abrir, o vão é a pausa de todas as estações", async () => {
+    const r = await create(base({ breaks: lunch }));
+    expect(r).toMatchObject({ status: 201, body: { breaks: lunch } });
+    const half = { start: "2026-12-01T12:30:00.000Z", end: "2026-12-01T13:30:00.000Z" };
+    const later = [half];
+    const edited = await request("PATCH", `/v1/panel/sessions/${r.body.id}`, admin, { breaks: later, version: 0 });
+    expect(edited).toMatchObject({ status: 200, body: { breaks: later } });
+    expect((await request("POST", `/v1/panel/sessions/${r.body.id}/open`, admin)).status).toBe(200);
+    const [row] = await orchestrator
+      .municipalityDatabase(slug)
+      .select({ day: sessionDay.day })
+      .from(sessionDay)
+      .where(eq(sessionDay.sessionId, r.body.id));
+    expect(row?.day.breaks).toEqual([{ start: Date.parse(half.start), end: Date.parse(half.end) }]);
+    // Reenviar o mesmo intervalo com outra mudança não conta como mudar o horário.
+    const db = orchestrator.municipalityDatabase(slug);
+    const version = async () =>
+      (await db.select({ v: session.version }).from(session).where(eq(session.id, r.body.id)))[0]?.v ?? -1;
+    const same = await request("PATCH", `/v1/panel/sessions/${r.body.id}`, admin, {
+      breaks: later,
+      slots: 30,
+      version: await version(),
+    });
+    expect(same).toMatchObject({ status: 200, body: { slots: 30 } });
+    // Sem mandar o intervalo (o painel só muda as vagas), também não.
+    const onlySlots = await request("PATCH", `/v1/panel/sessions/${r.body.id}`, admin, {
+      slots: 31,
+      version: await version(),
+    });
+    expect(onlySlots).toMatchObject({ status: 200, body: { slots: 31 } });
+    // Aberta, o horário (e o intervalo) não muda mais.
+    const again = await request("PATCH", `/v1/panel/sessions/${r.body.id}`, admin, {
+      breaks: [],
+      version: await version(),
+    });
+    expect(again).toMatchObject({ status: 409, body: { error: "forbidden_transition" } });
+  });
+
+  it("intervalo fora do horário ou sobreposto → 400 no campo breaks", async () => {
+    const outside = await create(
+      base({ breaks: [{ start: "2026-12-01T10:00:00.000Z", end: "2026-12-01T12:00:00.000Z" }] }),
+    );
+    expect(outside).toMatchObject({
+      status: 400,
+      body: { fields: { breaks: ["o intervalo fica dentro do horário da sessão"] } },
+    });
+    const overlap = await create(
+      base({
+        breaks: [
+          { start: "2026-12-01T12:00:00.000Z", end: "2026-12-01T13:00:00.000Z" },
+          { start: "2026-12-01T12:30:00.000Z", end: "2026-12-01T13:30:00.000Z" },
+        ],
+      }),
+    );
+    expect(overlap).toMatchObject({ status: 400, body: { fields: { breaks: ["as faixas não podem se sobrepor"] } } });
   });
 });

@@ -275,7 +275,7 @@ export const QUEUE_ACTIONS: Action[] = ["open_cancel_close_session", "verify_and
 const seesDocuments = (ctx: ActionContext, unitId: string) =>
   conditionsInUnit(ctx.actor.profiles, "view_documents", unitId) !== null;
 
-async function fromUnitStaff(ctx: ActionContext, unitId: string) {
+export async function fromUnitStaff(ctx: ActionContext, unitId: string) {
   for (const action of QUEUE_ACTIONS) {
     if (conditionsInUnit(ctx.actor.profiles, action, unitId) !== null) return;
   }

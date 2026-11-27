@@ -16,6 +16,7 @@ import {
   sessionOrigin,
 } from "../src/closing.ts";
 import { createEntry, type Entry, refuse, type Service } from "../src/list.ts";
+import { reopenStation } from "../src/pause.ts";
 import { checkIn, leaving, type SessionDay, verifyAndMark } from "../src/queue.ts";
 import type { Result } from "../src/result.ts";
 import { fillFromReserve, removeRegulatedEntry } from "../src/session.ts";
@@ -58,6 +59,7 @@ const inQueue = (ids: string[]): Entry[] =>
 
 const step = (r: Result<SessionDay>) => apply(r);
 const E1 = { stationId: "e1" };
+const SLOTS2 = sessionSlots({ slots: 2, taken: 2 });
 const WITHOUT_NOTICE = { withoutSignalWithoutContingency: false, origin: PRIVATE };
 
 /**
@@ -795,7 +797,7 @@ describe("fechar a última estação (RN-EST-07)", () => {
     expect(closingConsequence(day, "tri")).toBe("closes_stage");
     expect(closeStation(day, { stationId: "tri" }, T)).toEqual({ ok: false, error: "closes_stage" });
     const d = step(closeStation(day, { stationId: "tri", confirmed: true }, T));
-    const r = closeStage(d, inQueue(["ana", "bruno"]), "triage", T, PRIVATE);
+    const r = closeStage(d, inQueue(["ana", "bruno"]), SLOTS2, "triage", T, PRIVATE);
     const { day: after, entries } = apply(r);
     expect(after.state).toBe("open");
     expect(item(after, "ana").state).not.toBe("remote");
@@ -803,6 +805,8 @@ describe("fechar a última estação (RN-EST-07)", () => {
     expect(ent(entries, "ent-ana").state).not.toBe("in_queue");
     expect(ent(entries, "ent-bruno").state).toBe("in_queue");
     expect(events(r).map((e) => [e.kind, e.itemId])).toEqual([["reassigned", "ana"]]);
+    // A remanejada sai da sessão: a vaga dela fica livre para a reserva quando a triagem reabrir.
+    expect(apply(r).session.taken).toBe(1);
     // Mesmo sem ninguém esperando a triagem, fechar a última dela pede confirmação: a sessão para de aceitar gente.
     expect(closingConsequence(base, "tri")).toBe("closes_stage");
   });
@@ -811,7 +815,7 @@ describe("fechar a última estação (RN-EST-07)", () => {
     let day = withItem(triageAndCare(["ana", "bruno"]), "ana", { stage: "triage" });
     day = alreadyNotified(day, "ana", T - 2 * H, 30);
     day = step(closeStation(day, { stationId: "tri", confirmed: true }, T));
-    const staged = apply(closeStage(day, inQueue(["ana", "bruno"]), "triage", T, PRIVATE));
+    const staged = apply(closeStage(day, inQueue(["ana", "bruno"]), SLOTS2, "triage", T, PRIVATE));
     expect(item(staged.day, "ana").exitReason).toBe("no_show");
     const { day: closed } = apply(close(staged.day, staged.entries, T + H, WITHOUT_NOTICE));
     expect(closed.closing?.noShows).toContain("ana");
@@ -824,10 +828,38 @@ describe("fechar a última estação (RN-EST-07)", () => {
     expect(closeStation(day, { ...E1, confirmed: true }, T)).toEqual({ ok: false, error: "station_has_call" });
   });
 
+  it("a falta na triagem fechada não libera a vaga (só quem sai da sessão remanejado)", () => {
+    let day = withItem(triageAndCare(["ana", "bruno"]), "ana", { stage: "triage" });
+    day = alreadyNotified(day, "ana", T - 2 * H, 30);
+    day = step(closeStation(day, { stationId: "tri", confirmed: true }, T));
+    expect(apply(closeStage(day, inQueue(["ana", "bruno"]), SLOTS2, "triage", T, PRIVATE)).session.taken).toBe(2);
+  });
+
+  it("reabrir a triagem fechada volta a aceitar gente: a reserva entra na vaga de quem foi remanejado", () => {
+    const base = triageAndCare(["ana", "bruno"]);
+    const day = step(
+      closeStation(withItem(base, "ana", { stage: "triage" }), { stationId: "tri", confirmed: true }, T),
+    );
+    const reserve = entry("ent-carla", { state: "in_reserve", sessionId: "s1" });
+    const pub = sessionSlots({ visibility: "public", slots: 2, taken: 2 });
+    const staged = apply(closeStage(day, [...inQueue(["ana", "bruno"]), reserve], pub, "triage", T, PRIVATE));
+    // Fechada, a reserva espera mesmo com vaga.
+    const waiting = apply(
+      fillFromReserve(staged.session, staged.day, staged.entries, { service: FREE, acceptedPhotos: [] }, T),
+    );
+    expect(ent(waiting.entries, "ent-carla").state).toBe("in_reserve");
+    const reopened = step(reopenStation(staged.day, { stationId: "tri" }, T + MIN));
+    const filled = apply(
+      fillFromReserve(staged.session, reopened, staged.entries, { service: FREE, acceptedPhotos: [] }, T + MIN),
+    );
+    expect(ent(filled.entries, "ent-carla").state).toBe("in_queue");
+    expect(filled.session.taken).toBe(2);
+  });
+
   it("closeStage só fecha a triagem, e só sem estação aberta nela", () => {
     const day = withItem(triageAndCare(["ana"]), "ana", { stage: "triage" });
-    expect(error(closeStage(day, inQueue(["ana"]), "triage", T, PRIVATE))).toBe("forbidden_transition");
+    expect(error(closeStage(day, inQueue(["ana"]), SLOTS2, "triage", T, PRIVATE))).toBe("forbidden_transition");
     const closed = step(closeStation(day, { stationId: "tri", confirmed: true }, T));
-    expect(error(closeStage(closed, inQueue(["ana"]), "care", T, PRIVATE))).toBe("forbidden_transition");
+    expect(error(closeStage(closed, inQueue(["ana"]), SLOTS2, "care", T, PRIVATE))).toBe("forbidden_transition");
   });
 });

@@ -1,5 +1,5 @@
 import type { Event } from "@fila-saude/domain";
-import { noticeTarget, noticeText } from "infra/notices/outbox";
+import { hourText, noticeTarget, noticeText } from "infra/notices/outbox";
 import { describe, expect, it } from "vitest";
 
 describe("o item da fila na chave do aviso", () => {
@@ -22,11 +22,12 @@ describe("o item da fila na chave do aviso", () => {
     expect(noticeTarget("teste:123")).toBeNull();
     expect(noticeTarget("pulado:item-1:1")).toBeNull();
     expect(noticeTarget("fila_aberta:item-1")).toBeNull();
+    expect(noticeTarget("pausa_antes:item-1:care:e1:7")).toEqual({ kind: "present", item: "item-1", stage: "care" });
   });
 });
 
 describe("textos dos avisos da fila (AD-076)", () => {
-  const ctx = { unit: "UBS Centro", ticket: "A12", station: () => "consultório 1" };
+  const ctx = { unit: "UBS Centro", ticket: "A12", station: () => "Consultório 1", time: () => "13h32" };
   const ev = (kind: Event["kind"], data: Record<string, unknown>): Event =>
     ({ kind, itemId: "item-1", entryId: "ent-1", data }) as Event;
 
@@ -59,5 +60,38 @@ describe("textos dos avisos da fila (AD-076)", () => {
       title: "você perdeu a vez",
       body: "o prazo para chegar na UBS Centro acabou. se ainda vier, leia o QR da TV: você vai para o fim da fila.",
     });
+  });
+});
+
+describe("justificativa da pausa antes da vez (opção C)", () => {
+  const ctx = { unit: "UBS Centro", ticket: "A12", station: () => "Consultório 2", time: () => "13h32" };
+  const ev = (data: Record<string, unknown>): Event =>
+    ({ kind: "turn_after_pause", itemId: "item-1", entryId: "ent-1", stationId: "e1", data }) as Event;
+
+  it("com volta: a sua vez vem logo na volta, com a hora e as prioridades da lei (OC8)", () => {
+    const t = noticeText(ev({ until: 1, at: 7, stage: "care", first: true }), ctx);
+    expect(t).toEqual({
+      kind: "turn_after_pause",
+      key: "pausa_antes:item-1:care:e1:7",
+      title: "consultório 2 entrou em pausa",
+      body: "a equipe precisou pausar antes de chamar você. a sua vez vem logo na volta, às 13h32, respeitando as prioridades da lei. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+    });
+  });
+
+  it("com mais gente na mesma situação, não promete que é a primeira", () => {
+    expect(noticeText(ev({ until: 1, at: 7, stage: "care", first: false }), ctx)?.body).toBe(
+      "a equipe precisou pausar antes de chamar você. você não perdeu o lugar: quem chegou no prazo é atendido primeiro na volta, às 13h32. se precisar sair, esteja de volta até esse horário. obrigado pela paciência.",
+    );
+  });
+
+  it("sem volta: avisamos quando for a hora", () => {
+    expect(noticeText(ev({ until: null, at: 7, stage: "care", first: true }), ctx)?.body).toBe(
+      "a equipe precisou pausar antes de chamar você. a sua vez vem logo quando o atendimento voltar, respeitando as prioridades da lei. avisamos por aqui quando for a hora. obrigado pela paciência.",
+    );
+  });
+
+  it("a hora no fuso da unidade", () => {
+    expect(hourText(Date.UTC(2026, 10, 12, 16, 32), "America/Sao_Paulo")).toBe("13h32");
+    expect(hourText(Date.UTC(2026, 10, 12, 10, 5), "America/Sao_Paulo")).toBe("7h05");
   });
 });

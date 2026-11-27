@@ -52,6 +52,8 @@ const STATES: Record<Machine, [string, string][]> = {
   pause: [
     ["Sem pausa", "none"],
     ["Marcada", "scheduled"],
+    ["Perguntando", "asking"],
+    ["Atendendo antes", "serving"],
     ["Em pausa", "paused"],
   ],
 };

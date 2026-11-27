@@ -384,4 +384,57 @@ Decisões da migração das rotas para o schema no Fastify (DOC2, [plano](../../
 | PE1 | Pausa marcada e o atendimento em curso passa da hora de volta | A pausa não acontece (RN-EST-06, "A volta passa durante o atendimento → Sem pausa"): a estação segue chamando ao fim do atendimento | A pausa começa ao fim do atendimento mesmo assim, com a volta já vencida (vira "voltar agora") | Baixo: o profissional que queria a pausa pausa de novo, e o tempo da fila não conta uma pausa que não houve |
 | PE2 | Consulta que atravessa o intervalo da sessão, no tempo médio | Não entra na média (não se sabe quanto dela foi atendimento) | Descontar o intervalo da duração | Baixo: a média usa menos consultas no dia com intervalo |
 | PE3 | Capacidade quando todas as estações da etapa param sem hora de volta | Conta todas as abertas, para dar o tempo depois da volta; quem decide o que o app mostra é a pausa da etapa ("pausa por tempo indeterminado", sem tempo) | Capacidade zero, sem tempo | Baixo: o tempo só aparece depois que alguma estação marca a volta |
-| PE4 | Sinal que parou pouco antes de a pausa começar (queda ainda não confirmada) | Na pausa, o silêncio não é queda, e na volta ele conta da volta (AD-077): a queda que só seria confirmada dentro da pausa não acontece, e quem tinha o prazo acabando na hora da pausa perde a vez se não chegou | Guardar a queda pendente da hora em que a estação parou de chamar e confirmá-la na volta, com início no último sinal | Médio: com a internet caindo minutos antes de uma pausa, quem estava a caminho no fim do prazo vai para o fim da fila em vez de esperar em contingência |
+| PE4 | **Fica para o WebSocket (D1)**, você, 2026-11-26. Sinal que parou pouco antes de a pausa começar (queda ainda não confirmada) | Na pausa, o silêncio não é queda, e na volta ele conta da volta (AD-077): a queda que só seria confirmada dentro da pausa não acontece, e quem tinha o prazo acabando na hora da pausa perde a vez se não chegou | Guardar a queda pendente da hora em que a estação parou de chamar e confirmá-la na volta, com início no último sinal | Médio: com a internet caindo minutos antes de uma pausa, quem estava a caminho no fim do prazo vai para o fim da fila em vez de esperar em contingência |
+
+## Fechar a última estação (fatia 2 da pausa, 2026-11-25)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| FE3 | Vaga de quem a triagem fechada remanejou | O remanejado sai da sessão e libera a vaga; quem levou falta não libera. Ao reabrir a triagem, a reserva ocupa as vagas livres | Não liberar (a reserva continua esperando outra vaga) | Baixo: no pior caso, entra da reserva alguém que não entraria |
+| FE4 | Outra estação fecha entre a tela carregar e o toque (a tela ainda mostra o "Fechar" comum) | A API recusa com `closes_session` ou `closes_stage`; o painel avisa e o toque seguinte já abre a confirmação certa (e manda `confirmed`) | Abrir a segunda confirmação na hora | Baixo: um toque a mais num caso raro |
+
+## Pausar agora e voltar (fatia 3 da pausa, 2026-11-25)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| PZ2 | "Horário" da volta | Hora do dia em que a pausa começa, no fuso da unidade; antes (ou igual) ao início é recusado na hora, com "A volta precisa ser depois do início da pausa (12:32)" | Aceitar a hora do dia seguinte | Baixo: pausa que vira o dia não existe numa sessão |
+| PZ4 | Quando a pausa começaria, no painel "Pausar a estação" | A API calcula com o próprio domínio (`pauseStation` sem gravar) e manda em `station.pauseStartsAt`; nulo quando não pausa (paciente chamado, já com pausa, unidade sem sinal) | Calcular no painel | Baixo: uma regra só, no domínio |
+
+## Pausa marcada e o app (fatia 4 da pausa, 2026-11-25)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| PM2 | A pausa que ainda vai começar antes da vez da pessoa (o design só mostra a pausa em curso) | O app já diz: "pausa às 13h02, volta às 14h02" (ou "sem hora de volta"), na faixa do bilhete e no destaque da fila; o selo "em pausa" só quando começou | Mostrar só quando começar | Baixo: a pessoa sabe antes por que o tempo cresceu |
+| PM3 | Selo da pessoa na unidade com a etapa em pausa. **Rever na revisão de UI do app** (você, 2026-11-26: manter "na unidade" e talvez somar uma etiqueta "em pausa") | Continua "na unidade" (ela já está lá e vê a TV); "em pausa" só para quem está em casa | "em pausa" para todos | Baixo |
+
+## Opção C da pausa (AD-077, fatia 5, 2026-11-26)
+
+Aprovadas na revisão de 2026-11-26 e levadas à **AD-078**: PA7, OC1, OC2, OC4, OC5, OC6, OC8 (com mudança), OC9 (com mudança), OC10, e também FE1 (com mudança), FE2 e PM1.
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| OC3 | "A volta passa para 13:47" no aviso | Agora + tempo médio da etapa + a duração da pausa | Não mostrar a hora | Baixo: é previsão |
+| OC7 | Para a estimativa, a pausa de quem atende antes | Começa no fim previsto do atendimento (agora + tempo médio da etapa), com a mesma duração; se o atendimento passa da previsão, conta de agora. Quem ainda espera a pergunta ou o atendimento antes não vê essa pausa | Contar como se começasse agora (mais cauteloso: a hora de volta andaria a cada consulta e o "venha agora" pararia durante o atendimento) | Baixo: com um atendimento mais longo que a média, alguém pode receber "venha agora" e chegar na pausa |
+| OC11 | Outra estação da etapa com a pausa marcada à frente | Para a pergunta, não conta como "chamando" (a estação pergunta: a outra pode parar antes de chegar a quem espera); para a justificativa, conta até a hora da pausa dela (ela ainda chama agora, então ninguém recebe "pausa antes da sua vez") | Contar igual nos dois casos | Baixo: se a outra pausar antes de chamar a pessoa, ela espera sem a justificativa |
+| OC12 | **Substituída** (você, 2026-11-27): a triagem é numa sala só e a sessão diz se tem classificação de risco; sai a OC9 ([plano](plano-triagem-sala-unica.md)). Como saber quem opera a estação da triagem (OC9). Ex.: a técnica Carla abre o Acolhimento às 7h e ainda não chamou ninguém; às 12:30 a Classificação pausa com a Bia (acolhida) esperando | A estação guarda se classifica só quando alguém **faz uma ação** nela (chamar, finalizar, pausar…). Até a Carla chamar alguém, o Acolhimento conta como "classifica": a Bia não recebe a justificativa. E se a Carla passa a estação para uma enfermeira às 12:40, a Bia, que ficou sem quem a chame, não recebe aviso nessa hora | Gravar ao abrir a tela (testado e desfeito: quem só olha, como a supervisora, trocaria o valor, e com duas pessoas olhando a sessão seria gravada a cada 3 s); ou "entrar na estação" com um toque, que grava quem opera e manda as justificativas que mudarem | Médio: no começo do dia, ou na troca de turno, o acolhido pode esperar uma pausa sem aviso |
+
+## Horário em faixas (fatia 6 da pausa, 2026-11-26)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| HF1 | Como a API recebe as faixas. Ex.: Clínico geral das 08:00 às 12:00 e das 13:00 às 17:00 | A API segue com `start` (08:00) e `end` (17:00) e ganha `breaks: [{12:00, 13:00}]`, o vão entre as faixas; o painel mostra e edita as faixas e converte. Quem já integra com a API não quebra, e a fila do dia já usava os intervalos | A API receber `bands: [{08:00, 12:00}, {13:00, 17:00}]` no lugar de `start`/`end` | Baixo: só o formato da API; o que a tela mostra é igual |
+| HF2 | Faixas encostadas. Ex.: 08:00 às 12:00 e 12:00 às 17:00 | Recusadas com "as faixas não podem se sobrepor": seriam uma faixa só, sem intervalo | Juntar numa faixa só (08:00 às 17:00) sem avisar | Baixo: quem digitou assim corrige para uma faixa |
+| HF3 | Mudar as faixas de uma sessão já criada. Ex.: o almoço passou de 12:00–13:00 para 12:30–13:30 | Só pela API (como o início e o fim, enquanto planejada): a tela "Editar sessão" do painel nunca editou o horário e continua sem editar | Pôr o horário (com as faixas) no "Editar sessão" | Médio: hoje, para mudar o almoço, cancela e cria de novo a sessão sem inscritos |
+| HF4 | A série (sessões que se repetem) com faixas | Fica de fora: a série existe só no domínio (`recurrence.ts`), sem rota na API nem tela no painel | Pôr as faixas no domínio da série agora | Baixo: quando a série ganhar tela, as faixas entram junto |
+| HF5 | "Adicionar horário" no painel. Ex.: a faixa termina às 12:00 | A nova linha já vem das 13:00 às 17:00 (uma hora depois, quatro de duração, como o almoço comum), para editar | Linha vazia | Baixo: só o valor inicial |
+| HF6 | O app com duas faixas. Ex.: o card da unidade e o bilhete | "8h às 12h e 13h às 17h" (no bilhete, "hoje, das 8h às 12h e 13h às 17h") | Só "8h às 17h", como antes | Baixo: só texto |
+
+## Alerta de sinal (fatia 7 da pausa, 2026-11-26)
+
+| # | Contexto | O que foi feito | Alternativa | Custa se errado |
+| --- | --- | --- | --- | --- |
+| AS1 | Quanto tempo sem sinal até a faixa. Ex.: o Consultório 1 com a aba em segundo plano | TV com mais de 2 min (o mesmo tempo da queda com TV); estação com mais de 3 min (a aba em segundo plano consulta até 1 vez por minuto) | 10 min para a estação, como a queda sem TV | Baixo: faixa amarela à toa ou atrasada; o número é uma constante (`STATION_ALERT_MS`) |
+| AS2 | Estação que ainda não deu sinal na sessão. Ex.: a sessão abriu às 07:00 e o médico chega às 07:20 | Entra na faixa depois de 3 min da abertura: "Consultório 2 sem sinal há 15 min" (a tela está fechada; se a sala não vai atender, pause ou feche) | Só alertar depois do primeiro sinal da estação na sessão | Baixo: uma faixa amarela no começo do dia até o médico abrir a tela |
+| AS3 | A TV não tem nome no cadastro. Ex.: unidade com a TV da recepção e a do corredor | A faixa diz "TV" e, com duas ou mais, "2 TVs" | Dar nome às TVs no pareamento | Baixo: com várias TVs, a recepção confere qual na tela "TVs" |
+| AS4 | Quem vê a faixa | Quem tem alguma ação da fila na unidade (recepção, admin, estações), como a Fila do dia; quem não tem nenhuma delas, não | Todos os perfis da unidade | Baixo |
+
