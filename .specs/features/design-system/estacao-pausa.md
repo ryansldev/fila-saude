@@ -1,6 +1,6 @@
 # Estação: pausa, fechar e alerta de sinal; sessão em faixas de horário
 
-> Desenho aprovado na conversa de 2026-11-24 ("tá ok agora, ao menos de começo"). Protótipo em `.superpowers/brainstorm/pausa/estacao-pausa.html` (fora do git). Regras em [plano-pausa-e-fechar](../mvp-filas/plano-pausa-e-fechar.md). Base: [estacao.md](estacao.md) e [design.md](design.md).
+> Desenho aprovado na conversa de 2026-11-24 ("tá ok agora, ao menos de começo"). O protótipo foi apagado depois de a tela ficar pronta. Regras em [chamada](../../specs/chamada/spec.md) (RN-EST-06, RN-EST-07, RN-SES-06) e [contingência](../../specs/contingencia/spec.md) (RN-SES-07); o plano executado está em [arquivo](../../arquivo/planos/mvp-filas/plano-pausa-e-fechar.md). Base: [estacao.md](estacao.md) e [design.md](design.md).
 
 ## Estação
 
