@@ -17,11 +17,11 @@ Só onde estamos e o próximo passo; o histórico está no `git log`. Mantenha c
 - **Turnstile:** widget criado (2026-11-18); as chaves estão no seu cofre. No deploy de produção, `TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY` na API, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` no painel e `EXPO_PUBLIC_TURNSTILE_SITE_KEY` no app. Em dev seguem as chaves de teste.
 - **Push no Android na `main`** (PR #35; AD-071 a AD-074). Rodar `npm run db:migrate`. **Na produção, a API só depois do app novo instalado** (o canal do push mudou para `avisos`). iOS pede o `bundleIdentifier` e a conta da Apple.
 - **RV7, perder a vez e queda percebida na `main`** (PRs #36 a #38; AD-075, AD-076). Confirmar a leitura da lei com o advogado (D5). Fonte do sinal e sinal parado julgado por fonte e no giro na `main` (PRs #39 e #40, QP7).
-- **Pausa e fechar a estação** (AD-077, AD-078; [plano executado](arquivo/planos/mvp-filas/plano-pausa-e-fechar.md)), na PR de `feat/pause-and-close` para a `main`: revisar a PR; rodar `npm run db:migrate` (coluna `breaks`); revisar PE1 a PE4, FE3, FE4, PZ2, PZ4, PM2, PM3, OC3, OC7, OC11, OC12, HF1 a HF6 e AS1 a AS4 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md).
+- **Pausa e fechar a estação** (AD-077, AD-078; [plano executado](arquivo/planos/mvp-filas/plano-pausa-e-fechar.md)), na PR de `feat/pause-and-close` para a `main`: revisar a PR; rodar `npm run db:migrate` (coluna `breaks`); revisar PE1 a PE4, FE3, FE4, PZ2, PZ4, PM2, PM3, OC3, OC7, OC11, HF1 a HF6 e AS1 a AS4 em [decisoes-para-revisar](features/mvp-filas/decisoes-para-revisar.md).
 
 ## Próximo passo
 
-Numa branch própria: a urgência confirmada que não chega recebe 2 "venha agora" e sai da fila com falta (PA5). Depois, a revisão de UI do app (designs da caixa de avisos e da tela da fila com o check-in em [design-system](features/design-system/)) e o plano da fatia 5 (pré-cadastro).
+Numa branch própria: a triagem numa sala só, com a sessão dizendo se tem classificação de risco ([plano](features/mvp-filas/plano-triagem-sala-unica.md); substitui a AD-061 e a OC9). Depois, a urgência confirmada que não chega recebe 2 "venha agora" e sai da fila com falta (PA5). Depois, a revisão de UI do app (designs da caixa de avisos e da tela da fila com o check-in em [design-system](features/design-system/)) e o plano da fatia 5 (pré-cadastro).
 
 ## Fora do código
 
